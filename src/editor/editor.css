@@ -1,0 +1,149 @@
+/* Markdown Editor - Base Styles
+ * Uses shadcn CSS variables for theming.
+ */
+
+/* ========================================
+   CSS Variables - Maps to shadcn tokens
+   Note: --editor-font-size, --editor-line-height, etc.
+   are set dynamically by editor-settings.tsx
+   ======================================== */
+.markdown-editor {
+	/* Base colors - from shadcn */
+	--editor-background: var(--background);
+	--editor-foreground: var(--foreground);
+	--editor-muted: var(--muted);
+	--editor-muted-foreground: var(--muted-foreground);
+
+	/* Selection - from shadcn accent */
+	--editor-selection: var(--accent);
+	--editor-selection-focus: var(--accent);
+
+	/* Typography - Geist Mono for editor */
+	--editor-font-family: "Geist Mono Variable", ui-monospace, monospace;
+	--editor-padding: 3rem 1.5rem;
+
+	/* Code - from shadcn muted */
+	--editor-code-font-family: "Geist Mono Variable", ui-monospace, monospace;
+	--editor-code-background: var(--muted);
+	--editor-code-keyword: var(--muted-foreground);
+	--editor-code-atom: var(--muted-foreground);
+	--editor-code-number: var(--muted-foreground);
+	--editor-code-string: var(--foreground);
+	--editor-code-variable: var(--foreground);
+	--editor-code-type: var(--muted-foreground);
+	--editor-code-comment: var(--muted-foreground);
+	--editor-code-property: var(--foreground);
+	--editor-code-operator: var(--muted-foreground);
+	--editor-code-function: var(--foreground);
+	--editor-code-definition: var(--foreground);
+}
+
+/* ========================================
+   Editor Container
+   ======================================== */
+.markdown-editor {
+	--toolbar-height: 48px;
+	position: fixed;
+	top: calc(var(--toolbar-height) + env(safe-area-inset-top));
+	left: 0;
+	right: 0;
+	bottom: 0;
+	padding-left: env(safe-area-inset-left);
+	padding-right: env(safe-area-inset-right);
+	display: flex;
+	flex-direction: column;
+	background: var(--editor-background);
+	color: var(--editor-foreground);
+}
+
+/* Adjust editor and toolbar when sidebars are open on desktop */
+@media (min-width: 768px) {
+	.markdown-editor {
+		transition:
+			padding-left 200ms ease-in,
+			padding-right 200ms ease-in;
+	}
+
+	.group\/sidebar-wrapper[data-left-sidebar-open="true"] .markdown-editor {
+		padding-left: calc(var(--sidebar-width) + env(safe-area-inset-left));
+	}
+
+	.group\/sidebar-wrapper[data-right-sidebar-open="true"] .markdown-editor {
+		padding-right: calc(var(--sidebar-width) + env(safe-area-inset-right));
+	}
+
+	.editor-toolbar {
+		transition:
+			left 200ms ease-in,
+			right 200ms ease-in;
+	}
+
+	.group\/sidebar-wrapper[data-left-sidebar-open="true"] .editor-toolbar {
+		left: var(--sidebar-width);
+	}
+
+	.group\/sidebar-wrapper[data-right-sidebar-open="true"] .editor-toolbar {
+		right: var(--sidebar-width);
+	}
+}
+
+/* ========================================
+   Editor Content Area
+   ======================================== */
+.markdown-editor > div:first-child {
+	flex: 1;
+	min-height: 0;
+	overflow: hidden;
+}
+
+.markdown-editor .cm-editor {
+	height: 100%;
+}
+
+.markdown-editor .cm-scroller {
+	overflow: auto !important;
+	padding-bottom: calc(50vh + env(safe-area-inset-bottom));
+}
+
+/* ========================================
+   Mobile adjustments
+   ======================================== */
+@media (max-width: 767px) {
+	.markdown-editor {
+		--editor-padding: 1rem 1rem;
+	}
+}
+
+/* ========================================
+   Done tasks styling (opt-in)
+   ======================================== */
+:root[data-strikethrough-done-tasks="true"] .cm-task-done-line {
+	text-decoration: line-through;
+}
+
+:root[data-fade-done-tasks="true"] .cm-task-done-line {
+	opacity: 0.5;
+}
+
+/* ========================================
+   Highlight current line (opt-in)
+   ======================================== */
+:root[data-highlight-current-line="true"] {
+	--editor-active-line-bg: rgba(0, 0, 0, 0.03);
+}
+
+:root.dark[data-highlight-current-line="true"] {
+	--editor-active-line-bg: rgba(255, 255, 255, 0.03);
+}
+
+/* ========================================
+   Focus mode (opt-in, per-session)
+   ======================================== */
+:root[data-focus-mode="true"] .cm-line:not(.cm-activeLine) {
+	opacity: 0.3;
+	transition: opacity 0.15s ease;
+}
+
+:root[data-focus-mode="true"] .cm-line.cm-activeLine {
+	opacity: 1;
+}

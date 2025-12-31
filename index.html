@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+		/>
+		<title>
+			Alkalye - beautiful Markdown Editor with E2E Encryption and Realtime
+			Collaboration
+		</title>
+		<meta
+			name="description"
+			content="Alkalye is a beautiful markdown editor with e2e encryption and realtime collaboration. Write securely with live sync across devices."
+		/>
+
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Alkalye - Beautiful Markdown Editor" />
+		<meta
+			property="og:description"
+			content="beautiful markdown editor with e2e encryption and realtime collaboration. Write securely with live sync across devices."
+		/>
+		<meta
+			property="og:image"
+			content="https://alkalye.com/icons/alkalye-social.png"
+		/>
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary" />
+		<meta name="twitter:title" content="Alkalye - Beautiful Markdown Editor" />
+		<meta
+			name="twitter:description"
+			content="beautiful markdown editor with e2e encryption and realtime collaboration. Write securely with live sync across devices."
+		/>
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta
+			name="twitter:image"
+			content="https://alkalye.com/icons/alkalye-social.png"
+		/>
+
+		<!-- Additional SEO -->
+		<meta name="robots" content="index, follow" />
+		<meta
+			name="keywords"
+			content="markdown editor, e2e encrypted, end-to-end encryption, realtime collaboration, secure writing, privacy"
+		/>
+		<meta name="author" content="Alkalye" />
+		<link rel="canonical" href="https://alkalye.com" />
+
+		<!-- PWA / Mobile -->
+		<meta id="theme-color" name="theme-color" content="#ffffff" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
+		<meta name="apple-mobile-web-app-title" content="Alkalye" />
+		<link rel="icon" type="image/png" href="/icons/alkalye-icon.png" />
+		<link rel="apple-touch-icon" href="/icons/alkalye-icon.png" />
+		<link rel="manifest" href="/manifest.webmanifest" />
+		<link rel="preload" href="/docs/welcome.md" as="fetch" crossorigin />
+	</head>
+	<body class="selection:bg-brand selection:text-white">
+		<div
+			id="splash"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black"
+		>
+			<div
+				className="flex aspect-square size-48 flex-col items-center justify-center rounded-3xl bg-radial from-emerald-900 from-0% via-emerald-950 via-30% to-black to-70% font-mono text-white"
+			>
+				<div className="text-[36px] leading-none font-bold tracking-tighter">
+					Alkalye
+				</div>
+			</div>
+		</div>
+		<div id="root"></div>
+		<script>
+			window.__pageLoadTime = Date.now()
+		</script>
+		<script type="module" src="/src/main.tsx"></script>
+		<script>
+			function updateThemeColor() {
+				let meta = document.getElementById("theme-color")
+				if (!meta) return
+				let bg = getComputedStyle(document.documentElement)
+					.getPropertyValue("--background")
+					.trim()
+				meta.setAttribute("content", bg)
+			}
+
+			updateThemeColor()
+
+			new MutationObserver(mutations => {
+				for (let m of mutations) {
+					if (m.type === "attributes" && m.attributeName === "class") {
+						updateThemeColor()
+					}
+				}
+			}).observe(document.documentElement, { attributes: true })
+		</script>
+	</body>
+</html>

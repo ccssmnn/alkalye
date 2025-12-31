@@ -1,0 +1,176 @@
+# Agent Instructions
+
+## Project Setup
+
+- **Package manager:** Bun (use `bun install`, `bun add`, `bun run`)
+- **Do NOT use npm/yarn** - no package-lock.json
+
+## Reference Repositories
+
+Reference code is available in `.reference/` for context:
+
+- `.reference/tilly/` - https://github.com/ccssmnn/tilly
+  - Local-first React PWA using Jazz for encrypted sync/offline-first database
+  - TanStack Router, Shadcn/ui, Tailwind CSS
+  - Includes realtime collaboration and agentic AI patterns
+  - Use as reference for component patterns, project structure, and UI conventions
+
+## React
+
+- **React Compiler enabled** - Do NOT use `useMemo`, `useCallback`, or `React.memo` - the compiler handles memoization automatically
+- Prefer direct computation over hooks when possible
+- Extract reusable logic into custom hooks only when shared across components
+
+## Code Style Preferences
+
+### General Principles
+
+- High information density in both code and text
+- Optimize for top-down readability - reader should understand flow without jumping around
+- No comments unless absolutely necessary for complex logic
+- Split files when they exceed ~300 lines or have distinct responsibilities
+- **NEVER use type casts (`as any`, `as SomeType`, etc.) - Fix types properly instead**
+
+### TypeScript Best Practices
+
+- **NEVER use `any` type** - Always infer or define proper types
+- **Use framework type systems** - Leverage Jazz-tools' `co.loaded<>` and `ResolveQuery<>`
+- **Extract types from existing objects** - Use `Parameters<typeof fn>[0]` and `NonNullable<T>`
+- **Define helper types** - Create meaningful type aliases for complex nested types
+- **Type function parameters and returns** - Be explicit about what functions expect and return
+- **Use `tryCatch` wrapper** - Wrap async operations for proper error handling with types
+
+**Type Definition Examples:**
+
+```ts
+// ✅ Good: Extract types from Jazz schemas
+type ReminderData = Parameters<typeof Reminder.create>[0]
+type LoadedUser = co.loaded<typeof UserAccount, typeof query>
+type NotificationSettings = NonNullable<LoadedUser["root"]["notificationSettings"]>
+
+// ✅ Good: Define clear function signatures
+function updateReminder(
+  updates: Partial<ReminderData>,
+  options: { userId: string }
+): Promise<ReminderUpdated>
+
+// ✅ Good: Use tryCatch for error handling
+let result = await tryCatch(someAsyncOperation())
+if (!result.ok) return { error: result.error }
+
+// ❌ Bad: Using any
+function handleUser(user: any) { ... }
+
+// ❌ Bad: Type casting
+let data = response as SomeType
+```
+
+### Variable Declarations
+
+- Use `let` over `const`
+- Only export what needs to be exported
+- No default exports
+
+### Functions
+
+- Use `function() {}` over `() => {}` for named functions
+- Arrow functions acceptable for inline/anonymous usage
+
+### File Organization
+
+**Universal Module Structure:**
+
+1. **Imports** - External and internal imports at the top
+2. **Export declarations** - `export { ... }` and `export type { ... }` immediately after imports
+3. **Main functions/components** - Primary exports, kept lean and focused
+4. **Helper functions** - Utilities, handlers, types, and constants at the bottom
+
+**Component Modules (.tsx):**
+
+- Extract business logic to module-scope handler functions
+- Keep components focused on UI state and rendering
+- Place handlers like `handleNoteEdit`, `handleReminderDelete` at bottom
+- Custom hooks go after components but before handlers
+
+**Tool/API Modules (.ts):**
+
+- Main operation functions first (like `updateReminder`)
+- Helper functions and calculations in middle
+- Constants, errors, and type definitions at bottom
+- AI tool definitions and execute functions last
+
+**Component Example:**
+
+```ts
+import { Button } from "#shared/ui/button"
+import { updateNote } from "#shared/tools/note-update"
+
+export { NoteListItem }
+
+function NoteListItem({ note, person }) {
+  let [dialogOpen, setDialogOpen] = useState(false)
+
+  return (
+    <Button onClick={() => {
+      setDialogOpen(false)
+      handleNoteEdit(data, person.id, note.id)
+    }}>
+      Edit
+    </Button>
+  )
+}
+
+function useCustomHook(param: string) {
+  return { ref, state }
+}
+
+async function handleNoteEdit(data, personId, noteId) {
+  // Business logic with error handling and undo
+}
+```
+
+**Benefits:**
+
+- Instant navigation: see exports → jump to implementation
+- Clear separation: UI vs business logic vs types
+- Consistent patterns across component and utility modules
+- Better maintainability and testability
+
+### Route Component Patterns
+
+**Structure for route components:**
+
+1. Early returns for error/loading states at the top
+2. Data derivation (parsing, grouping) after guards
+3. Render composed sub-components
+4. Sub-components own their logic (keyboard handlers, navigation, etc.)
+
+**Loading/Empty States:**
+
+- Never return `null` for loading - show a spinner with helpful text
+- Never return `null` for empty - show an empty state with guidance
+- Use `<Empty>` component with title and description
+
+**Passing Data to Sub-components:**
+
+- Pass the loaded `doc` object directly, not derived callbacks
+- Let sub-components derive their own state from `doc`
+- Sub-components should own related logic (e.g., toolbar owns keyboard shortcuts)
+
+```tsx
+// ✅ Good: Sub-component owns its logic
+<BottomToolbar doc={doc} items={items} />
+
+// ❌ Bad: Parent passes callbacks
+<BottomToolbar
+  onPrevSlide={() => { ... }}
+  onNextSlide={() => { ... }}
+  onPrevItem={() => { ... }}
+/>
+```
+
+**Top Bar Pattern:**
+
+- Left: navigation/branding
+- Center: title (absolutely positioned for true centering)
+- Right: actions dropdown

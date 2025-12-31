@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+		/>
+		<title>Collaborate with me in Alkalye</title>
+		<meta
+			name="description"
+			content="Join me in Alkalye, the beautiful Markdown editor with e2e encryption and realtime collaboration."
+		/>
+
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Collaborate with me in Alkalye" />
+		<meta
+			property="og:description"
+			content="Join me in Alkalye, the beautiful Markdown editor with e2e encryption and realtime collaboration."
+		/>
+		<meta
+			property="og:image"
+			content="https://alkalye.com/icons/alkalye-social-invite.png"
+		/>
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Collaborate with me in Alkalye" />
+		<meta
+			name="twitter:description"
+			content="Join me in Alkalye, the beautiful Markdown editor with e2e encryption and realtime collaboration."
+		/>
+
+		<!-- Open Graph / Facebook -->
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="You've been invited to collaborate" />
+		<meta
+			property="og:description"
+			content="Someone invited you to collaborate on a document. Join them on Alkalye - a beautiful markdown editor with e2e encryption and realtime collaboration."
+		/>
+		<meta
+			property="og:image"
+			content="https://alkalye.com/icons/alkalye-social-invite.png"
+		/>
+
+		<!-- Twitter -->
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="You've been invited to collaborate" />
+		<meta
+			name="twitter:description"
+			content="Someone invited you to collaborate on a document. Join them on Alkalye - a beautiful markdown editor with e2e encryption and realtime collaboration."
+		/>
+		<meta
+			name="twitter:image"
+			content="https://alkalye.com/icons/alkalye-social-invite.png"
+		/>
+
+		<!-- Additional SEO -->
+		<meta name="robots" content="noindex, nofollow" />
+		<meta name="author" content="Alkalye" />
+
+		<!-- PWA / Mobile -->
+		<meta id="theme-color" name="theme-color" content="#ffffff" />
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta
+			name="apple-mobile-web-app-status-bar-style"
+			content="black-translucent"
+		/>
+		<meta name="apple-mobile-web-app-title" content="Alkalye" />
+		<link rel="icon" type="image/png" href="/icons/alkalye-icon.png" />
+		<link rel="apple-touch-icon" href="/icons/alkalye-icon.png" />
+		<link rel="manifest" href="/manifest.webmanifest" />
+	</head>
+	<body class="selection:bg-brand selection:text-white">
+		<div
+			id="splash"
+			class="fixed inset-0 z-50 flex items-center justify-center bg-black"
+		>
+			<div
+				className="flex aspect-square size-48 flex-col items-center justify-center rounded-3xl bg-radial from-emerald-900 from-0% via-emerald-950 via-30% to-black to-70% font-mono text-white"
+			>
+				<div className="text-[36px] leading-none font-bold tracking-tighter">
+					Alkalye
+				</div>
+			</div>
+		</div>
+		<div id="root"></div>
+		<script>
+			window.__pageLoadTime = Date.now()
+		</script>
+		<script type="module" src="/src/main.tsx"></script>
+		<script>
+			function updateThemeColor() {
+				let meta = document.getElementById("theme-color")
+				if (!meta) return
+				let bg = getComputedStyle(document.documentElement)
+					.getPropertyValue("--background")
+					.trim()
+				meta.setAttribute("content", bg)
+			}
+
+			updateThemeColor()
+
+			new MutationObserver(mutations => {
+				for (let m of mutations) {
+					if (m.type === "attributes" && m.attributeName === "class") {
+						updateThemeColor()
+					}
+				}
+			}).observe(document.documentElement, { attributes: true })
+		</script>
+	</body>
+</html>
