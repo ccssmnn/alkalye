@@ -23,6 +23,7 @@ export {
 	togglePinned,
 	addTag,
 	getBacklinks,
+	getBacklinksWithRange,
 	setBacklinks,
 	addBacklink,
 	removeBacklink,
@@ -136,6 +137,46 @@ function getBacklinks(content: string): string[] {
 		.split(",")
 		.map(id => id.trim())
 		.filter(Boolean)
+}
+
+type BacklinksWithRange = {
+	ids: string[]
+	lineFrom: number
+	lineTo: number
+	valueFrom: number
+	valueTo: number
+}
+
+function getBacklinksWithRange(content: string): BacklinksWithRange | null {
+	let match = content.match(/^---\r?\n([\s\S]*?)(?:\r?\n)?---/)
+	if (!match) return null
+
+	let frontmatter = match[1]
+	let frontmatterStart = content.indexOf("\n") + 1
+
+	let lines = frontmatter.split(/\r?\n/)
+	let offset = frontmatterStart
+
+	for (let line of lines) {
+		let backlinkMatch = line.match(/^backlinks:\s*(.*)$/)
+		if (backlinkMatch) {
+			let ids = backlinkMatch[1]
+				.split(",")
+				.map(id => id.trim())
+				.filter(Boolean)
+			let lineFrom = offset
+			let lineTo = offset + line.length
+			let valueFrom = offset + line.indexOf(":") + 1
+			// Skip leading whitespace after colon
+			let valueStartOffset = backlinkMatch[0].indexOf(backlinkMatch[1])
+			valueFrom = offset + valueStartOffset
+			let valueTo = lineTo
+			return { ids, lineFrom, lineTo, valueFrom, valueTo }
+		}
+		offset += line.length + 1
+	}
+
+	return null
 }
 
 function removeEmptyFrontmatter(content: string): string {

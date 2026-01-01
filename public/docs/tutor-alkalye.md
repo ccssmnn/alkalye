@@ -108,6 +108,18 @@ Preview updates live as you type.
 
 ---
 
+## Link your documents
+
+Connect your notes with wikilinks. Type `[[` to search your documents, then select one to insert a link. The link displays as the document title and navigates on click.
+
+**Create while linking:** If no matching document exists, select "Create [title]" to make a new one instantly.
+
+**Backlinks:** When you link to another document, it automatically tracks the reference. Open the linked document to see who's linking to it in the frontmatter (`backlinks: id1, id2`).
+
+**Broken links:** If a linked document is deleted, the link shows with a red wavy underline.
+
+---
+
 ## Real-time collaboration
 
 Share your document from the File menu or sidebar.

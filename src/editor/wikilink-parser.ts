@@ -18,11 +18,13 @@ function parseWikiLinks(content: string): WikiLink[] {
 	WIKILINK_REGEX.lastIndex = 0
 
 	while ((match = WIKILINK_REGEX.exec(content)) !== null) {
-		links.push({
-			id: match[1],
-			from: match.index,
-			to: match.index + match[0].length,
-		})
+		if (match[1]) {
+			links.push({
+				id: match[1],
+				from: match.index,
+				to: match.index + match[0].length,
+			})
+		}
 	}
 
 	return links

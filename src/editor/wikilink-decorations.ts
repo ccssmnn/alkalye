@@ -7,7 +7,7 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view"
-import { WIKILINK_REGEX } from "./wikilink-parser"
+import { parseWikiLinks } from "./wikilink-parser"
 
 export { createWikilinkDecorations }
 export type { WikilinkResolver }
@@ -75,24 +75,6 @@ class WikilinkWidget extends WidgetType {
 	}
 }
 
-function findWikilinks(
-	text: string,
-): Array<{ id: string; from: number; to: number }> {
-	let links: Array<{ id: string; from: number; to: number }> = []
-	WIKILINK_REGEX.lastIndex = 0
-	let match: RegExpExecArray | null
-	while ((match = WIKILINK_REGEX.exec(text)) !== null) {
-		if (match[1]) {
-			links.push({
-				id: match[1],
-				from: match.index,
-				to: match.index + match[0].length,
-			})
-		}
-	}
-	return links
-}
-
 function createWikilinkDecorations(
 	resolver: WikilinkResolver,
 	onNavigate: (id: string, newTab: boolean) => void,
@@ -124,7 +106,7 @@ function createWikilinkDecorations(
 				let builder = new RangeSetBuilder<Decoration>()
 				let doc = view.state.doc
 				let text = doc.toString()
-				let links = findWikilinks(text)
+				let links = parseWikiLinks(text)
 				let selection = view.state.selection.main
 
 				for (let link of links) {

@@ -7,7 +7,7 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view"
-import { getFrontmatterRange } from "./frontmatter"
+import { getFrontmatterRange, getBacklinksWithRange } from "./frontmatter"
 
 export { createBacklinkDecorations }
 export type { BacklinkResolver }
@@ -72,36 +72,6 @@ class BacklinkWidget extends WidgetType {
 	}
 }
 
-function findBacklinkLine(
-	text: string,
-): { lineStart: number; lineEnd: number; ids: string[] } | null {
-	// Find the backlinks line in frontmatter
-	let match = text.match(/^---\r?\n([\s\S]*?)(?:\r?\n)?---/)
-	if (!match) return null
-
-	let frontmatter = match[1]
-	let frontmatterStart = 4 // "---\n".length
-
-	let lines = frontmatter.split(/\r?\n/)
-	let offset = frontmatterStart
-
-	for (let line of lines) {
-		let backlinkMatch = line.match(/^backlinks:\s*(.*)$/)
-		if (backlinkMatch) {
-			let ids = backlinkMatch[1]
-				.split(",")
-				.map(id => id.trim())
-				.filter(Boolean)
-			let lineStart = offset
-			let lineEnd = offset + line.length
-			return { lineStart, lineEnd, ids }
-		}
-		offset += line.length + 1 // +1 for newline
-	}
-
-	return null
-}
-
 function createBacklinkDecorations(
 	resolver: BacklinkResolver,
 	onNavigate: (id: string, newTab: boolean) => void,
@@ -133,43 +103,34 @@ function createBacklinkDecorations(
 				let doc = view.state.doc
 				let text = doc.toString()
 
-				// Check if frontmatter is folded - don't decorate if so
+				// Check if frontmatter exists
 				let fmRange = getFrontmatterRange(view.state)
 				if (!fmRange) return Decoration.none
 
-				let backlinks = findBacklinkLine(text)
+				let backlinks = getBacklinksWithRange(text)
 				if (!backlinks || backlinks.ids.length === 0) return Decoration.none
 
 				let selection = view.state.selection.main
 
 				// Don't decorate if cursor is on the backlinks line
 				if (
-					selection.from >= backlinks.lineStart &&
-					selection.to <= backlinks.lineEnd
+					selection.from >= backlinks.lineFrom &&
+					selection.to <= backlinks.lineTo
 				) {
 					return Decoration.none
 				}
 
-				// Find the position after "backlinks: "
-				let backlinkKeyMatch = text
-					.slice(backlinks.lineStart, backlinks.lineEnd)
-					.match(/^backlinks:\s*/)
-				if (!backlinkKeyMatch) return Decoration.none
-
-				let valueStart = backlinks.lineStart + backlinkKeyMatch[0].length
-				let valueEnd = backlinks.lineEnd
-
 				// Create widgets for each ID
 				let widgets: { from: number; to: number; widget: BacklinkWidget }[] = []
-				let currentPos = valueStart
-				let idsText = text.slice(valueStart, valueEnd)
+				let currentPos = backlinks.valueFrom
+				let idsText = text.slice(backlinks.valueFrom, backlinks.valueTo)
 				let parts = idsText.split(",")
 
 				for (let i = 0; i < parts.length; i++) {
 					let part = parts[i]
 					let trimmedId = part.trim()
 					if (!trimmedId) {
-						currentPos += part.length + 1 // +1 for comma
+						currentPos += part.length + 1
 						continue
 					}
 
@@ -177,7 +138,6 @@ function createBacklinkDecorations(
 					let title = resolved?.title ?? trimmedId
 					let exists = resolved?.exists ?? false
 
-					// Calculate exact positions
 					let leadingSpaces = part.length - part.trimStart().length
 					let idStart = currentPos + leadingSpaces
 					let idEnd = idStart + trimmedId.length
@@ -193,10 +153,9 @@ function createBacklinkDecorations(
 						),
 					})
 
-					currentPos += part.length + 1 // +1 for comma
+					currentPos += part.length + 1
 				}
 
-				// Add decorations in order
 				for (let w of widgets) {
 					let deco = Decoration.replace({
 						widget: w.widget,
