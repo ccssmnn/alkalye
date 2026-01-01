@@ -57,7 +57,6 @@ import {
 	LogOut,
 	ScrollText,
 	Copy,
-	HelpCircle,
 	MoreHorizontal,
 	Upload,
 	Cloud,
@@ -96,7 +95,6 @@ import {
 import { ShareDialog } from "@/components/share-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { HelpMenu } from "@/components/help-menu"
 import { usePWA } from "@/lib/pwa"
 
 export { ListSidebar }
@@ -258,7 +256,6 @@ function ListSidebar() {
 
 				<SidebarFooter className="border-border flex flex-row gap-2 border-t">
 					<SyncStatus />
-					<HelpDropdown />
 				</SidebarFooter>
 			</DropZone>
 		</Sidebar>
@@ -974,23 +971,6 @@ function SyncStatus() {
 				<span className="bg-destructive absolute top-1 right-1 size-2 rounded-full" />
 			)}
 		</Button>
-	)
-}
-
-function HelpDropdown() {
-	let { isMobile, setLeftOpenMobile } = useSidebar()
-
-	return (
-		<HelpMenu
-			trigger={
-				<Button variant="ghost" size="icon-sm">
-					<HelpCircle />
-				</Button>
-			}
-			align="start"
-			side="top"
-			onNavigate={() => isMobile && setLeftOpenMobile(false)}
-		/>
 	)
 }
 
