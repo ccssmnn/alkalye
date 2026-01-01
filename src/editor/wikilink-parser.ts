@@ -7,8 +7,8 @@ type WikiLink = {
 	to: number
 }
 
-// Matches [[doc_id]] - captures the doc ID
-let WIKILINK_REGEX = /\[\[([^\]]+)\]\]/g
+// Matches [[doc_id]] or [[]] (empty) - captures the doc ID
+let WIKILINK_REGEX = /\[\[([^\]]*)\]\]/g
 
 function parseWikiLinks(content: string): WikiLink[] {
 	let links: WikiLink[] = []

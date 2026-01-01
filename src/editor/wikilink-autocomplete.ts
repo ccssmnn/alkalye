@@ -116,7 +116,7 @@ let autocompleteTheme = EditorView.baseTheme({
 			"0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
 		padding: "0",
 		fontFamily: "var(--editor-font-family, 'Geist Mono Variable', monospace)",
-		fontSize: "12px",
+		fontSize: "var(--editor-font-size, 14px)",
 	},
 	".cm-tooltip.cm-tooltip-autocomplete > ul": {
 		fontFamily: "var(--editor-font-family, 'Geist Mono Variable', monospace)",

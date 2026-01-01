@@ -215,6 +215,24 @@ function FloatingActions({
 			}
 		}
 
+		// Also detect incomplete wikilinks: [[ or [[text without closing ]]
+		if (!result.wikiLinkId) {
+			let line = state.doc.lineAt(pos)
+			let textBefore = line.text.slice(0, pos - line.from)
+			let textAfter = line.text.slice(pos - line.from)
+			let match = textBefore.match(/\[\[([^\]\[]*)$/)
+			if (match) {
+				let from = line.from + textBefore.lastIndexOf("[[")
+				// Check if closing brackets exist after cursor
+				let closingMatch = textAfter.match(/^([^\]\[]*)\]\]/)
+				let to = closingMatch
+					? pos + closingMatch[0].length
+					: pos + (textAfter.match(/^[^\]\[]*/) ?? [""])[0].length
+				result.wikiLinkId = match[1] || "" // empty string for [[]]
+				result.wikiLinkRange = { from, to }
+			}
+		}
+
 		return result
 	}
 
@@ -451,7 +469,10 @@ function WikiLinkAction({
 	let navigate = useNavigate()
 	let [inputValue, setInputValue] = useState("")
 
-	if (!wikiLinkId) return null
+	if (wikiLinkId === null) return null
+
+	// Check if this is a valid existing doc (not empty/incomplete wikilink)
+	let isValidLink = wikiLinkId && docs.some(d => d.id === wikiLinkId)
 
 	let filteredDocs = docs.filter(
 		doc =>
@@ -511,6 +532,123 @@ function WikiLinkAction({
 		setWikiLinkDialogOpen(false)
 		setInputValue("")
 		view.focus()
+	}
+
+	// For incomplete/empty wikilinks, show dialog directly instead of dropdown
+	if (!isValidLink) {
+		return (
+			<>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								size="icon"
+								variant="brand"
+								className="shadow-md"
+								onClick={() => {
+									wikiLinkRangeRef.current =
+										editor.current?.getEditor()?.state.selection.main.head !==
+										undefined
+											? ((): Range | null => {
+													let view = editor.current?.getEditor()
+													if (!view) return null
+													let pos = view.state.selection.main.head
+													let line = view.state.doc.lineAt(pos)
+													let textBefore = line.text.slice(0, pos - line.from)
+													let textAfter = line.text.slice(pos - line.from)
+													let match = textBefore.match(/\[\[([^\]\[]*)$/)
+													if (!match) return null
+													let from = line.from + textBefore.lastIndexOf("[[")
+													let closingMatch = textAfter.match(/^([^\]\[]*)\]\]/)
+													let to = closingMatch
+														? pos + closingMatch[0].length
+														: pos +
+															(textAfter.match(/^[^\]\[]*/) ?? [""])[0].length
+													return { from, to }
+												})()
+											: null
+									setWikiLinkDialogOpen(true)
+								}}
+							>
+								<FileText />
+							</Button>
+						}
+					/>
+					<TooltipContent side="top">Select document</TooltipContent>
+				</Tooltip>
+
+				<Dialog open={wikiLinkDialogOpen} onOpenChange={setWikiLinkDialogOpen}>
+					<DialogContent className="max-w-sm">
+						<DialogHeader>
+							<DialogTitle>Link to document</DialogTitle>
+							<DialogDescription>
+								Search for a document to link to
+							</DialogDescription>
+						</DialogHeader>
+
+						<Combobox.Root
+							value={null}
+							onValueChange={handleSelectDoc}
+							onInputValueChange={value => setInputValue(value)}
+						>
+							<div className="relative">
+								<Combobox.Input
+									placeholder="Search documents..."
+									className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
+								/>
+							</div>
+
+							<Combobox.Portal>
+								<Combobox.Positioner sideOffset={4} className="z-50">
+									<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-[var(--anchor-width)] overflow-auto rounded-none shadow-md ring-1">
+										{filteredDocs.length === 0 && !showCreateOption && (
+											<div className="text-muted-foreground px-3 py-2 text-sm">
+												No documents found
+											</div>
+										)}
+
+										{filteredDocs.map(doc => (
+											<Combobox.Item
+												key={doc.id}
+												value={doc.id}
+												className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
+											>
+												<FileText className="text-muted-foreground size-4" />
+												<span className="flex-1 truncate">{doc.title}</span>
+											</Combobox.Item>
+										))}
+
+										{showCreateOption && (
+											<button
+												type="button"
+												onClick={handleCreateAndLink}
+												className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
+											>
+												<Plus className="text-muted-foreground size-4" />
+												<span>
+													Create "
+													<span className="font-medium">{inputValue}</span>"
+												</span>
+											</button>
+										)}
+									</Combobox.Popup>
+								</Combobox.Positioner>
+							</Combobox.Portal>
+						</Combobox.Root>
+
+						<div className="flex justify-end gap-2 pt-2">
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setWikiLinkDialogOpen(false)}
+							>
+								Cancel
+							</Button>
+						</div>
+					</DialogContent>
+				</Dialog>
+			</>
+		)
 	}
 
 	return (

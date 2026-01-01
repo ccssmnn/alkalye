@@ -46,6 +46,7 @@ import {
 } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { Loader2 } from "lucide-react"
+import { useIsMobile } from "@/lib/use-mobile"
 
 export { Route }
 
@@ -125,6 +126,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	)
 
 	let { toggleLeft, toggleRight } = useSidebar()
+	let isMobile = useIsMobile()
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, {
@@ -250,7 +252,15 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		createBracketsExtension(),
 		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
 		createBacklinkDecorations(wikilinkResolver, handleWikilinkNavigate),
-		createWikilinkAutocomplete(() => wikilinkDocsRef.current, handleCreateDoc),
+		// Disable autocomplete on mobile - use floating action instead
+		...(isMobile
+			? []
+			: [
+					createWikilinkAutocomplete(
+						() => wikilinkDocsRef.current,
+						handleCreateDoc,
+					),
+				]),
 	]
 
 	// Apply editor settings to CSS variables
