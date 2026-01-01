@@ -121,7 +121,12 @@ function TopBar({ id, docTitle }: { id: string; docTitle: string }) {
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			<Button variant="ghost" size="sm" render={<Link to="/" />}>
+			<Button
+				variant="ghost"
+				size="sm"
+				nativeButton={false}
+				render={<Link to="/" />}
+			>
 				Alkalye
 			</Button>
 			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 truncate text-sm font-medium">
@@ -130,7 +135,7 @@ function TopBar({ id, docTitle }: { id: string; docTitle: string }) {
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					render={
-						<Button variant="ghost" size="icon">
+						<Button variant="ghost" size="icon" nativeButton={false}>
 							<EllipsisIcon className="size-4" />
 						</Button>
 					}

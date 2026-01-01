@@ -99,6 +99,7 @@ function TeleprompterPage() {
 				<EmptyContent>
 					<Button
 						variant="outline"
+						nativeButton={false}
 						render={<Link to="/doc/$id" params={{ id }} />}
 					>
 						Back to Editor
@@ -214,6 +215,7 @@ function TopBar({
 			<Button
 				variant="ghost"
 				size="sm"
+				nativeButton={false}
 				render={<Link to="/doc/$id" params={{ id }} />}
 			>
 				Editor
@@ -224,6 +226,7 @@ function TopBar({
 			<Button
 				variant="ghost"
 				size="sm"
+				nativeButton={false}
 				render={
 					<a
 						href={`/doc/${id}/slideshow`}

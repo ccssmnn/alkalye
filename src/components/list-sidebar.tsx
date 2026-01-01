@@ -576,7 +576,7 @@ function DocumentList({
 
 	return (
 		<div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
-			<ul
+			<div
 				className="relative w-full"
 				style={{ height: virtualizer.getTotalSize() }}
 			>
@@ -585,7 +585,7 @@ function DocumentList({
 					if (!item) return null
 
 					return (
-						<li
+						<div
 							key={virtualRow.key}
 							data-index={virtualRow.index}
 							ref={virtualizer.measureElement}
@@ -617,10 +617,10 @@ function DocumentList({
 									depth={item.depth}
 								/>
 							)}
-						</li>
+						</div>
 					)
 				})}
-			</ul>
+			</div>
 		</div>
 	)
 }
@@ -946,6 +946,7 @@ function SyncStatus() {
 			<Button
 				variant="ghost"
 				size="sm"
+				nativeButton={false}
 				render={<Link to="/settings" search={{ from: location.pathname }} />}
 				className="relative flex-1"
 			>
@@ -962,6 +963,7 @@ function SyncStatus() {
 		<Button
 			variant="ghost"
 			size="sm"
+			nativeButton={false}
 			className="relative w-full flex-1"
 			render={<Link to="/settings" search={{ from: location.pathname }} />}
 		>

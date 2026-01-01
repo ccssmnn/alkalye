@@ -1078,6 +1078,7 @@ function SettingsButton({ pathname }: { pathname: string }) {
 					<Button
 						variant="ghost"
 						size="icon"
+						nativeButton={false}
 						render={<Link to="/settings" search={{ from: pathname }} />}
 						className="relative"
 					>
