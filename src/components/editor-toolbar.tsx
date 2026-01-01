@@ -158,6 +158,7 @@ function EditorToolbar({
 														size="icon"
 														aria-label="Heading"
 														className="shrink-0"
+														nativeButton={false}
 													>
 														<Heading />
 													</Button>
@@ -260,6 +261,7 @@ function ToolbarButton({
 						onClick={onClick}
 						aria-label={label}
 						className="shrink-0"
+						nativeButton={false}
 					>
 						{icon}
 					</Button>

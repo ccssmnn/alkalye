@@ -553,6 +553,7 @@ function WikiLinkAction({
 								size="icon"
 								variant="brand"
 								className="shadow-md"
+								nativeButton={false}
 								onClick={() => {
 									wikiLinkRangeRef.current =
 										editor.current?.getEditor()?.state.selection.main.head !==
@@ -608,7 +609,12 @@ function WikiLinkAction({
 						render={
 							<TooltipTrigger
 								render={
-									<Button size="icon" variant="brand" className="shadow-md">
+									<Button
+										size="icon"
+										variant="brand"
+										className="shadow-md"
+										nativeButton={false}
+									>
 										<FileSymlinkIcon />
 									</Button>
 								}
@@ -805,7 +811,12 @@ function ImageAction({
 						render={
 							<TooltipTrigger
 								render={
-									<Button size="icon" variant="brand" className="shadow-md">
+									<Button
+										size="icon"
+										variant="brand"
+										className="shadow-md"
+										nativeButton={false}
+									>
 										<ImagePlus />
 									</Button>
 								}
@@ -865,6 +876,7 @@ function ActionButton({ icon, label, shortcut, onClick }: ActionButtonProps) {
 						variant="brand"
 						onClick={onClick}
 						className="shadow-md"
+						nativeButton={false}
 					>
 						{icon}
 					</Button>

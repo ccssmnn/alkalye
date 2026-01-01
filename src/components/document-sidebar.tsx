@@ -591,7 +591,12 @@ function DocumentSidebar({
 				<SidebarFooter className="border-border border-t">
 					<HelpMenu
 						trigger={
-							<Button variant="ghost" size="sm" className="w-full">
+							<Button
+								variant="ghost"
+								size="sm"
+								className="w-full"
+								nativeButton={false}
+							>
 								<HelpCircle />
 								<span>Help</span>
 							</Button>
@@ -1124,30 +1129,34 @@ function ViewActions({ docId, isPresentation, readOnly }: ViewActionsProps) {
 	return (
 		<>
 			<SidebarMenuItem>
-				<Link
-					to="/doc/$id/preview"
-					params={{ id: docId }}
-					search={{ from: undefined }}
+				<SidebarMenuButton
+					render={
+						<Link
+							to="/doc/$id/preview"
+							params={{ id: docId }}
+							search={{ from: undefined }}
+						/>
+					}
 				>
-					<SidebarMenuButton>
-						<Eye className="size-4" />
-						Preview
-					</SidebarMenuButton>
-				</Link>
+					<Eye className="size-4" />
+					Preview
+				</SidebarMenuButton>
 			</SidebarMenuItem>
 			{isPresentation && (
 				<>
 					<SidebarMenuItem>
-						<a
-							href={`/doc/${docId}/slideshow`}
-							target="_blank"
-							rel="noopener noreferrer"
+						<SidebarMenuButton
+							render={
+								<a
+									href={`/doc/${docId}/slideshow`}
+									target="_blank"
+									rel="noopener noreferrer"
+								/>
+							}
 						>
-							<SidebarMenuButton>
-								<Presentation className="size-4" />
-								Slideshow
-							</SidebarMenuButton>
-						</a>
+							<Presentation className="size-4" />
+							Slideshow
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 					<SidebarMenuItem>
 						{readOnly ? (
@@ -1156,12 +1165,14 @@ function ViewActions({ docId, isPresentation, readOnly }: ViewActionsProps) {
 								Teleprompter
 							</SidebarMenuButton>
 						) : (
-							<Link to="/doc/$id/teleprompter" params={{ id: docId }}>
-								<SidebarMenuButton>
-									<ScrollText className="size-4" />
-									Teleprompter
-								</SidebarMenuButton>
-							</Link>
+							<SidebarMenuButton
+								render={
+									<Link to="/doc/$id/teleprompter" params={{ id: docId }} />
+								}
+							>
+								<ScrollText className="size-4" />
+								Teleprompter
+							</SidebarMenuButton>
 						)}
 					</SidebarMenuItem>
 				</>

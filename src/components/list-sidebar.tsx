@@ -200,6 +200,7 @@ function ListSidebar() {
 						/>
 						<Button
 							size="sm"
+							nativeButton={false}
 							render={
 								<Link
 									to="/new"
@@ -361,7 +362,7 @@ function ImportExportMenu({
 						render={
 							<DropdownMenuTrigger
 								render={
-									<Button size="icon-sm" variant="ghost">
+									<Button size="icon-sm" variant="ghost" nativeButton={false}>
 										<MoreHorizontal className="size-4" />
 									</Button>
 								}
@@ -674,82 +675,83 @@ function DocumentItem({
 			<ContextMenu>
 				<ContextMenuTrigger
 					render={
-						<Link to="/doc/$id" params={{ id: docId }} onClick={onClick}>
-							<SidebarMenuButton
-								isActive={isActive}
-								className="h-auto py-2"
-								style={
-									depth > 0 ? { paddingLeft: `${8 + depth * 12}px` } : undefined
-								}
-							>
-								<div className="flex min-w-0 flex-1 flex-col gap-0.5">
-									<div className="flex items-center gap-1.5">
-										<span
-											className={
-												isActive
-													? "text-xs opacity-70"
-													: "text-muted-foreground text-xs"
-											}
-										>
-											{date}
-										</span>
-										{isPinned && (
-											<span className={isActive ? "opacity-70" : "text-brand"}>
-												<Pin className="size-3" />
-											</span>
-										)}
-										{isPresentation && (
-											<span className={isActive ? "opacity-70" : "text-brand"}>
-												<Presentation className="size-3" />
-											</span>
-										)}
-										{hasIndicator && (
-											<span className={isActive ? "opacity-70" : "text-brand"}>
-												{isPublic ? (
-													<Globe className="size-3" />
-												) : (
-													<Users className="size-3" />
-												)}
-											</span>
-										)}
-										{path && (
-											<span
-												className={
-													isActive
-														? "bg-background/20 inline-flex items-center gap-1 rounded px-1 text-xs"
-														: "bg-muted text-muted-foreground inline-flex items-center gap-1 rounded px-1 text-xs"
-												}
-											>
-												<Folder className="size-3" />
-												{path}
-											</span>
-										)}
-									</div>
-									<span className="truncate text-sm font-medium">
-										<TextHighlight text={title} query={searchQuery} />
+						<SidebarMenuButton
+							render={
+								<Link to="/doc/$id" params={{ id: docId }} onClick={onClick} />
+							}
+							isActive={isActive}
+							className="h-auto py-2"
+							style={
+								depth > 0 ? { paddingLeft: `${8 + depth * 12}px` } : undefined
+							}
+						>
+							<div className="flex min-w-0 flex-1 flex-col gap-0.5">
+								<div className="flex items-center gap-1.5">
+									<span
+										className={
+											isActive
+												? "text-xs opacity-70"
+												: "text-muted-foreground text-xs"
+										}
+									>
+										{date}
 									</span>
-									{tags.length > 0 && (
-										<TagsRow
-											tags={tags}
-											isActive={isActive}
-											searchQuery={searchQuery}
-										/>
+									{isPinned && (
+										<span className={isActive ? "opacity-70" : "text-brand"}>
+											<Pin className="size-3" />
+										</span>
 									)}
-									{contentMatchCount > 0 && (
+									{isPresentation && (
+										<span className={isActive ? "opacity-70" : "text-brand"}>
+											<Presentation className="size-3" />
+										</span>
+									)}
+									{hasIndicator && (
+										<span className={isActive ? "opacity-70" : "text-brand"}>
+											{isPublic ? (
+												<Globe className="size-3" />
+											) : (
+												<Users className="size-3" />
+											)}
+										</span>
+									)}
+									{path && (
 										<span
 											className={
 												isActive
-													? "bg-background/20 inline-flex rounded px-1 text-xs"
-													: "bg-brand/20 text-brand inline-flex rounded px-1 text-xs"
+													? "bg-background/20 inline-flex items-center gap-1 rounded px-1 text-xs"
+													: "bg-muted text-muted-foreground inline-flex items-center gap-1 rounded px-1 text-xs"
 											}
 										>
-											{contentMatchCount}{" "}
-											{contentMatchCount === 1 ? "match" : "matches"} in content
+											<Folder className="size-3" />
+											{path}
 										</span>
 									)}
 								</div>
-							</SidebarMenuButton>
-						</Link>
+								<span className="truncate text-sm font-medium">
+									<TextHighlight text={title} query={searchQuery} />
+								</span>
+								{tags.length > 0 && (
+									<TagsRow
+										tags={tags}
+										isActive={isActive}
+										searchQuery={searchQuery}
+									/>
+								)}
+								{contentMatchCount > 0 && (
+									<span
+										className={
+											isActive
+												? "bg-background/20 inline-flex rounded px-1 text-xs"
+												: "bg-brand/20 text-brand inline-flex rounded px-1 text-xs"
+										}
+									>
+										{contentMatchCount}{" "}
+										{contentMatchCount === 1 ? "match" : "matches"} in content
+									</span>
+								)}
+							</div>
+						</SidebarMenuButton>
 					}
 				/>
 				<ContextMenuContent>
