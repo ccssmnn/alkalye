@@ -1,10 +1,8 @@
 # Alkalye
 
-End-to-end encrypted markdown editor with real-time collaboration and presentation mode.
+Beautiful, End-to-end encrypted markdown editor with real-time collaboration and presentation mode.
 
 **[alkalye.com](https://alkalye.com)**
-
-<!-- TODO: Add screenshots -->
 
 ## Features
 
@@ -19,33 +17,23 @@ End-to-end encrypted markdown editor with real-time collaboration and presentati
 
 ## Tech Stack
 
-- React 19 + Vite 7
 - [Jazz](https://jazz.tools) for local-first sync and encryption
-- CodeMirror 6 editor
-- TanStack Router
+- Tanstack Router + React 19 + Vite 7
 - Tailwind CSS + shadcn/ui
+- CodeMirror 6 editor
 
 ## Development
 
-Requires [Bun](https://bun.sh).
+Requires [Bun](https://bun.sh). Starting your dev environment is as easy as:
 
 ```bash
-# Install dependencies
 bun install
 
-# Start dev server
-bun run dev
-
-# Build for production
-bun run build
-```
-
-## Configuration
-
-Copy `.env.example` to `.env` and configure:
-
-```bash
 cp .env.example .env
+
+bunx jazz-sync run # start sync server
+
+bun run dev
 ```
 
 ## Contributing
@@ -54,6 +42,6 @@ Contributions welcome! Please open an issue or PR.
 
 ## License
 
-[O'Saasy License](./LICENSE) — MIT-like, but prohibits offering this software as a competing SaaS.
+[O'Saasy License](./LICENSE)
 
 © 2025 Carl Assmann

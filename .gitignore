@@ -3,3 +3,4 @@ dist
 .reference/
 .env
 .env.local
+sync-db
