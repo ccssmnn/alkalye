@@ -26,7 +26,9 @@ function DocumentNotFound() {
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<Button render={<Link to="/" />}>Go to App</Button>
+					<Button nativeButton={false} render={<Link to="/" />}>
+						Go to App
+					</Button>
 				</EmptyContent>
 			</Empty>
 		</div>
@@ -47,7 +49,9 @@ function DocumentUnauthorized() {
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<Button render={<Link to="/" />}>Go to App</Button>
+					<Button nativeButton={false} render={<Link to="/" />}>
+						Go to App
+					</Button>
 				</EmptyContent>
 			</Empty>
 		</div>

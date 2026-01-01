@@ -57,7 +57,6 @@ import {
 	LogOut,
 	ScrollText,
 	Copy,
-	HelpCircle,
 	MoreHorizontal,
 	Upload,
 	Cloud,
@@ -96,7 +95,6 @@ import {
 import { ShareDialog } from "@/components/share-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { HelpMenu } from "@/components/help-menu"
 import { usePWA } from "@/lib/pwa"
 
 export { ListSidebar }
@@ -258,7 +256,6 @@ function ListSidebar() {
 
 				<SidebarFooter className="border-border flex flex-row gap-2 border-t">
 					<SyncStatus />
-					<HelpDropdown />
 				</SidebarFooter>
 			</DropZone>
 		</Sidebar>
@@ -579,7 +576,7 @@ function DocumentList({
 
 	return (
 		<div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
-			<ul
+			<div
 				className="relative w-full"
 				style={{ height: virtualizer.getTotalSize() }}
 			>
@@ -588,7 +585,7 @@ function DocumentList({
 					if (!item) return null
 
 					return (
-						<li
+						<div
 							key={virtualRow.key}
 							data-index={virtualRow.index}
 							ref={virtualizer.measureElement}
@@ -620,10 +617,10 @@ function DocumentList({
 									depth={item.depth}
 								/>
 							)}
-						</li>
+						</div>
 					)
 				})}
-			</ul>
+			</div>
 		</div>
 	)
 }
@@ -949,6 +946,7 @@ function SyncStatus() {
 			<Button
 				variant="ghost"
 				size="sm"
+				nativeButton={false}
 				render={<Link to="/settings" search={{ from: location.pathname }} />}
 				className="relative flex-1"
 			>
@@ -965,6 +963,7 @@ function SyncStatus() {
 		<Button
 			variant="ghost"
 			size="sm"
+			nativeButton={false}
 			className="relative w-full flex-1"
 			render={<Link to="/settings" search={{ from: location.pathname }} />}
 		>
@@ -974,23 +973,6 @@ function SyncStatus() {
 				<span className="bg-destructive absolute top-1 right-1 size-2 rounded-full" />
 			)}
 		</Button>
-	)
-}
-
-function HelpDropdown() {
-	let { isMobile, setLeftOpenMobile } = useSidebar()
-
-	return (
-		<HelpMenu
-			trigger={
-				<Button variant="ghost" size="icon-sm">
-					<HelpCircle />
-				</Button>
-			}
-			align="start"
-			side="top"
-			onNavigate={() => isMobile && setLeftOpenMobile(false)}
-		/>
 	)
 }
 

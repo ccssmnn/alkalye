@@ -149,7 +149,7 @@ function TopBar() {
 			}}
 		>
 			<div className="flex items-center gap-2">
-				<Button variant="ghost" render={<Link to="/" />}>
+				<Button variant="ghost" nativeButton={false} render={<Link to="/" />}>
 					<span className="text-foreground text-lg font-semibold">Alkalye</span>
 				</Button>
 			</div>
@@ -210,7 +210,7 @@ function RevokedState() {
 				</p>
 			</div>
 			<div className="flex justify-center gap-2">
-				<Button variant="outline" render={<Link to="/" />}>
+				<Button variant="outline" nativeButton={false} render={<Link to="/" />}>
 					Go to App
 				</Button>
 			</div>
@@ -234,7 +234,7 @@ function ErrorState({ error }: { error: string | null }) {
 				</p>
 			</div>
 			<div className="flex justify-center gap-2">
-				<Button variant="outline" render={<Link to="/" />}>
+				<Button variant="outline" nativeButton={false} render={<Link to="/" />}>
 					Go to App
 				</Button>
 			</div>

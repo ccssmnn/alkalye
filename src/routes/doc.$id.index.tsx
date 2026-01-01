@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react"
-import { createFileRoute, useNavigate } from "@tanstack/react-router"
+import {
+	createFileRoute,
+	useNavigate,
+	useBlocker,
+} from "@tanstack/react-router"
 import { co, Group, type ID, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import {
@@ -321,6 +325,20 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
+
+	useBlocker({
+		shouldBlockFn: () => {
+			if (content !== "" || !me.$isLoaded || !me.root) return false
+			let docs = me.root.documents
+			if (!docs.$isLoaded) return false
+			let idx = docs.findIndex(d => d?.$jazz.id === doc.$jazz.id)
+			if (idx >= 0) {
+				docs.$jazz.splice(idx, 1)
+			}
+			return false
+		},
+		enableBeforeUnload: content === "",
+	})
 
 	useEffect(() => {
 		document.title = docTitle

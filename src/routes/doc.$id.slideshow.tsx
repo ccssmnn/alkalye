@@ -118,6 +118,7 @@ function ShowPage() {
 				<EmptyContent>
 					<Button
 						variant="outline"
+						nativeButton={false}
 						render={<Link to="/doc/$id" params={{ id }} />}
 					>
 						Back to Editor

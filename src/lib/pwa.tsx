@@ -73,10 +73,12 @@ function usePWAProvider(): PWAContextValue {
 			})
 		},
 		onOfflineReady() {
-			toast("Ready to work offline", {
-				description: "App has been cached for offline use",
-				duration: 4000,
-			})
+			if (isMobileDevice() && getPWAInstalledSnapshot()) {
+				toast("Ready to work offline", {
+					description: "App has been cached for offline use",
+					duration: 4000,
+				})
+			}
 			setTimeout(() => setOfflineReady(false), 4000)
 		},
 	})
