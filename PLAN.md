@@ -209,16 +209,16 @@ Add wiki-style linking between documents:
 
 ---
 
-### Step 7: Floating Action for WikiLinks
+### Step 7: Floating Action for WikiLinks (done)
 
 **Files:** `src/components/floating-actions.tsx`
 
 **Tasks:**
 
-- [ ] Detect cursor inside `[[...]]` pattern
-- [ ] Show floating action button: open linked doc
-- [ ] Extend `EditorContext` interface with wikilink detection
-- [ ] Extend `getContext()` to detect wikilink ranges
+- [x] Detect cursor inside `[[...]]` pattern
+- [x] Show floating action button: open linked doc
+- [x] Extend `EditorContext` interface with wikilink detection
+- [x] Extend `getContext()` to detect wikilink ranges
 
 **Test:** place cursor in `[[doc]]`, verify action appears
 

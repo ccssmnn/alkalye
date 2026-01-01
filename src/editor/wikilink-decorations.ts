@@ -43,6 +43,12 @@ class WikilinkWidget extends WidgetType {
 		span.textContent = this.title
 		span.dataset.docId = this.id
 
+		span.addEventListener("mousedown", e => {
+			// Prevent CodeMirror from placing cursor and removing decoration
+			e.preventDefault()
+			e.stopPropagation()
+		})
+
 		span.addEventListener("click", e => {
 			e.preventDefault()
 			e.stopPropagation()

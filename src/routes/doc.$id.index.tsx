@@ -23,6 +23,7 @@ import {
 	TaskAction,
 	LinkAction,
 	ImageAction,
+	WikiLinkAction,
 } from "@/components/floating-actions"
 import {
 	DocumentNotFound,
@@ -383,6 +384,12 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 						<>
 							<TaskAction editor={editor} {...ctx.task} />
 							<LinkAction {...ctx.link} />
+							<WikiLinkAction
+								editor={editor}
+								{...ctx.wikiLink}
+								docs={wikilinkDocsRef.current}
+								onCreateDoc={handleCreateDoc}
+							/>
 							<ImageAction
 								editor={editor}
 								{...ctx.image}
