@@ -195,34 +195,25 @@ function createBacklinkDecorations(
 
 	let theme = EditorView.baseTheme({
 		".cm-backlink": {
-			color: "var(--brand)",
 			cursor: "pointer",
-			borderRadius: "2px",
-			padding: "0 2px",
-			backgroundColor: "var(--brand-subtle)",
+			textDecoration: "underline",
+			textDecorationColor: "var(--muted-foreground)",
 			display: "inline-flex",
 			alignItems: "center",
 			gap: "2px",
 			verticalAlign: "baseline",
 		},
 		".cm-backlink:hover": {
-			backgroundColor: "color-mix(in oklch, var(--brand) 20%, transparent)",
-			textDecoration: "underline",
+			textDecorationColor: "currentColor",
 		},
 		".cm-backlink-icon": {
 			flexShrink: "0",
 			verticalAlign: "middle",
+			opacity: "0.5",
 		},
 		".cm-backlink-broken": {
-			color: "var(--destructive)",
 			textDecoration: "underline wavy",
 			textDecorationColor: "var(--destructive)",
-			backgroundColor:
-				"color-mix(in oklch, var(--destructive) 10%, transparent)",
-		},
-		".cm-backlink-broken:hover": {
-			backgroundColor:
-				"color-mix(in oklch, var(--destructive) 20%, transparent)",
 		},
 	})
 

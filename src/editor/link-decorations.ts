@@ -147,23 +147,21 @@ function createLinkDecorations(): Extension {
 
 	let theme = EditorView.baseTheme({
 		".cm-md-link": {
-			color: "var(--brand)",
 			cursor: "pointer",
-			borderRadius: "2px",
-			padding: "0 2px",
-			backgroundColor: "var(--brand-subtle)",
+			textDecoration: "underline",
+			textDecorationColor: "var(--muted-foreground)",
 			display: "inline-flex",
 			alignItems: "center",
 			gap: "2px",
 			verticalAlign: "baseline",
 		},
 		".cm-md-link:hover": {
-			backgroundColor: "color-mix(in oklch, var(--brand) 20%, transparent)",
-			textDecoration: "underline",
+			textDecorationColor: "currentColor",
 		},
 		".cm-md-link-icon": {
 			flexShrink: "0",
 			verticalAlign: "middle",
+			opacity: "0.5",
 		},
 	})
 
