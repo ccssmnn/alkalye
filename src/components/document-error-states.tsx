@@ -26,12 +26,7 @@ function DocumentNotFound() {
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<div className="flex gap-2">
-						<Button variant="outline" onClick={() => window.history.back()}>
-							Go back
-						</Button>
-						<Button render={<Link to="/" />}>Go to documents</Button>
-					</div>
+					<Button render={<Link to="/" />}>Go to App</Button>
 				</EmptyContent>
 			</Empty>
 		</div>
@@ -52,12 +47,7 @@ function DocumentUnauthorized() {
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<div className="flex gap-2">
-						<Button variant="outline" onClick={() => window.history.back()}>
-							Go back
-						</Button>
-						<Button render={<Link to="/" />}>Go to documents</Button>
-					</div>
+					<Button render={<Link to="/" />}>Go to App</Button>
 				</EmptyContent>
 			</Empty>
 		</div>
