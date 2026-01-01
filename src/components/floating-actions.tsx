@@ -28,6 +28,7 @@ import {
 	Link2,
 	Trash2,
 	Plus,
+	FileSymlinkIcon,
 } from "lucide-react"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
 import { useNavigate } from "@tanstack/react-router"
@@ -577,7 +578,7 @@ function WikiLinkAction({
 									setWikiLinkDialogOpen(true)
 								}}
 							>
-								<FileText />
+								<FileSymlinkIcon />
 							</Button>
 						}
 					/>
@@ -608,7 +609,7 @@ function WikiLinkAction({
 							<TooltipTrigger
 								render={
 									<Button size="icon" variant="brand" className="shadow-md">
-										<FileText />
+										<FileSymlinkIcon />
 									</Button>
 								}
 							/>
@@ -697,7 +698,7 @@ function WikiLinkDialog({
 
 					<Combobox.Portal>
 						<Combobox.Positioner sideOffset={4} className="z-50">
-							<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-[var(--anchor-width)] overflow-auto rounded-none shadow-md ring-1">
+							<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
 								{filteredDocs.length === 0 && !showCreateOption && (
 									<div className="text-muted-foreground px-3 py-2 text-sm">
 										No documents found
