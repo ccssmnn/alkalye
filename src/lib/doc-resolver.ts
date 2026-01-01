@@ -18,14 +18,18 @@ async function resolveDocTitle(id: string): Promise<ResolvedDoc> {
 		})
 
 		if (!doc.$isLoaded) {
-			return { id, title: id, exists: false }
+			let title =
+				doc.$jazz.loadingState === "unauthorized"
+					? "Document Not Accessible"
+					: "Document Not Found"
+			return { id, title, exists: false }
 		}
 
 		let content = doc.content?.toString() ?? ""
 		let title = getDocumentTitle(content)
 		return { id, title, exists: true }
 	} catch {
-		return { id, title: id, exists: false }
+		return { id, title: "Document Not Accessible", exists: false }
 	}
 }
 

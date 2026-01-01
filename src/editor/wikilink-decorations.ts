@@ -135,7 +135,7 @@ function createWikilinkDecorations(
 
 					// Always call resolver - it uses refs so returns fresh data
 					let resolved = this.resolver(link.id)
-					let title = resolved?.title ?? link.id
+					let title = resolved?.title ?? "Document Not Found"
 					let exists = resolved?.exists ?? false
 
 					let widget = Decoration.replace({

@@ -47,7 +47,7 @@ function WikilinkProvider({ children }: { children: React.ReactNode }) {
 	let resolver: WikilinkResolver = docId => {
 		return (
 			cacheRef.current.get(docId) ?? {
-				title: docId,
+				title: "Document Not Found",
 				exists: false,
 				isPresentation: false,
 			}
