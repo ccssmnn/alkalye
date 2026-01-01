@@ -66,8 +66,6 @@ import {
 	SlidersHorizontal,
 	Pin,
 	Folder,
-	ChevronRight,
-	ChevronDown,
 	List,
 	FolderInput,
 } from "lucide-react"
@@ -84,7 +82,7 @@ import {
 	getDocumentGroup,
 	leaveDocument,
 } from "@/lib/sharing"
-import { useFolderStore } from "@/lib/folder-store"
+import { useFolderStore, FolderRow } from "@/components/folder"
 import { getPresentationMode } from "@/lib/presentation"
 import {
 	exportDocument,
@@ -604,6 +602,8 @@ function DocumentList({
 									docCount={item.docCount}
 									isCollapsed={isCollapsed(item.path)}
 									onToggle={() => toggleFolder(item.path)}
+									docsInFolder={getDocsInFolder(docs, item.path)}
+									existingFolders={existingFolders}
 								/>
 							) : typeFilter === "deleted" ? (
 								<DeletedDocumentItem doc={item.doc} searchQuery={searchQuery} />
@@ -625,39 +625,6 @@ function DocumentList({
 				})}
 			</ul>
 		</div>
-	)
-}
-
-function FolderRow({
-	path,
-	depth,
-	docCount,
-	isCollapsed,
-	onToggle,
-}: {
-	path: string
-	depth: number
-	docCount: number
-	isCollapsed: boolean
-	onToggle: () => void
-}) {
-	let folderName = path.split("/").pop() || path
-
-	return (
-		<button
-			onClick={onToggle}
-			className="hover:bg-accent flex w-full items-center gap-1.5 px-2 py-2 text-left"
-			style={{ paddingLeft: `${8 + depth * 8}px` }}
-		>
-			{isCollapsed ? (
-				<ChevronRight className="text-muted-foreground size-4 shrink-0" />
-			) : (
-				<ChevronDown className="text-muted-foreground size-4 shrink-0" />
-			)}
-			<Folder className="text-muted-foreground size-4 shrink-0" />
-			<span className="truncate text-sm font-medium">{folderName}</span>
-			<span className="text-muted-foreground ml-auto text-xs">{docCount}</span>
-		</button>
 	)
 }
 
@@ -1447,4 +1414,15 @@ function getExistingFolders(docs: LoadedDocument[]): string[] {
 	}
 
 	return [...folders].sort()
+}
+
+function getDocsInFolder(
+	docs: LoadedDocument[],
+	folderPath: string,
+): LoadedDocument[] {
+	return docs.filter(doc => {
+		let path = getPath(doc.content?.toString() ?? "")
+		if (!path) return false
+		return path === folderPath || path.startsWith(folderPath + "/")
+	})
 }
