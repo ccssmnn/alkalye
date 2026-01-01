@@ -268,7 +268,24 @@ Add wiki-style linking between documents:
 
 ---
 
-### Step 10: Integration & Polish
+### Step 10: Marked Extension for Preview/Slideshow
+
+**Files:** `src/lib/marked-wikilink.ts`
+
+**Tasks:**
+
+- [ ] Create marked extension with tokenizer for `[[doc_id]]`
+- [ ] Renderer outputs `<a href="/doc/{id}/preview">Title</a>` (links to preview, not editor)
+- [ ] Resolve doc titles (use doc-resolver)
+- [ ] Handle broken links (different styling or tooltip)
+- [ ] Integrate into preview page (`doc.$id.preview.tsx`)
+- [ ] Integrate into slideshow if applicable
+
+**Test:** preview doc with wikilinks, verify clickable links to preview pages
+
+---
+
+### Step 11: Integration & Polish
 
 **Tasks:**
 
@@ -294,6 +311,7 @@ src/editor/
 src/lib/
   doc-resolver.ts           # ID → title resolution + caching
   backlink-sync.ts          # background backlink updates
+  marked-wikilink.ts        # marked extension for preview/slideshow
 
 src/editor/frontmatter.ts   # extend with backlink utils
 src/components/floating-actions.tsx  # extend context detection
