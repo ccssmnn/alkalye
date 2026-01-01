@@ -22,7 +22,12 @@ export {
 	frontmatterFolding,
 	togglePinned,
 	addTag,
+	getBacklinks,
+	setBacklinks,
+	addBacklink,
+	removeBacklink,
 }
+
 export type { Frontmatter }
 
 interface Frontmatter {
@@ -37,7 +42,7 @@ function parseFrontmatter(content: string): {
 	frontmatter: Frontmatter | null
 	body: string
 } {
-	let match = content.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/)
+	let match = content.match(/^---\r?\n([\s\S]*?)(?:\r?\n)?---(?:\r?\n)?/)
 	if (!match) return { frontmatter: null, body: content }
 
 	let yaml = match[1]
@@ -120,6 +125,64 @@ function addTag(content: string, tag: string): string {
 	return content.replace(
 		/^(---\r?\n[\s\S]*?)tags:\s*[^\r\n]*/,
 		`$1tags: ${newTags}`,
+	)
+}
+
+function getBacklinks(content: string): string[] {
+	let { frontmatter } = parseFrontmatter(content)
+	if (!frontmatter?.backlinks || typeof frontmatter.backlinks !== "string")
+		return []
+	return frontmatter.backlinks
+		.split(",")
+		.map(id => id.trim())
+		.filter(Boolean)
+}
+
+function removeEmptyFrontmatter(content: string): string {
+	// Remove frontmatter if it's empty (only whitespace between ---)
+	return content.replace(/^---\r?\n\s*---\r?\n?/, "")
+}
+
+function setBacklinks(content: string, ids: string[]): string {
+	let { frontmatter } = parseFrontmatter(content)
+	let newBacklinks = ids.filter(Boolean).join(", ")
+
+	if (!frontmatter) {
+		if (!newBacklinks) return content
+		return `---\nbacklinks: ${newBacklinks}\n---\n\n${content}`
+	}
+
+	if (!frontmatter.backlinks) {
+		if (!newBacklinks) return content
+		return content.replace(/^(---\r?\n)/, `$1backlinks: ${newBacklinks}\n`)
+	}
+
+	if (!newBacklinks) {
+		let result = content.replace(
+			/^(---\r?\n[\s\S]*?)backlinks:\s*[^\r\n]*\r?\n/,
+			"$1",
+		)
+		return removeEmptyFrontmatter(result)
+	}
+
+	return content.replace(
+		/^(---\r?\n[\s\S]*?)backlinks:\s*[^\r\n]*/,
+		`$1backlinks: ${newBacklinks}`,
+	)
+}
+
+function addBacklink(content: string, id: string): string {
+	let existing = getBacklinks(content)
+	if (existing.includes(id)) return content
+	return setBacklinks(content, [...existing, id])
+}
+
+function removeBacklink(content: string, id: string): string {
+	let existing = getBacklinks(content)
+	if (!existing.includes(id)) return content
+	return setBacklinks(
+		content,
+		existing.filter(x => x !== id),
 	)
 }
 
