@@ -1,17 +1,20 @@
 import { useEffect, useRef, useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { co, type ID, type ResolveQuery } from "jazz-tools"
+import { co, Group, type ID, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Asset, Document, UserAccount, DEFAULT_EDITOR_SETTINGS } from "@/schema"
-import {
-	MarkdownEditor,
-	useMarkdownEditorRef,
-	parseFrontmatter,
-} from "@/editor/editor"
+import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
 import { createBracketsExtension } from "@/editor/autocomplete-brackets"
+import {
+	createWikilinkDecorations,
+	createWikilinkAutocomplete,
+	type WikilinkDoc,
+} from "@/editor/extensions"
 import { applyEditorSettings } from "@/lib/editor-settings"
+import { getDocumentTitle } from "@/lib/document-utils"
+import { getPath, getTags } from "@/editor/frontmatter"
 import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
@@ -122,7 +125,12 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, {
-		resolve: { root: { documents: true, settings: true } },
+		resolve: {
+			root: {
+				documents: { $each: { content: true } },
+				settings: true,
+			},
+		},
 	})
 
 	let isShared = isGroupOwned(doc)
@@ -149,7 +157,77 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			? me.root.settings.editor
 			: DEFAULT_EDITOR_SETTINGS
 
-	let editorExtensions = [createPresenceExtension(), createBracketsExtension()]
+	// Get documents for wikilink autocomplete - use ref so closures get fresh data
+	let wikilinkDocsRef = useRef<WikilinkDoc[]>([])
+	let titleCacheRef = useRef<Map<string, { title: string; exists: boolean }>>(
+		new Map(),
+	)
+
+	// Update refs when me changes
+	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
+		let docs = me.root.documents
+			.filter(
+				(d): d is co.loaded<typeof Document, { content: true }> =>
+					d?.$isLoaded === true &&
+					d.content !== undefined &&
+					!d.deletedAt &&
+					d.$jazz.id !== docId,
+			)
+			.map(d => {
+				let content = d.content?.toString() ?? ""
+				return {
+					id: d.$jazz.id,
+					title: getDocumentTitle(content),
+					path: getPath(content),
+					tags: getTags(content),
+				}
+			})
+		wikilinkDocsRef.current = docs
+
+		let cache = new Map<string, { title: string; exists: boolean }>()
+		for (let d of docs) {
+			cache.set(d.id, { title: d.title, exists: true })
+		}
+		titleCacheRef.current = cache
+	}
+
+	let wikilinkResolver = (id: string) => {
+		return titleCacheRef.current.get(id) ?? null
+	}
+
+	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
+		if (newTab) {
+			window.open(`/doc/${id}`, "_blank")
+		} else {
+			navigate({ to: "/doc/$id", params: { id } })
+		}
+	}
+
+	let handleCreateDoc = async (title: string): Promise<string> => {
+		if (!me.$isLoaded || !me.root?.documents) {
+			throw new Error("Not authenticated")
+		}
+		let now = new Date()
+		let group = Group.create()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(`# ${title}\n\n`, group),
+				createdAt: now,
+				updatedAt: now,
+			},
+			group,
+		)
+		me.root.documents.$jazz.push(newDoc)
+		return newDoc.$jazz.id
+	}
+
+	let editorExtensions = [
+		createPresenceExtension(),
+		createBracketsExtension(),
+		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
+		createWikilinkAutocomplete(() => wikilinkDocsRef.current, handleCreateDoc),
+	]
 
 	// Apply editor settings to CSS variables
 	useEffect(() => {
@@ -403,22 +481,4 @@ async function handleSaveCopy(
 		console.error("Failed to save copy:", e)
 		setSaveCopyState("idle")
 	}
-}
-
-function getDocumentTitle(content: string): string {
-	let { frontmatter, body } = parseFrontmatter(content)
-	if (frontmatter?.title) return frontmatter.title
-
-	let line = body.split("\n").find(l => l.trim()) ?? ""
-	return (
-		line
-			.replace(/^#{1,6}\s+/, "")
-			.replace(/\*\*([^*]+)\*\*/g, "$1")
-			.replace(/\*([^*]+)\*/g, "$1")
-			.replace(/__([^_]+)__/g, "$1")
-			.replace(/_([^_]+)_/g, "$1")
-			.replace(/`([^`]+)`/g, "$1")
-			.trim()
-			.slice(0, 80) || "Untitled"
-	)
 }

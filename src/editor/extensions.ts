@@ -21,6 +21,18 @@ export {
 	editorExtensions,
 }
 
+export { createWikilinkDecorations } from "./wikilink-decorations"
+export {
+	createWikilinkAutocomplete,
+	type WikilinkDoc,
+} from "./wikilink-autocomplete"
+export {
+	getWikilinkAtPosition,
+	removeWikilink,
+	replaceWikilink,
+	type WikilinkAtPosition,
+} from "./wikilink-context-menu"
+
 let editorExtensions: Extension = [
 	editorTheme,
 	syntaxHighlighting(markdownHighlightStyle),
