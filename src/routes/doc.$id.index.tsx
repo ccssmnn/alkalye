@@ -163,33 +163,50 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		new Map(),
 	)
 
-	// Update refs when me changes
-	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
-		let docs = me.root.documents
-			.filter(
-				(d): d is co.loaded<typeof Document, { content: true }> =>
-					d?.$isLoaded === true &&
-					d.content !== undefined &&
-					!d.deletedAt &&
-					d.$jazz.id !== docId,
-			)
-			.map(d => {
-				let content = d.content?.toString() ?? ""
-				return {
-					id: d.$jazz.id,
-					title: getDocumentTitle(content),
-					path: getPath(content),
-					tags: getTags(content),
-				}
-			})
-		wikilinkDocsRef.current = docs
+	// Track if docs are loaded for wikilink resolution
+	let docsLoaded = me.$isLoaded && me.root?.documents?.$isLoaded
 
-		let cache = new Map<string, { title: string; exists: boolean }>()
-		for (let d of docs) {
-			cache.set(d.id, { title: d.title, exists: true })
+	// Update refs when me changes
+	if (me.$isLoaded) {
+		let documents = me.root?.documents
+		if (documents?.$isLoaded) {
+			let docs = documents
+				.filter(
+					(d): d is co.loaded<typeof Document, { content: true }> =>
+						d?.$isLoaded === true &&
+						d.content !== undefined &&
+						!d.deletedAt &&
+						d.$jazz.id !== docId,
+				)
+				.map(d => {
+					let content = d.content?.toString() ?? ""
+					return {
+						id: d.$jazz.id,
+						title: getDocumentTitle(content),
+						path: getPath(content),
+						tags: getTags(content),
+					}
+				})
+			wikilinkDocsRef.current = docs
+
+			let cache = new Map<string, { title: string; exists: boolean }>()
+			for (let d of docs) {
+				cache.set(d.id, { title: d.title, exists: true })
+			}
+			titleCacheRef.current = cache
 		}
-		titleCacheRef.current = cache
 	}
+
+	// Force editor to rebuild decorations when docs load
+	useEffect(() => {
+		if (docsLoaded) {
+			let view = editor.current?.getEditor()
+			if (view) {
+				// Trigger a no-op selection change to rebuild decorations
+				view.dispatch({ selection: view.state.selection })
+			}
+		}
+	}, [docsLoaded, editor])
 
 	let wikilinkResolver = (id: string) => {
 		return titleCacheRef.current.get(id) ?? null

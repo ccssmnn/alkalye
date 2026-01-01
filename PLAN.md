@@ -187,18 +187,7 @@ Add wiki-style linking between documents:
 
 ### Step 5: WikiLink Context Menu
 
-**Files:** `src/editor/wikilink-context-menu.ts` or integrate into existing context menu
-
-**Tasks:**
-
-- [ ] Right-click / long-tap on wikilink shows menu:
-  - "Open document"
-  - "Open in new tab"
-  - "Change link" (opens autocomplete)
-  - "Remove link"
-- [ ] Hook into editor's context menu system
-
-**Test:** right-click on link, verify menu options work
+**CANCELLED** - Using floating action instead (Step 7)
 
 ---
 
