@@ -20,7 +20,6 @@ import {
 } from "@/lib/document-utils"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-
 import {
 	Sidebar,
 	SidebarContent,
@@ -110,8 +109,7 @@ type TypeFilter = "all" | "document" | "presentation" | "deleted"
 
 function ListSidebar() {
 	let navigate = useNavigate()
-	let params = useParams({ strict: false })
-	let currentDocId = (params as { id?: string }).id
+	let { id: currentDocId } = useParams({ strict: false })
 	let [search, setSearch] = useState("")
 	let deferredSearch = useDeferredValue(search)
 	let [sort, setSort] = useState<SortMode>("latest")
@@ -125,8 +123,7 @@ function ListSidebar() {
 		!me.$isLoaded || me.root?.documents?.$jazz.loadingState === "loading"
 	let docs = me.$isLoaded ? me.root?.documents : null
 	let allLoadedDocs = (docs?.$isLoaded ? [...docs] : []).filter(
-		(d): d is LoadedDocument =>
-			d?.$isLoaded === true && !d.permanentlyDeletedAt,
+		d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
 	)
 
 	let activeDocs = allLoadedDocs.filter(d => !d.deletedAt)
@@ -751,6 +748,18 @@ function DocumentItem({
 												)}
 											</span>
 										)}
+										{path && (
+											<span
+												className={
+													isActive
+														? "bg-background/20 inline-flex items-center gap-1 rounded px-1 text-xs"
+														: "bg-muted text-muted-foreground inline-flex items-center gap-1 rounded px-1 text-xs"
+												}
+											>
+												<Folder className="size-3" />
+												{path}
+											</span>
+										)}
 									</div>
 									<span className="truncate text-sm font-medium">
 										<TextHighlight text={title} query={searchQuery} />
@@ -772,18 +781,6 @@ function DocumentItem({
 										>
 											{contentMatchCount}{" "}
 											{contentMatchCount === 1 ? "match" : "matches"} in content
-										</span>
-									)}
-									{path && (
-										<span
-											className={
-												isActive
-													? "bg-background/20 inline-flex items-center gap-1 rounded px-1 text-xs"
-													: "bg-muted text-muted-foreground inline-flex items-center gap-1 rounded px-1 text-xs"
-											}
-										>
-											<Folder className="size-3" />
-											{path}
 										</span>
 									)}
 								</div>
