@@ -7,6 +7,7 @@ import {
 	type ViewUpdate,
 	WidgetType,
 } from "@codemirror/view"
+import { syntaxTree } from "@codemirror/language"
 import { parseWikiLinks } from "./wikilink-parser"
 
 export { createWikilinkDecorations }
@@ -130,12 +131,30 @@ function createWikilinkDecorations(
 				let text = doc.toString()
 				let links = parseWikiLinks(text)
 				let selection = view.state.selection.main
+				let tree = syntaxTree(view.state)
 
 				for (let link of links) {
 					// Don't decorate if cursor is inside the wikilink
 					if (selection.from >= link.from && selection.to <= link.to) {
 						continue
 					}
+
+					// Don't decorate if inside inline code or code block
+					let node = tree.resolveInner(link.from, 1)
+					let inCode = false
+					let current: typeof node | null = node
+					while (current) {
+						if (
+							current.name === "InlineCode" ||
+							current.name === "CodeBlock" ||
+							current.name === "FencedCode"
+						) {
+							inCode = true
+							break
+						}
+						current = current.parent
+					}
+					if (inCode) continue
 
 					// Always call resolver - it uses refs so returns fresh data
 					let resolved = this.resolver(link.id)

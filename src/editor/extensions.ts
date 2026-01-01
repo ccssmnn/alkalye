@@ -33,6 +33,8 @@ export {
 	type WikilinkAtPosition,
 } from "./wikilink-context-menu"
 export { createBacklinkDecorations } from "./backlink-decorations"
+export { createLinkDecorations } from "./link-decorations"
+export { createImageDecorations, type ImageResolver } from "./image-decorations"
 
 let editorExtensions: Extension = [
 	editorTheme,

@@ -2,7 +2,12 @@ import { useEffect, useRef, useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { co, Group, type ID, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
-import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
+import {
+	useCoState,
+	useAccount,
+	useIsAuthenticated,
+	Image as JazzImage,
+} from "jazz-tools/react"
 import { Asset, Document, UserAccount, DEFAULT_EDITOR_SETTINGS } from "@/schema"
 import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
@@ -11,6 +16,8 @@ import {
 	createWikilinkDecorations,
 	createWikilinkAutocomplete,
 	createBacklinkDecorations,
+	createLinkDecorations,
+	createImageDecorations,
 	type WikilinkDoc,
 } from "@/editor/extensions"
 import { applyEditorSettings } from "@/lib/editor-settings"
@@ -45,6 +52,12 @@ import {
 	dispatchRemoteCursors,
 } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
 import { useIsMobile } from "@/lib/use-mobile"
 
@@ -124,6 +137,12 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+	let [imagePreview, setImagePreview] = useState<{
+		url: string
+		alt: string
+		imageId: string | null // Jazz image ID for assets
+	} | null>(null)
 
 	let { toggleLeft, toggleRight } = useSidebar()
 	let isMobile = useIsMobile()
@@ -220,6 +239,27 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		return titleCacheRef.current.get(id) ?? null
 	}
 
+	// For decorations - just validate asset exists, don't resolve URL
+	let imageResolver = (assetId: string): string | null => {
+		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return null
+		// Return the asset: URL - we'll use JazzImage component to render
+		return `asset:${assetId}`
+	}
+
+	let handleImagePreview = (url: string, alt: string) => {
+		let imageId: string | null = null
+		if (url.startsWith("asset:")) {
+			let assetId = url.slice(6)
+			let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+			if (asset?.$isLoaded && asset.image?.$isLoaded) {
+				imageId = asset.image.$jazz.id
+			}
+		}
+		setImagePreview({ url, alt, imageId })
+		setImagePreviewOpen(true)
+	}
+
 	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
 		if (newTab) {
 			window.open(`/doc/${id}`, "_blank")
@@ -252,6 +292,8 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		createBracketsExtension(),
 		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
 		createBacklinkDecorations(wikilinkResolver, handleWikilinkNavigate),
+		createLinkDecorations(),
+		createImageDecorations(imageResolver, handleImagePreview),
 		// Disable autocomplete on mobile - use floating action instead
 		...(isMobile
 			? []
@@ -432,6 +474,33 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				focusMode={focusMode}
 				onFocusModeToggle={toggleFocusMode}
 			/>
+
+			<Dialog
+				open={imagePreviewOpen}
+				onOpenChange={setImagePreviewOpen}
+				onOpenChangeComplete={open => {
+					if (!open) setImagePreview(null)
+				}}
+			>
+				<DialogContent className="max-w-3xl">
+					<DialogHeader>
+						<DialogTitle>{imagePreview?.alt ?? "Image"}</DialogTitle>
+					</DialogHeader>
+					{imagePreview &&
+						(imagePreview.imageId ? (
+							<JazzImage
+								imageId={imagePreview.imageId}
+								className="max-h-[70vh] w-full object-contain"
+							/>
+						) : (
+							<img
+								src={imagePreview.url}
+								alt={imagePreview.alt}
+								className="max-h-[70vh] w-full object-contain"
+							/>
+						))}
+				</DialogContent>
+			</Dialog>
 		</>
 	)
 }
