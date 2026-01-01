@@ -4,22 +4,7 @@
 
 - **Package manager:** Bun (use `bun install`, `bun add`, `bun run`)
 - **Do NOT use npm/yarn** - no package-lock.json
-
-## Reference Repositories
-
-Reference code is available in `.reference/` for context:
-
-- `.reference/tilly/` - https://github.com/ccssmnn/tilly
-  - Local-first React PWA using Jazz for encrypted sync/offline-first database
-  - TanStack Router, Shadcn/ui, Tailwind CSS
-  - Includes realtime collaboration and agentic AI patterns
-  - Use as reference for component patterns, project structure, and UI conventions
-
-## React
-
 - **React Compiler enabled** - Do NOT use `useMemo`, `useCallback`, or `React.memo` - the compiler handles memoization automatically
-- Prefer direct computation over hooks when possible
-- Extract reusable logic into custom hooks only when shared across components
 
 ## Code Style Preferences
 
@@ -27,8 +12,7 @@ Reference code is available in `.reference/` for context:
 
 - High information density in both code and text
 - Optimize for top-down readability - reader should understand flow without jumping around
-- No comments unless absolutely necessary for complex logic
-- Split files when they exceed ~300 lines or have distinct responsibilities
+- No comments unless absolutely necessary for complex logic. Comments should explain WHY it is there not WHAT it is.
 - **NEVER use type casts (`as any`, `as SomeType`, etc.) - Fix types properly instead**
 
 ### TypeScript Best Practices
