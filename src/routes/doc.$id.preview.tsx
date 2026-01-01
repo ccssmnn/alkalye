@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useState, useRef } from "react"
 import {
 	createFileRoute,
 	useNavigate,
@@ -31,6 +31,13 @@ import { useTheme, ThemeSubmenu } from "@/lib/theme"
 import { Marked } from "marked"
 import markedShiki from "marked-shiki"
 import { createHighlighter, type Highlighter } from "shiki"
+import {
+	createWikilinkExtension,
+	type WikilinkTitleResolver,
+} from "@/lib/marked-wikilink"
+import { parseFrontmatter } from "@/editor/frontmatter"
+import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { resolveDocTitles, type ResolvedDoc } from "@/lib/doc-resolver"
 
 export { Route }
 
@@ -53,9 +60,17 @@ let Route = createFileRoute("/doc/$id/preview")({
 			return {
 				doc: null,
 				loadingState: doc.$jazz.loadingState as "unauthorized" | "unavailable",
+				wikilinkCache: new Map<string, ResolvedDoc>(),
 			}
 		}
-		return { doc, loadingState: null }
+
+		// Parse wikilinks and resolve titles
+		let content = doc.content?.toString() ?? ""
+		let wikilinks = parseWikiLinks(content)
+		let wikilinkIds = wikilinks.map(w => w.id)
+		let wikilinkCache = await resolveDocTitles(wikilinkIds)
+
+		return { doc, loadingState: null, wikilinkCache }
 	},
 	component: PreviewPage,
 	validateSearch: (search: Record<string, unknown>) => ({
@@ -67,9 +82,33 @@ function PreviewPage() {
 	let { id } = Route.useParams()
 	Route.useSearch()
 	let data = Route.useLoaderData()
-	let marked = useMarked()
 
 	let doc = useCoState(Document, id, { resolve })
+
+	// Wikilink cache: start with loader data, expand as new links appear
+	let [wikilinkCache, setWikilinkCache] = useState(data.wikilinkCache)
+	let pendingRef = useRef(new Set<string>())
+
+	let wikilinkResolver: WikilinkTitleResolver = docId => {
+		let resolved = wikilinkCache.get(docId)
+		if (resolved) return resolved
+
+		// Resolve unknown links in background
+		if (!pendingRef.current.has(docId)) {
+			pendingRef.current.add(docId)
+			resolveDocTitles([docId]).then(result => {
+				let doc = result.get(docId)
+				if (doc) {
+					setWikilinkCache(prev => new Map(prev).set(docId, doc))
+				}
+				pendingRef.current.delete(docId)
+			})
+		}
+
+		return { title: docId, exists: false }
+	}
+
+	let marked = useMarked(wikilinkResolver)
 
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
@@ -104,7 +143,13 @@ function PreviewPage() {
 	return (
 		<div className="bg-background fixed inset-0 flex flex-col">
 			<TopBar id={id} docTitle={docTitle} />
-			<PreviewContent id={id} content={content} doc={doc} marked={marked} />
+			<PreviewContent
+				id={id}
+				content={content}
+				doc={doc}
+				marked={marked}
+				cacheVersion={wikilinkCache.size}
+			/>
 		</div>
 	)
 }
@@ -163,11 +208,13 @@ function PreviewContent({
 	content,
 	doc,
 	marked,
+	cacheVersion,
 }: {
 	id: string
 	content: string
 	doc: { $isLoaded: true; assets: unknown }
 	marked: Marked
+	cacheVersion: number
 }) {
 	let navigate = useNavigate()
 	let [segments, setSegments] = useState<Segment[]>([])
@@ -177,6 +224,10 @@ function PreviewContent({
 			setSegments([])
 			return
 		}
+
+		// Strip frontmatter before rendering
+		let { body } = parseFrontmatter(content)
+		let contentToRender = body
 
 		let cancelled = false
 
@@ -189,11 +240,11 @@ function PreviewContent({
 			let regex = /!\[([^\]]*)\]\(asset:([^)]+)\)/g
 			let match
 
-			while ((match = regex.exec(content)) !== null) {
+			while ((match = regex.exec(contentToRender)) !== null) {
 				if (match.index > lastIndex) {
 					rawSegments.push({
 						type: "text",
-						content: content.slice(lastIndex, match.index),
+						content: contentToRender.slice(lastIndex, match.index),
 					})
 				}
 
@@ -226,10 +277,10 @@ function PreviewContent({
 				lastIndex = match.index + match[0].length
 			}
 
-			if (lastIndex < content.length) {
+			if (lastIndex < contentToRender.length) {
 				rawSegments.push({
 					type: "text",
-					content: content.slice(lastIndex),
+					content: contentToRender.slice(lastIndex),
 				})
 			}
 
@@ -249,7 +300,7 @@ function PreviewContent({
 		return () => {
 			cancelled = true
 		}
-	}, [content, doc, marked])
+	}, [content, doc, marked, cacheVersion])
 
 	useEffect(() => {
 		document.title = getDocumentTitle(content)
@@ -341,8 +392,10 @@ function getHighlighter() {
 	return highlighterPromise
 }
 
-function useMarked() {
+function useMarked(wikilinkResolver: WikilinkTitleResolver) {
 	let [marked, setMarked] = useState<Marked | null>(null)
+	let resolverRef = useRef(wikilinkResolver)
+	resolverRef.current = wikilinkResolver
 
 	useEffect(() => {
 		let cancelled = false
@@ -360,6 +413,7 @@ function useMarked() {
 					},
 				}),
 			)
+			instance.use(createWikilinkExtension(id => resolverRef.current(id)))
 			instance.setOptions({ gfm: true, breaks: true })
 			setMarked(instance)
 		})

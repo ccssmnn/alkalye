@@ -24,10 +24,32 @@ import {
 	Upload,
 	Image as ImageIcon,
 	Command,
+	FileText,
+	Link2,
+	Trash2,
+	Plus,
+	FileSymlinkIcon,
 } from "lucide-react"
+import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { useNavigate } from "@tanstack/react-router"
+import { Combobox } from "@base-ui/react/combobox"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
-export { FloatingActions, TaskAction, LinkAction, ImageAction }
+export {
+	FloatingActions,
+	TaskAction,
+	LinkAction,
+	ImageAction,
+	WikiLinkAction,
+	WikiLinkDialog,
+}
 export type { FloatingActionsProps }
 
 type Range = { from: number; to: number }
@@ -51,6 +73,15 @@ interface FloatingActionsContext {
 		setImageMenuOpen: (open: boolean) => void
 		imageRangeRef: React.RefObject<Range | null>
 	}
+	wikiLink: {
+		wikiLinkId: string | null
+		wikiLinkRange: Range | null
+		wikiLinkMenuOpen: boolean
+		setWikiLinkMenuOpen: (open: boolean) => void
+		wikiLinkDialogOpen: boolean
+		setWikiLinkDialogOpen: (open: boolean) => void
+		wikiLinkRangeRef: React.RefObject<Range | null>
+	}
 }
 
 interface EditorContext {
@@ -61,6 +92,8 @@ interface EditorContext {
 	linkRange: Range | null
 	isImage: boolean
 	imageRange: Range | null
+	wikiLinkId: string | null
+	wikiLinkRange: Range | null
 }
 
 let SIDEBAR_WIDTH = 224 // 14rem = 224px
@@ -80,12 +113,17 @@ function FloatingActions({
 		linkRange: null,
 		isImage: false,
 		imageRange: null,
+		wikiLinkId: null,
+		wikiLinkRange: null,
 	})
 	let [bottomOffset, setBottomOffset] = useState(16)
 	let [imageMenuOpen, setImageMenuOpen] = useState(false)
+	let [wikiLinkMenuOpen, setWikiLinkMenuOpen] = useState(false)
+	let [wikiLinkDialogOpen, setWikiLinkDialogOpen] = useState(false)
 	let [isInteracting, setIsInteracting] = useState(false)
 
 	let imageRangeRef = useRef<Range | null>(null)
+	let wikiLinkRangeRef = useRef<Range | null>(null)
 
 	let rightOffset = !isMobile && rightOpen ? SIDEBAR_WIDTH + 16 : 16
 
@@ -123,6 +161,8 @@ function FloatingActions({
 			linkRange: null,
 			isImage: false,
 			imageRange: null,
+			wikiLinkId: null,
+			wikiLinkRange: null,
 		}
 
 		let current: typeof node | null = node
@@ -172,12 +212,47 @@ function FloatingActions({
 			current = current.parent
 		}
 
+		// Check for wikilinks via text-based detection (not in syntax tree)
+		let content = state.doc.toString()
+		let wikilinks = parseWikiLinks(content)
+		for (let link of wikilinks) {
+			if (pos >= link.from && pos <= link.to) {
+				result.wikiLinkId = link.id
+				result.wikiLinkRange = { from: link.from, to: link.to }
+				break
+			}
+		}
+
+		// Also detect incomplete wikilinks: [[ or [[text without closing ]]
+		if (!result.wikiLinkId) {
+			let line = state.doc.lineAt(pos)
+			let textBefore = line.text.slice(0, pos - line.from)
+			let textAfter = line.text.slice(pos - line.from)
+			let match = textBefore.match(/\[\[([^\]\[]*)$/)
+			if (match) {
+				let from = line.from + textBefore.lastIndexOf("[[")
+				// Check if closing brackets exist after cursor
+				let closingMatch = textAfter.match(/^([^\]\[]*)\]\]/)
+				let to = closingMatch
+					? pos + closingMatch[0].length
+					: pos + (textAfter.match(/^[^\]\[]*/) ?? [""])[0].length
+				result.wikiLinkId = match[1] || "" // empty string for [[]]
+				result.wikiLinkRange = { from, to }
+			}
+		}
+
 		return result
 	}
 
 	// Reset context when focus lost and not interacting
 	useEffect(() => {
-		if (!focused && !isInteracting && !imageMenuOpen) {
+		if (
+			!focused &&
+			!isInteracting &&
+			!imageMenuOpen &&
+			!wikiLinkMenuOpen &&
+			!wikiLinkDialogOpen
+		) {
 			setContext({
 				isTask: false,
 				taskChecked: false,
@@ -186,9 +261,17 @@ function FloatingActions({
 				linkRange: null,
 				isImage: false,
 				imageRange: null,
+				wikiLinkId: null,
+				wikiLinkRange: null,
 			})
 		}
-	}, [focused, isInteracting, imageMenuOpen])
+	}, [
+		focused,
+		isInteracting,
+		imageMenuOpen,
+		wikiLinkMenuOpen,
+		wikiLinkDialogOpen,
+	])
 
 	// Subscribe to editor selection changes
 	useEffect(() => {
@@ -241,7 +324,12 @@ function FloatingActions({
 		}, 100)
 	}
 
-	let shouldShow = focused || imageMenuOpen || isInteracting
+	let shouldShow =
+		focused ||
+		imageMenuOpen ||
+		wikiLinkMenuOpen ||
+		wikiLinkDialogOpen ||
+		isInteracting
 	if (readOnly || !shouldShow) return null
 
 	let ctx: FloatingActionsContext = {
@@ -261,6 +349,22 @@ function FloatingActions({
 			setImageMenuOpen: handleImageMenuOpenChange,
 			imageRangeRef,
 		},
+		wikiLink: {
+			wikiLinkId: context.wikiLinkId,
+			wikiLinkRange: context.wikiLinkRange,
+			wikiLinkMenuOpen,
+			setWikiLinkMenuOpen: handleWikiLinkMenuOpenChange,
+			wikiLinkDialogOpen,
+			setWikiLinkDialogOpen,
+			wikiLinkRangeRef,
+		},
+	}
+
+	function handleWikiLinkMenuOpenChange(open: boolean) {
+		if (open && context.wikiLinkRange) {
+			wikiLinkRangeRef.current = context.wikiLinkRange
+		}
+		setWikiLinkMenuOpen(open)
 	}
 
 	return createPortal(
@@ -347,6 +451,304 @@ function LinkAction({ linkUrl }: LinkActionProps) {
 	)
 }
 
+interface WikiLinkActionProps {
+	editor: React.RefObject<MarkdownEditorRef | null>
+	wikiLinkId: string | null
+	wikiLinkMenuOpen: boolean
+	setWikiLinkMenuOpen: (open: boolean) => void
+	wikiLinkDialogOpen: boolean
+	setWikiLinkDialogOpen: (open: boolean) => void
+	wikiLinkRangeRef: React.RefObject<Range | null>
+	docs: { id: string; title: string }[]
+	onCreateDoc?: (title: string) => Promise<string>
+}
+
+function WikiLinkAction({
+	editor,
+	wikiLinkId,
+	wikiLinkMenuOpen,
+	setWikiLinkMenuOpen,
+	wikiLinkDialogOpen,
+	setWikiLinkDialogOpen,
+	wikiLinkRangeRef,
+	docs,
+	onCreateDoc,
+}: WikiLinkActionProps) {
+	let navigate = useNavigate()
+	let [inputValue, setInputValue] = useState("")
+
+	if (wikiLinkId === null) return null
+
+	// Check if this is a valid existing doc (not empty/incomplete wikilink)
+	let isValidLink = wikiLinkId && docs.some(d => d.id === wikiLinkId)
+
+	let filteredDocs = docs.filter(
+		doc =>
+			doc.id !== wikiLinkId &&
+			doc.title.toLowerCase().includes(inputValue.toLowerCase()),
+	)
+	let showCreateOption =
+		!!inputValue.trim() &&
+		!docs.some(d => d.title.toLowerCase() === inputValue.toLowerCase())
+
+	function openLinkedDoc() {
+		setWikiLinkMenuOpen(false)
+		navigate({ to: "/doc/$id", params: { id: wikiLinkId! } })
+	}
+
+	function handleChangeLink() {
+		setWikiLinkMenuOpen(false)
+		setWikiLinkDialogOpen(true)
+	}
+
+	function handleRemoveLink() {
+		let view = editor.current?.getEditor()
+		let range = wikiLinkRangeRef.current
+		if (!view || !range) return
+
+		view.dispatch({
+			changes: { from: range.from, to: range.to, insert: "" },
+		})
+		setWikiLinkMenuOpen(false)
+		view.focus()
+	}
+
+	function handleSelectDoc(docId: string | null) {
+		if (!docId) return
+		let view = editor.current?.getEditor()
+		let range = wikiLinkRangeRef.current
+		if (!view || !range) return
+
+		view.dispatch({
+			changes: { from: range.from, to: range.to, insert: `[[${docId}]]` },
+		})
+		setWikiLinkDialogOpen(false)
+		setInputValue("")
+		view.focus()
+	}
+
+	async function handleCreateAndLink() {
+		if (!inputValue.trim() || !onCreateDoc) return
+		let view = editor.current?.getEditor()
+		let range = wikiLinkRangeRef.current
+		if (!view || !range) return
+
+		let newDocId = await onCreateDoc(inputValue.trim())
+		view.dispatch({
+			changes: { from: range.from, to: range.to, insert: `[[${newDocId}]]` },
+		})
+		setWikiLinkDialogOpen(false)
+		setInputValue("")
+		view.focus()
+	}
+
+	// For incomplete/empty wikilinks, show dialog directly instead of dropdown
+	if (!isValidLink) {
+		return (
+			<>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								size="icon"
+								variant="brand"
+								className="shadow-md"
+								nativeButton={false}
+								onClick={() => {
+									wikiLinkRangeRef.current =
+										editor.current?.getEditor()?.state.selection.main.head !==
+										undefined
+											? ((): Range | null => {
+													let view = editor.current?.getEditor()
+													if (!view) return null
+													let pos = view.state.selection.main.head
+													let line = view.state.doc.lineAt(pos)
+													let textBefore = line.text.slice(0, pos - line.from)
+													let textAfter = line.text.slice(pos - line.from)
+													let match = textBefore.match(/\[\[([^\]\[]*)$/)
+													if (!match) return null
+													let from = line.from + textBefore.lastIndexOf("[[")
+													let closingMatch = textAfter.match(/^([^\]\[]*)\]\]/)
+													let to = closingMatch
+														? pos + closingMatch[0].length
+														: pos +
+															(textAfter.match(/^[^\]\[]*/) ?? [""])[0].length
+													return { from, to }
+												})()
+											: null
+									setWikiLinkDialogOpen(true)
+								}}
+							>
+								<FileSymlinkIcon />
+							</Button>
+						}
+					/>
+					<TooltipContent side="top">Select document</TooltipContent>
+				</Tooltip>
+
+				<WikiLinkDialog
+					open={wikiLinkDialogOpen}
+					onOpenChange={setWikiLinkDialogOpen}
+					title="Link to document"
+					filteredDocs={filteredDocs}
+					showCreateOption={showCreateOption}
+					inputValue={inputValue}
+					onInputValueChange={setInputValue}
+					onSelectDoc={handleSelectDoc}
+					onCreateAndLink={handleCreateAndLink}
+				/>
+			</>
+		)
+	}
+
+	return (
+		<>
+			<DropdownMenu open={wikiLinkMenuOpen} onOpenChange={setWikiLinkMenuOpen}>
+				<Tooltip>
+					<DropdownMenuTrigger
+						render={
+							<TooltipTrigger
+								render={
+									<Button
+										size="icon"
+										variant="brand"
+										className="shadow-md"
+										nativeButton={false}
+									>
+										<FileSymlinkIcon />
+									</Button>
+								}
+							/>
+						}
+					/>
+					<TooltipContent side="top">Wiki link</TooltipContent>
+				</Tooltip>
+				<DropdownMenuContent align="end" side="top">
+					<DropdownMenuItem onClick={openLinkedDoc}>
+						<ExternalLink className="mr-2 size-4" />
+						Open linked doc
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleChangeLink}>
+						<Link2 className="mr-2 size-4" />
+						Change linked doc
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={handleRemoveLink}
+						className="text-destructive"
+					>
+						<Trash2 className="mr-2 size-4" />
+						Remove link
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+
+			<WikiLinkDialog
+				open={wikiLinkDialogOpen}
+				onOpenChange={setWikiLinkDialogOpen}
+				title="Change linked document"
+				filteredDocs={filteredDocs}
+				showCreateOption={showCreateOption}
+				inputValue={inputValue}
+				onInputValueChange={setInputValue}
+				onSelectDoc={handleSelectDoc}
+				onCreateAndLink={handleCreateAndLink}
+			/>
+		</>
+	)
+}
+
+interface WikiLinkDialogProps {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	title: string
+	filteredDocs: { id: string; title: string }[]
+	showCreateOption: boolean
+	inputValue: string
+	onInputValueChange: (value: string) => void
+	onSelectDoc: (docId: string | null) => void
+	onCreateAndLink: () => void
+}
+
+function WikiLinkDialog({
+	open,
+	onOpenChange,
+	title,
+	filteredDocs,
+	showCreateOption,
+	inputValue,
+	onInputValueChange,
+	onSelectDoc,
+	onCreateAndLink,
+}: WikiLinkDialogProps) {
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent className="max-w-sm">
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					<DialogDescription>
+						Search for a document to link to
+					</DialogDescription>
+				</DialogHeader>
+
+				<Combobox.Root
+					value={null}
+					onValueChange={onSelectDoc}
+					onInputValueChange={onInputValueChange}
+				>
+					<div className="relative">
+						<Combobox.Input
+							placeholder="Search documents..."
+							className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
+						/>
+					</div>
+
+					<Combobox.Portal>
+						<Combobox.Positioner sideOffset={4} className="z-50">
+							<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
+								{filteredDocs.length === 0 && !showCreateOption && (
+									<div className="text-muted-foreground px-3 py-2 text-sm">
+										No documents found
+									</div>
+								)}
+
+								{filteredDocs.map(doc => (
+									<Combobox.Item
+										key={doc.id}
+										value={doc.id}
+										className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
+									>
+										<FileText className="text-muted-foreground size-4" />
+										<span className="flex-1 truncate">{doc.title}</span>
+									</Combobox.Item>
+								))}
+
+								{showCreateOption && (
+									<button
+										type="button"
+										onClick={onCreateAndLink}
+										className="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
+									>
+										<Plus className="text-muted-foreground size-4" />
+										<span>
+											Create "<span className="font-medium">{inputValue}</span>"
+										</span>
+									</button>
+								)}
+							</Combobox.Popup>
+						</Combobox.Positioner>
+					</Combobox.Portal>
+				</Combobox.Root>
+
+				<div className="flex justify-end gap-2 pt-2">
+					<Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+				</div>
+			</DialogContent>
+		</Dialog>
+	)
+}
+
 interface ImageActionProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
 	isImage: boolean
@@ -409,7 +811,12 @@ function ImageAction({
 						render={
 							<TooltipTrigger
 								render={
-									<Button size="icon" variant="brand" className="shadow-md">
+									<Button
+										size="icon"
+										variant="brand"
+										className="shadow-md"
+										nativeButton={false}
+									>
 										<ImagePlus />
 									</Button>
 								}
@@ -469,6 +876,7 @@ function ActionButton({ icon, label, shortcut, onClick }: ActionButtonProps) {
 						variant="brand"
 						onClick={onClick}
 						className="shadow-md"
+						nativeButton={false}
 					>
 						{icon}
 					</Button>

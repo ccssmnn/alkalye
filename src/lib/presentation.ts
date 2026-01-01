@@ -539,6 +539,7 @@ function endsWithBlankLine(token: Token): boolean {
 type TextSegment =
 	| { type: "text"; text: string }
 	| { type: "link"; text: string; href: string }
+	| { type: "wikilink"; docId: string }
 	| { type: "strong"; segments: TextSegment[] }
 	| { type: "em"; segments: TextSegment[] }
 	| { type: "codespan"; text: string }
@@ -558,8 +559,34 @@ type SlideContent =
 	| { type: "table"; rows: string[][] }
 
 function parseTextSegments(text: string): TextSegment[] {
-	let tokens = Lexer.lexInline(text)
-	return tokensToSegments(tokens)
+	// Handle wikilinks before standard lexing
+	let segments: TextSegment[] = []
+	let lastIndex = 0
+	let regex = /\[\[([^\]]+)\]\]/g
+	let match
+
+	while ((match = regex.exec(text)) !== null) {
+		// Process text before the wikilink
+		if (match.index > lastIndex) {
+			let before = text.slice(lastIndex, match.index)
+			let tokens = Lexer.lexInline(before)
+			segments.push(...tokensToSegments(tokens))
+		}
+		// Add wikilink segment
+		segments.push({ type: "wikilink", docId: match[1] })
+		lastIndex = match.index + match[0].length
+	}
+
+	// Process remaining text
+	if (lastIndex < text.length) {
+		let remaining = text.slice(lastIndex)
+		let tokens = Lexer.lexInline(remaining)
+		segments.push(...tokensToSegments(tokens))
+	}
+
+	return segments.length > 0
+		? segments
+		: tokensToSegments(Lexer.lexInline(text))
 }
 
 function tokensToSegments(tokens: Token[]): TextSegment[] {

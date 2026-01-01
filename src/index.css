@@ -156,3 +156,25 @@ input[type="search"]::-webkit-search-cancel-button {
 		min-height: 100dvh;
 	}
 }
+
+/* Wikilink styles for preview/markdown rendering */
+.wikilink {
+	color: var(--brand);
+	text-decoration: none;
+	border-radius: 2px;
+	padding: 0 2px;
+	background-color: var(--brand-subtle);
+}
+.wikilink:hover {
+	background-color: color-mix(in oklch, var(--brand) 20%, transparent);
+	text-decoration: underline;
+}
+.wikilink-broken {
+	color: var(--destructive);
+	text-decoration: underline wavy;
+	text-decoration-color: var(--destructive);
+	background-color: color-mix(in oklch, var(--destructive) 10%, transparent);
+}
+.wikilink-broken:hover {
+	background-color: color-mix(in oklch, var(--destructive) 20%, transparent);
+}

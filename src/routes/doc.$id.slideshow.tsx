@@ -22,6 +22,7 @@ import {
 	type PresentationTheme,
 	type TextSegment,
 } from "@/lib/presentation"
+import { WikilinkProvider, useWikilinkResolver } from "@/lib/wikilink-context"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
@@ -165,25 +166,27 @@ function ShowPage() {
 	)
 
 	return (
-		<ThemeContext.Provider value={theme}>
-			<div
-				className={cn(
-					"fixed inset-0 flex flex-col",
-					theme === "light" && "bg-white text-black",
-					theme === "dark" && "bg-black text-white",
-					!theme && "bg-background text-foreground",
-				)}
-			>
-				<ScaledSlideContainer
-					gridClass={gridClass}
-					blocks={visibleBlocks}
-					size={size}
-					slideNumber={currentSlideNumber}
-					onClick={goToNextSlide}
-				/>
-				<SlideControls id={id} doc={doc} items={items} slides={slides} />
-			</div>
-		</ThemeContext.Provider>
+		<WikilinkProvider>
+			<ThemeContext.Provider value={theme}>
+				<div
+					className={cn(
+						"fixed inset-0 flex flex-col",
+						theme === "light" && "bg-white text-black",
+						theme === "dark" && "bg-black text-white",
+						!theme && "bg-background text-foreground",
+					)}
+				>
+					<ScaledSlideContainer
+						gridClass={gridClass}
+						blocks={visibleBlocks}
+						size={size}
+						slideNumber={currentSlideNumber}
+						onClick={goToNextSlide}
+					/>
+					<SlideControls id={id} doc={doc} items={items} slides={slides} />
+				</div>
+			</ThemeContext.Provider>
+		</WikilinkProvider>
 	)
 }
 
@@ -511,6 +514,8 @@ function RenderSegments({ segments }: { segments: TextSegment[] }) {
 }
 
 function RenderSegment({ segment }: { segment: TextSegment }) {
+	let wikilinkResolver = useWikilinkResolver()
+
 	switch (segment.type) {
 		case "text":
 			return <>{segment.text}</>
@@ -526,6 +531,21 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 					{segment.text}
 				</a>
 			)
+		case "wikilink": {
+			let resolved = wikilinkResolver(segment.docId)
+			let href = resolved.isPresentation
+				? `/doc/${segment.docId}/slideshow`
+				: `/doc/${segment.docId}/preview`
+			return (
+				<a
+					href={href}
+					className={resolved.exists ? "wikilink" : "wikilink wikilink-broken"}
+					onClick={e => e.stopPropagation()}
+				>
+					{resolved.title}
+				</a>
+			)
+		}
 		case "strong":
 			return (
 				<strong className="font-bold">

@@ -4,18 +4,29 @@ import {
 	useNavigate,
 	useBlocker,
 } from "@tanstack/react-router"
-import { co, type ID, type ResolveQuery } from "jazz-tools"
+import { co, Group, type ID, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
-import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
-import { Asset, Document, UserAccount, DEFAULT_EDITOR_SETTINGS } from "@/schema"
 import {
-	MarkdownEditor,
-	useMarkdownEditorRef,
-	parseFrontmatter,
-} from "@/editor/editor"
+	useCoState,
+	useAccount,
+	useIsAuthenticated,
+	Image as JazzImage,
+} from "jazz-tools/react"
+import { Asset, Document, UserAccount, DEFAULT_EDITOR_SETTINGS } from "@/schema"
+import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
 import { createBracketsExtension } from "@/editor/autocomplete-brackets"
+import {
+	createWikilinkDecorations,
+	createWikilinkAutocomplete,
+	createBacklinkDecorations,
+	createLinkDecorations,
+	createImageDecorations,
+	type WikilinkDoc,
+} from "@/editor/extensions"
 import { applyEditorSettings } from "@/lib/editor-settings"
+import { getDocumentTitle } from "@/lib/document-utils"
+import { getPath, getTags } from "@/editor/frontmatter"
 import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
@@ -24,6 +35,7 @@ import {
 	TaskAction,
 	LinkAction,
 	ImageAction,
+	WikiLinkAction,
 } from "@/components/floating-actions"
 import {
 	DocumentNotFound,
@@ -37,13 +49,21 @@ import {
 	copyDocumentToMyList,
 	getDocumentGroup,
 } from "@/lib/sharing"
+import { useBacklinkSync } from "@/lib/backlink-sync"
 import {
 	usePresence,
 	createPresenceExtension,
 	dispatchRemoteCursors,
 } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
 import { Loader2 } from "lucide-react"
+import { useIsMobile } from "@/lib/use-mobile"
 
 export { Route }
 
@@ -121,12 +141,24 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
+	let [imagePreview, setImagePreview] = useState<{
+		url: string
+		alt: string
+		imageId: string | null // Jazz image ID for assets
+	} | null>(null)
 
 	let { toggleLeft, toggleRight } = useSidebar()
+	let isMobile = useIsMobile()
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, {
-		resolve: { root: { documents: true, settings: true } },
+		resolve: {
+			root: {
+				documents: { $each: { content: true } },
+				settings: true,
+			},
+		},
 	})
 
 	let isShared = isGroupOwned(doc)
@@ -153,7 +185,129 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			? me.root.settings.editor
 			: DEFAULT_EDITOR_SETTINGS
 
-	let editorExtensions = [createPresenceExtension(), createBracketsExtension()]
+	// Get documents for wikilink autocomplete - use ref so closures get fresh data
+	let wikilinkDocsRef = useRef<WikilinkDoc[]>([])
+	let titleCacheRef = useRef<Map<string, { title: string; exists: boolean }>>(
+		new Map(),
+	)
+
+	// Track if docs are loaded for wikilink resolution
+	let docsLoaded = me.$isLoaded && me.root?.documents?.$isLoaded
+
+	// Update refs when me changes
+	if (me.$isLoaded) {
+		let documents = me.root?.documents
+		if (documents?.$isLoaded) {
+			let docs = documents
+				.filter(
+					(d): d is co.loaded<typeof Document, { content: true }> =>
+						d?.$isLoaded === true &&
+						d.content !== undefined &&
+						!d.deletedAt &&
+						d.$jazz.id !== docId,
+				)
+				.map(d => {
+					let content = d.content?.toString() ?? ""
+					return {
+						id: d.$jazz.id,
+						title: getDocumentTitle(content),
+						path: getPath(content),
+						tags: getTags(content),
+					}
+				})
+			wikilinkDocsRef.current = docs
+
+			let cache = new Map<string, { title: string; exists: boolean }>()
+			for (let d of docs) {
+				cache.set(d.id, { title: d.title, exists: true })
+			}
+			titleCacheRef.current = cache
+		}
+	}
+
+	// Force editor to rebuild decorations when docs load
+	useEffect(() => {
+		if (docsLoaded) {
+			let view = editor.current?.getEditor()
+			if (view) {
+				// Trigger a no-op selection change to rebuild decorations
+				view.dispatch({ selection: view.state.selection })
+			}
+		}
+	}, [docsLoaded, editor])
+
+	// Backlink sync - updates linked documents' backlinks frontmatter
+	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
+
+	let wikilinkResolver = (id: string) => {
+		return titleCacheRef.current.get(id) ?? null
+	}
+
+	// For decorations - just validate asset exists, don't resolve URL
+	let imageResolver = (assetId: string): string | null => {
+		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return null
+		// Return the asset: URL - we'll use JazzImage component to render
+		return `asset:${assetId}`
+	}
+
+	let handleImagePreview = (url: string, alt: string) => {
+		let imageId: string | null = null
+		if (url.startsWith("asset:")) {
+			let assetId = url.slice(6)
+			let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+			if (asset?.$isLoaded && asset.image?.$isLoaded) {
+				imageId = asset.image.$jazz.id
+			}
+		}
+		setImagePreview({ url, alt, imageId })
+		setImagePreviewOpen(true)
+	}
+
+	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
+		if (newTab) {
+			window.open(`/doc/${id}`, "_blank")
+		} else {
+			navigate({ to: "/doc/$id", params: { id } })
+		}
+	}
+
+	let handleCreateDoc = async (title: string): Promise<string> => {
+		if (!me.$isLoaded || !me.root?.documents) {
+			throw new Error("Not authenticated")
+		}
+		let now = new Date()
+		let group = Group.create()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(`# ${title}\n\n`, group),
+				createdAt: now,
+				updatedAt: now,
+			},
+			group,
+		)
+		me.root.documents.$jazz.push(newDoc)
+		return newDoc.$jazz.id
+	}
+
+	let editorExtensions = [
+		createPresenceExtension(),
+		createBracketsExtension(),
+		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
+		createBacklinkDecorations(wikilinkResolver, handleWikilinkNavigate),
+		createLinkDecorations(),
+		createImageDecorations(imageResolver, handleImagePreview),
+		// Disable autocomplete on mobile - use floating action instead
+		...(isMobile
+			? []
+			: [
+					createWikilinkAutocomplete(
+						() => wikilinkDocsRef.current,
+						handleCreateDoc,
+					),
+				]),
+	]
 
 	// Apply editor settings to CSS variables
 	useEffect(() => {
@@ -275,7 +429,10 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				<MarkdownEditor
 					ref={editor}
 					value={content}
-					onChange={newContent => handleChange(doc, newContent)}
+					onChange={newContent => {
+						handleChange(doc, newContent)
+						syncBacklinks(newContent)
+					}}
 					onSelectionChange={(from, to) =>
 						handleSelectionChange(from, to, isShared, updateCursor)
 					}
@@ -306,6 +463,12 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 						<>
 							<TaskAction editor={editor} {...ctx.task} />
 							<LinkAction {...ctx.link} />
+							<WikiLinkAction
+								editor={editor}
+								{...ctx.wikiLink}
+								docs={wikilinkDocsRef.current}
+								onCreateDoc={handleCreateDoc}
+							/>
 							<ImageAction
 								editor={editor}
 								{...ctx.image}
@@ -329,6 +492,33 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				focusMode={focusMode}
 				onFocusModeToggle={toggleFocusMode}
 			/>
+
+			<Dialog
+				open={imagePreviewOpen}
+				onOpenChange={setImagePreviewOpen}
+				onOpenChangeComplete={open => {
+					if (!open) setImagePreview(null)
+				}}
+			>
+				<DialogContent className="max-w-3xl">
+					<DialogHeader>
+						<DialogTitle>{imagePreview?.alt ?? "Image"}</DialogTitle>
+					</DialogHeader>
+					{imagePreview &&
+						(imagePreview.imageId ? (
+							<JazzImage
+								imageId={imagePreview.imageId}
+								className="max-h-[70vh] w-full object-contain"
+							/>
+						) : (
+							<img
+								src={imagePreview.url}
+								alt={imagePreview.alt}
+								className="max-h-[70vh] w-full object-contain"
+							/>
+						))}
+				</DialogContent>
+			</Dialog>
 		</>
 	)
 }
@@ -421,22 +611,4 @@ async function handleSaveCopy(
 		console.error("Failed to save copy:", e)
 		setSaveCopyState("idle")
 	}
-}
-
-function getDocumentTitle(content: string): string {
-	let { frontmatter, body } = parseFrontmatter(content)
-	if (frontmatter?.title) return frontmatter.title
-
-	let line = body.split("\n").find(l => l.trim()) ?? ""
-	return (
-		line
-			.replace(/^#{1,6}\s+/, "")
-			.replace(/\*\*([^*]+)\*\*/g, "$1")
-			.replace(/\*([^*]+)\*/g, "$1")
-			.replace(/__([^_]+)__/g, "$1")
-			.replace(/_([^_]+)_/g, "$1")
-			.replace(/`([^`]+)`/g, "$1")
-			.trim()
-			.slice(0, 80) || "Untitled"
-	)
 }

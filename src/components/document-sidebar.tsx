@@ -87,6 +87,7 @@ import {
 } from "@/lib/sharing"
 import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/file-io"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
+import { WikiLinkDialog } from "@/components/floating-actions"
 import { getPath } from "@/editor/frontmatter"
 import { isMac, modKey, altModKey } from "@/lib/platform"
 
@@ -320,6 +321,34 @@ function DocumentSidebar({
 	let otherCollaborators = collaborators.filter(c => c.id !== myId)
 	let hasCollaborators = otherCollaborators.length > 0 || docIsPublic
 
+	// Build docs list for wikilink dialog
+	let wikiLinkDocs: { id: string; title: string }[] = []
+	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
+		for (let d of [...me.root.documents]) {
+			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
+			let title = getDocumentTitle(d)
+			wikiLinkDocs.push({ id: d.$jazz.id, title })
+		}
+	}
+
+	async function handleCreateDocForWikilink(title: string): Promise<string> {
+		if (!me.$isLoaded || !me.root?.documents?.$isLoaded) {
+			throw new Error("Not ready")
+		}
+		let now = new Date()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(`# ${title}\n\n`, doc.$jazz.owner),
+				createdAt: now,
+				updatedAt: now,
+			},
+			doc.$jazz.owner,
+		)
+		me.root.documents.$jazz.push(newDoc)
+		return newDoc.$jazz.id
+	}
+
 	return (
 		<>
 			<Sidebar side="right" collapsible="offcanvas">
@@ -399,6 +428,8 @@ function DocumentSidebar({
 									editor={editor}
 									isMobile={isMobile}
 									disabled={readOnly}
+									docs={wikiLinkDocs}
+									onCreateDoc={handleCreateDocForWikilink}
 								/>
 							</SidebarMenu>
 						</SidebarGroupContent>
@@ -560,7 +591,12 @@ function DocumentSidebar({
 				<SidebarFooter className="border-border border-t">
 					<HelpMenu
 						trigger={
-							<Button variant="ghost" size="sm" className="w-full">
+							<Button
+								variant="ghost"
+								size="sm"
+								className="w-full"
+								nativeButton={false}
+							>
 								<HelpCircle />
 								<span>Help</span>
 							</Button>
@@ -822,10 +858,21 @@ interface FormatMenuProps {
 	editor?: React.RefObject<MarkdownEditorRef | null>
 	isMobile: boolean
 	disabled?: boolean
+	docs: { id: string; title: string }[]
+	onCreateDoc?: (title: string) => Promise<string>
 }
 
-function FormatMenu({ editor, isMobile, disabled }: FormatMenuProps) {
+function FormatMenu({
+	editor,
+	isMobile,
+	disabled,
+	docs,
+	onCreateDoc,
+}: FormatMenuProps) {
 	let savedSelection = useRef<{ from: number; to: number } | null>(null)
+	let insertRangeRef = useRef<{ from: number; to: number } | null>(null)
+	let [wikiLinkDialogOpen, setWikiLinkDialogOpen] = useState(false)
+	let [inputValue, setInputValue] = useState("")
 
 	function handleOpenChange(open: boolean) {
 		if (open) {
@@ -1006,8 +1053,68 @@ function FormatMenu({ editor, isMobile, disabled }: FormatMenuProps) {
 						Add Image
 						<DropdownMenuShortcut>{altModKey}K</DropdownMenuShortcut>
 					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => {
+							let view = editor?.current?.getEditor()
+							if (!view) return
+							let pos = view.state.selection.main.head
+							insertRangeRef.current = { from: pos, to: pos }
+							setWikiLinkDialogOpen(true)
+						}}
+					>
+						Add Wikilink
+					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
+
+			<WikiLinkDialog
+				open={wikiLinkDialogOpen}
+				onOpenChange={open => {
+					setWikiLinkDialogOpen(open)
+					if (!open) setInputValue("")
+				}}
+				title="Link to document"
+				filteredDocs={docs.filter(d =>
+					d.title.toLowerCase().includes(inputValue.toLowerCase()),
+				)}
+				showCreateOption={
+					!!inputValue.trim() &&
+					!docs.some(d => d.title.toLowerCase() === inputValue.toLowerCase())
+				}
+				inputValue={inputValue}
+				onInputValueChange={setInputValue}
+				onSelectDoc={docId => {
+					if (!docId) return
+					let view = editor?.current?.getEditor()
+					let range = insertRangeRef.current
+					if (!view || !range) return
+
+					view.dispatch({
+						changes: { from: range.from, to: range.to, insert: `[[${docId}]]` },
+					})
+					setWikiLinkDialogOpen(false)
+					setInputValue("")
+					view.focus()
+				}}
+				onCreateAndLink={async () => {
+					if (!inputValue.trim() || !onCreateDoc) return
+					let view = editor?.current?.getEditor()
+					let range = insertRangeRef.current
+					if (!view || !range) return
+
+					let newDocId = await onCreateDoc(inputValue.trim())
+					view.dispatch({
+						changes: {
+							from: range.from,
+							to: range.to,
+							insert: `[[${newDocId}]]`,
+						},
+					})
+					setWikiLinkDialogOpen(false)
+					setInputValue("")
+					view.focus()
+				}}
+			/>
 		</SidebarMenuItem>
 	)
 }
@@ -1022,30 +1129,34 @@ function ViewActions({ docId, isPresentation, readOnly }: ViewActionsProps) {
 	return (
 		<>
 			<SidebarMenuItem>
-				<Link
-					to="/doc/$id/preview"
-					params={{ id: docId }}
-					search={{ from: undefined }}
+				<SidebarMenuButton
+					render={
+						<Link
+							to="/doc/$id/preview"
+							params={{ id: docId }}
+							search={{ from: undefined }}
+						/>
+					}
 				>
-					<SidebarMenuButton>
-						<Eye className="size-4" />
-						Preview
-					</SidebarMenuButton>
-				</Link>
+					<Eye className="size-4" />
+					Preview
+				</SidebarMenuButton>
 			</SidebarMenuItem>
 			{isPresentation && (
 				<>
 					<SidebarMenuItem>
-						<a
-							href={`/doc/${docId}/slideshow`}
-							target="_blank"
-							rel="noopener noreferrer"
+						<SidebarMenuButton
+							render={
+								<a
+									href={`/doc/${docId}/slideshow`}
+									target="_blank"
+									rel="noopener noreferrer"
+								/>
+							}
 						>
-							<SidebarMenuButton>
-								<Presentation className="size-4" />
-								Slideshow
-							</SidebarMenuButton>
-						</a>
+							<Presentation className="size-4" />
+							Slideshow
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 					<SidebarMenuItem>
 						{readOnly ? (
@@ -1054,12 +1165,14 @@ function ViewActions({ docId, isPresentation, readOnly }: ViewActionsProps) {
 								Teleprompter
 							</SidebarMenuButton>
 						) : (
-							<Link to="/doc/$id/teleprompter" params={{ id: docId }}>
-								<SidebarMenuButton>
-									<ScrollText className="size-4" />
-									Teleprompter
-								</SidebarMenuButton>
-							</Link>
+							<SidebarMenuButton
+								render={
+									<Link to="/doc/$id/teleprompter" params={{ id: docId }} />
+								}
+							>
+								<ScrollText className="size-4" />
+								Teleprompter
+							</SidebarMenuButton>
 						)}
 					</SidebarMenuItem>
 				</>

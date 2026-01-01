@@ -8,7 +8,7 @@ A beautiful markdown editor. Private by design.
 
 ## Built for the web
 
-Alkalye is a beautiful progressive web app. Install it on your phone, tablet, or desktop. Your documents sync automatically across all your devices. **It even works offline.**
+Alkalye is a beautiful web app, made to work and look great on any device and OS. **It even works offline.**. Install it on your phone, tablet, or desktop. Your documents sync automatically across all your devices. 
 
 ## Your words, encrypted
 
@@ -17,6 +17,10 @@ Everything you write is **end-to-end encrypted**. Not even we can read your docu
 ## Write together, in real-time
 
 Share a document and collaborate instantly. Just like you would expect.
+
+## Connect your thoughts
+
+Link documents together with `[[wikilinks]]`. Type `[[` to search and link. Backlinks update automatically—see what's referencing each note.
 
 ## Present your ideas
 
@@ -28,7 +32,7 @@ Settings like title, tags, and presentation mode are stored directly in your mar
 
 ## Source Code on Github
 
-Alkalye is source-available on [GitHub](https://github.com/ccssmnn/alkalye). Take the code, host it yourself, make it yours.
+Alkalye's source code is on [GitHub](https://github.com/ccssmnn/alkalye). Take the code, host it yourself, make it yours.
 
 ## Pricing
 
@@ -37,4 +41,3 @@ I can provide Alkalye for free while the underlying sync service [Jazz](https://
 ---
 
 **Get started:** Edit this document, create a new one, or open a tutor from the Help menu to learn more.
-
