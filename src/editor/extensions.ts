@@ -32,6 +32,7 @@ export {
 	replaceWikilink,
 	type WikilinkAtPosition,
 } from "./wikilink-context-menu"
+export { createBacklinkDecorations } from "./backlink-decorations"
 
 let editorExtensions: Extension = [
 	editorTheme,

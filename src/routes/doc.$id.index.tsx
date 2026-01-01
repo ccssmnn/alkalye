@@ -10,6 +10,7 @@ import { createBracketsExtension } from "@/editor/autocomplete-brackets"
 import {
 	createWikilinkDecorations,
 	createWikilinkAutocomplete,
+	createBacklinkDecorations,
 	type WikilinkDoc,
 } from "@/editor/extensions"
 import { applyEditorSettings } from "@/lib/editor-settings"
@@ -37,6 +38,7 @@ import {
 	copyDocumentToMyList,
 	getDocumentGroup,
 } from "@/lib/sharing"
+import { useBacklinkSync } from "@/lib/backlink-sync"
 import {
 	usePresence,
 	createPresenceExtension,
@@ -209,6 +211,9 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		}
 	}, [docsLoaded, editor])
 
+	// Backlink sync - updates linked documents' backlinks frontmatter
+	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
+
 	let wikilinkResolver = (id: string) => {
 		return titleCacheRef.current.get(id) ?? null
 	}
@@ -244,6 +249,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		createPresenceExtension(),
 		createBracketsExtension(),
 		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
+		createBacklinkDecorations(wikilinkResolver, handleWikilinkNavigate),
 		createWikilinkAutocomplete(() => wikilinkDocsRef.current, handleCreateDoc),
 	]
 
@@ -353,7 +359,10 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				<MarkdownEditor
 					ref={editor}
 					value={content}
-					onChange={newContent => handleChange(doc, newContent)}
+					onChange={newContent => {
+						handleChange(doc, newContent)
+						syncBacklinks(newContent)
+					}}
 					onSelectionChange={(from, to) =>
 						handleSelectionChange(from, to, isShared, updateCursor)
 					}

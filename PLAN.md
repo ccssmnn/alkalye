@@ -224,34 +224,34 @@ Add wiki-style linking between documents:
 
 ---
 
-### Step 8: Backlink Sync Service
+### Step 8: Backlink Sync Service (done)
 
 **Files:** `src/lib/backlink-sync.ts`
 
 **Tasks:**
 
-- [ ] On document content change (debounced ~1-2s):
+- [x] On document content change (debounced ~1-2s):
   - Parse all `[[doc_id]]` links in current doc
   - For each linked doc: add current doc ID to its backlinks
   - For previously-linked docs no longer linked: remove backlink
-- [ ] Track "previous links" to detect removals
-- [ ] Background async, non-blocking
-- [ ] Skip read-only docs
+- [x] Track "previous links" to detect removals
+- [x] Background async, non-blocking
+- [x] Skip read-only docs
 
 **Test:** add link to doc B, verify B's frontmatter updates
 
 ---
 
-### Step 9: Backlink Display in Frontmatter
+### Step 9: Backlink Display in Frontmatter (done)
 
-**Files:** `src/editor/frontmatter.ts` + decoration extension
+**Files:** `src/editor/backlink-decorations.ts`
 
 **Tasks:**
 
-- [ ] When rendering frontmatter `backlinks: id1, id2, id3`
-- [ ] Display as `backlinks: Title 1, Title 2, Title 3` via decoration
-- [ ] Keep raw storage as IDs
-- [ ] Make backlinks clickable (navigate to doc)
+- [x] When rendering frontmatter `backlinks: id1, id2, id3`
+- [x] Display as `backlinks: Title 1, Title 2, Title 3` via decoration
+- [x] Keep raw storage as IDs
+- [x] Make backlinks clickable (navigate to doc)
 
 **Test:** view doc with backlinks, verify titles display
 
