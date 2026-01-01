@@ -96,3 +96,212 @@ Yesterday   Another note         Projects
    → **Decision**: yes, each path segment is collapsible
 3. What if path has special characters?
    → Normalize on read, allow unicode but strip `/` from segments
+
+---
+
+# Knowledge Base Features
+
+## Overview
+
+Add wiki-style linking between documents:
+
+- `[[doc_id]]` syntax stored in markdown
+- Titles displayed via editor decorations (hydration)
+- Backlinks tracked in frontmatter as comma-separated IDs
+- Real-time background sync of backlinks
+
+## Decisions Made
+
+1. **Storage format**: `[[doc_id]]` in raw markdown, display title via decoration
+2. **Backlinks format**: `backlinks: id1, id2, id3` in frontmatter, display as titles
+3. **Navigation**: click = navigate, ctrl+click = new tab, right-click = context menu
+4. **Broken links**: red underline for nonexistent docs
+5. **Create new**: offer to create new doc when no match in autocomplete
+6. **Access control**: only link to docs with write access (so backlinks can be updated)
+7. **Sync timing**: real-time background, debounced ~1-2s, non-blocking
+
+## Implementation Plan
+
+### Step 1: Frontmatter Utilities for Backlinks
+
+**Files:** `src/editor/frontmatter.ts`
+
+**Tasks:**
+
+- [ ] Add `getBacklinks(content): string[]` - parse backlinks from frontmatter
+- [ ] Add `setBacklinks(content, ids: string[]): string` - update backlinks
+- [ ] Add `addBacklink(content, id): string` - append single backlink
+- [ ] Add `removeBacklink(content, id): string` - remove single backlink
+
+**Test:** manually verify frontmatter parsing/updating
+
+---
+
+### Step 2: WikiLink Parser & Types
+
+**Files:** `src/editor/wikilink-parser.ts`
+
+**Tasks:**
+
+- [ ] Regex to find all `[[doc_id]]` in content
+- [ ] Extract doc IDs from matches
+- [ ] Type definitions: `WikiLink = { id: string; from: number; to: number }`
+- [ ] Function `parseWikiLinks(content): WikiLink[]`
+
+**Test:** parse sample markdown with multiple links
+
+---
+
+### Step 3: Document Title Resolution
+
+**Files:** `src/lib/doc-resolver.ts`
+
+**Tasks:**
+
+- [ ] Create hook/utility to resolve doc ID → title
+- [ ] Cache resolved titles (in-memory)
+- [ ] Handle missing/deleted docs (return null)
+- [ ] Check write access for docs (for autocomplete filtering)
+
+**Test:** resolve a few doc IDs, verify caching
+
+---
+
+### Step 4: WikiLink Decorations (Display as Title)
+
+**Files:** `src/editor/wikilink-decorations.ts`
+
+**Tasks:**
+
+- [ ] CodeMirror ViewPlugin to find `[[doc_id]]` patterns
+- [ ] Replace widget decoration showing title instead of ID
+- [ ] Style: distinct from regular text
+- [ ] Broken link style: red underline for nonexistent docs
+- [ ] Click handler: navigate to doc
+- [ ] Ctrl+click: open in new tab
+- [ ] Integrate into `extensions.ts`
+
+**Test:** open doc with `[[...]]` links, verify title display
+
+---
+
+### Step 5: WikiLink Context Menu
+
+**Files:** `src/editor/wikilink-context-menu.ts` or integrate into existing context menu
+
+**Tasks:**
+
+- [ ] Right-click / long-tap on wikilink shows menu:
+  - "Open document"
+  - "Open in new tab"
+  - "Change link" (opens autocomplete)
+  - "Remove link"
+- [ ] Hook into editor's context menu system
+
+**Test:** right-click on link, verify menu options work
+
+---
+
+### Step 6: WikiLink Autocomplete
+
+**Files:** `src/editor/wikilink-autocomplete.ts`
+
+**Tasks:**
+
+- [ ] Trigger autocomplete on `[[` typed
+- [ ] Fetch all accessible documents (write access only)
+- [ ] Filter by typed text (fuzzy match on title)
+- [ ] Display: document title
+- [ ] On select: insert `[[doc_id]]`
+- [ ] "Create new document" option when no match
+- [ ] Integrate into editor extensions
+
+**Test:** type `[[`, verify doc list appears, select inserts ID
+
+---
+
+### Step 7: Floating Action for WikiLinks
+
+**Files:** `src/components/floating-actions.tsx`
+
+**Tasks:**
+
+- [ ] Detect cursor inside `[[...]]` pattern
+- [ ] Show floating action button: open linked doc
+- [ ] Extend `EditorContext` interface with wikilink detection
+- [ ] Extend `getContext()` to detect wikilink ranges
+
+**Test:** place cursor in `[[doc]]`, verify action appears
+
+---
+
+### Step 8: Backlink Sync Service
+
+**Files:** `src/lib/backlink-sync.ts`
+
+**Tasks:**
+
+- [ ] On document content change (debounced ~1-2s):
+  - Parse all `[[doc_id]]` links in current doc
+  - For each linked doc: add current doc ID to its backlinks
+  - For previously-linked docs no longer linked: remove backlink
+- [ ] Track "previous links" to detect removals
+- [ ] Background async, non-blocking
+- [ ] Skip read-only docs
+
+**Test:** add link to doc B, verify B's frontmatter updates
+
+---
+
+### Step 9: Backlink Display in Frontmatter
+
+**Files:** `src/editor/frontmatter.ts` + decoration extension
+
+**Tasks:**
+
+- [ ] When rendering frontmatter `backlinks: id1, id2, id3`
+- [ ] Display as `backlinks: Title 1, Title 2, Title 3` via decoration
+- [ ] Keep raw storage as IDs
+- [ ] Make backlinks clickable (navigate to doc)
+
+**Test:** view doc with backlinks, verify titles display
+
+---
+
+### Step 10: Integration & Polish
+
+**Tasks:**
+
+- [ ] Wire all extensions into `editor.tsx`
+- [ ] Add keyboard shortcut for inserting link (`Mod-Shift-K`?)
+- [ ] Handle edge cases: self-linking, circular links, deleted docs
+- [ ] Performance testing with many docs
+- [ ] Mobile touch handling for long-tap context menu
+
+**Test:** full flow - create link, navigate, verify backlink, delete link
+
+---
+
+## File Structure
+
+```
+src/editor/
+  wikilink-parser.ts        # regex parsing, types
+  wikilink-decorations.ts   # display titles, click handling
+  wikilink-autocomplete.ts  # [[ trigger autocomplete
+  wikilink-context-menu.ts  # right-click menu
+
+src/lib/
+  doc-resolver.ts           # ID → title resolution + caching
+  backlink-sync.ts          # background backlink updates
+
+src/editor/frontmatter.ts   # extend with backlink utils
+src/components/floating-actions.tsx  # extend context detection
+```
+
+## Deferred to v2
+
+- Backlink panel/sidebar UI
+- Graph view of connections
+- Search by linked docs
+- Transclusion (`![[doc_id]]` to embed content)
