@@ -40,7 +40,29 @@ class WikilinkWidget extends WidgetType {
 		span.className = this.exists
 			? "cm-wikilink"
 			: "cm-wikilink cm-wikilink-broken"
-		span.textContent = this.title
+
+		// Add icon
+		let icon = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+		icon.setAttribute("width", "14")
+		icon.setAttribute("height", "14")
+		icon.setAttribute("viewBox", "0 0 24 24")
+		icon.setAttribute("fill", "none")
+		icon.setAttribute("stroke", "currentColor")
+		icon.setAttribute("stroke-width", "2")
+		icon.setAttribute("stroke-linecap", "round")
+		icon.setAttribute("stroke-linejoin", "round")
+		icon.classList.add("cm-wikilink-icon")
+
+		if (this.exists) {
+			// file-symlink icon
+			icon.innerHTML = `<path d="M4 11V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.706.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h7"/><path d="M14 2v5a1 1 0 0 0 1 1h5"/><path d="m10 18 3-3-3-3"/>`
+		} else {
+			// file-exclamation-point icon
+			icon.innerHTML = `<path d="M6 22a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h8a2.4 2.4 0 0 1 1.704.706l3.588 3.588A2.4 2.4 0 0 1 20 8v12a2 2 0 0 1-2 2z"/><path d="M12 9v4"/><path d="M12 17h.01"/>`
+		}
+
+		span.appendChild(icon)
+		span.appendChild(document.createTextNode(this.title))
 		span.dataset.docId = this.id
 
 		span.addEventListener("mousedown", e => {
@@ -141,10 +163,18 @@ function createWikilinkDecorations(
 			borderRadius: "2px",
 			padding: "0 2px",
 			backgroundColor: "var(--brand-subtle)",
+			display: "inline-flex",
+			alignItems: "center",
+			gap: "2px",
+			verticalAlign: "baseline",
 		},
 		".cm-wikilink:hover": {
 			backgroundColor: "color-mix(in oklch, var(--brand) 20%, transparent)",
 			textDecoration: "underline",
+		},
+		".cm-wikilink-icon": {
+			flexShrink: "0",
+			verticalAlign: "middle",
 		},
 		".cm-wikilink-broken": {
 			color: "var(--destructive)",

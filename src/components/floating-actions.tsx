@@ -41,7 +41,14 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 
-export { FloatingActions, TaskAction, LinkAction, ImageAction, WikiLinkAction }
+export {
+	FloatingActions,
+	TaskAction,
+	LinkAction,
+	ImageAction,
+	WikiLinkAction,
+	WikiLinkDialog,
+}
 export type { FloatingActionsProps }
 
 type Range = { from: number; to: number }
