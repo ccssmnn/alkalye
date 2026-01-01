@@ -10,6 +10,7 @@ import {
 	type PresentationItem,
 	type TextSegment,
 } from "@/lib/presentation"
+import { WikilinkProvider, useWikilinkResolver } from "@/lib/wikilink-context"
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -123,73 +124,75 @@ function TeleprompterPage() {
 	}
 
 	return (
-		<div className="bg-background fixed inset-0 flex flex-col">
-			<TopBar
-				id={id}
-				currentSlideIdx={currentSlideIdx}
-				totalSlides={slideGroups.length}
-			/>
-			<ProgressBar
-				presentationIndex={presentationIndex}
-				currentSlideIdx={currentSlideIdx}
-				slideGroups={slideGroups}
-				items={items}
-			/>
-			<div
-				className="flex-1 overflow-auto"
-				style={{
-					paddingLeft: "env(safe-area-inset-left)",
-					paddingRight: "env(safe-area-inset-right)",
-				}}
-			>
-				<div className="mx-auto max-w-2xl py-4 pb-20 text-2xl leading-relaxed">
-					{presentationIndex === undefined && items.length > 0 && (
-						<div className="flex flex-col items-center gap-4 py-8">
-							<p className="text-muted-foreground text-sm">
-								Press any arrow key or click an item to start
-							</p>
-							<Button onClick={() => setIndex(0)}>Start Presentation</Button>
-						</div>
-					)}
-					{slideGroups.map(group => (
-						<SlideSection
-							key={group.slideNumber}
-							slideNumber={group.slideNumber}
-						>
-							{group.items.map(item => {
-								let idx = items.indexOf(item)
-								let isCurrent = presentationIndex === idx
-								if (item.type === "block") {
+		<WikilinkProvider>
+			<div className="bg-background fixed inset-0 flex flex-col">
+				<TopBar
+					id={id}
+					currentSlideIdx={currentSlideIdx}
+					totalSlides={slideGroups.length}
+				/>
+				<ProgressBar
+					presentationIndex={presentationIndex}
+					currentSlideIdx={currentSlideIdx}
+					slideGroups={slideGroups}
+					items={items}
+				/>
+				<div
+					className="flex-1 overflow-auto"
+					style={{
+						paddingLeft: "env(safe-area-inset-left)",
+						paddingRight: "env(safe-area-inset-right)",
+					}}
+				>
+					<div className="mx-auto max-w-2xl py-4 pb-20 text-2xl leading-relaxed">
+						{presentationIndex === undefined && items.length > 0 && (
+							<div className="flex flex-col items-center gap-4 py-8">
+								<p className="text-muted-foreground text-sm">
+									Press any arrow key or click an item to start
+								</p>
+								<Button onClick={() => setIndex(0)}>Start Presentation</Button>
+							</div>
+						)}
+						{slideGroups.map(group => (
+							<SlideSection
+								key={group.slideNumber}
+								slideNumber={group.slideNumber}
+							>
+								{group.items.map(item => {
+									let idx = items.indexOf(item)
+									let isCurrent = presentationIndex === idx
+									if (item.type === "block") {
+										return (
+											<VisualBlockView
+												key={`block-${item.block.startLine}`}
+												block={item.block}
+												isCurrent={isCurrent}
+												onClick={() => setIndex(idx)}
+											/>
+										)
+									}
 									return (
-										<VisualBlockView
-											key={`block-${item.block.startLine}`}
-											block={item.block}
+										<TeleprompterLineView
+											key={`line-${item.lineNumber}`}
+											lineNumber={item.lineNumber}
+											text={item.text}
 											isCurrent={isCurrent}
 											onClick={() => setIndex(idx)}
 										/>
 									)
-								}
-								return (
-									<TeleprompterLineView
-										key={`line-${item.lineNumber}`}
-										lineNumber={item.lineNumber}
-										text={item.text}
-										isCurrent={isCurrent}
-										onClick={() => setIndex(idx)}
-									/>
-								)
-							})}
-						</SlideSection>
-					))}
+								})}
+							</SlideSection>
+						))}
+					</div>
 				</div>
+				<BottomToolbar
+					id={id}
+					doc={doc}
+					items={items}
+					slideGroups={slideGroups}
+				/>
 			</div>
-			<BottomToolbar
-				id={id}
-				doc={doc}
-				items={items}
-				slideGroups={slideGroups}
-			/>
-		</div>
+		</WikilinkProvider>
 	)
 }
 
@@ -590,6 +593,7 @@ function useScrollIntoView(isCurrent: boolean) {
 }
 
 function RenderSegments({ segments }: { segments: TextSegment[] }) {
+	let resolver = useWikilinkResolver()
 	return (
 		<>
 			{segments.map((seg, i) => {
@@ -633,6 +637,19 @@ function RenderSegments({ segments }: { segments: TextSegment[] }) {
 						<code key={i} className="bg-muted rounded px-1">
 							{seg.text}
 						</code>
+					)
+				}
+				if (seg.type === "wikilink") {
+					let resolved = resolver(seg.docId)
+					return (
+						<span
+							key={i}
+							className={
+								resolved.exists ? "wikilink" : "wikilink wikilink-broken"
+							}
+						>
+							{resolved.title}
+						</span>
 					)
 				}
 				return <span key={i}>{seg.text}</span>
