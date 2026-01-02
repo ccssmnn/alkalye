@@ -42,6 +42,6 @@ Contributions welcome! Please open an issue or PR.
 
 ## License
 
-[O'Saasy License](./LICENSE)
+[MIT](./LICENSE)
 
 © 2025 Carl Assmann

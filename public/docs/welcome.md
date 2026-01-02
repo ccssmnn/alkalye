@@ -16,7 +16,7 @@ Everything you write is **end-to-end encrypted**. Not even we can read your docu
 
 ## Write together, in real-time
 
-Share a document and collaborate instantly. Just like you would expect.
+Share a document link and collaborate instantly. Just like you would expect.
 
 ## Connect your thoughts
 
@@ -30,9 +30,9 @@ Turn any document into a presentation with `mode: present` in the frontmatter. U
 
 Settings like title, tags, and presentation mode are stored directly in your markdown via frontmatter. Export anytime as a standard `.md` file—no lock-in, no proprietary formats.
 
-## Source Code on Github
+## Open Source
 
-Alkalye's source code is on [GitHub](https://github.com/ccssmnn/alkalye). Take the code, host it yourself, make it yours.
+Alkalye is MIT licensed and on [GitHub](https://github.com/ccssmnn/alkalye). Take the code, host it yourself, make it yours.
 
 ## Pricing
 
