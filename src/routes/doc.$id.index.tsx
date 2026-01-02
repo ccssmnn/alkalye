@@ -4,7 +4,7 @@ import {
 	useNavigate,
 	useBlocker,
 } from "@tanstack/react-router"
-import { co, Group, type ID, type ResolveQuery } from "jazz-tools"
+import { co, Group, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import {
 	useCoState,
@@ -12,7 +12,7 @@ import {
 	useIsAuthenticated,
 	Image as JazzImage,
 } from "jazz-tools/react"
-import { Asset, Document, UserAccount, DEFAULT_EDITOR_SETTINGS } from "@/schema"
+import { Asset, Document, UserAccount } from "@/schema"
 import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
 import { createBracketsExtension } from "@/editor/autocomplete-brackets"
@@ -24,7 +24,7 @@ import {
 	createImageDecorations,
 	type WikilinkDoc,
 } from "@/editor/extensions"
-import { applyEditorSettings } from "@/lib/editor-settings"
+import { useEditorSettings } from "@/lib/editor-settings"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath, getTags } from "@/editor/frontmatter"
 import { EditorToolbar } from "@/components/editor-toolbar"
@@ -79,18 +79,22 @@ let resolve = {
 	assets: { $each: { image: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
+let settingsResolve = {
+	root: { settings: true },
+} as const satisfies ResolveQuery<typeof UserAccount>
+
 let Route = createFileRoute("/doc/$id/")({
-	loader: async ({ params }) => {
-		let doc = await Document.load(params.id as ID<typeof Document>, {
-			resolve: loaderResolve,
-		})
+	loader: async ({ params, context }) => {
+		let doc = await Document.load(params.id, { resolve: loaderResolve })
 		if (!doc.$isLoaded) {
-			return {
-				doc: null,
-				loadingState: doc.$jazz.loadingState as "unauthorized" | "unavailable",
-			}
+			return { doc: null, loadingState: doc.$jazz.loadingState, me: null }
 		}
-		return { doc, loadingState: null }
+
+		let me = context.me
+			? await context.me.$jazz.ensureLoaded({ resolve: settingsResolve })
+			: null
+
+		return { doc, loadingState: null, me }
 	},
 	component: EditorPage,
 })
@@ -132,8 +136,16 @@ function EditorPage() {
 	)
 }
 
+let meResolve = {
+	root: {
+		documents: { $each: { content: true } },
+		settings: true,
+	},
+} as const satisfies ResolveQuery<typeof UserAccount>
+
 function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let navigate = useNavigate()
+	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
 	let [isFocused, setIsFocused] = useState(false)
@@ -152,14 +164,12 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let isMobile = useIsMobile()
 
 	let isAuthenticated = useIsAuthenticated()
-	let me = useAccount(UserAccount, {
-		resolve: {
-			root: {
-				documents: { $each: { content: true } },
-				settings: true,
-			},
-		},
-	})
+	let me = useAccount(UserAccount, { resolve: meResolve })
+
+	let editorSettings =
+		me.$isLoaded && me.root?.settings?.$isLoaded
+			? me.root.settings
+			: data.me?.root?.settings
 
 	let isShared = isGroupOwned(doc)
 	let readOnly = !canEdit(doc)
@@ -169,21 +179,13 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		isDocumentPublic(doc) &&
 		getDocumentGroup(doc)?.myRole() !== "admin"
 
-	let { updateCursor, remoteCursors } = usePresence({
-		doc,
-		enabled: isShared,
-	})
+	let { updateCursor, remoteCursors } = usePresence({ doc, enabled: isShared })
 
 	let assets = doc.assets
 		? doc.assets
 				.filter(a => a?.$isLoaded)
 				.map(a => ({ id: a!.$jazz.id, name: a!.name }))
 		: []
-
-	let editorSettings =
-		me.$isLoaded && me.root?.settings?.$isLoaded
-			? me.root.settings.editor
-			: DEFAULT_EDITOR_SETTINGS
 
 	// Get documents for wikilink autocomplete - use ref so closures get fresh data
 	let wikilinkDocsRef = useRef<WikilinkDoc[]>([])
@@ -194,7 +196,6 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	// Track if docs are loaded for wikilink resolution
 	let docsLoaded = me.$isLoaded && me.root?.documents?.$isLoaded
 
-	// Update refs when me changes
 	if (me.$isLoaded) {
 		let documents = me.root?.documents
 		if (documents?.$isLoaded) {
@@ -236,18 +237,15 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		}
 	}, [docsLoaded, editor])
 
-	// Backlink sync - updates linked documents' backlinks frontmatter
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
 
 	let wikilinkResolver = (id: string) => {
 		return titleCacheRef.current.get(id) ?? null
 	}
 
-	// For decorations - just validate asset exists, don't resolve URL
-	let imageResolver = (assetId: string): string | null => {
+	let imageResolver = (assetId: string) => {
 		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
 		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return null
-		// Return the asset: URL - we'll use JazzImage component to render
 		return `asset:${assetId}`
 	}
 
@@ -294,25 +292,21 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let editorExtensions = [
 		createPresenceExtension(),
 		createBracketsExtension(),
+		createLinkDecorations(),
 		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
 		createBacklinkDecorations(wikilinkResolver, handleWikilinkNavigate),
-		createLinkDecorations(),
 		createImageDecorations(imageResolver, handleImagePreview),
-		// Disable autocomplete on mobile - use floating action instead
-		...(isMobile
-			? []
-			: [
-					createWikilinkAutocomplete(
-						() => wikilinkDocsRef.current,
-						handleCreateDoc,
-					),
-				]),
 	]
+	if (!isMobile) {
+		editorExtensions.push(
+			createWikilinkAutocomplete(
+				() => wikilinkDocsRef.current,
+				handleCreateDoc,
+			),
+		)
+	}
 
-	// Apply editor settings to CSS variables
-	useEffect(() => {
-		applyEditorSettings(editorSettings)
-	}, [editorSettings])
+	useEditorSettings(editorSettings)
 
 	// Apply focus mode to document
 	useEffect(() => {

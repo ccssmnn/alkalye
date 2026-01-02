@@ -31,7 +31,6 @@ function applyEditorSettings(settings: EditorSettingsData) {
 	root.dataset.highlightCurrentLine = String(settings.highlightCurrentLine)
 }
 
-// Apply defaults on load (will be overwritten when Jazz loads)
 applyEditorSettings(DEFAULTS)
 
 function useEditorSettings(settings: SettingsCoMap | null | undefined) {
