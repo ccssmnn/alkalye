@@ -12,9 +12,12 @@ import {
 	useSplashDelay,
 } from "./components/splash-screen"
 import { PWAContext, usePWAProvider, PWAInstallHint } from "./lib/pwa"
+import { init } from "@plausible-analytics/tracker"
 
 import "@fontsource-variable/geist-mono/index.css"
 import "./index.css"
+
+init({ domain: "alkalye.com" })
 
 let router = createRouter({
 	routeTree,
