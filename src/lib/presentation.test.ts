@@ -213,9 +213,20 @@ describe("getPresentationMode", () => {
 		expect(getPresentationMode("---\nmode: present\n---\n# Slide")).toBe(true)
 	})
 
+	it("returns true for mode: presentation", () => {
+		expect(getPresentationMode("---\nmode: presentation\n---\n# Slide")).toBe(
+			true,
+		)
+	})
+
 	it("returns true with extra frontmatter fields", () => {
 		expect(
 			getPresentationMode("---\ntitle: My Presentation\nmode: present\n---\n"),
+		).toBe(true)
+		expect(
+			getPresentationMode(
+				"---\ntitle: My Presentation\nmode: presentation\n---\n",
+			),
 		).toBe(true)
 	})
 

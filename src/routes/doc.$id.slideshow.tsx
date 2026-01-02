@@ -155,15 +155,6 @@ function ShowPage() {
 	}
 
 	let visibleBlocks = currentSlide?.blocks ?? []
-	let blockCount = visibleBlocks.length
-
-	let gridClass = cn(
-		"grid gap-8 w-full h-full",
-		blockCount === 1 && "grid-cols-1 grid-rows-1",
-		blockCount === 2 && "grid-cols-2 grid-rows-1",
-		blockCount === 3 && "grid-cols-3 grid-rows-1",
-		blockCount >= 4 && "grid-cols-2 grid-rows-2",
-	)
 
 	return (
 		<WikilinkProvider>
@@ -177,7 +168,6 @@ function ShowPage() {
 					)}
 				>
 					<ScaledSlideContainer
-						gridClass={gridClass}
 						blocks={visibleBlocks}
 						size={size}
 						slideNumber={currentSlideNumber}
@@ -324,112 +314,114 @@ let baseSizes: Record<PresentationSize, { h1: number; body: number }> = {
 }
 
 function ScaledSlideContainer({
-	gridClass,
 	blocks,
 	size,
 	slideNumber,
 	onClick,
 }: {
-	gridClass: string
 	blocks: VisualBlock[]
 	size: PresentationSize
 	slideNumber: number
 	onClick: () => void
 }) {
 	let containerRef = useRef<HTMLDivElement>(null)
-	let measuringRef = useRef<HTMLDivElement>(null)
-	let [measuringScale, setMeasuringScale] = useState(1)
-	let [ready, setReady] = useState(false)
-	let [fadingOut, setFadingOut] = useState(false)
-	let [displayedBlocks, setDisplayedBlocks] = useState(blocks)
-	let [displayedGridClass, setDisplayedGridClass] = useState(gridClass)
-	let [displayedScale, setDisplayedScale] = useState(1)
-	let prevSlideRef = useRef(slideNumber)
+	let contentRef = useRef<HTMLDivElement>(null)
+	let [visible, setVisible] = useState(false)
+	let [scale, setScale] = useState(1)
+	let [isPortrait, setIsPortrait] = useState(
+		() => window.innerHeight > window.innerWidth,
+	)
+
+	let blockCount = blocks.length
+	let gridClass = cn(
+		"grid gap-8",
+		blockCount === 1 && "grid-cols-1 grid-rows-1",
+		blockCount === 2 &&
+			(isPortrait ? "grid-cols-1 grid-rows-2" : "grid-cols-2 grid-rows-1"),
+		blockCount === 3 &&
+			(isPortrait ? "grid-cols-1 grid-rows-3" : "grid-cols-3 grid-rows-1"),
+		blockCount >= 4 && "grid-cols-2 grid-rows-2",
+	)
 
 	let baseSize = baseSizes[size]
 
 	useLayoutEffect(() => {
 		let container = containerRef.current
-		let measuring = measuringRef.current
-		if (!container || !measuring) return
+		let content = contentRef.current
+		if (!container || !content) return
+
+		// 1. Hide content, reset scale
+		setVisible(false)
+		setScale(1)
 
 		let cancelled = false
-		let isSlideChange = prevSlideRef.current !== slideNumber
-		prevSlideRef.current = slideNumber
 
-		// Start fade out of old content
-		if (isSlideChange) {
-			setFadingOut(true)
-		}
+		async function measure() {
+			// Wait for DOM to update with scale=1
+			await new Promise(r => requestAnimationFrame(r))
+			if (cancelled) return
 
-		setMeasuringScale(1)
+			let maxW = container!.clientWidth * 0.9
+			let maxH = container!.clientHeight * 0.9
 
-		function fits() {
-			if (!container || !measuring) return true
-			let cells = measuring.children
-			for (let cell of cells) {
-				if (cell.scrollWidth > cell.clientWidth + 1) return false
-				if (cell.scrollHeight > cell.clientHeight + 1) return false
+			// Temporarily remove width constraint for measuring
+			content!.style.width = "auto"
+
+			function fits(s: number): boolean {
+				content!.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
+				content!.style.setProperty(
+					"--slide-body-size",
+					`${baseSize.body * s}px`,
+				)
+				// Force reflow
+				void content!.offsetHeight
+				let w = content!.scrollWidth
+				let h = content!.scrollHeight
+				return w <= maxW && h <= maxH
 			}
-			if (measuring.scrollWidth > container.clientWidth + 1) return false
-			if (measuring.scrollHeight > container.clientHeight + 1) return false
-			return true
-		}
 
-		async function binarySearch() {
+			// 2. Binary search for optimal scale
 			let low = 10
 			let high = 100
-
 			while (low <= high) {
-				if (cancelled) return
 				let mid = Math.floor((low + high) / 2)
-				setMeasuringScale(mid / 100)
-				await new Promise(r => requestAnimationFrame(r))
-				await new Promise(r => requestAnimationFrame(r))
-				if (cancelled) return
-				if (fits()) {
+				if (fits(mid / 100)) {
 					low = mid + 1
 				} else {
 					high = mid - 1
 				}
 			}
 
-			return Math.max(10, Math.min(high, 100))
+			let finalScale = Math.max(10, Math.min(high, 100)) / 100
+
+			// Restore width constraint
+			content!.style.width = "90%"
+
+			if (cancelled) return
+
+			// 3. Apply final scale and fade in
+			setScale(finalScale)
+			await new Promise(r => requestAnimationFrame(r))
+			if (cancelled) return
+			setVisible(true)
 		}
 
-		async function animate() {
-			let fadeOutPromise = isSlideChange
-				? new Promise(r => setTimeout(r, 100))
-				: Promise.resolve()
-
-			let [finalScale] = await Promise.all([binarySearch(), fadeOutPromise])
-			if (cancelled || finalScale === undefined) return
-
-			setDisplayedBlocks(blocks)
-			setDisplayedGridClass(gridClass)
-			setDisplayedScale(finalScale / 100)
-			setFadingOut(false)
-			setReady(true)
-		}
-
-		animate()
+		measure()
 
 		return () => {
 			cancelled = true
 		}
-	}, [slideNumber, baseSize, blocks, gridClass])
+	}, [slideNumber, blocks, isPortrait, baseSize])
 
 	useEffect(() => {
-		let container = containerRef.current
-		if (!container) return
-
-		let observer = new ResizeObserver(() => {
-			setReady(false)
-			setMeasuringScale(1)
-		})
-
-		observer.observe(container)
-		return () => observer.disconnect()
+		function handleResize() {
+			let portrait = window.innerHeight > window.innerWidth
+			setIsPortrait(portrait)
+			setVisible(false)
+			setScale(1)
+		}
+		window.addEventListener("resize", handleResize)
+		return () => window.removeEventListener("resize", handleResize)
 	}, [])
 
 	return (
@@ -438,44 +430,17 @@ function ScaledSlideContainer({
 			className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden p-8"
 			onClick={onClick}
 		>
-			{ready && (
-				<div
-					className={displayedGridClass}
-					style={
-						{
-							"--slide-h1-size": `${baseSize.h1 * displayedScale}px`,
-							"--slide-body-size": `${baseSize.body * displayedScale}px`,
-							opacity: fadingOut ? 0 : 1,
-							transition: "opacity 100ms ease-in",
-							maxWidth: "100%",
-							maxHeight: "100%",
-						} as React.CSSProperties
-					}
-				>
-					{displayedBlocks.map((block, i) => (
-						<div
-							key={i}
-							className="flex min-h-0 min-w-0 flex-col items-center justify-center text-center"
-						>
-							{block.content.map((item, j) => (
-								<SlideContentItem key={j} item={item} />
-							))}
-						</div>
-					))}
-				</div>
-			)}
 			<div
-				ref={measuringRef}
+				ref={contentRef}
 				className={gridClass}
 				style={
 					{
-						"--slide-h1-size": `${baseSize.h1 * measuringScale}px`,
-						"--slide-body-size": `${baseSize.body * measuringScale}px`,
-						position: "absolute",
-						visibility: "hidden",
-						pointerEvents: "none",
-						maxWidth: "100%",
-						maxHeight: "100%",
+						"--slide-h1-size": `${baseSize.h1 * scale}px`,
+						"--slide-body-size": `${baseSize.body * scale}px`,
+						opacity: visible ? 1 : 0,
+						transition: visible ? "opacity 150ms ease-in" : "none",
+						width: "90%",
+						maxHeight: "90%",
 					} as React.CSSProperties
 				}
 			>

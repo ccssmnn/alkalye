@@ -21,7 +21,7 @@ type PresentationTheme = "light" | "dark"
 function getPresentationMode(content: string): boolean {
 	let frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/)
 	if (!frontmatterMatch) return false
-	return /^mode:\s*present\s*$/m.test(frontmatterMatch[1])
+	return /^mode:\s*(?:present|presentation)\s*$/m.test(frontmatterMatch[1])
 }
 
 function parsePresentationSize(content: string): PresentationSize {
