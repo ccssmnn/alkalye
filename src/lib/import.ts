@@ -4,12 +4,9 @@ export {
 	importMarkdownFiles,
 	importFolderFiles,
 	readFolderEntries,
-	exportDocument,
-	saveDocumentAs,
-	exportDocumentsAsZip,
 	type ImportedFile,
 	type ImportedAsset,
-	type ExportAsset,
+	type FileWithPath,
 }
 
 interface ImportedFile {
@@ -25,10 +22,9 @@ interface ImportedAsset {
 	refName: string
 }
 
-interface ExportAsset {
-	id: string
-	name: string
-	blob: Blob
+interface FileWithPath {
+	file: File
+	path: string
 }
 
 async function importMarkdownFiles(
@@ -140,21 +136,29 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 			}
 		}
 
+		// Determine path, accounting for doc-with-assets folder structure
+		// If md file is in a folder with same name as the file, that's a doc folder not a path
+		// e.g. "My Doc/My Doc.md" -> path: null, "some/path/My Doc/My Doc.md" -> path: "some/path"
 		let path: string | null = null
 		if (mdFile.path.includes("/")) {
 			let dir = mdFile.path.substring(0, mdFile.path.lastIndexOf("/"))
-			path = dir || null
+			let parentFolderName = dir.split("/").pop() ?? ""
+			// Check if parent folder name matches the doc name (doc-with-assets structure)
+			if (parentFolderName.toLowerCase() === name.toLowerCase()) {
+				// Strip the doc folder from path
+				let parentDir = dir.includes("/")
+					? dir.substring(0, dir.lastIndexOf("/"))
+					: ""
+				path = parentDir || null
+			} else {
+				path = dir || null
+			}
 		}
 
 		results.push({ name, content, assets, path })
 	}
 
 	return results
-}
-
-interface FileWithPath {
-	file: File
-	path: string
 }
 
 async function readFolderEntries(
@@ -284,10 +288,23 @@ async function importFolderFiles(
 			}
 		}
 
+		// Determine path, accounting for doc-with-assets folder structure
+		// If md file is in a folder with same name as the file, that's a doc folder not a path
+		// e.g. "My Doc/My Doc.md" -> path: null, "some/path/My Doc/My Doc.md" -> path: "some/path"
 		let path: string | null = null
 		if (mdFile.path.includes("/")) {
 			let dir = mdFile.path.substring(0, mdFile.path.lastIndexOf("/"))
-			path = dir || null
+			let parentFolderName = dir.split("/").pop() ?? ""
+			// Check if parent folder name matches the doc name (doc-with-assets structure)
+			if (parentFolderName.toLowerCase() === name.toLowerCase()) {
+				// Strip the doc folder from path
+				let parentDir = dir.includes("/")
+					? dir.substring(0, dir.lastIndexOf("/"))
+					: ""
+				path = parentDir || null
+			} else {
+				path = dir || null
+			}
 		}
 
 		results.push({ name, content, assets, path })
@@ -313,198 +330,4 @@ function getMimeType(filename: string): string {
 		bmp: "image/bmp",
 	}
 	return mimeTypes[ext || ""] || "image/png"
-}
-
-async function exportDocument(
-	content: string,
-	filename: string,
-	assets?: ExportAsset[],
-) {
-	let safeName = filename.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "untitled"
-
-	if (!assets || assets.length === 0) {
-		let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
-		let url = URL.createObjectURL(blob)
-		let a = document.createElement("a")
-		a.href = url
-		a.download = `${safeName}.md`
-		a.click()
-		URL.revokeObjectURL(url)
-		return
-	}
-
-	let zip = new JSZip()
-	let assetsFolder = zip.folder("assets")!
-	let assetNameMap = new Map<string, string>()
-	let usedAssetNames = new Set<string>()
-
-	for (let asset of assets) {
-		let ext = getExtensionFromBlob(asset.blob)
-		let baseName = asset.name.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "image"
-		let fileName = baseName + ext
-		let counter = 1
-
-		while (usedAssetNames.has(fileName)) {
-			fileName = `${baseName}-${counter++}${ext}`
-		}
-		usedAssetNames.add(fileName)
-
-		assetsFolder.file(fileName, asset.blob)
-		assetNameMap.set(asset.id, `assets/${fileName}`)
-	}
-
-	let exportedContent = content.replace(
-		/!\[([^\]]*)\]\(asset:([^)]+)\)/g,
-		(match, alt, assetId) => {
-			let newPath = assetNameMap.get(assetId)
-			if (newPath) {
-				return `![${alt}](${newPath})`
-			}
-			return match
-		},
-	)
-
-	zip.file(`${safeName}.md`, exportedContent)
-
-	let blob = await zip.generateAsync({ type: "blob" })
-	let url = URL.createObjectURL(blob)
-	let a = document.createElement("a")
-	a.href = url
-	a.download = `${safeName}.zip`
-	a.click()
-	URL.revokeObjectURL(url)
-}
-
-async function saveDocumentAs(content: string, suggestedName: string) {
-	let safeName =
-		suggestedName.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "untitled"
-
-	let w = window as Window &
-		typeof globalThis & {
-			showSaveFilePicker?: (options: {
-				suggestedName: string
-				types: { description: string; accept: Record<string, string[]> }[]
-			}) => Promise<FileSystemFileHandle>
-		}
-
-	if (w.showSaveFilePicker) {
-		try {
-			let handle = await w.showSaveFilePicker({
-				suggestedName: `${safeName}.md`,
-				types: [
-					{
-						description: "Markdown file",
-						accept: { "text/markdown": [".md"] },
-					},
-				],
-			})
-			let writable = await handle.createWritable()
-			await writable.write(content)
-			await writable.close()
-			return
-		} catch (e) {
-			if (e instanceof Error && e.name === "AbortError") return
-			throw e
-		}
-	}
-
-	// Fallback for browsers without File System Access API
-	let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
-	let url = URL.createObjectURL(blob)
-	let a = document.createElement("a")
-	a.href = url
-	a.download = `${safeName}.md`
-	a.click()
-	URL.revokeObjectURL(url)
-}
-
-function getExtensionFromBlob(blob: Blob): string {
-	let mimeToExt: Record<string, string> = {
-		"image/png": ".png",
-		"image/jpeg": ".jpg",
-		"image/gif": ".gif",
-		"image/webp": ".webp",
-		"image/svg+xml": ".svg",
-		"image/bmp": ".bmp",
-	}
-	return mimeToExt[blob.type] || ".png"
-}
-
-interface ExportDoc {
-	title: string
-	content: string
-	assets?: ExportAsset[]
-	path?: string | null
-}
-
-async function exportDocumentsAsZip(docs: ExportDoc[]) {
-	let zip = new JSZip()
-	let usedNames = new Set<string>()
-	let globalAssetNameMap = new Map<string, string>()
-	let usedAssetNames = new Set<string>()
-	let assetsFolder: JSZip | null = null
-
-	for (let doc of docs) {
-		if (doc.assets && doc.assets.length > 0) {
-			if (!assetsFolder) {
-				assetsFolder = zip.folder("assets")!
-			}
-
-			for (let asset of doc.assets) {
-				if (globalAssetNameMap.has(asset.id)) continue
-
-				let ext = getExtensionFromBlob(asset.blob)
-				let baseName =
-					asset.name.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "image"
-				let fileName = baseName + ext
-				let counter = 1
-
-				while (usedAssetNames.has(fileName)) {
-					fileName = `${baseName}-${counter++}${ext}`
-				}
-				usedAssetNames.add(fileName)
-
-				assetsFolder.file(fileName, asset.blob)
-				globalAssetNameMap.set(asset.id, `assets/${fileName}`)
-			}
-		}
-	}
-
-	for (let doc of docs) {
-		let baseName =
-			doc.title.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "untitled"
-
-		let folderPath = doc.path ? `${doc.path}/` : ""
-		let fullPath = `${folderPath}${baseName}`
-
-		let name = fullPath
-		let counter = 1
-		while (usedNames.has(name)) {
-			name = `${fullPath}-${counter++}`
-		}
-		usedNames.add(name)
-
-		let exportedContent = doc.content.replace(
-			/!\[([^\]]*)\]\(asset:([^)]+)\)/g,
-			(match, alt, assetId) => {
-				let newPath = globalAssetNameMap.get(assetId)
-				if (newPath) {
-					let depth = folderPath.split("/").filter(Boolean).length
-					let prefix = depth > 0 ? "../".repeat(depth) : ""
-					return `![${alt}](${prefix}${newPath})`
-				}
-				return match
-			},
-		)
-
-		zip.file(`${name}.md`, exportedContent)
-	}
-
-	let blob = await zip.generateAsync({ type: "blob" })
-	let url = URL.createObjectURL(blob)
-	let a = document.createElement("a")
-	a.href = url
-	a.download = "documents.zip"
-	a.click()
-	URL.revokeObjectURL(url)
 }

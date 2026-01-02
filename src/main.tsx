@@ -12,6 +12,7 @@ import {
 	useSplashDelay,
 } from "./components/splash-screen"
 import { PWAContext, usePWAProvider, PWAInstallHint } from "./lib/pwa"
+import { BackupSubscriber } from "./lib/backup"
 import { init } from "@plausible-analytics/tracker"
 
 import "@fontsource-variable/geist-mono/index.css"
@@ -44,6 +45,7 @@ function RouterWithJazz() {
 		<PWAProvider>
 			<Toaster />
 			<PWAInstallHint />
+			<BackupSubscriber />
 			<SplashScreen show={showSplash} />
 			<RouterProvider
 				router={router}

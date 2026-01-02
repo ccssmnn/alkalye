@@ -85,7 +85,7 @@ import {
 	isDocumentPublic,
 	type Collaborator,
 } from "@/lib/sharing"
-import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/file-io"
+import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { WikiLinkDialog } from "@/components/floating-actions"
 import { getPath } from "@/editor/frontmatter"

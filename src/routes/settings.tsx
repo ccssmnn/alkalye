@@ -41,6 +41,7 @@ import {
 import { wordlist } from "@/lib/wordlist"
 import { Footer } from "@/components/footer"
 import { usePWA, useIsPWAInstalled, PWAInstallDialog } from "@/lib/pwa"
+import { BackupSettings } from "@/lib/backup"
 
 export { Route }
 
@@ -106,6 +107,7 @@ function SettingsPage() {
 					<div className="space-y-8">
 						<ProfileSection me={me} />
 						<SyncSection isAuthenticated={isAuthenticated} />
+						<BackupSettings />
 						<section>
 							<h2 className="text-muted-foreground mb-3 text-sm font-medium">
 								Appearance
@@ -270,7 +272,7 @@ function SignInView() {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Sync & Backup
+				Cloud Sync & Backup
 			</h2>
 			<div className="text-muted-foreground mb-4 flex items-center gap-2">
 				<CloudOff className="size-4" />
@@ -525,7 +527,7 @@ function SignedInView() {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Sync & Backup
+				Cloud Sync & Backup
 			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
 				<div className="mb-4 flex items-center gap-2 text-green-600 dark:text-green-400">
@@ -535,7 +537,6 @@ function SignedInView() {
 				<p className="text-muted-foreground mb-4 text-sm">
 					Your notes are synced across devices.
 				</p>
-
 				{showPassphrase ? (
 					<>
 						<div className="text-muted-foreground mb-2 text-xs">

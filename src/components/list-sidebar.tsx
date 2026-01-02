@@ -84,14 +84,16 @@ import {
 import { useFolderStore, FolderRow } from "@/components/folder"
 import { getPresentationMode } from "@/lib/presentation"
 import {
-	exportDocument,
-	exportDocumentsAsZip,
 	importMarkdownFiles,
 	importFolderFiles,
 	readFolderEntries,
-	type ExportAsset,
 	type ImportedFile,
-} from "@/lib/file-io"
+} from "@/lib/import"
+import {
+	exportDocument,
+	exportDocumentsAsZip,
+	type ExportAsset,
+} from "@/lib/export"
 import { ShareDialog } from "@/components/share-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
