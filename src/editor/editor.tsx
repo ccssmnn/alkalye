@@ -1,51 +1,53 @@
 import {
-	forwardRef,
-	useImperativeHandle,
-	useEffect,
-	useRef,
-	useState,
-} from "react"
-import { EditorState, type Extension, Prec } from "@codemirror/state"
-import {
-	EditorView,
-	keymap,
-	placeholder as placeholderExt,
-	highlightActiveLine,
-} from "@codemirror/view"
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
-import { languages } from "@codemirror/language-data"
-import {
 	defaultKeymap,
 	history,
 	historyKeymap,
-	undo,
-	redo,
-	indentMore,
 	indentLess,
+	indentMore,
+	redo,
+	undo,
 } from "@codemirror/commands"
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
 import { syntaxTree } from "@codemirror/language"
-import { editorExtensions } from "./extensions"
+import { languages } from "@codemirror/language-data"
+import { EditorState, type Extension, Prec } from "@codemirror/state"
 import {
-	toggleBold,
-	toggleItalic,
-	toggleInlineCode,
-	toggleStrikethrough,
-	toggleBulletList,
-	toggleOrderedList,
-	toggleTaskList,
-	toggleTaskComplete,
-	toggleBlockquote,
-	setHeadingLevel,
-	setBody,
-	insertLink,
-	insertImage,
+	EditorView,
+	highlightActiveLine,
+	keymap,
+	placeholder as placeholderExt,
+} from "@codemirror/view"
+import {
+	forwardRef,
+	useEffect,
+	useImperativeHandle,
+	useRef,
+	useState,
+} from "react"
+import {
+	indentListItems,
 	insertCodeBlock,
-	moveLineUp,
+	insertImage,
+	insertLink,
 	moveLineDown,
+	moveLineUp,
+	outdentListItems,
+	setBody,
+	setHeadingLevel,
+	toggleBlockquote,
+	toggleBold,
+	toggleBulletList,
+	toggleInlineCode,
+	toggleItalic,
+	toggleOrderedList,
+	toggleStrikethrough,
+	toggleTaskComplete,
+	toggleTaskList,
 } from "./commands"
+import { editorExtensions } from "./extensions"
 
-export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "./frontmatter"
+export { MarkdownEditor, useMarkdownEditorRef }
 export type { MarkdownEditorProps, MarkdownEditorRef }
 
 interface MarkdownEditorProps {
@@ -181,6 +183,22 @@ let MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
 							run: moveLineDown,
 							preventDefault: true,
 						},
+						{
+							key: "Tab",
+							run: view => {
+								if (indentListItems(view)) return true
+								return indentMore(view)
+							},
+							preventDefault: true,
+						},
+						{
+							key: "Shift-Tab",
+							run: view => {
+								if (outdentListItems(view)) return true
+								return indentLess(view)
+							},
+							preventDefault: true,
+						},
 					]),
 				),
 				markdown({
@@ -265,11 +283,6 @@ let MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
 			lastExternalValue.current = value
 			// eslint-disable-next-line react-hooks/exhaustive-deps -- setContent is stable when view is stable
 		}, [value, view, isControlled])
-
-		useEffect(() => {
-			if (!isControlled) return
-			lastExternalValue.current = value ?? ""
-		}, [value, isControlled])
 
 		useEffect(() => {
 			if (autoFocus && view) {
