@@ -368,7 +368,7 @@ let setBody: Command = view => {
 	let lineText = line.text
 
 	let existingPrefix = lineText.match(
-		/^(#{1,6}\s|[-*]\s(\[[ x]\]\s)?|>\s|[0-9]+\.\s)/,
+		/^(#{1,6}\s|[-*+]\s(\[[ x]\]\s)?|>\s|\d+\.\s)/,
 	)?.[0]
 	if (existingPrefix) {
 		view.dispatch({
@@ -459,7 +459,7 @@ function getIndentAndText(lineText: string): {
 	return { indent, textAfterIndent }
 }
 
-let LIST_MARKER_PATTERN = /^(\s*)([-*+]\s|[-*+]\s\[[ x]\]\s|\d+\.\s)/
+let LIST_MARKER_PATTERN = /^(\s*)([-*+]\s(\[[ x]\]\s)?|\d+\.\s)/
 
 function matchListItem(lineText: string): {
 	indent: string
