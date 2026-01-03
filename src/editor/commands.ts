@@ -27,19 +27,30 @@ type Command = (view: EditorView) => boolean
 function wrapSelection(marker: string): Command {
 	return view => {
 		let { from, to } = view.state.selection.main
+		let markerLen = marker.length
 
 		if (from === to) {
-			let markerLen = marker.length
-			view.dispatch({
-				changes: { from, to, insert: marker + marker },
-				selection: { anchor: from + markerLen },
-			})
+			let before = view.state.sliceDoc(from - markerLen, from)
+			let after = view.state.sliceDoc(from, from + markerLen)
+
+			if (before === marker && after === marker) {
+				view.dispatch({
+					changes: [
+						{ from: from - markerLen, to: from, insert: "" },
+						{ from: from, to: from + markerLen, insert: "" },
+					],
+					selection: { anchor: from - markerLen },
+				})
+			} else {
+				view.dispatch({
+					changes: { from, to, insert: marker + marker },
+					selection: { anchor: from + markerLen },
+				})
+			}
 			return true
 		}
 
 		let selectedText = view.state.sliceDoc(from, to)
-
-		let markerLen = marker.length
 		let before = view.state.sliceDoc(from - markerLen, from)
 		let after = view.state.sliceDoc(to, to + markerLen)
 
