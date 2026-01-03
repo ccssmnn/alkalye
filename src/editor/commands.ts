@@ -64,16 +64,6 @@ function wrapSelection(marker: string): Command {
 	}
 }
 
-function getIndentAndText(lineText: string): {
-	indent: string
-	textAfterIndent: string
-} {
-	let indentMatch = lineText.match(/^(\s*)/)
-	let indent = indentMatch ? indentMatch[1] : ""
-	let textAfterIndent = lineText.slice(indent.length)
-	return { indent, textAfterIndent }
-}
-
 function toggleLinePrefix(prefix: string): Command {
 	return view => {
 		let { from, to } = view.state.selection.main
@@ -107,17 +97,19 @@ function toggleLinePrefix(prefix: string): Command {
 				if (existingPrefix) {
 					let existingMarker = existingPrefix[0]
 					let diff = prefixTrimmed.length - existingMarker.length
+					let prefixStart = startLine.from + indent.length
 					view.dispatch({
 						changes: {
-							from: startLine.from + indent.length,
-							to: startLine.from + indent.length + existingMarker.length,
+							from: prefixStart,
+							to: prefixStart + existingMarker.length,
 							insert: prefix,
 						},
 						selection: { anchor: from + diff },
 					})
 				} else {
+					let prefixStart = startLine.from + indent.length
 					view.dispatch({
-						changes: { from: startLine.from + indent.length, insert: prefix },
+						changes: { from: prefixStart, insert: prefix },
 						selection: { anchor: from + prefix.length },
 					})
 				}
@@ -151,17 +143,18 @@ function toggleLinePrefix(prefix: string): Command {
 				let existingPrefix = textAfterIndent.match(
 					/^(#{1,6}\s|[-*+]\s(\[[ x]\]\s)?|\d+\.\s)/,
 				)
+				let prefixStart = line.from + indent.length
 				if (existingPrefix) {
 					let existingMarker = existingPrefix[0]
 					changes.push({
-						from: line.from + indent.length,
-						to: line.from + indent.length + existingMarker.length,
+						from: prefixStart,
+						to: prefixStart + existingMarker.length,
 						insert: prefix,
 					})
 				} else {
 					changes.push({
-						from: line.from + indent.length,
-						to: line.from + indent.length,
+						from: prefixStart,
+						to: prefixStart,
 						insert: prefix,
 					})
 				}
@@ -340,10 +333,12 @@ let toggleTaskComplete: Command = view => {
 
 	let uncheckedMatch = lineText.match(/^(\s*[-*]\s)\[ \](\s)/)
 	if (uncheckedMatch) {
+		let prefixLength = uncheckedMatch[1].length
+		let checkboxStart = line.from + prefixLength
 		view.dispatch({
 			changes: {
-				from: line.from + uncheckedMatch[1].length,
-				to: line.from + uncheckedMatch[1].length + 3,
+				from: checkboxStart,
+				to: checkboxStart + 3,
 				insert: "[x]",
 			},
 		})
@@ -352,10 +347,12 @@ let toggleTaskComplete: Command = view => {
 
 	let checkedMatch = lineText.match(/^(\s*[-*]\s)\[x\](\s)/i)
 	if (checkedMatch) {
+		let prefixLength = checkedMatch[1].length
+		let checkboxStart = line.from + prefixLength
 		view.dispatch({
 			changes: {
-				from: line.from + checkedMatch[1].length,
-				to: line.from + checkedMatch[1].length + 3,
+				from: checkboxStart,
+				to: checkboxStart + 3,
 				insert: "[ ]",
 			},
 		})
@@ -392,25 +389,21 @@ function indentListItems(view: EditorView): boolean {
 	let endLine = view.state.doc.lineAt(to)
 
 	let changes: ChangeSpec[] = []
-	let hasListItems = false
 
 	for (let i = startLine.number; i <= endLine.number; i++) {
 		let line = view.state.doc.line(i)
-		let lineText = line.text
+		let match = matchListItem(line.text)
+		if (!match) continue
 
-		let listMatch = lineText.match(/^(\s*)([-*+]\s|[-*+]\s\[[ x]\]\s|\d+\.\s)/)
-		if (listMatch) {
-			hasListItems = true
-			let indent = listMatch[1]
-			changes.push({
-				from: line.from,
-				to: line.from + indent.length,
-				insert: indent + "  ",
-			})
-		}
+		let indentIncrement = getIndentIncrement(match.indent)
+		changes.push({
+			from: line.from,
+			to: line.from + match.indent.length,
+			insert: match.indent + indentIncrement,
+		})
 	}
 
-	if (hasListItems) {
+	if (changes.length > 0) {
 		view.dispatch({ changes })
 		return true
 	}
@@ -424,39 +417,62 @@ function outdentListItems(view: EditorView): boolean {
 	let endLine = view.state.doc.lineAt(to)
 
 	let changes: ChangeSpec[] = []
-	let hasListItems = false
 
 	for (let i = startLine.number; i <= endLine.number; i++) {
 		let line = view.state.doc.line(i)
-		let lineText = line.text
+		let match = matchListItem(line.text)
+		if (!match || match.indent.length === 0) continue
 
-		let listMatch = lineText.match(/^(\s+)([-*+]\s|[-*+]\s\[[ x]\]\s|\d+\.\s)/)
-		if (listMatch) {
-			hasListItems = true
-			let indent = listMatch[1]
+		let indent = match.indent
+		let newIndent: string
 
-			if (indent.length >= 2) {
-				changes.push({
-					from: line.from,
-					to: line.from + indent.length,
-					insert: indent.slice(2),
-				})
-			} else if (indent.length === 1) {
-				changes.push({
-					from: line.from,
-					to: line.from + 1,
-					insert: "",
-				})
-			}
+		if (indent.includes("\t")) {
+			newIndent = indent.slice(1)
+		} else if (indent.length >= 2) {
+			newIndent = indent.slice(2)
+		} else {
+			newIndent = ""
 		}
+
+		changes.push({
+			from: line.from,
+			to: line.from + indent.length,
+			insert: newIndent,
+		})
 	}
 
-	if (hasListItems) {
+	if (changes.length > 0) {
 		view.dispatch({ changes })
 		return true
 	}
 
 	return false
+}
+
+function getIndentAndText(lineText: string): {
+	indent: string
+	textAfterIndent: string
+} {
+	let indentMatch = lineText.match(/^(\s*)/)
+	let indent = indentMatch ? indentMatch[1] : ""
+	let textAfterIndent = lineText.slice(indent.length)
+	return { indent, textAfterIndent }
+}
+
+let LIST_MARKER_PATTERN = /^(\s*)([-*+]\s|[-*+]\s\[[ x]\]\s|\d+\.\s)/
+
+function matchListItem(lineText: string): {
+	indent: string
+	marker: string
+} | null {
+	let match = lineText.match(LIST_MARKER_PATTERN)
+	if (!match) return null
+	return { indent: match[1], marker: match[2] }
+}
+
+function getIndentIncrement(indent: string): string {
+	if (indent.includes("\t")) return "\t"
+	return "  "
 }
 
 let toggleBold = wrapSelection("**")
