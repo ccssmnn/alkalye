@@ -426,7 +426,7 @@ function outdentListItems(view: EditorView): boolean {
 		let indent = match.indent
 		let newIndent: string
 
-		if (indent.includes("\t")) {
+		if (indent.startsWith("\t")) {
 			newIndent = indent.slice(1)
 		} else if (indent.length >= 2) {
 			newIndent = indent.slice(2)
