@@ -471,7 +471,7 @@ function matchListItem(lineText: string): {
 }
 
 function getIndentIncrement(indent: string): string {
-	if (indent.includes("\t")) return "\t"
+	if (indent.startsWith("\t")) return "\t"
 	return "  "
 }
 
