@@ -1,16 +1,13 @@
 import { EditorView } from "@codemirror/view"
 
 type Command = (view: EditorView) => boolean
-type ChangeSpec = { from: number; to: number; insert: string }
 
 export {
-	indentListItems,
 	insertCodeBlock,
 	insertImage,
 	insertLink,
 	moveLineDown,
 	moveLineUp,
-	outdentListItems,
 	setBody,
 	setHeadingLevel,
 	toggleBlockquote,
@@ -117,7 +114,7 @@ function toggleLinePrefix(prefix: string): Command {
 			return true
 		}
 
-		let changes: ChangeSpec[] = []
+		let changes: { from: number; to: number; insert: string }[] = []
 		let allHavePrefix = true
 
 		for (let i = startLine.number; i <= endLine.number; i++) {
@@ -383,72 +380,6 @@ let setBody: Command = view => {
 	return true
 }
 
-function indentListItems(view: EditorView): boolean {
-	let { from, to } = view.state.selection.main
-	let startLine = view.state.doc.lineAt(from)
-	let endLine = view.state.doc.lineAt(to)
-
-	let changes: ChangeSpec[] = []
-
-	for (let i = startLine.number; i <= endLine.number; i++) {
-		let line = view.state.doc.line(i)
-		let match = matchListItem(line.text)
-		if (!match) continue
-
-		let indentIncrement = getIndentIncrement(match.indent)
-		changes.push({
-			from: line.from,
-			to: line.from + match.indent.length,
-			insert: match.indent + indentIncrement,
-		})
-	}
-
-	if (changes.length > 0) {
-		view.dispatch({ changes })
-		return true
-	}
-
-	return false
-}
-
-function outdentListItems(view: EditorView): boolean {
-	let { from, to } = view.state.selection.main
-	let startLine = view.state.doc.lineAt(from)
-	let endLine = view.state.doc.lineAt(to)
-
-	let changes: ChangeSpec[] = []
-
-	for (let i = startLine.number; i <= endLine.number; i++) {
-		let line = view.state.doc.line(i)
-		let match = matchListItem(line.text)
-		if (!match || match.indent.length === 0) continue
-
-		let indent = match.indent
-		let newIndent: string
-
-		if (indent.startsWith("\t")) {
-			newIndent = indent.slice(1)
-		} else if (indent.length >= 2) {
-			newIndent = indent.slice(2)
-		} else {
-			newIndent = ""
-		}
-
-		changes.push({
-			from: line.from,
-			to: line.from + indent.length,
-			insert: newIndent,
-		})
-	}
-
-	if (changes.length > 0) {
-		view.dispatch({ changes })
-		return true
-	}
-
-	return false
-}
-
 function getIndentAndText(lineText: string): {
 	indent: string
 	textAfterIndent: string
@@ -457,22 +388,6 @@ function getIndentAndText(lineText: string): {
 	let indent = indentMatch ? indentMatch[1] : ""
 	let textAfterIndent = lineText.slice(indent.length)
 	return { indent, textAfterIndent }
-}
-
-let LIST_MARKER_PATTERN = /^(\s*)([-*+]\s(\[[ x]\]\s)?|\d+\.\s)/
-
-function matchListItem(lineText: string): {
-	indent: string
-	marker: string
-} | null {
-	let match = lineText.match(LIST_MARKER_PATTERN)
-	if (!match) return null
-	return { indent: match[1], marker: match[2] }
-}
-
-function getIndentIncrement(indent: string): string {
-	if (indent.startsWith("\t")) return "\t"
-	return "  "
 }
 
 let toggleBold = wrapSelection("**")

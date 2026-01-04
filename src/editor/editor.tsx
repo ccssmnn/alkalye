@@ -25,13 +25,11 @@ import {
 	useState,
 } from "react"
 import {
-	indentListItems,
 	insertCodeBlock,
 	insertImage,
 	insertLink,
 	moveLineDown,
 	moveLineUp,
-	outdentListItems,
 	setBody,
 	setHeadingLevel,
 	toggleBlockquote,
@@ -185,18 +183,12 @@ let MarkdownEditor = forwardRef<MarkdownEditorRef, MarkdownEditorProps>(
 						},
 						{
 							key: "Tab",
-							run: view => {
-								if (indentListItems(view)) return true
-								return indentMore(view)
-							},
+							run: indentMore,
 							preventDefault: true,
 						},
 						{
 							key: "Shift-Tab",
-							run: view => {
-								if (outdentListItems(view)) return true
-								return indentLess(view)
-							},
+							run: indentLess,
 							preventDefault: true,
 						},
 					]),
