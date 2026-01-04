@@ -4,6 +4,7 @@ export {
 	importMarkdownFiles,
 	importFolderFiles,
 	readFolderEntries,
+	resolveWikilinksForImport,
 	type ImportedFile,
 	type ImportedAsset,
 	type FileWithPath,
@@ -330,4 +331,129 @@ function getMimeType(filename: string): string {
 		bmp: "image/bmp",
 	}
 	return mimeTypes[ext || ""] || "image/png"
+}
+
+// =============================================================================
+// Wikilink resolution for import
+// =============================================================================
+
+type ImportedDocInfo = {
+	/** Original title from import (filename without extension) */
+	title: string
+	/** Path from import (folder structure) */
+	path: string | null
+	/** New Jazz ID after document creation */
+	newId: string
+}
+
+/**
+ * Resolve wikilinks from [[relative/path]] to [[new_jazz_id]] after import.
+ * Called after all documents are created to rewrite links.
+ *
+ * Resolution order:
+ * 1. Exact path match: [[path/to/Title]] matches doc with path="path/to" and title="Title"
+ * 2. Relative path: [[../other/Title]] resolved from current doc's path
+ * 3. Title-only match: [[Title]] matches any doc with that title (first match wins)
+ * 4. No match: leave as-is (becomes a "broken" link showing the title)
+ */
+function resolveWikilinksForImport(
+	content: string,
+	currentDocPath: string | null,
+	allDocs: ImportedDocInfo[],
+): string {
+	return content.replace(/\[\[([^\]]+)\]\]/g, (match, linkPath) => {
+		let resolved = resolveWikilinkPath(linkPath, currentDocPath, allDocs)
+		if (resolved) {
+			return `[[${resolved.newId}]]`
+		}
+		// No match - keep as-is (will show as broken link with text)
+		return match
+	})
+}
+
+function resolveWikilinkPath(
+	linkPath: string,
+	currentDocPath: string | null,
+	allDocs: ImportedDocInfo[],
+): ImportedDocInfo | null {
+	// Normalize the link path
+	let normalized = linkPath.trim()
+
+	// Check if it's a relative path (contains / or starts with ..)
+	if (normalized.includes("/")) {
+		return resolveRelativePath(normalized, currentDocPath, allDocs)
+	}
+
+	// Title-only: find first doc with matching title
+	let titleMatch = allDocs.find(
+		d => normalizeTitle(d.title) === normalizeTitle(normalized),
+	)
+	return titleMatch || null
+}
+
+function resolveRelativePath(
+	linkPath: string,
+	currentDocPath: string | null,
+	allDocs: ImportedDocInfo[],
+): ImportedDocInfo | null {
+	// Handle absolute paths (start with /)
+	let isAbsolute = linkPath.startsWith("/")
+	let normalizedLink = isAbsolute ? linkPath.slice(1) : linkPath
+
+	let parts = normalizedLink.split("/")
+	let title = parts.pop()!
+	let pathPart = parts.join("/")
+
+	// Resolve path
+	let resolvedPath: string
+	if (isAbsolute) {
+		// Absolute path - use as-is
+		resolvedPath = pathPart
+	} else if (pathPart.startsWith("..") || pathPart === "") {
+		// Relative path - resolve from current doc
+		resolvedPath = resolveRelativePathParts(currentDocPath, pathPart)
+	} else {
+		// Path without .. - treat as relative to current folder
+		resolvedPath = currentDocPath ? `${currentDocPath}/${pathPart}` : pathPart
+	}
+
+	// Find doc with matching path and title
+	let match = allDocs.find(d => {
+		let docPath = d.path || ""
+		return (
+			docPath === resolvedPath &&
+			normalizeTitle(d.title) === normalizeTitle(title)
+		)
+	})
+
+	if (match) return match
+
+	// Fallback: try title-only match
+	return (
+		allDocs.find(d => normalizeTitle(d.title) === normalizeTitle(title)) || null
+	)
+}
+
+function resolveRelativePathParts(
+	basePath: string | null,
+	relativePath: string,
+): string {
+	if (!relativePath) return basePath || ""
+
+	let baseParts = basePath ? basePath.split("/") : []
+	let relParts = relativePath.split("/")
+
+	for (let part of relParts) {
+		if (part === "..") {
+			baseParts.pop()
+		} else if (part && part !== ".") {
+			baseParts.push(part)
+		}
+	}
+
+	return baseParts.join("/")
+}
+
+function normalizeTitle(title: string): string {
+	return title.toLowerCase().trim()
 }

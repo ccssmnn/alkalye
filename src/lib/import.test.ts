@@ -424,3 +424,174 @@ describe("edge cases", () => {
 		expect(results[0].path).toBe("a/b/c/d/e") // doc folder stripped
 	})
 })
+
+// =============================================================================
+// Wikilink resolution tests
+// =============================================================================
+
+import { resolveWikilinksForImport } from "./import"
+
+describe("resolveWikilinksForImport", () => {
+	let docs = [
+		{ title: "Doc A", path: null, newId: "co_new_a" },
+		{ title: "Doc B", path: "notes", newId: "co_new_b" },
+		{ title: "Doc C", path: "notes/sub", newId: "co_new_c" },
+		{ title: "Doc D", path: "other", newId: "co_new_d" },
+	]
+
+	it("resolves title-only wikilinks", () => {
+		let content = "Link to [[Doc A]] and [[Doc B]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("Link to [[co_new_a]] and [[co_new_b]]")
+	})
+
+	it("resolves absolute path wikilinks (starting with /)", () => {
+		let content = "Link to [[/notes/Doc B]] and [[/notes/sub/Doc C]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("Link to [[co_new_b]] and [[co_new_c]]")
+	})
+
+	it("resolves relative path wikilinks from folder", () => {
+		// From notes folder:
+		// - ../Doc A -> root/Doc A
+		// - Doc B -> notes/Doc B (same folder, title-only)
+		// - sub/Doc C -> notes/sub/Doc C
+		// - ../other/Doc D -> other/Doc D
+		let content = "[[../Doc A]] [[Doc B]] [[sub/Doc C]] [[../other/Doc D]]"
+		let result = resolveWikilinksForImport(content, "notes", docs)
+		expect(result).toBe("[[co_new_a]] [[co_new_b]] [[co_new_c]] [[co_new_d]]")
+	})
+
+	it("resolves absolute paths from any location", () => {
+		// Absolute paths work regardless of current doc location
+		let content = "[[/Doc A]] [[/notes/Doc B]] [[/other/Doc D]]"
+		let result = resolveWikilinksForImport(content, "notes/sub", docs)
+		expect(result).toBe("[[co_new_a]] [[co_new_b]] [[co_new_d]]")
+	})
+
+	it("resolves absolute path wikilinks", () => {
+		let content = "Link to [[notes/Doc B]] and [[notes/sub/Doc C]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("Link to [[co_new_b]] and [[co_new_c]]")
+	})
+
+	it("resolves relative path wikilinks from folder", () => {
+		// From notes folder:
+		// - ../Doc A -> root/Doc A
+		// - Doc B -> notes/Doc B (same folder)
+		// - sub/Doc C -> notes/sub/Doc C
+		// - ../other/Doc D -> other/Doc D
+		let content = "[[../Doc A]] [[Doc B]] [[sub/Doc C]] [[../other/Doc D]]"
+		let result = resolveWikilinksForImport(content, "notes", docs)
+		expect(result).toBe("[[co_new_a]] [[co_new_b]] [[co_new_c]] [[co_new_d]]")
+	})
+
+	it("resolves deeply nested relative paths", () => {
+		// From notes/sub, link to root
+		let content = "[[../../Doc A]]"
+		let result = resolveWikilinksForImport(content, "notes/sub", docs)
+		expect(result).toBe("[[co_new_a]]")
+	})
+
+	it("keeps unresolved wikilinks as-is", () => {
+		let content = "Link to [[Unknown Doc]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("Link to [[Unknown Doc]]")
+	})
+
+	it("falls back to title match when path does not resolve", () => {
+		// [[wrong/path/Doc A]] - path doesn't match, but title does
+		let content = "[[wrong/path/Doc A]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("[[co_new_a]]")
+	})
+
+	it("handles case-insensitive title matching", () => {
+		let content = "[[doc a]] and [[DOC B]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("[[co_new_a]] and [[co_new_b]]")
+	})
+
+	it("handles content with no wikilinks", () => {
+		let content = "No links here"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("No links here")
+	})
+
+	it("handles multiple wikilinks to same doc", () => {
+		let content = "First [[Doc A]] and again [[Doc A]]"
+		let result = resolveWikilinksForImport(content, null, docs)
+		expect(result).toBe("First [[co_new_a]] and again [[co_new_a]]")
+	})
+})
+
+// =============================================================================
+// Roundtrip scenarios (export -> import)
+// =============================================================================
+
+describe("wikilink roundtrip", () => {
+	it("preserves links through export and import cycle", () => {
+		// Simulate export: [[co_orig_a]] -> [[Doc A]] or [[/notes/Doc B]]
+		// Simulate import: resolve back to new IDs
+		let importedDocs = [
+			{ title: "Doc A", path: null, newId: "co_new_a" },
+			{ title: "Doc B", path: "notes", newId: "co_new_b" },
+		]
+
+		// Content as it would appear after export (absolute paths for nested)
+		let exportedContent = "Link to [[Doc A]] and [[/notes/Doc B]]"
+
+		// After import resolution
+		let result = resolveWikilinksForImport(exportedContent, null, importedDocs)
+		expect(result).toBe("Link to [[co_new_a]] and [[co_new_b]]")
+	})
+
+	it("handles broken links from partial export", () => {
+		// When exporting only some docs, links to non-exported docs become title-only
+		// On import, if that doc doesn't exist, link stays as-is
+		let importedDocs = [{ title: "Doc A", path: null, newId: "co_new_a" }]
+
+		let exportedContent = "[[Doc A]] and [[Missing Doc]]"
+		let result = resolveWikilinksForImport(exportedContent, null, importedDocs)
+
+		expect(result).toBe("[[co_new_a]] and [[Missing Doc]]")
+	})
+
+	it("handles relative paths correctly across folder structures", () => {
+		let importedDocs = [
+			{ title: "Index", path: null, newId: "co_idx" },
+			{ title: "Note 1", path: "notes", newId: "co_n1" },
+			{ title: "Note 2", path: "notes", newId: "co_n2" },
+			{ title: "Archive", path: "archive", newId: "co_arc" },
+		]
+
+		// Content from Note 1 (path: notes) after export
+		// Uses relative for one level up, absolute for deeper
+		let exportedContent =
+			"See [[../Index]], [[Note 2]], and [[../archive/Archive]]"
+		let result = resolveWikilinksForImport(
+			exportedContent,
+			"notes",
+			importedDocs,
+		)
+
+		expect(result).toBe("See [[co_idx]], [[co_n2]], and [[co_arc]]")
+	})
+
+	it("handles absolute paths in roundtrip", () => {
+		let importedDocs = [
+			{ title: "Deep", path: "a/b/c", newId: "co_deep" },
+			{ title: "Other", path: "x/y", newId: "co_other" },
+		]
+
+		// From a/b/c linking to x/y - would be exported as absolute
+		let exportedContent = "Link to [[/x/y/Other]]"
+		let result = resolveWikilinksForImport(
+			exportedContent,
+			"a/b/c",
+			importedDocs,
+		)
+
+		expect(result).toBe("Link to [[co_other]]")
+	})
+})

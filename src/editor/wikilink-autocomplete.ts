@@ -33,7 +33,7 @@ function createWikilinkCompletionSource(
 
 		// Match [[ followed by optional text (not containing ] or [)
 		// This handles the auto-closed case: [[|]] where | is cursor
-		let match = textBefore.match(/\[\[([^\]\[]*)$/)
+		let match = textBefore.match(/\[\[([^\][]*)$/)
 		if (!match) return null
 
 		// Always activate inside [[ - don't require explicit trigger after space
@@ -102,7 +102,7 @@ function createWikilinkCompletionSource(
 		return {
 			from,
 			options,
-			validFor: /^[^\]\[]*$/,
+			validFor: /^[^\][]*$/,
 		}
 	}
 }
@@ -156,7 +156,7 @@ let wikilinkTrigger = ViewPlugin.fromClass(
 			let textBefore = line.text.slice(0, pos - line.from)
 
 			// Check if we're inside [[ (not yet closed)
-			let match = textBefore.match(/\[\[([^\]\[]*)$/)
+			let match = textBefore.match(/\[\[([^\][]*)$/)
 			if (match) {
 				// Check this was a recent insertion (not just cursor movement)
 				let wasInsertion = false

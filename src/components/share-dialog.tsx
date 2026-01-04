@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useAccount, useIsAuthenticated, useCoState } from "jazz-tools/react"
 import { useNavigate, Link, useLocation } from "@tanstack/react-router"
 import {
@@ -104,17 +104,26 @@ function ShareDialog({
 	let isOwner = !isGroupOwned(currentDoc) || isAdmin
 	let isCollaborator = isGroupOwned(currentDoc) && !isAdmin
 
-	async function refreshCollaborators() {
+	let refreshCollaboratorsRef = useRef(async () => {
 		let result = await getCollaborators(currentDoc)
 		setCollaborators(result.collaborators)
 		setPendingInvites(result.pendingInvites)
 		let docOwner = await getDocumentOwner(currentDoc)
 		setOwner(docOwner)
-	}
+	})
+	useEffect(() => {
+		refreshCollaboratorsRef.current = async () => {
+			let result = await getCollaborators(currentDoc)
+			setCollaborators(result.collaborators)
+			setPendingInvites(result.pendingInvites)
+			let docOwner = await getDocumentOwner(currentDoc)
+			setOwner(docOwner)
+		}
+	})
 
 	useEffect(() => {
 		if (!open) return
-		refreshCollaborators()
+		refreshCollaboratorsRef.current()
 	}, [open, currentDoc])
 
 	async function handleCreateLink(role: InviteRole) {
@@ -130,7 +139,7 @@ function ShareDialog({
 
 			let link = await createInviteLink(currentDoc, role)
 			setInviteLink(link)
-			await refreshCollaborators()
+			await refreshCollaboratorsRef.current()
 		} catch (e) {
 			console.error("Failed to create invite link:", e)
 		} finally {
@@ -182,7 +191,7 @@ function ShareDialog({
 
 	function handleRevoke(inviteGroupId: string) {
 		revokeInvite(doc, inviteGroupId)
-		refreshCollaborators()
+		refreshCollaboratorsRef.current()
 		if (inviteLink?.includes(inviteGroupId)) {
 			setInviteLink(null)
 		}

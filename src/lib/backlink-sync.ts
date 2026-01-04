@@ -14,10 +14,16 @@ function useBacklinkSync(docId: string, readOnly: boolean) {
 		resolve: { root: { documents: { $each: { content: true } } } },
 	})
 
-	let getDocumentsRef = useRef<() => LoadedDoc[]>(() => [])
-	getDocumentsRef.current = () => {
-		if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return []
-		return me.root.documents.filter(
+	// Store the me reference so syncBacklinks can access fresh documents
+	let meRef = useRef(me)
+	useEffect(() => {
+		meRef.current = me
+	})
+
+	function getDocuments(): LoadedDoc[] {
+		let currentMe = meRef.current
+		if (!currentMe.$isLoaded || !currentMe.root?.documents?.$isLoaded) return []
+		return currentMe.root.documents.filter(
 			(d): d is LoadedDoc =>
 				d?.$isLoaded === true && d.content !== undefined && !d.deletedAt,
 		)
@@ -53,7 +59,7 @@ function useBacklinkSync(docId: string, readOnly: boolean) {
 			id => !currentLinkIds.has(id),
 		)
 
-		let docs = getDocumentsRef.current()
+		let docs = getDocuments()
 
 		for (let linkedId of addedIds) {
 			let linkedDoc = docs.find(d => d.$jazz.id === linkedId)

@@ -29,10 +29,10 @@ declare global {
 		entries(): AsyncIterableIterator<[string, FileSystemHandle]>
 		queryPermission(options: {
 			mode: "read" | "readwrite"
-		}): Promise<PermissionState>
+		}): Promise<"granted" | "denied" | "prompt">
 		requestPermission(options: {
 			mode: "read" | "readwrite"
-		}): Promise<PermissionState>
+		}): Promise<"granted" | "denied" | "prompt">
 	}
 }
 

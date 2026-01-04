@@ -1,0 +1,69 @@
+import { useState } from "react"
+import { Upload } from "lucide-react"
+import {
+	importMarkdownFiles,
+	importFolderFiles,
+	readFolderEntries,
+	type ImportedFile,
+} from "@/lib/import"
+
+export { ImportDropZone }
+
+interface ImportDropZoneProps {
+	onImport: (files: ImportedFile[]) => Promise<void>
+	children: React.ReactNode
+}
+
+function ImportDropZone({ onImport, children }: ImportDropZoneProps) {
+	let [isDragging, setIsDragging] = useState(false)
+
+	async function handleDrop(e: React.DragEvent) {
+		e.preventDefault()
+		setIsDragging(false)
+
+		let dataTransfer = e.dataTransfer
+		let hasDirectories = Array.from(dataTransfer.items).some(
+			item => item.webkitGetAsEntry?.()?.isDirectory,
+		)
+
+		let imported: ImportedFile[]
+		if (hasDirectories) {
+			let filesWithPaths = await readFolderEntries(dataTransfer)
+			imported = await importFolderFiles(filesWithPaths)
+		} else if (dataTransfer.files.length > 0) {
+			imported = await importMarkdownFiles(dataTransfer.files)
+		} else {
+			return
+		}
+
+		await onImport(imported)
+	}
+
+	return (
+		<div
+			className="relative flex h-full flex-col"
+			onDragOver={e => {
+				e.preventDefault()
+				setIsDragging(true)
+			}}
+			onDragLeave={e => {
+				e.preventDefault()
+				if (!e.currentTarget.contains(e.relatedTarget as Node))
+					setIsDragging(false)
+			}}
+			onDrop={handleDrop}
+		>
+			{isDragging && (
+				<div className="bg-background/90 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+					<div className="border-primary rounded-lg border-2 border-dashed p-6 text-center">
+						<Upload className="text-primary mx-auto mb-2 size-8" />
+						<p className="text-sm font-medium">
+							Drop .md, .txt files or folders
+						</p>
+					</div>
+				</div>
+			)}
+			{children}
+		</div>
+	)
+}

@@ -8,7 +8,7 @@ A beautiful markdown editor. Private by design.
 
 ## Built for the web
 
-Alkalye is a beautiful web app, made to work and look great on any device and OS. **It even works offline.**. Install it on your phone, tablet, or desktop. Your documents sync automatically across all your devices. 
+Alkalye is a beautiful web app, made to work and look great on any device and OS. **It even works offline.**. Install it on your phone, tablet, or desktop. Your documents sync automatically across all your devices.
 
 ## Your words, encrypted
 

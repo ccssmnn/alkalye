@@ -12,7 +12,7 @@ import { syntaxTree } from "@codemirror/language"
 export { createImageDecorations }
 export type { ImageResolver }
 
-type ImageResolver = (assetId: string) => string | null
+type ImageResolver = (assetId: string) => string | undefined
 
 class ImageWidget extends WidgetType {
 	text: string

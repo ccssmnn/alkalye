@@ -10,20 +10,22 @@ declare global {
 }
 
 function useSplashDelay(minDurationMs = 1000) {
-	let [ready, setReady] = useState(false)
+	let [ready, setReady] = useState(() => {
+		let loadTime = window.__pageLoadTime ?? Date.now()
+		let elapsed = Date.now() - loadTime
+		return elapsed >= minDurationMs
+	})
 
 	useEffect(() => {
+		if (ready) return
+
 		let loadTime = window.__pageLoadTime ?? Date.now()
 		let elapsed = Date.now() - loadTime
 		let remaining = Math.max(0, minDurationMs - elapsed)
 
-		if (remaining === 0) {
-			setReady(true)
-		} else {
-			let timer = setTimeout(() => setReady(true), remaining)
-			return () => clearTimeout(timer)
-		}
-	}, [minDurationMs])
+		let timer = setTimeout(() => setReady(true), remaining)
+		return () => clearTimeout(timer)
+	}, [minDurationMs, ready])
 
 	return ready
 }
@@ -34,7 +36,7 @@ function SplashScreenStatic() {
 	}, [])
 
 	return (
-		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black">
+		<div className="bg-background fixed inset-0 z-50 flex items-center justify-center">
 			<SplashIcon />
 		</div>
 	)
@@ -45,7 +47,7 @@ function SplashScreen({ show }: { show: boolean }) {
 		<AnimatePresence>
 			{show && (
 				<motion.div
-					className="fixed inset-0 z-50 flex items-center justify-center bg-black"
+					className="bg-background fixed inset-0 z-50 flex items-center justify-center"
 					initial={{ opacity: 1 }}
 					exit={{ opacity: 0 }}
 					transition={{ duration: 0.3, ease: "easeOut" }}
@@ -64,10 +66,8 @@ function SplashScreen({ show }: { show: boolean }) {
 
 function SplashIcon() {
 	return (
-		<div className="flex aspect-square size-48 flex-col items-center justify-center rounded-3xl bg-radial from-emerald-900 from-0% via-emerald-950 via-30% to-black to-70% font-mono text-white">
-			<div className="text-[36px] leading-none font-bold tracking-tighter">
-				Alkalye
-			</div>
+		<div className="text-foreground bg-background dark:to-background flex aspect-square size-48 flex-col items-center justify-center rounded-3xl font-mono text-[36px] leading-none font-bold tracking-tighter dark:bg-radial dark:from-emerald-900 dark:from-0% dark:via-emerald-950 dark:via-30% dark:to-70%">
+			Alkalye
 		</div>
 	)
 }

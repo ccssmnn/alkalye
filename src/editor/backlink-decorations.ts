@@ -14,7 +14,7 @@ export type { BacklinkResolver }
 
 type BacklinkResolver = (
 	id: string,
-) => { title: string; exists: boolean } | null
+) => { title: string; exists: boolean } | undefined
 
 class BacklinkWidget extends WidgetType {
 	id: string

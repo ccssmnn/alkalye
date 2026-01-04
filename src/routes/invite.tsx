@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Group, type ID } from "jazz-tools"
@@ -52,7 +52,7 @@ function InvitePage() {
 		inviteData ? null : "Invalid invite link",
 	)
 
-	async function acceptInvite() {
+	let acceptInviteRef = useRef(async () => {
 		if (!me.$isLoaded || !inviteData) return
 		setStatus("accepting")
 
@@ -95,16 +95,69 @@ function InvitePage() {
 			setStatus("error")
 			setError(e instanceof Error ? e.message : "Failed to accept invite")
 		}
+	})
+	useEffect(() => {
+		acceptInviteRef.current = async () => {
+			if (!me.$isLoaded || !inviteData) return
+			setStatus("accepting")
+
+			try {
+				await me.acceptInvite(
+					inviteData.inviteGroupId,
+					inviteData.inviteSecret,
+					Group,
+				)
+
+				await new Promise(resolve => setTimeout(resolve, 500))
+
+				let doc = null
+				for (let i = 0; i < 3; i++) {
+					doc = await Document.load(inviteData.docId, {
+						resolve: { content: true },
+					})
+					if (doc) break
+					await new Promise(resolve => setTimeout(resolve, 500))
+				}
+
+				if (!doc) {
+					setStatus("revoked")
+					return
+				}
+
+				let alreadyHas = me.root?.documents?.some(
+					d => d?.$jazz.id === inviteData.docId,
+				)
+				if (!alreadyHas && me.root?.documents) {
+					me.root.documents.$jazz.push(doc)
+				}
+
+				setStatus("success")
+				setTimeout(() => {
+					navigate({ to: "/doc/$id", params: { id: inviteData.docId } })
+				}, 1000)
+			} catch (e) {
+				console.error("Failed to accept invite:", e)
+				setStatus("error")
+				setError(e instanceof Error ? e.message : "Failed to accept invite")
+			}
+		}
+	})
+
+	// Adjust state during render: switch to needs-auth when user is loaded but not authenticated
+	let shouldNeedAuth =
+		inviteData && me.$isLoaded && status === "loading" && !isAuthenticated
+	let [prevShouldNeedAuth, setPrevShouldNeedAuth] = useState(shouldNeedAuth)
+	if (shouldNeedAuth && !prevShouldNeedAuth) {
+		setPrevShouldNeedAuth(shouldNeedAuth)
+		setStatus("needs-auth")
+	} else if (!shouldNeedAuth && prevShouldNeedAuth) {
+		setPrevShouldNeedAuth(shouldNeedAuth)
 	}
 
 	useEffect(() => {
 		if (!inviteData || !me.$isLoaded || status !== "loading") return
-		if (!isAuthenticated) {
-			setStatus("needs-auth")
-			return
-		}
-		acceptInvite()
-		// eslint-disable-next-line react-hooks/exhaustive-deps
+		if (!isAuthenticated) return
+		acceptInviteRef.current()
 	}, [me.$isLoaded, status, isAuthenticated, inviteData])
 
 	return (
@@ -127,7 +180,7 @@ function InvitePage() {
 						) : status === "success" ? (
 							<SuccessState />
 						) : status === "needs-auth" ? (
-							<NeedsAuthState onAuthSuccess={acceptInvite} />
+							<NeedsAuthState onAuthSuccess={() => acceptInviteRef.current()} />
 						) : status === "revoked" ? (
 							<RevokedState />
 						) : (

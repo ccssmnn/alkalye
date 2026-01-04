@@ -6,6 +6,9 @@ export {
 	exportDocumentsAsZip,
 	getExtensionFromBlob,
 	sanitizeFilename,
+	transformWikilinksForExport,
+	stripBacklinksFrontmatter,
+	getRelativePath,
 	type ExportAsset,
 	type ExportDoc,
 }
@@ -129,8 +132,14 @@ async function saveDocumentAs(content: string, suggestedName: string) {
 }
 
 function sanitizeFilename(name: string): string {
-	// Remove filesystem-unsafe characters: < > : " / \ | ? * and control chars
-	return name.replace(/[<>:"/\\|?*\x00-\x1f]/g, "_").trim() || "untitled"
+	// Remove filesystem-unsafe characters: < > : " / \ | ? * and control chars (0x00-0x1f)
+	let result = ""
+	for (let char of name) {
+		let code = char.charCodeAt(0)
+		let isUnsafe = code < 0x20 || '<>:"/\\|?*'.includes(char)
+		result += isUnsafe ? "_" : char
+	}
+	return result.trim() || "untitled"
 }
 
 function getExtensionFromBlob(blob: Blob): string {
@@ -228,4 +237,139 @@ async function exportDocumentsAsZip(docs: ExportDoc[]) {
 	a.download = "documents.zip"
 	a.click()
 	URL.revokeObjectURL(url)
+}
+
+// =============================================================================
+// Wikilink transformation for export
+// =============================================================================
+
+type DocPathInfo = {
+	id: string
+	title: string
+	path: string | null
+}
+
+/**
+ * Transform wikilinks from [[doc_id]] to [[relative/path]] for export.
+ * - Same folder: [[Title]]
+ * - Different folder: [[../other/path/Title]] or [[path/to/Title]]
+ * - Not in export: [[Title]] (just the title, no path)
+ */
+function transformWikilinksForExport(
+	content: string,
+	currentDocPath: string | null,
+	allDocs: DocPathInfo[],
+): string {
+	let docMap = new Map(allDocs.map(d => [d.id, d]))
+
+	return content.replace(/\[\[([^\]]+)\]\]/g, (match, docId) => {
+		let targetDoc = docMap.get(docId)
+		if (!targetDoc) {
+			// Doc not in export - just use the ID as-is (will be treated as title on import)
+			return match
+		}
+
+		let relativePath = getRelativePath(
+			currentDocPath,
+			targetDoc.path,
+			targetDoc.title,
+		)
+		return `[[${relativePath}]]`
+	})
+}
+
+/**
+ * Get relative path from source doc to target doc.
+ * - Same folder: just "Title"
+ * - One level up: "../Title" or "../other/Title"
+ * - More than one level up: use absolute "/path/to/Title"
+ * - Descending into subfolder: "sub/Title"
+ */
+function getRelativePath(
+	fromPath: string | null,
+	toPath: string | null,
+	toTitle: string,
+): string {
+	let safeTitle = sanitizeFilename(toTitle)
+	let targetFullPath = toPath ? `${toPath}/${safeTitle}` : safeTitle
+
+	// Both at root level
+	if (!fromPath && !toPath) {
+		return safeTitle
+	}
+
+	// Source at root, target in folder - use absolute
+	if (!fromPath && toPath) {
+		return `/${targetFullPath}`
+	}
+
+	// Source in folder, target at root
+	if (fromPath && !toPath) {
+		let depth = fromPath.split("/").length
+		if (depth > 1) {
+			return `/${safeTitle}`
+		}
+		return `../${safeTitle}`
+	}
+
+	// Both in folders - calculate relative path
+	let fromParts = fromPath!.split("/")
+	let toParts = toPath!.split("/")
+
+	// Find common prefix
+	let commonLength = 0
+	while (
+		commonLength < fromParts.length &&
+		commonLength < toParts.length &&
+		fromParts[commonLength] === toParts[commonLength]
+	) {
+		commonLength++
+	}
+
+	// Same folder
+	if (commonLength === fromParts.length && commonLength === toParts.length) {
+		return safeTitle
+	}
+
+	let upsNeeded = fromParts.length - commonLength
+
+	// More than one level up -> use absolute path
+	if (upsNeeded > 1) {
+		return `/${targetFullPath}`
+	}
+
+	// One level up or descending
+	let remainingPath = toParts.slice(commonLength).join("/")
+
+	if (upsNeeded === 1 && remainingPath) {
+		return `../${remainingPath}/${safeTitle}`
+	} else if (upsNeeded === 1) {
+		return `../${safeTitle}`
+	} else {
+		return `${remainingPath}/${safeTitle}`
+	}
+}
+
+/**
+ * Strip the backlinks frontmatter field from content.
+ * Backlinks will be regenerated on import.
+ */
+function stripBacklinksFrontmatter(content: string): string {
+	// Match frontmatter block
+	let frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---\n/)
+	if (!frontmatterMatch) return content
+
+	let frontmatter = frontmatterMatch[1]
+	let afterFrontmatter = content.slice(frontmatterMatch[0].length)
+
+	// Remove backlinks line from frontmatter
+	let lines = frontmatter.split("\n")
+	let filteredLines = lines.filter(line => !line.startsWith("backlinks:"))
+
+	// If no lines left, remove frontmatter entirely
+	if (filteredLines.length === 0 || filteredLines.every(l => l.trim() === "")) {
+		return afterFrontmatter
+	}
+
+	return `---\n${filteredLines.join("\n")}\n---\n${afterFrontmatter}`
 }

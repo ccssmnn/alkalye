@@ -382,7 +382,7 @@ function MoveFolderDialog({
 				<DialogHeader>
 					<DialogTitle>Move folder</DialogTitle>
 					<DialogDescription>
-						Move "{folderName}" to another folder
+						Move &ldquo;{folderName}&rdquo; to another folder
 					</DialogDescription>
 				</DialogHeader>
 
@@ -438,7 +438,8 @@ function MoveFolderDialog({
 									>
 										<Plus className="text-muted-foreground size-4" />
 										<span>
-											Create "<span className="font-medium">{inputValue}</span>"
+											Create &ldquo;
+											<span className="font-medium">{inputValue}</span>&rdquo;
 										</span>
 									</button>
 								)}
@@ -478,7 +479,7 @@ function DeleteFolderDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-sm">
 				<DialogHeader>
-					<DialogTitle>Delete folder "{folderName}"?</DialogTitle>
+					<DialogTitle>Delete folder &ldquo;{folderName}&rdquo;?</DialogTitle>
 					<DialogDescription>
 						This folder contains {docCount} document{docCount !== 1 ? "s" : ""}.
 					</DialogDescription>

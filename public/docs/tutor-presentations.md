@@ -5,7 +5,8 @@ mode: presentation
 ---
 
 # Presentations in Alkalye
-  > Learn to present with Markdown
+
+> Learn to present with Markdown
 
 This text has no indentation - it's a speaker note.
 Only you see it in the teleprompter. Try editing this doc!
@@ -14,8 +15,8 @@ Only you see it in the teleprompter. Try editing this doc!
 
 # Slide content vs speaker notes
 
-  indented text appears on the slide
-  Use a tab or 2+ spaces at the start
+indented text appears on the slide
+Use a tab or 2+ spaces at the start
 
 Regular text becomes speaker notes.
 The audience never sees this.
@@ -39,7 +40,8 @@ Now your document is a presentation!
 ---
 
 # Creating multiple slides
-  Use `---` to create slide breaks
+
+Use `---` to create slide breaks
 
 Each horizontal rule starts a new slide.
 This text is a speaker note for this slide.
@@ -58,7 +60,9 @@ Blank lines between slide content create columns.
 ---
 
 # Single centered block
+
 ## Carl Assmann
+
 # Amazing TypeScript Talk
 
 No blank line between these headings.
@@ -67,8 +71,9 @@ They form one centered block.
 ---
 
 # Try it: edit this slide
-  - Add a blank line between the items below
-  - See how the layout changes
+
+- Add a blank line between the items below
+- See how the layout changes
 
 Currently these are one block.
 Add a blank line between them to make two columns!
@@ -76,9 +81,10 @@ Add a blank line between them to make two columns!
 ---
 
 # Lists on slides
-  - Indent lists to show them
-  - Each item needs a tab or 2 spaces
-  - Like this example
+
+- Indent lists to show them
+- Each item needs a tab or 2 spaces
+- Like this example
 
 - Non-indented lists are speaker notes
 - Use them for talking points
@@ -87,6 +93,7 @@ Add a blank line between them to make two columns!
 ---
 
 # Code blocks
+
 ```javascript
 // Code blocks always appear on slides
 function greet() {
@@ -100,6 +107,7 @@ The audience sees the code, you see these notes.
 ---
 
 # Images
+
 ![Demo](https://images.unsplash.com/photo-1516321497487-e288fb19713f?w=600)
 
 Images always appear on slides.
@@ -108,8 +116,9 @@ Add context in your speaker notes.
 ---
 
 # Blockquotes
-  > Indented quotes appear on slides
-  > Add a tab before the `>`
+
+> Indented quotes appear on slides
+> Add a tab before the `>`
 
 > Non-indented quotes are speaker notes
 > Useful for reminding yourself of key phrases
@@ -117,6 +126,7 @@ Add context in your speaker notes.
 ---
 
 # Tables
+
 | Feature       | On Slide |
 | ------------- | -------- |
 | Headings      | Yes      |
@@ -131,6 +141,7 @@ Tables always appear on slides.
 ---
 
 # Presentation settings
+
 ```yaml
 ---
 mode: present
@@ -145,10 +156,11 @@ Theme overrides system preference.
 ---
 
 # Presenting
-  Open the slideshow from the toolbar
-  Arrow keys to navigate
-  `F` for fullscreen
-  `Escape` to exit
+
+Open the slideshow from the toolbar
+Arrow keys to navigate
+`F` for fullscreen
+`Escape` to exit
 
 The teleprompter shows your notes alongside slides.
 Open it in a separate window while presenting.
@@ -156,18 +168,19 @@ Open it in a separate window while presenting.
 ---
 
 # Quick reference
-  **On slide:** Headings, indented text, code, images, tables
-  **Speaker notes:** Everything else
-  **Layout:** Blank lines create columns
-  **Slides:** Separated by `---`
+
+**On slide:** Headings, indented text, code, images, tables
+**Speaker notes:** Everything else
+**Layout:** Blank lines create columns
+**Slides:** Separated by `---`
 
 ---
 
 # You're ready!
-  Create a new document
-  Add `mode: present`
-  Start presenting!
+
+Create a new document
+Add `mode: present`
+Start presenting!
 
 Try editing this tutor to see changes live.
 Happy presenting!
-

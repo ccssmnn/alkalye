@@ -71,10 +71,56 @@ let data = response as SomeType
 
 **Component Modules (.tsx):**
 
-- Extract business logic to module-scope handler functions
+- Extract business logic to module-scope handler factory functions
 - Keep components focused on UI state and rendering
-- Place handlers like `handleNoteEdit`, `handleReminderDelete` at bottom
-- Custom hooks go after components but before handlers
+- Call factories inline in JSX: `onClick={makeHandler(doc, editor)}`
+- Custom hooks go after components but before handler factories
+
+**Handler Factory Pattern:**
+
+Use `make*` prefix for functions that return handlers. Call them inline in JSX to keep components lean.
+
+```tsx
+// Component - focused on UI and state
+function FileMenu({ doc, editor }) {
+	let [dialogOpen, setDialogOpen] = useState(false)
+
+	return (
+		<>
+			<Button onClick={makeRename(editor)}>Rename</Button>
+			<Button onClick={makeDownload(doc)}>Download</Button>
+			<Button onClick={() => setDialogOpen(true)}>Delete</Button>
+			<ConfirmDialog onConfirm={makeDelete(doc, navigate)} />
+		</>
+	)
+}
+
+// Handler factories - at module scope, after component
+function makeRename(editor: EditorRef) {
+	return function handleRename() {
+		let view = editor.current?.getEditor()
+		// ... business logic
+	}
+}
+
+function makeDownload(doc: LoadedDocument) {
+	return async function handleDownload() {
+		// ... export logic
+	}
+}
+
+function makeDelete(doc: LoadedDocument, navigate: NavigateFn) {
+	return function handleDelete() {
+		doc.$jazz.set("deletedAt", new Date())
+		navigate({ to: "/" })
+	}
+}
+```
+
+**When to use inline vs factory:**
+
+- Use factory: Handler has business logic or needs dependencies
+- Use inline arrow: Simple state updates like `() => setOpen(true)`
 
 **Tool/API Modules (.ts):**
 
@@ -82,36 +128,6 @@ let data = response as SomeType
 - Helper functions and calculations in middle
 - Constants, errors, and type definitions at bottom
 - AI tool definitions and execute functions last
-
-**Component Example:**
-
-```ts
-import { Button } from "#shared/ui/button"
-import { updateNote } from "#shared/tools/note-update"
-
-export { NoteListItem }
-
-function NoteListItem({ note, person }) {
-  let [dialogOpen, setDialogOpen] = useState(false)
-
-  return (
-    <Button onClick={() => {
-      setDialogOpen(false)
-      handleNoteEdit(data, person.id, note.id)
-    }}>
-      Edit
-    </Button>
-  )
-}
-
-function useCustomHook(param: string) {
-  return { ref, state }
-}
-
-async function handleNoteEdit(data, personId, noteId) {
-  // Business logic with error handling and undo
-}
-```
 
 **Benefits:**
 

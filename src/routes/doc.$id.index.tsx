@@ -3,85 +3,70 @@ import {
 	createFileRoute,
 	useNavigate,
 	useBlocker,
+	Link,
 } from "@tanstack/react-router"
 import { co, Group, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
-import {
-	useCoState,
-	useAccount,
-	useIsAuthenticated,
-	Image as JazzImage,
-} from "jazz-tools/react"
+import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Asset, Document, UserAccount } from "@/schema"
-import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
-import "@/editor/editor.css"
-import { createBracketsExtension } from "@/editor/autocomplete-brackets"
 import {
-	createWikilinkDecorations,
-	createWikilinkAutocomplete,
-	createBacklinkDecorations,
-	createLinkDecorations,
-	createImageDecorations,
+	MarkdownEditor,
+	useMarkdownEditorRef,
 	type WikilinkDoc,
-} from "@/editor/extensions"
+} from "@/editor/editor"
+import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath, getTags } from "@/editor/frontmatter"
 import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
+import { SidebarDocumentList } from "@/components/sidebar-document-list"
+import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
+import { ImportDropZone } from "@/components/import-drop-zone"
 import {
-	FloatingActions,
-	TaskAction,
-	LinkAction,
-	ImageAction,
-	WikiLinkAction,
-} from "@/components/floating-actions"
+	SidebarImportExport,
+	handleImportFiles,
+} from "@/components/sidebar-import-export"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
+	SidebarGroup,
+	SidebarGroupContent,
+	SidebarMenu,
+	SidebarSeparator,
+} from "@/components/ui/sidebar"
+import {
 	canEdit,
-	isGroupOwned,
 	isDocumentPublic,
 	copyDocumentToMyList,
 	getDocumentGroup,
 } from "@/lib/sharing"
 import { useBacklinkSync } from "@/lib/backlink-sync"
-import {
-	usePresence,
-	createPresenceExtension,
-	dispatchRemoteCursors,
-} from "@/lib/presence"
+import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
+import { HelpCircle, Loader2, Settings, Plus } from "lucide-react"
+import { saveDocumentAs } from "@/lib/export"
+import { SidebarViewLinks } from "@/components/sidebar-view-links"
+import { SidebarFileMenu } from "@/components/sidebar-file-menu"
+import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
+import { SidebarFormatMenu } from "@/components/sidebar-format-menu"
+import { SidebarCollaboration } from "@/components/sidebar-collaboration"
+import { SidebarAssets, type SidebarAsset } from "@/components/sidebar-assets"
+import { ThemeToggle, useTheme } from "@/lib/theme"
 import {
-	Dialog,
-	DialogContent,
-	DialogHeader,
-	DialogTitle,
-} from "@/components/ui/dialog"
-import { Loader2 } from "lucide-react"
-import { useIsMobile } from "@/lib/use-mobile"
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Button } from "@/components/ui/button"
+import { usePWA } from "@/lib/pwa"
+import { HelpMenu } from "@/components/help-menu"
 
 export { Route }
-
-let loaderResolve = {
-	content: true,
-	cursors: true,
-	assets: true,
-} as const satisfies ResolveQuery<typeof Document>
-
-let resolve = {
-	content: true,
-	cursors: true,
-	assets: { $each: { image: true } },
-} as const satisfies ResolveQuery<typeof Document>
-
-let settingsResolve = {
-	root: { settings: true },
-} as const satisfies ResolveQuery<typeof UserAccount>
 
 let Route = createFileRoute("/doc/$id/")({
 	loader: async ({ params, context }) => {
@@ -98,8 +83,6 @@ let Route = createFileRoute("/doc/$id/")({
 	},
 	component: EditorPage,
 })
-
-type LoadedDocument = co.loaded<typeof Document, typeof resolve>
 
 function EditorPage() {
 	let { id } = Route.useParams()
@@ -136,32 +119,17 @@ function EditorPage() {
 	)
 }
 
-let meResolve = {
-	root: {
-		documents: { $each: { content: true } },
-		settings: true,
-	},
-} as const satisfies ResolveQuery<typeof UserAccount>
-
 function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
-	let [isFocused, setIsFocused] = useState(false)
-	let [focusMode, setFocusMode] = useState(false)
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
-	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
-	let [imagePreview, setImagePreview] = useState<{
-		url: string
-		alt: string
-		imageId: string | null // Jazz image ID for assets
-	} | null>(null)
 
-	let { toggleLeft, toggleRight } = useSidebar()
-	let isMobile = useIsMobile()
+	let { theme, setTheme } = useTheme()
+	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, { resolve: meResolve })
@@ -171,154 +139,59 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			? me.root.settings
 			: data.me?.root?.settings
 
-	let isShared = isGroupOwned(doc)
 	let readOnly = !canEdit(doc)
-
 	let canSaveCopy =
 		isAuthenticated &&
 		isDocumentPublic(doc) &&
 		getDocumentGroup(doc)?.myRole() !== "admin"
 
-	let { updateCursor, remoteCursors } = usePresence({ doc, enabled: isShared })
+	let { updateCursor, remoteCursors } = usePresence({ doc })
+	let assets = doc.assets?.map(a => ({ id: a.$jazz.id, name: a.name })) ?? []
 
-	let assets = doc.assets
-		? doc.assets
-				.filter(a => a?.$isLoaded)
-				.map(a => ({ id: a!.$jazz.id, name: a!.name }))
-		: []
-
-	// Get documents for wikilink autocomplete - use ref so closures get fresh data
-	let wikilinkDocsRef = useRef<WikilinkDoc[]>([])
-	let titleCacheRef = useRef<Map<string, { title: string; exists: boolean }>>(
-		new Map(),
-	)
-
-	// Track if docs are loaded for wikilink resolution
-	let docsLoaded = me.$isLoaded && me.root?.documents?.$isLoaded
-
+	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded) {
-		let documents = me.root?.documents
-		if (documents?.$isLoaded) {
-			let docs = documents
-				.filter(
-					(d): d is co.loaded<typeof Document, { content: true }> =>
-						d?.$isLoaded === true &&
-						d.content !== undefined &&
-						!d.deletedAt &&
-						d.$jazz.id !== docId,
-				)
-				.map(d => {
-					let content = d.content?.toString() ?? ""
-					return {
-						id: d.$jazz.id,
-						title: getDocumentTitle(content),
-						path: getPath(content),
-						tags: getTags(content),
-					}
-				})
-			wikilinkDocsRef.current = docs
-
-			let cache = new Map<string, { title: string; exists: boolean }>()
-			for (let d of docs) {
-				cache.set(d.id, { title: d.title, exists: true })
-			}
-			titleCacheRef.current = cache
-		}
+		documents = me.root.documents
+			.filter(d => !d.deletedAt && d.$jazz.id !== docId)
+			.map(d => {
+				let content = d.content.toString()
+				return {
+					id: d.$jazz.id,
+					title: getDocumentTitle(content),
+					path: getPath(content),
+					tags: getTags(content),
+				}
+			})
 	}
-
-	// Force editor to rebuild decorations when docs load
-	useEffect(() => {
-		if (docsLoaded) {
-			let view = editor.current?.getEditor()
-			if (view) {
-				// Trigger a no-op selection change to rebuild decorations
-				view.dispatch({ selection: view.state.selection })
-			}
-		}
-	}, [docsLoaded, editor])
 
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
-
-	let wikilinkResolver = (id: string) => {
-		return titleCacheRef.current.get(id) ?? null
-	}
-
-	let imageResolver = (assetId: string) => {
-		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
-		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return null
-		return `asset:${assetId}`
-	}
-
-	let handleImagePreview = (url: string, alt: string) => {
-		let imageId: string | null = null
-		if (url.startsWith("asset:")) {
-			let assetId = url.slice(6)
-			let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
-			if (asset?.$isLoaded && asset.image?.$isLoaded) {
-				imageId = asset.image.$jazz.id
-			}
-		}
-		setImagePreview({ url, alt, imageId })
-		setImagePreviewOpen(true)
-	}
-
-	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
-		if (newTab) {
-			window.open(`/doc/${id}`, "_blank")
-		} else {
-			navigate({ to: "/doc/$id", params: { id } })
-		}
-	}
-
-	let handleCreateDoc = async (title: string): Promise<string> => {
-		if (!me.$isLoaded || !me.root?.documents) {
-			throw new Error("Not authenticated")
-		}
-		let now = new Date()
-		let group = Group.create()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, group),
-				createdAt: now,
-				updatedAt: now,
-			},
-			group,
-		)
-		me.root.documents.$jazz.push(newDoc)
-		return newDoc.$jazz.id
-	}
-
-	let editorExtensions = [
-		createPresenceExtension(),
-		createBracketsExtension(),
-		createLinkDecorations(),
-		createWikilinkDecorations(wikilinkResolver, handleWikilinkNavigate),
-		createBacklinkDecorations(wikilinkResolver, handleWikilinkNavigate),
-		createImageDecorations(imageResolver, handleImagePreview),
-	]
-	if (!isMobile) {
-		editorExtensions.push(
-			createWikilinkAutocomplete(
-				() => wikilinkDocsRef.current,
-				handleCreateDoc,
-			),
-		)
-	}
-
 	useEditorSettings(editorSettings)
-
-	// Apply focus mode to document
-	useEffect(() => {
-		document.documentElement.dataset.focusMode = String(focusMode)
-	}, [focusMode])
-
-	function toggleFocusMode() {
-		setFocusMode(prev => !prev)
-	}
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
+
+	let docWithContent = useCoState(
+		Document,
+		docId as Parameters<typeof useCoState>[1],
+		{ resolve: { content: true } },
+	)
+
+	let sidebarAssets: SidebarAsset[] =
+		doc.assets
+			?.filter(a => a?.$isLoaded)
+			.map(a => ({
+				id: a.$jazz.id,
+				name: a.name,
+				imageId: a.image?.$jazz.id,
+			})) ?? []
+
+	let wikiLinkDocs: { id: string; title: string }[] = []
+	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
+		for (let d of [...me.root.documents]) {
+			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
+			let title = getDocumentTitle(d)
+			wikiLinkDocs.push({ id: d.$jazz.id, title })
+		}
+	}
 
 	useBlocker({
 		shouldBlockFn: () => {
@@ -326,99 +199,83 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			let docs = me.root.documents
 			if (!docs.$isLoaded) return false
 			let idx = docs.findIndex(d => d?.$jazz.id === doc.$jazz.id)
-			if (idx >= 0) {
-				docs.$jazz.splice(idx, 1)
-			}
+			if (idx >= 0) docs.$jazz.splice(idx, 1)
 			return false
 		},
 		enableBeforeUnload: content === "",
 	})
 
 	useEffect(() => {
-		document.title = docTitle
-	}, [docTitle])
+		return setupKeyboardShortcuts({
+			navigate,
+			docId,
+			toggleLeft,
+			toggleRight,
+			toggleFocusMode: () => {
+				let current = document.documentElement.dataset.focusMode === "true"
+				document.documentElement.dataset.focusMode = String(!current)
+			},
+			docWithContent,
+		})
+	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
 
-	useEffect(() => {
-		let view = editor.current?.getEditor()
-		if (!view || !isShared) return
-		dispatchRemoteCursors(view, remoteCursors)
-	}, [remoteCursors, isShared])
-
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			// Cmd+Alt+R: Preview
-			if (
-				(e.metaKey || e.ctrlKey) &&
-				e.altKey &&
-				(e.key.toLowerCase() === "r" || e.code === "KeyR")
-			) {
-				e.preventDefault()
-				navigate({
-					to: "/doc/$id/preview",
-					params: { id: docId },
-					search: { from: undefined },
-				})
-				return
-			}
-
-			// Cmd+Shift+E: Toggle left sidebar
-			if (
-				(e.metaKey || e.ctrlKey) &&
-				e.shiftKey &&
-				e.key.toLowerCase() === "e"
-			) {
-				e.preventDefault()
-				toggleLeft()
-				return
-			}
-
-			// Cmd+.: Toggle right sidebar
-			if ((e.metaKey || e.ctrlKey) && e.key === ".") {
-				e.preventDefault()
-				toggleRight()
-				return
-			}
-
-			// Cmd+Shift+F: Toggle focus mode
-			if (
-				(e.metaKey || e.ctrlKey) &&
-				e.shiftKey &&
-				e.key.toLowerCase() === "f"
-			) {
-				e.preventDefault()
-				toggleFocusMode()
-				return
-			}
-
-			if (readOnly) return
-			if (isFocused) return
-			if (e.metaKey || e.ctrlKey || e.altKey) return
-			if (e.key.length !== 1) return
-			let tag = (e.target as HTMLElement).tagName
-			if (tag === "INPUT" || tag === "TEXTAREA") return
-
-			let view = editor.current?.getEditor()
-			if (view) {
-				view.dispatch({ selection: { anchor: view.state.doc.length } })
-				view.focus()
-			}
-		}
-
-		document.addEventListener("keydown", handleKeyDown)
-		return () => document.removeEventListener("keydown", handleKeyDown)
-	}, [
-		isFocused,
-		readOnly,
-		navigate,
-		docId,
-		toggleLeft,
-		toggleRight,
-		toggleFocusMode,
-	])
+	let allDocs = me.$isLoaded
+		? [...me.root.documents].filter(
+				d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
+			)
+		: []
 
 	return (
 		<>
-			<ListSidebar />
+			<title>{docTitle}</title>
+			<ImportDropZone onImport={files => handleImportFiles(files, me)}>
+				<ListSidebar
+					header={
+						<>
+							<SidebarImportExport
+								docs={allDocs.filter(d => !d.deletedAt)}
+								onImport={files => handleImportFiles(files, me)}
+							/>
+							<Button
+								size="sm"
+								nativeButton={false}
+								render={
+									<Link
+										to="/new"
+										onClick={() => isMobile && setLeftOpenMobile(false)}
+									/>
+								}
+							>
+								<Plus />
+								New
+							</Button>
+						</>
+					}
+					footer={<SidebarSyncStatus />}
+				>
+					<SidebarDocumentList
+						docs={allDocs}
+						currentDocId={docId}
+						isLoading={!me.$isLoaded}
+						onDocClick={() => isMobile && setLeftOpenMobile(false)}
+						onDuplicate={docToDuplicate =>
+							handleDuplicateDocument(
+								docToDuplicate,
+								me,
+								isMobile,
+								setLeftOpenMobile,
+								navigate,
+							)
+						}
+						onDelete={docToDelete => {
+							docToDelete.$jazz.set("deletedAt", new Date())
+							if (docToDelete.$jazz.id === docId) {
+								navigate({ to: "/" })
+							}
+						}}
+					/>
+				</ListSidebar>
+			</ImportDropZone>
 			<div className="markdown-editor flex-1" ref={containerRef}>
 				<MarkdownEditor
 					ref={editor}
@@ -427,13 +284,16 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 						handleChange(doc, newContent)
 						syncBacklinks(newContent)
 					}}
-					onSelectionChange={(from, to) =>
-						handleSelectionChange(from, to, isShared, updateCursor)
+					onCursorChange={(from, to) =>
+						updateCursor(from, from !== to ? to : undefined)
 					}
-					onFocusChange={setIsFocused}
 					placeholder="Start writing..."
 					readOnly={readOnly}
-					extensions={editorExtensions}
+					assets={assets}
+					documents={documents}
+					remoteCursors={remoteCursors}
+					onCreateDocument={makeCreateDocument(me)}
+					onUploadImage={makeUploadImage(doc)}
 				/>
 				<EditorToolbar
 					editor={editor}
@@ -448,73 +308,249 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					}
 					saveCopyState={saveCopyState}
 				/>
-				<FloatingActions
-					editor={editor}
-					focused={isFocused}
-					readOnly={readOnly}
-				>
-					{ctx => (
-						<>
-							<TaskAction editor={editor} {...ctx.task} />
-							<LinkAction {...ctx.link} />
-							<WikiLinkAction
-								editor={editor}
-								{...ctx.wikiLink}
-								docs={wikilinkDocsRef.current}
-								onCreateDoc={handleCreateDoc}
-							/>
-							<ImageAction
-								editor={editor}
-								{...ctx.image}
-								assets={assets}
-								onUploadAndInsert={(file, range) =>
-									handleUploadAndInsert(doc, editor, file, range)
-								}
-							/>
-						</>
-					)}
-				</FloatingActions>
 			</div>
 			<DocumentSidebar
-				doc={doc}
-				docId={docId}
-				onInsertAsset={(assetId, name) =>
-					handleInsertAsset(editor, assetId, name)
+				header={
+					<>
+						<ThemeToggle theme={theme} setTheme={setTheme} />
+						<SettingsButton pathname={location.pathname} />
+					</>
 				}
-				readOnly={readOnly}
-				editor={editor}
-				focusMode={focusMode}
-				onFocusModeToggle={toggleFocusMode}
-			/>
-
-			<Dialog
-				open={imagePreviewOpen}
-				onOpenChange={setImagePreviewOpen}
-				onOpenChangeComplete={open => {
-					if (!open) setImagePreview(null)
-				}}
+				footer={
+					<HelpMenu
+						trigger={
+							<Button
+								variant="ghost"
+								size="sm"
+								className="w-full"
+								nativeButton={false}
+							>
+								<HelpCircle />
+								<span>Help</span>
+							</Button>
+						}
+						align={isMobile ? "center" : "end"}
+						side={isMobile ? "top" : "left"}
+					/>
+				}
 			>
-				<DialogContent className="max-w-3xl">
-					<DialogHeader>
-						<DialogTitle>{imagePreview?.alt ?? "Image"}</DialogTitle>
-					</DialogHeader>
-					{imagePreview &&
-						(imagePreview.imageId ? (
-							<JazzImage
-								imageId={imagePreview.imageId}
-								className="max-h-[70vh] w-full object-contain"
+				<SidebarGroup>
+					<SidebarGroupContent>
+						<SidebarMenu>
+							<SidebarViewLinks doc={doc} />
+							<SidebarSeparator />
+							<SidebarFileMenu
+								doc={doc}
+								editor={editor}
+								me={me.$isLoaded ? me : undefined}
 							/>
-						) : (
-							<img
-								src={imagePreview.url}
-								alt={imagePreview.alt}
-								className="max-h-[70vh] w-full object-contain"
+							<SidebarEditMenu editor={editor} disabled={readOnly} />
+							<SidebarFormatMenu
+								editor={editor}
+								disabled={readOnly}
+								documents={wikiLinkDocs}
+								onCreateDocument={makeCreateDocForWikilink(me, doc)}
 							/>
-						))}
-				</DialogContent>
-			</Dialog>
+						</SidebarMenu>
+					</SidebarGroupContent>
+				</SidebarGroup>
+
+				<SidebarSeparator />
+
+				<SidebarGroup>
+					<SidebarCollaboration docId={docId} />
+				</SidebarGroup>
+
+				<SidebarSeparator />
+
+				<SidebarGroup>
+					<SidebarAssets
+						assets={sidebarAssets}
+						readOnly={readOnly}
+						onUpload={makeUploadAssets(doc)}
+						onRename={makeRenameAsset(doc)}
+						onDelete={makeDeleteAsset(doc, docWithContent)}
+						onInsert={(assetId, name) => {
+							editor.current?.insertText(`![${name}](asset:${assetId})`)
+						}}
+						isAssetUsed={makeIsAssetUsed(docWithContent)}
+					/>
+				</SidebarGroup>
+			</DocumentSidebar>
 		</>
 	)
+}
+
+function SettingsButton({ pathname }: { pathname: string }) {
+	let { needRefresh } = usePWA()
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						variant="ghost"
+						size="icon"
+						nativeButton={false}
+						render={<Link to="/settings" search={{ from: pathname }} />}
+						className="relative"
+					>
+						<Settings />
+						{needRefresh && (
+							<span className="bg-destructive absolute top-1 right-1 size-2 rounded-full" />
+						)}
+					</Button>
+				}
+			/>
+			<TooltipContent>
+				{needRefresh ? "Settings (Update available)" : "Settings"}
+			</TooltipContent>
+		</Tooltip>
+	)
+}
+
+function makeCreateDocument(me: LoadedMe) {
+	return async function handleCreateDocument(title: string): Promise<string> {
+		if (!me.$isLoaded || !me.root?.documents)
+			throw new Error("Not authenticated")
+		let now = new Date()
+		let group = Group.create()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(`# ${title}\n\n`, group),
+				createdAt: now,
+				updatedAt: now,
+			},
+			group,
+		)
+		me.root.documents.$jazz.push(newDoc)
+		return newDoc.$jazz.id
+	}
+}
+
+function makeUploadImage(doc: LoadedDocument) {
+	return async function handleUploadImage(
+		file: File,
+	): Promise<{ id: string; name: string }> {
+		let image = await createImage(file, {
+			owner: doc.$jazz.owner,
+			maxSize: 2048,
+		})
+
+		if (!doc.assets) {
+			doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
+		}
+
+		let asset = Asset.create(
+			{
+				type: "image",
+				name: file.name.replace(/\.[^.]+$/, ""),
+				image,
+				createdAt: new Date(),
+			},
+			doc.$jazz.owner,
+		)
+
+		doc.assets!.$jazz.push(asset)
+		doc.$jazz.set("updatedAt", new Date())
+
+		return { id: asset.$jazz.id, name: asset.name }
+	}
+}
+
+function makeUploadAssets(doc: LoadedDocument) {
+	return async function handleUploadAssets(files: FileList) {
+		for (let file of Array.from(files)) {
+			if (!file.type.startsWith("image/")) continue
+
+			let image = await createImage(file, {
+				owner: doc.$jazz.owner,
+				maxSize: 2048,
+			})
+
+			if (!doc.assets) {
+				doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
+			}
+
+			let asset = Asset.create(
+				{
+					type: "image",
+					name: file.name.replace(/\.[^.]+$/, ""),
+					image,
+					createdAt: new Date(),
+				},
+				doc.$jazz.owner,
+			)
+
+			doc.assets!.$jazz.push(asset)
+		}
+
+		doc.$jazz.set("updatedAt", new Date())
+	}
+}
+
+function makeRenameAsset(doc: LoadedDocument) {
+	return function handleRenameAsset(assetId: string, newName: string) {
+		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+		if (asset?.$isLoaded) {
+			asset.$jazz.set("name", newName)
+			doc.$jazz.set("updatedAt", new Date())
+		}
+	}
+}
+
+function makeCreateDocForWikilink(me: LoadedMe, doc: LoadedDocument) {
+	return async function handleCreateDocForWikilink(
+		title: string,
+	): Promise<string> {
+		if (!me.$isLoaded || !me.root?.documents?.$isLoaded)
+			throw new Error("Not ready")
+		let now = new Date()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(`# ${title}\n\n`, doc.$jazz.owner),
+				createdAt: now,
+				updatedAt: now,
+			},
+			doc.$jazz.owner,
+		)
+		me.root.documents.$jazz.push(newDoc)
+		return newDoc.$jazz.id
+	}
+}
+
+function makeIsAssetUsed(docWithContent: MaybeDocWithContent) {
+	return function isAssetUsed(assetId: string): boolean {
+		if (!docWithContent?.$isLoaded || !docWithContent.content) return false
+		let content = docWithContent.content.toString()
+		let regex = new RegExp(`!\\[[^\\]]*\\]\\(asset:${assetId}\\)`)
+		return regex.test(content)
+	}
+}
+
+function makeDeleteAsset(
+	doc: LoadedDocument,
+	docWithContent: MaybeDocWithContent,
+) {
+	return function handleDeleteAsset(assetId: string) {
+		if (!doc.assets) return
+
+		if (docWithContent?.$isLoaded && docWithContent.content) {
+			let content = docWithContent.content.toString()
+			let regex = new RegExp(`!\\[[^\\]]*\\]\\(asset:${assetId}\\)`, "g")
+			let newContent = content.replace(regex, "")
+			if (newContent !== content) {
+				docWithContent.content.$jazz.applyDiff(newContent)
+			}
+		}
+
+		let idx = doc.assets.findIndex(a => a?.$jazz.id === assetId)
+		if (idx !== -1) {
+			doc.assets.$jazz.splice(idx, 1)
+			doc.$jazz.set("updatedAt", new Date())
+		}
+	}
 }
 
 function handleChange(doc: LoadedDocument, newContent: string) {
@@ -523,72 +559,9 @@ function handleChange(doc: LoadedDocument, newContent: string) {
 	doc.$jazz.set("updatedAt", new Date())
 }
 
-function handleSelectionChange(
-	from: number,
-	to: number,
-	isShared: boolean,
-	updateCursor: (from: number, to?: number) => void,
-) {
-	if (isShared) {
-		updateCursor(from, from !== to ? to : undefined)
-	}
-}
-
-function handleInsertAsset(
-	editor: ReturnType<typeof useMarkdownEditorRef>,
-	assetId: string,
-	name: string,
-) {
-	let markdown = `![${name}](asset:${assetId})`
-	editor.current?.insertText(markdown)
-}
-
-async function handleUploadAndInsert(
-	doc: LoadedDocument,
-	editor: ReturnType<typeof useMarkdownEditorRef>,
-	file: File,
-	replaceRange: { from: number; to: number },
-) {
-	let image = await createImage(file, {
-		owner: doc.$jazz.owner,
-		maxSize: 2048,
-	})
-
-	if (!doc.assets) {
-		doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
-	}
-
-	let asset = Asset.create(
-		{
-			type: "image",
-			name: file.name.replace(/\.[^.]+$/, ""),
-			image,
-			createdAt: new Date(),
-		},
-		doc.$jazz.owner,
-	)
-
-	doc.assets!.$jazz.push(asset)
-	doc.$jazz.set("updatedAt", new Date())
-
-	let view = editor.current?.getEditor()
-	if (view) {
-		let newText = `![${asset.name}](asset:${asset.$jazz.id})`
-		view.dispatch({
-			changes: {
-				from: replaceRange.from,
-				to: replaceRange.to,
-				insert: newText,
-			},
-		})
-	}
-}
-
 async function handleSaveCopy(
 	doc: LoadedDocument,
-	me: ReturnType<
-		typeof useAccount<typeof UserAccount, { root: { documents: true } }>
-	>,
+	me: LoadedMe,
 	setSaveCopyState: (state: "idle" | "saving" | "saved") => void,
 	navigate: ReturnType<typeof useNavigate>,
 ) {
@@ -606,3 +579,111 @@ async function handleSaveCopy(
 		setSaveCopyState("idle")
 	}
 }
+
+function handleDuplicateDocument(
+	doc: co.loaded<typeof Document, { content: true }>,
+	me: LoadedMe,
+	isMobile: boolean,
+	setLeftOpenMobile: (open: boolean) => void,
+	navigate: ReturnType<typeof useNavigate>,
+) {
+	if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
+	let now = new Date()
+	let group = Group.create()
+	let newDoc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(doc.content?.toString() ?? "", group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+	me.root.documents.$jazz.push(newDoc)
+	if (isMobile) setLeftOpenMobile(false)
+	navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
+}
+
+function setupKeyboardShortcuts(opts: {
+	navigate: ReturnType<typeof useNavigate>
+	docId: string
+	toggleLeft: () => void
+	toggleRight: () => void
+	toggleFocusMode: () => void
+	docWithContent: MaybeDocWithContent
+}) {
+	function handleKeyDown(e: KeyboardEvent) {
+		// Cmd+Alt+R: Preview
+		if (
+			(e.metaKey || e.ctrlKey) &&
+			e.altKey &&
+			(e.key.toLowerCase() === "r" || e.code === "KeyR")
+		) {
+			e.preventDefault()
+			opts.navigate({
+				to: "/doc/$id/preview",
+				params: { id: opts.docId },
+				search: { from: undefined },
+			})
+			return
+		}
+		// Cmd+Shift+E: Toggle left sidebar
+		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
+			e.preventDefault()
+			opts.toggleLeft()
+			return
+		}
+		// Cmd+.: Toggle right sidebar
+		if ((e.metaKey || e.ctrlKey) && e.key === ".") {
+			e.preventDefault()
+			opts.toggleRight()
+			return
+		}
+		// Cmd+Shift+F: Toggle focus mode
+		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
+			e.preventDefault()
+			opts.toggleFocusMode()
+			return
+		}
+		// Cmd+S: Save as
+		if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+			e.preventDefault()
+			if (!opts.docWithContent?.$isLoaded) return
+			let title = getDocumentTitle(opts.docWithContent)
+			saveDocumentAs(opts.docWithContent.content?.toString() ?? "", title)
+		}
+	}
+
+	document.addEventListener("keydown", handleKeyDown)
+	return () => document.removeEventListener("keydown", handleKeyDown)
+}
+type LoadedDocument = co.loaded<typeof Document, typeof resolve>
+type MaybeDocWithContent = ReturnType<
+	typeof useCoState<typeof Document, { content: true }>
+>
+type LoadedMe = ReturnType<
+	typeof useAccount<typeof UserAccount, typeof meResolve>
+>
+
+let loaderResolve = {
+	content: true,
+	cursors: true,
+	assets: true,
+} as const satisfies ResolveQuery<typeof Document>
+
+let resolve = {
+	content: true,
+	cursors: true,
+	assets: { $each: { image: true } },
+} as const satisfies ResolveQuery<typeof Document>
+
+let settingsResolve = {
+	root: { settings: true },
+} as const satisfies ResolveQuery<typeof UserAccount>
+
+let meResolve = {
+	root: {
+		documents: { $each: { content: true } },
+		settings: true,
+	},
+} as const satisfies ResolveQuery<typeof UserAccount>

@@ -147,113 +147,49 @@ function FloatingActions({
 		}
 	}, [])
 
-	function getContext(view: EditorView): EditorContext {
-		let state = view.state
-		let pos = state.selection.main.head
-		let tree = syntaxTree(state)
-		let node = tree.resolveInner(pos, -1)
+	// Reset context when focus lost and not interacting
+	let shouldResetContext =
+		!focused &&
+		!isInteracting &&
+		!imageMenuOpen &&
+		!wikiLinkMenuOpen &&
+		!wikiLinkDialogOpen
 
-		let result: EditorContext = {
-			isTask: false,
-			taskChecked: false,
-			taskRange: null,
-			linkUrl: null,
-			linkRange: null,
-			isImage: false,
-			imageRange: null,
-			wikiLinkId: null,
-			wikiLinkRange: null,
-		}
-
-		let current: typeof node | null = node
-		while (current) {
-			if (current.name === "Task" || current.name === "TaskMarker") {
-				result.isTask = true
-				let taskNode = current.name === "Task" ? current : current.parent
-				if (taskNode) {
-					let taskText = state.sliceDoc(taskNode.from, taskNode.to)
-					result.taskChecked =
-						taskText.includes("[x]") || taskText.includes("[X]")
-					result.taskRange = { from: taskNode.from, to: taskNode.to }
-				}
-			}
-
-			if (current.name === "ListItem") {
-				let child = current.firstChild
-				while (child) {
-					if (child.name === "Task") {
-						result.isTask = true
-						let taskText = state.sliceDoc(child.from, child.to)
-						result.taskChecked =
-							taskText.includes("[x]") || taskText.includes("[X]")
-						result.taskRange = { from: child.from, to: child.to }
-						break
-					}
-					child = child.nextSibling
-				}
-			}
-
-			if (current.name === "Link") {
-				let urlNode = current.getChild("URL")
-				if (urlNode) {
-					let url = state.sliceDoc(urlNode.from, urlNode.to)
-					if (!url.startsWith("asset:")) {
-						result.linkUrl = url
-						result.linkRange = { from: current.from, to: current.to }
-					}
-				}
-			}
-
-			if (current.name === "Image") {
-				result.isImage = true
-				result.imageRange = { from: current.from, to: current.to }
-			}
-
-			current = current.parent
-		}
-
-		// Check for wikilinks via text-based detection (not in syntax tree)
-		let content = state.doc.toString()
-		let wikilinks = parseWikiLinks(content)
-		for (let link of wikilinks) {
-			if (pos >= link.from && pos <= link.to) {
-				result.wikiLinkId = link.id
-				result.wikiLinkRange = { from: link.from, to: link.to }
-				break
-			}
-		}
-
-		// Also detect incomplete wikilinks: [[ or [[text without closing ]]
-		if (!result.wikiLinkId) {
-			let line = state.doc.lineAt(pos)
-			let textBefore = line.text.slice(0, pos - line.from)
-			let textAfter = line.text.slice(pos - line.from)
-			let match = textBefore.match(/\[\[([^\]\[]*)$/)
-			if (match) {
-				let from = line.from + textBefore.lastIndexOf("[[")
-				// Check if closing brackets exist after cursor
-				let closingMatch = textAfter.match(/^([^\]\[]*)\]\]/)
-				let to = closingMatch
-					? pos + closingMatch[0].length
-					: pos + (textAfter.match(/^[^\]\[]*/) ?? [""])[0].length
-				result.wikiLinkId = match[1] || "" // empty string for [[]]
-				result.wikiLinkRange = { from, to }
-			}
-		}
-
-		return result
+	let emptyContext: EditorContext = {
+		isTask: false,
+		taskChecked: false,
+		taskRange: null,
+		linkUrl: null,
+		linkRange: null,
+		isImage: false,
+		imageRange: null,
+		wikiLinkId: null,
+		wikiLinkRange: null,
 	}
 
-	// Reset context when focus lost and not interacting
+	// Reset context during render when conditions change (adjust state during render pattern)
+	let [prevShouldReset, setPrevShouldReset] = useState(shouldResetContext)
+	if (shouldResetContext !== prevShouldReset) {
+		setPrevShouldReset(shouldResetContext)
+		if (shouldResetContext) {
+			setContext(emptyContext)
+		}
+	}
+
+	// Subscribe to editor selection changes and compute context
 	useEffect(() => {
-		if (
-			!focused &&
-			!isInteracting &&
-			!imageMenuOpen &&
-			!wikiLinkMenuOpen &&
-			!wikiLinkDialogOpen
-		) {
-			setContext({
+		if (shouldResetContext) return
+
+		let view = editor.current?.getEditor()
+		if (!view || !focused) return
+
+		function getEditorContext(v: EditorView): EditorContext {
+			let state = v.state
+			let pos = state.selection.main.head
+			let tree = syntaxTree(state)
+			let node = tree.resolveInner(pos, -1)
+
+			let result: EditorContext = {
 				isTask: false,
 				taskChecked: false,
 				taskRange: null,
@@ -263,20 +199,86 @@ function FloatingActions({
 				imageRange: null,
 				wikiLinkId: null,
 				wikiLinkRange: null,
-			})
-		}
-	}, [
-		focused,
-		isInteracting,
-		imageMenuOpen,
-		wikiLinkMenuOpen,
-		wikiLinkDialogOpen,
-	])
+			}
 
-	// Subscribe to editor selection changes
-	useEffect(() => {
-		let view = editor.current?.getEditor()
-		if (!view || !focused) return
+			let current: typeof node | null = node
+			while (current) {
+				if (current.name === "Task" || current.name === "TaskMarker") {
+					result.isTask = true
+					let taskNode = current.name === "Task" ? current : current.parent
+					if (taskNode) {
+						let taskText = state.sliceDoc(taskNode.from, taskNode.to)
+						result.taskChecked =
+							taskText.includes("[x]") || taskText.includes("[X]")
+						result.taskRange = { from: taskNode.from, to: taskNode.to }
+					}
+				}
+
+				if (current.name === "ListItem") {
+					let child = current.firstChild
+					while (child) {
+						if (child.name === "Task") {
+							result.isTask = true
+							let taskText = state.sliceDoc(child.from, child.to)
+							result.taskChecked =
+								taskText.includes("[x]") || taskText.includes("[X]")
+							result.taskRange = { from: child.from, to: child.to }
+							break
+						}
+						child = child.nextSibling
+					}
+				}
+
+				if (current.name === "Link") {
+					let urlNode = current.getChild("URL")
+					if (urlNode) {
+						let url = state.sliceDoc(urlNode.from, urlNode.to)
+						if (!url.startsWith("asset:")) {
+							result.linkUrl = url
+							result.linkRange = { from: current.from, to: current.to }
+						}
+					}
+				}
+
+				if (current.name === "Image") {
+					result.isImage = true
+					result.imageRange = { from: current.from, to: current.to }
+				}
+
+				current = current.parent
+			}
+
+			// Check for wikilinks via text-based detection (not in syntax tree)
+			let content = state.doc.toString()
+			let wikilinks = parseWikiLinks(content)
+			for (let link of wikilinks) {
+				if (pos >= link.from && pos <= link.to) {
+					result.wikiLinkId = link.id
+					result.wikiLinkRange = { from: link.from, to: link.to }
+					break
+				}
+			}
+
+			// Also detect incomplete wikilinks: [[ or [[text without closing ]]
+			if (!result.wikiLinkId) {
+				let line = state.doc.lineAt(pos)
+				let textBefore = line.text.slice(0, pos - line.from)
+				let textAfter = line.text.slice(pos - line.from)
+				let match = textBefore.match(/\[\[([^\][]*)$/)
+				if (match) {
+					let from = line.from + textBefore.lastIndexOf("[[")
+					// Check if closing brackets exist after cursor
+					let closingMatch = textAfter.match(/^([^\][]*)]]/)
+					let to = closingMatch
+						? pos + closingMatch[0].length
+						: pos + (textAfter.match(/^[^\][]*/) ?? [""])[0].length
+					result.wikiLinkId = match[1] || "" // empty string for [[]]
+					result.wikiLinkRange = { from, to }
+				}
+			}
+
+			return result
+		}
 
 		let rafId: number | null = null
 		let lastPos = -1
@@ -291,21 +293,23 @@ function FloatingActions({
 				let pos = v.state.selection.main.head
 				if (pos !== lastPos) {
 					lastPos = pos
-					setContext(getContext(v))
+					setContext(getEditorContext(v))
 				}
 			}
 			rafId = requestAnimationFrame(checkSelection)
 		}
 
-		setContext(getContext(view))
-		rafId = requestAnimationFrame(checkSelection)
+		rafId = requestAnimationFrame(() => {
+			setContext(getEditorContext(view))
+			checkSelection()
+		})
 
 		return () => {
 			if (rafId !== null) {
 				cancelAnimationFrame(rafId)
 			}
 		}
-	}, [editor, focused, getContext])
+	}, [editor, focused, shouldResetContext])
 
 	function handleImageMenuOpenChange(open: boolean) {
 		if (open && context.imageRange) {
@@ -565,14 +569,14 @@ function WikiLinkAction({
 													let line = view.state.doc.lineAt(pos)
 													let textBefore = line.text.slice(0, pos - line.from)
 													let textAfter = line.text.slice(pos - line.from)
-													let match = textBefore.match(/\[\[([^\]\[]*)$/)
+													let match = textBefore.match(/\[\[([^\][]*)$/)
 													if (!match) return null
 													let from = line.from + textBefore.lastIndexOf("[[")
-													let closingMatch = textAfter.match(/^([^\]\[]*)\]\]/)
+													let closingMatch = textAfter.match(/^([^\][]*)]]/)
 													let to = closingMatch
 														? pos + closingMatch[0].length
 														: pos +
-															(textAfter.match(/^[^\]\[]*/) ?? [""])[0].length
+															(textAfter.match(/^[^\][]*/) ?? [""])[0].length
 													return { from, to }
 												})()
 											: null
@@ -730,7 +734,8 @@ function WikiLinkDialog({
 									>
 										<Plus className="text-muted-foreground size-4" />
 										<span>
-											Create "<span className="font-medium">{inputValue}</span>"
+											Create &ldquo;
+											<span className="font-medium">{inputValue}</span>&rdquo;
 										</span>
 									</button>
 								)}

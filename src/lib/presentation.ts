@@ -224,11 +224,11 @@ function processParagraphToken(
 
 		if (line.trim() === "") continue
 
-		if (/^(\t|  )/.test(line)) {
+		if (/^(\t| {2})/.test(line)) {
 			if (blockContent.length === 0) {
 				blockStart = lineNum
 			}
-			let text = line.replace(/^(\t|  +)/, "")
+			let text = line.replace(/^(\t| {2,})/, "")
 			blockContent.push({
 				type: "text",
 				text,
@@ -283,7 +283,7 @@ function processListToken(
 		let contentLines = contentRaw.split("\n").length
 		let totalLines =
 			item.raw.split("\n").length - (item.raw.endsWith("\n") ? 1 : 0)
-		let isIndented = /^(\t|  )/.test(item.raw)
+		let isIndented = /^(\t| {2})/.test(item.raw)
 
 		if (isIndented) {
 			if (indentedItems.length === 0 && blockContent.length === 0) {
@@ -396,7 +396,7 @@ function tokenToContent(token: Token): SlideContent[] {
 			if (imgMatch) {
 				return [{ type: "image", alt: imgMatch[1], src: imgMatch[2] }]
 			}
-			let text = p.text.replace(/^(\t|  )/, "")
+			let text = p.text.replace(/^(\t| {2})/, "")
 			return [{ type: "text", text, segments: parseTextSegments(text) }]
 		}
 		default:
@@ -514,10 +514,10 @@ function isTokenOnSlide(token: Token): boolean {
 			// Check if ANY item is indented (will be split in tokenToContent)
 			return hasIndentedListItems(token as Tokens.List)
 		case "blockquote":
-			return /^(\t|  )/.test(token.raw)
+			return /^(\t| {2})/.test(token.raw)
 		case "paragraph":
 			if (/^!\[/.test(token.raw)) return true
-			return /^(\t|  )/.test(token.raw)
+			return /^(\t| {2})/.test(token.raw)
 		default:
 			return false
 	}
@@ -525,7 +525,7 @@ function isTokenOnSlide(token: Token): boolean {
 
 function hasIndentedListItems(list: Tokens.List): boolean {
 	for (let item of list.items) {
-		if (/^(\t|  )/.test(item.raw)) return true
+		if (/^(\t| {2})/.test(item.raw)) return true
 	}
 	return false
 }

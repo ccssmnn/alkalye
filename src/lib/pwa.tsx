@@ -209,7 +209,9 @@ function usePWAInstallHintDismissed() {
 			} else {
 				localStorage.removeItem(INSTALL_HINT_DISMISSED_KEY)
 			}
-		} catch {}
+		} catch {
+			// Ignore localStorage errors (e.g. in private browsing)
+		}
 	}
 
 	return { dismissed, setDismissed }
@@ -362,7 +364,9 @@ function AndroidManualInstructions() {
 					Tap the menu button <Share className="inline size-3" /> in your
 					browser
 				</li>
-				<li>Select "Add to Home screen" or "Install app"</li>
+				<li>
+					Select &ldquo;Add to Home screen&rdquo; or &ldquo;Install app&rdquo;
+				</li>
 				<li>Confirm the installation</li>
 			</ol>
 		</div>
@@ -380,8 +384,8 @@ function IOSInstructions() {
 					Tap the Share button <Upload className="inline size-3" /> at the
 					bottom of Safari
 				</li>
-				<li>Scroll down and tap "Add to Home Screen"</li>
-				<li>Tap "Add" in the top right corner</li>
+				<li>Scroll down and tap &ldquo;Add to Home Screen&rdquo;</li>
+				<li>Tap &ldquo;Add&rdquo; in the top right corner</li>
 			</ol>
 			<p className="text-muted-foreground bg-muted/50 rounded p-2 text-xs">
 				Note: This only works in Safari, not other browsers on iOS.
@@ -427,7 +431,7 @@ function DesktopInstructions({
 					<p className="font-medium">Chrome / Edge</p>
 					<p className="text-muted-foreground">
 						Look for the install icon in the address bar, or use the menu and
-						select "Install app"
+						select &ldquo;Install app&rdquo;
 					</p>
 				</div>
 				<div>
@@ -437,7 +441,7 @@ function DesktopInstructions({
 				<div>
 					<p className="font-medium">Firefox</p>
 					<p className="text-muted-foreground">
-						Firefox doesn't support PWA installation. Use Chrome or Edge
+						Firefox doesn&apos;t support PWA installation. Use Chrome or Edge
 						instead.
 					</p>
 				</div>
@@ -451,8 +455,10 @@ function GenericInstructions() {
 		<div className="space-y-3">
 			<p className="text-muted-foreground text-xs">To install:</p>
 			<ol className="text-muted-foreground list-decimal space-y-2 pl-4 text-xs">
-				<li>Open your browser's menu</li>
-				<li>Look for "Add to Home Screen" or "Install App"</li>
+				<li>Open your browser&apos;s menu</li>
+				<li>
+					Look for &ldquo;Add to Home Screen&rdquo; or &ldquo;Install App&rdquo;
+				</li>
 			</ol>
 		</div>
 	)

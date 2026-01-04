@@ -127,7 +127,8 @@ function MoveToFolderDialog({
 									>
 										<Plus className="text-muted-foreground size-4" />
 										<span>
-											Create "<span className="font-medium">{inputValue}</span>"
+											Create &ldquo;
+											<span className="font-medium">{inputValue}</span>&rdquo;
 										</span>
 									</button>
 								)}

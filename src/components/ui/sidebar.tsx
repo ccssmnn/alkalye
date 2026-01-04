@@ -49,8 +49,8 @@ type SidebarContextValue = {
 	setRightOpen: (open: boolean) => void
 	rightOpenMobile: boolean
 	setRightOpenMobile: (open: boolean, onComplete?: () => void) => void
-	leftMobileCompleteRef: React.RefObject<(() => void) | null>
-	rightMobileCompleteRef: React.RefObject<(() => void) | null>
+	fireLeftMobileComplete: () => void
+	fireRightMobileComplete: () => void
 	isMobile: boolean
 	toggleLeft: () => void
 	toggleRight: () => void
@@ -139,6 +139,18 @@ function SidebarProvider({
 		}
 	}
 
+	function fireLeftMobileComplete() {
+		let cb = leftMobileCompleteRef.current
+		leftMobileCompleteRef.current = null
+		cb?.()
+	}
+
+	function fireRightMobileComplete() {
+		let cb = rightMobileCompleteRef.current
+		rightMobileCompleteRef.current = null
+		cb?.()
+	}
+
 	let contextValue: SidebarContextValue = {
 		leftOpen,
 		setLeftOpen,
@@ -148,8 +160,8 @@ function SidebarProvider({
 		setRightOpen,
 		rightOpenMobile,
 		setRightOpenMobile,
-		leftMobileCompleteRef,
-		rightMobileCompleteRef,
+		fireLeftMobileComplete,
+		fireRightMobileComplete,
 		isMobile,
 		toggleLeft,
 		toggleRight,
@@ -195,8 +207,8 @@ function Sidebar({
 	let openMobile = side === "left" ? ctx.leftOpenMobile : ctx.rightOpenMobile
 	let setOpenMobile =
 		side === "left" ? ctx.setLeftOpenMobile : ctx.setRightOpenMobile
-	let completeRef =
-		side === "left" ? ctx.leftMobileCompleteRef : ctx.rightMobileCompleteRef
+	let fireComplete =
+		side === "left" ? ctx.fireLeftMobileComplete : ctx.fireRightMobileComplete
 	let state: "expanded" | "collapsed" = open ? "expanded" : "collapsed"
 
 	function handleOpenChange(open: boolean) {
@@ -205,9 +217,7 @@ function Sidebar({
 
 	function handleOpenChangeComplete(open: boolean) {
 		if (open) return // only fire on close
-		let cb = completeRef.current
-		completeRef.current = null
-		cb?.()
+		fireComplete()
 	}
 
 	if (collapsible === "none") {

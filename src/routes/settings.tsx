@@ -221,9 +221,8 @@ function EditNameDialog({
 					}}
 					className="space-y-4"
 				>
-					<form.Field
-						name="name"
-						children={field => {
+					<form.Field name="name">
+						{field => {
 							let isInvalid =
 								field.state.meta.isTouched && !field.state.meta.isValid
 							return (
@@ -247,7 +246,7 @@ function EditNameDialog({
 								</Field>
 							)
 						}}
-					/>
+					</form.Field>
 					<DialogFooter>
 						<Button type="submit">Save</Button>
 					</DialogFooter>

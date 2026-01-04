@@ -15,7 +15,7 @@ export type { WikilinkResolver }
 
 type WikilinkResolver = (
 	id: string,
-) => { title: string; exists: boolean } | null
+) => { title: string; exists: boolean } | undefined
 
 class WikilinkWidget extends WidgetType {
 	id: string
