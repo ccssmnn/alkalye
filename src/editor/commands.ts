@@ -1,28 +1,28 @@
 import { EditorView } from "@codemirror/view"
 
+type Command = (view: EditorView) => boolean
+
 export {
-	wrapSelection,
-	toggleLinePrefix,
-	setHeadingLevel,
-	insertLink,
-	insertImage,
 	insertCodeBlock,
-	moveLineUp,
+	insertImage,
+	insertLink,
 	moveLineDown,
-	toggleBold,
-	toggleItalic,
-	toggleStrikethrough,
-	toggleInlineCode,
-	toggleBulletList,
-	toggleOrderedList,
-	toggleTaskList,
-	toggleTaskComplete,
-	toggleBlockquote,
+	moveLineUp,
 	setBody,
+	setHeadingLevel,
+	toggleBlockquote,
+	toggleBold,
+	toggleBulletList,
+	toggleInlineCode,
+	toggleItalic,
+	toggleLinePrefix,
+	toggleOrderedList,
+	toggleStrikethrough,
+	toggleTaskComplete,
+	toggleTaskList,
+	wrapSelection,
 }
 export type { Command }
-
-type Command = (view: EditorView) => boolean
 
 function wrapSelection(marker: string): Command {
 	return view => {
@@ -78,35 +78,46 @@ function toggleLinePrefix(prefix: string): Command {
 		let startLine = view.state.doc.lineAt(from)
 		let endLine = view.state.doc.lineAt(to)
 
+		let prefixTrimmed = prefix.trimStart()
+
 		if (startLine.number === endLine.number) {
 			let lineText = startLine.text
+			let { indent, textAfterIndent } = getIndentAndText(lineText)
 
-			if (lineText.startsWith(prefix)) {
+			if (textAfterIndent.startsWith(prefixTrimmed)) {
 				view.dispatch({
 					changes: {
-						from: startLine.from,
-						to: startLine.from + prefix.length,
+						from: startLine.from + indent.length,
+						to: startLine.from + indent.length + prefixTrimmed.length,
 						insert: "",
 					},
-					selection: { anchor: Math.max(startLine.from, from - prefix.length) },
+					selection: {
+						anchor: Math.max(
+							startLine.from + indent.length,
+							from - prefixTrimmed.length,
+						),
+					},
 				})
 			} else {
-				let existingPrefix = lineText.match(
-					/^(#{1,6}\s|[-*]\s(\[[ x]\]\s)?)/,
-				)?.[0]
+				let existingPrefix = textAfterIndent.match(
+					/^(#{1,6}\s|[-*+]\s(\[[ x]\]\s)?|\d+\.\s)/,
+				)
 				if (existingPrefix) {
-					let diff = prefix.length - existingPrefix.length
+					let existingMarker = existingPrefix[0]
+					let diff = prefixTrimmed.length - existingMarker.length
+					let prefixStart = startLine.from + indent.length
 					view.dispatch({
 						changes: {
-							from: startLine.from,
-							to: startLine.from + existingPrefix.length,
+							from: prefixStart,
+							to: prefixStart + existingMarker.length,
 							insert: prefix,
 						},
 						selection: { anchor: from + diff },
 					})
 				} else {
+					let prefixStart = startLine.from + indent.length
 					view.dispatch({
-						changes: { from: startLine.from, insert: prefix },
+						changes: { from: prefixStart, insert: prefix },
 						selection: { anchor: from + prefix.length },
 					})
 				}
@@ -119,7 +130,8 @@ function toggleLinePrefix(prefix: string): Command {
 
 		for (let i = startLine.number; i <= endLine.number; i++) {
 			let line = view.state.doc.line(i)
-			if (!line.text.startsWith(prefix)) {
+			let { textAfterIndent } = getIndentAndText(line.text)
+			if (!textAfterIndent.startsWith(prefixTrimmed)) {
 				allHavePrefix = false
 				break
 			}
@@ -127,26 +139,32 @@ function toggleLinePrefix(prefix: string): Command {
 
 		for (let i = startLine.number; i <= endLine.number; i++) {
 			let line = view.state.doc.line(i)
-			let lineText = line.text
+			let { indent, textAfterIndent } = getIndentAndText(line.text)
 
 			if (allHavePrefix) {
 				changes.push({
-					from: line.from,
-					to: line.from + prefix.length,
+					from: line.from + indent.length,
+					to: line.from + indent.length + prefixTrimmed.length,
 					insert: "",
 				})
 			} else {
-				let existingPrefix = lineText.match(
-					/^(#{1,6}\s|[-*]\s(\[[ x]\]\s)?)/,
-				)?.[0]
+				let existingPrefix = textAfterIndent.match(
+					/^(#{1,6}\s|[-*+]\s(\[[ x]\]\s)?|\d+\.\s)/,
+				)
+				let prefixStart = line.from + indent.length
 				if (existingPrefix) {
+					let existingMarker = existingPrefix[0]
 					changes.push({
-						from: line.from,
-						to: line.from + existingPrefix.length,
+						from: prefixStart,
+						to: prefixStart + existingMarker.length,
 						insert: prefix,
 					})
 				} else {
-					changes.push({ from: line.from, to: line.from, insert: prefix })
+					changes.push({
+						from: prefixStart,
+						to: prefixStart,
+						insert: prefix,
+					})
 				}
 			}
 		}
@@ -323,10 +341,12 @@ let toggleTaskComplete: Command = view => {
 
 	let uncheckedMatch = lineText.match(/^(\s*[-*]\s)\[ \](\s)/)
 	if (uncheckedMatch) {
+		let prefixLength = uncheckedMatch[1].length
+		let checkboxStart = line.from + prefixLength
 		view.dispatch({
 			changes: {
-				from: line.from + uncheckedMatch[1].length,
-				to: line.from + uncheckedMatch[1].length + 3,
+				from: checkboxStart,
+				to: checkboxStart + 3,
 				insert: "[x]",
 			},
 		})
@@ -335,10 +355,12 @@ let toggleTaskComplete: Command = view => {
 
 	let checkedMatch = lineText.match(/^(\s*[-*]\s)\[x\](\s)/i)
 	if (checkedMatch) {
+		let prefixLength = checkedMatch[1].length
+		let checkboxStart = line.from + prefixLength
 		view.dispatch({
 			changes: {
-				from: line.from + checkedMatch[1].length,
-				to: line.from + checkedMatch[1].length + 3,
+				from: checkboxStart,
+				to: checkboxStart + 3,
 				insert: "[ ]",
 			},
 		})
@@ -354,7 +376,7 @@ let setBody: Command = view => {
 	let lineText = line.text
 
 	let existingPrefix = lineText.match(
-		/^(#{1,6}\s|[-*]\s(\[[ x]\]\s)?|>\s|[0-9]+\.\s)/,
+		/^(#{1,6}\s|[-*+]\s(\[[ x]\]\s)?|>\s|\d+\.\s)/,
 	)?.[0]
 	if (existingPrefix) {
 		view.dispatch({
@@ -367,6 +389,16 @@ let setBody: Command = view => {
 		})
 	}
 	return true
+}
+
+function getIndentAndText(lineText: string): {
+	indent: string
+	textAfterIndent: string
+} {
+	let indentMatch = lineText.match(/^(\s*)/)
+	let indent = indentMatch ? indentMatch[1] : ""
+	let textAfterIndent = lineText.slice(indent.length)
+	return { indent, textAfterIndent }
 }
 
 let toggleBold = wrapSelection("**")

@@ -983,11 +983,13 @@ function FormatMenu({
 								onClick={() => runAction(() => editor?.current?.indent())}
 							>
 								Indent
+								<DropdownMenuShortcut>Tab</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							<DropdownMenuItem
 								onClick={() => runAction(() => editor?.current?.outdent())}
 							>
 								Outdent
+								<DropdownMenuShortcut>⇧Tab</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
