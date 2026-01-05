@@ -136,7 +136,7 @@
 			"priority": 17,
 			"story": "Update sidebar to show space-specific doc list when in space route",
 			"acceptance": "Sidebar shows docs from current space, not personal docs",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "5.1",
@@ -144,7 +144,7 @@
 			"priority": 18,
 			"story": "Update makeCreateDocument to accept optional space parameter",
 			"acceptance": "Function signature accepts space, creates doc with space group as owner when provided",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "5.2",

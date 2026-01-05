@@ -118,3 +118,19 @@
 - Updated slideshow route to enable teleprompter navigation
 - Files: src/routes/spaces.$spaceId.doc.$id.teleprompter.tsx (new), src/routes/spaces.$spaceId.doc.$id.slideshow.tsx
 - Commit: feat: add spaces teleprompter route
+
+## Story 4.5 - Update sidebar to show space-specific doc list when in space route
+- Added optional `spaceId` prop to SidebarDocumentList and DocumentItem components
+- When `spaceId` is provided, document links navigate to space routes (/spaces/$spaceId/doc/$id) instead of personal routes
+- Updated context menu links (preview, slideshow, teleprompter) to use space routes when in space context
+- Passed `spaceId` from space editor route to SidebarDocumentList
+- Files: src/components/sidebar-document-list.tsx, src/routes/spaces.$spaceId.doc.$id.index.tsx
+- Commit: feat: update sidebar to use space routes when in space context
+
+## Story 5.1 - Update makeCreateDocument to accept optional space parameter
+- Added SpaceWithDocuments type for space with loaded documents
+- Updated makeCreateDocument signature to accept optional `space` parameter
+- When space is provided: use space.$jazz.owner as group, push to space.documents
+- When no space: create new Group per doc, push to me.root.documents
+- File: src/routes/doc.$id.index.tsx
+- Commit: feat: update makeCreateDocument to accept optional space parameter
