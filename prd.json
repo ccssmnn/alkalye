@@ -264,7 +264,7 @@
 			"priority": 33,
 			"story": "Create SpaceShareDialog component",
 			"acceptance": "Dialog component renders with invite options similar to doc share dialog",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "9.2",

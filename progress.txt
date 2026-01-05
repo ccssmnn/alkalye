@@ -246,3 +246,15 @@
 - Exported SpaceInitials from space-selector.tsx for reuse
 - Files: src/components/space-selector.tsx, src/routes/spaces.$spaceId.settings.tsx
 - Commit: feat: fallback to initials when space has no avatar
+
+## Story 9.1 - Create SpaceShareDialog component
+- Created SpaceShareDialog component similar to doc ShareDialog
+- Dialog renders with invite options for Admin, Can edit, Can view roles
+- Shows generated invite link with copy button after clicking role button
+- Displays collaborators list with names, roles, and revoke buttons (admin only)
+- Shows pending invites with revoke option
+- Non-admin collaborators see "Leave space" button
+- Includes auth gate showing "Sign in to share" for unauthenticated users
+- Helper functions: getSpaceGroup, createSpaceInviteLink, getSpaceCollaborators, getSpaceOwner, revokeSpaceInvite, handleLeaveSpace
+- File: src/components/space-share-dialog.tsx (new)
+- Commit: feat: add SpaceShareDialog component with invite options
