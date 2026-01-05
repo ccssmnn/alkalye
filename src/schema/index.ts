@@ -71,6 +71,7 @@ let Document = co.map({
 
 let Space = co.map({
 	name: z.string(),
+	avatar: co.optional(co.image()),
 	documents: co.list(Document),
 	createdAt: z.date(),
 	updatedAt: z.date(),
