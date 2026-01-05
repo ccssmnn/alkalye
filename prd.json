@@ -328,7 +328,7 @@
 			"priority": 41,
 			"story": "Update wikilink autocomplete to filter by current space",
 			"acceptance": "Wikilink suggestions only show docs from same space or personal",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "11.2",
@@ -336,7 +336,7 @@
 			"priority": 42,
 			"story": "Update backlink sync to only update links within same space",
 			"acceptance": "Renaming doc only updates backlinks in same space",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "12.1",

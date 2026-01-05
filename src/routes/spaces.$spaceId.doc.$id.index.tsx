@@ -216,7 +216,7 @@ function SpaceEditorContent({
 			})
 	}
 
-	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
+	let { syncBacklinks } = useBacklinkSync(docId, readOnly, { spaceId })
 	useEditorSettings(editorSettings)
 
 	let content = doc.content?.toString() ?? ""

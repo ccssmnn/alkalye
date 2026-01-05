@@ -324,3 +324,27 @@
 - Anonymous users viewing empty public spaces are redirected to home (read-only, can't create)
 - File: src/routes/spaces.$spaceId.index.tsx
 - Commit: feat: enable public space access without invite link
+
+## Story 11.1 - Update wikilink autocomplete to filter by current space
+- Updated personal doc route (doc.$id.index.tsx) to filter wikilink suggestions by selectedSpace
+- When selectedSpace is null: shows personal documents in autocomplete
+- When selectedSpace has value: shows that space's documents in autocomplete
+- Updated `documents` computation (lines 181-208) to check selectedSpace and fetch from space.documents
+- Updated `wikiLinkDocs` computation (lines 229-245) similarly for wikilink insertion menu
+- Updated `makeCreateDocForWikilink` to accept optional space parameter
+- When space provided: creates doc with space.$jazz.owner, sets spaceId, pushes to space.documents
+- When no space: creates doc with doc owner, pushes to me.root.documents
+- Added MaybeSpace type alias for loaded space with documents
+- File: src/routes/doc.$id.index.tsx
+- Commit: feat: filter wikilink autocomplete by current space
+
+## Story 11.2 - Update backlink sync to only update links within same space
+- Updated useBacklinkSync hook to accept optional spaceId in options parameter
+- When spaceId provided: loads space via useCoState, syncs only to space.documents
+- When no spaceId (personal context): syncs only to personal docs (filtering out docs with spaceId)
+- Added BacklinkSyncOptions type for the third parameter
+- Updated getDocuments() to return space docs or personal docs based on context
+- Updated docsReady check to consider space loading state
+- Updated space editor route to pass { spaceId } to useBacklinkSync
+- Files: src/lib/backlink-sync.ts, src/routes/spaces.$spaceId.doc.$id.index.tsx
+- Commit: feat: update backlink sync to only update links within same space
