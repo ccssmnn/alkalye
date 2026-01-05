@@ -204,3 +204,15 @@
 - Added imports: useNavigate, deleteSpace, ConfirmDialog, useConfirmDialog
 - File: src/routes/spaces.$spaceId.settings.tsx
 - Commit: feat: add delete space button for owner only
+
+## Story 7.5 - Disable controls based on user role in space group
+- Changed SpaceNameSection: non-admins now see disabled Input instead of static text
+- Changed DeleteSpaceSection: always renders for all users, delete button disabled for non-admins
+- Non-admin users can view controls but cannot interact with them
+- File: src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: disable controls based on user role in space settings
+
+## Story 8.1 - Add avatar field to Space schema
+- Added optional avatar field of type co.image() to Space schema
+- File: src/schema/index.ts (line 74)
+- Commit: feat: add avatar field to Space schema

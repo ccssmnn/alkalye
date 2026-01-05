@@ -224,7 +224,7 @@
 			"priority": 28,
 			"story": "Disable controls based on user role in space group",
 			"acceptance": "Non-admin users see disabled controls for admin-only actions",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "8.1",
@@ -232,7 +232,7 @@
 			"priority": 29,
 			"story": "Add avatar field to Space schema",
 			"acceptance": "Space has optional avatar field of type co.image()",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "8.2",
