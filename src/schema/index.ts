@@ -64,6 +64,7 @@ let Document = co.map({
 	deletedAt: z.date().optional(),
 	permanentlyDeletedAt: z.date().optional(),
 	presentationLine: z.number().optional(),
+	spaceId: z.string().optional(),
 	createdAt: z.date(),
 	updatedAt: z.date(),
 })
