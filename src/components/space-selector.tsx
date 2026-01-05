@@ -1,6 +1,6 @@
 import { createContext, useContext, useState } from "react"
 import { co } from "jazz-tools"
-import { useAccount } from "jazz-tools/react"
+import { useAccount, Image } from "jazz-tools/react"
 import { ChevronDown, User, Users, Check, Plus } from "lucide-react"
 import {
 	DropdownMenu,
@@ -10,7 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { UserAccount, Space } from "@/schema"
+import { UserAccount } from "@/schema"
 
 export { SpaceSelector, SpaceProvider, useSelectedSpace, useCreateSpaceDialog }
 export type { SelectedSpace }
@@ -71,7 +71,7 @@ function useCreateSpaceDialog(): Pick<
 	return ctx
 }
 
-let spacesQuery = { root: { spaces: { $each: true } } } as const
+let spacesQuery = { root: { spaces: { $each: { avatar: true } } } } as const
 type LoadedSpaces = co.loaded<typeof UserAccount, typeof spacesQuery>
 
 function SpaceSelector() {
@@ -112,7 +112,7 @@ function SpaceSelector() {
 							setSelectedSpace({ id: space.$jazz.id, name: space.name })
 						}
 					>
-						<Users className="size-4" />
+						<SpaceAvatar space={space} />
 						<span>{space.name}</span>
 						{selectedSpace?.id === space.$jazz.id && (
 							<Check className="ml-auto size-4" />
@@ -129,14 +129,18 @@ function SpaceSelector() {
 	)
 }
 
+type LoadedSpaceWithAvatar = NonNullable<
+	NonNullable<LoadedSpaces["root"]["spaces"]>[number]
+>
+
 function getSortedSpaces(
 	spaces: LoadedSpaces["root"]["spaces"],
-): co.loaded<typeof Space>[] {
+): LoadedSpaceWithAvatar[] {
 	if (!spaces) return []
 
 	return Array.from(spaces)
 		.filter(
-			(s): s is co.loaded<typeof Space> =>
+			(s): s is LoadedSpaceWithAvatar =>
 				s != null && s.$isLoaded && !s.deletedAt,
 		)
 		.sort((a, b) => a.name.localeCompare(b.name))
@@ -146,4 +150,22 @@ function makeOpenCreateDialog(setOpen: (open: boolean) => void) {
 	return function handleOpenCreateDialog() {
 		setOpen(true)
 	}
+}
+
+function SpaceAvatar({ space }: { space: LoadedSpaceWithAvatar }) {
+	let avatarId = space.avatar?.$jazz.id
+
+	if (avatarId) {
+		return (
+			<Image
+				imageId={avatarId}
+				width={16}
+				height={16}
+				alt={space.name}
+				className="size-4 shrink-0 rounded object-cover"
+			/>
+		)
+	}
+
+	return <Users className="size-4" />
 }
