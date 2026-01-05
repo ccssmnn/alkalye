@@ -184,7 +184,7 @@
 			"priority": 23,
 			"story": "Handle deleted space case with error page",
 			"acceptance": "Opening deleted space shows appropriate error",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "7.1",
@@ -192,7 +192,7 @@
 			"priority": 24,
 			"story": "Create spaces.$spaceId.settings.tsx route",
 			"acceptance": "Route file exists, renders settings page for space",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "7.2",

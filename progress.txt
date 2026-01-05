@@ -163,3 +163,18 @@
 - Shows loading spinner while redirect is pending
 - File: src/routes/doc.$id.index.tsx
 - Commit: feat: redirect /doc/$id to space URL when doc has spaceId
+
+## Story 6.3 - Handle deleted space case with error page
+- Added SpaceDeleted component to document-error-states.tsx with FolderX icon
+- Shows "Space deleted" title and "This space has been deleted and is no longer available." message
+- Updated all 4 space doc routes to use SpaceDeleted instead of DocumentNotFound for deleted spaces
+- Files: src/components/document-error-states.tsx, src/routes/spaces.$spaceId.doc.$id.*.tsx
+- Commit: feat: add SpaceDeleted error page for deleted space routes
+
+## Story 7.1 - Create spaces.$spaceId.settings.tsx route
+- Created new route file for space settings page
+- Loads space with documents query, handles auth/not-found/deleted states
+- Renders settings page with TopBar (back button, "Space Settings" title)
+- Shows space name in General section (read-only for now, editing in story 7.2)
+- File: src/routes/spaces.$spaceId.settings.tsx (new)
+- Commit: feat: add space settings route
