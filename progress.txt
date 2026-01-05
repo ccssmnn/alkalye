@@ -305,3 +305,22 @@
 - getSpacePublicLink returns /spaces/{spaceId} URL
 - File: src/components/space-share-dialog.tsx
 - Commit: feat: add public toggle in space share dialog
+
+## Story 10.2 - Implement makePublic/removeMember for space group
+- Already implemented in Story 10.1: makeSpacePublic and makeSpacePrivate helper functions
+- makeSpacePublic (line 575-583): calls spaceGroup.makePublic() and updates space.updatedAt
+- makeSpacePrivate (line 585-593): calls spaceGroup.removeMember("everyone") and updates space.updatedAt
+- handleMakePublic handler (line 146) and handleMakePrivate handler (line 158) call these functions
+- File: src/components/space-share-dialog.tsx
+- No changes needed, marking as passed
+
+## Story 10.3 - Public space URL works without invite
+- When spaceGroup.makePublic() is called, Jazz adds "everyone" as reader
+- Space.load() and Document.load() return loaded content for public spaces (anyone can read)
+- Space routes (index, doc.$id.index, preview, slideshow, teleprompter) already check $isLoaded
+- If space/doc is public, Jazz returns loaded data and routes render content
+- canEdit(doc) returns false for readers, making editor read-only for anonymous/reader users
+- Updated spaces.$spaceId.index.tsx to check write permission before creating new docs
+- Anonymous users viewing empty public spaces are redirected to home (read-only, can't create)
+- File: src/routes/spaces.$spaceId.index.tsx
+- Commit: feat: enable public space access without invite link

@@ -312,7 +312,7 @@
 			"priority": 39,
 			"story": "Implement makePublic/removeMember for space group",
 			"acceptance": "Toggle calls spaceGroup.makePublic() or removeMember('everyone')",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "10.3",
@@ -320,7 +320,7 @@
 			"priority": 40,
 			"story": "Public space URL works without invite",
 			"acceptance": "Anyone can access public space docs without invite link",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "11.1",

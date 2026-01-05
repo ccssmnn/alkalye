@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { co, type ResolveQuery } from "jazz-tools"
+import { co, Group, type ResolveQuery } from "jazz-tools"
 import { Document, Space } from "@/schema"
 
 export { Route }
@@ -37,7 +37,18 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 			})
 		}
 
-		// No docs - create new one
+		// No docs exist - check if user can create (has write access)
+		let spaceGroup =
+			space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+		let canWrite =
+			spaceGroup?.myRole() === "admin" || spaceGroup?.myRole() === "writer"
+
+		if (!canWrite) {
+			// Public space with no docs, can't create - redirect to home
+			throw redirect({ to: "/" })
+		}
+
+		// User can write - create new doc
 		let now = new Date()
 		let newDoc = Document.create(
 			{
