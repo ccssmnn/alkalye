@@ -86,6 +86,7 @@ interface SidebarDocumentListProps {
 	onDocClick: () => void
 	onDuplicate: (doc: LoadedDocument) => void
 	onDelete: (doc: LoadedDocument) => void
+	spaceId?: string
 }
 
 type ListItem =
@@ -99,6 +100,7 @@ function SidebarDocumentList({
 	onDocClick,
 	onDuplicate,
 	onDelete,
+	spaceId,
 }: SidebarDocumentListProps) {
 	let [search, setSearch] = useState("")
 	let [sort, setSort] = useState<SortMode>("latest")
@@ -183,6 +185,7 @@ function SidebarDocumentList({
 						onDocClick={onDocClick}
 						onDuplicate={onDuplicate}
 						onDelete={onDelete}
+						spaceId={spaceId}
 					/>
 				</SidebarGroupContent>
 			</SidebarGroup>
@@ -315,6 +318,7 @@ function DocumentListContent({
 	onDocClick,
 	onDuplicate,
 	onDelete,
+	spaceId,
 }: {
 	docs: LoadedDocument[]
 	currentDocId: string | undefined
@@ -324,6 +328,7 @@ function DocumentListContent({
 	onDocClick: () => void
 	onDuplicate: (doc: LoadedDocument) => void
 	onDelete: (doc: LoadedDocument) => void
+	spaceId?: string
 }) {
 	let parentRef = useRef<HTMLDivElement>(null)
 	let { viewMode, isCollapsed, toggleFolder } = useFolderStore()
@@ -403,6 +408,7 @@ function DocumentListContent({
 									showPath={viewMode === "flat"}
 									existingFolders={existingFolders}
 									depth={item.depth}
+									spaceId={spaceId}
 								/>
 							)}
 						</div>
@@ -423,6 +429,7 @@ function DocumentItem({
 	showPath = false,
 	existingFolders,
 	depth = 0,
+	spaceId,
 }: {
 	doc: LoadedDocument
 	isActive: boolean
@@ -433,6 +440,7 @@ function DocumentItem({
 	showPath?: boolean
 	existingFolders: string[]
 	depth?: number
+	spaceId?: string
 }) {
 	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 	let [shareOpen, setShareOpen] = useState(false)
@@ -457,15 +465,21 @@ function DocumentItem({
 		: 0
 	let docId = doc.$jazz.id
 
+	// Build link props based on whether we're in a space context
+	let docLinkProps = spaceId
+		? {
+				to: "/spaces/$spaceId/doc/$id" as const,
+				params: { spaceId, id: docId },
+			}
+		: { to: "/doc/$id" as const, params: { id: docId } }
+
 	return (
 		<SidebarMenuItem>
 			<ContextMenu>
 				<ContextMenuTrigger
 					render={
 						<SidebarMenuButton
-							render={
-								<Link to="/doc/$id" params={{ id: docId }} onClick={onClick} />
-							}
+							render={<Link {...docLinkProps} onClick={onClick} />}
 							isActive={isActive}
 							className="h-auto py-2"
 							style={
@@ -544,11 +558,18 @@ function DocumentItem({
 				<ContextMenuContent>
 					<ContextMenuItem
 						render={
-							<Link
-								to="/doc/$id/preview"
-								params={{ id: docId }}
-								search={{ from: "list" }}
-							/>
+							spaceId ? (
+								<Link
+									to="/spaces/$spaceId/doc/$id/preview"
+									params={{ spaceId, id: docId }}
+								/>
+							) : (
+								<Link
+									to="/doc/$id/preview"
+									params={{ id: docId }}
+									search={{ from: "list" }}
+								/>
+							)
 						}
 					>
 						<Eye />
@@ -557,14 +578,30 @@ function DocumentItem({
 					{isPresentation && (
 						<>
 							<ContextMenuItem
-								render={<Link to="/doc/$id/slideshow" params={{ id: docId }} />}
+								render={
+									spaceId ? (
+										<Link
+											to="/spaces/$spaceId/doc/$id/slideshow"
+											params={{ spaceId, id: docId }}
+										/>
+									) : (
+										<Link to="/doc/$id/slideshow" params={{ id: docId }} />
+									)
+								}
 							>
 								<Presentation />
 								Slideshow
 							</ContextMenuItem>
 							<ContextMenuItem
 								render={
-									<Link to="/doc/$id/teleprompter" params={{ id: docId }} />
+									spaceId ? (
+										<Link
+											to="/spaces/$spaceId/doc/$id/teleprompter"
+											params={{ spaceId, id: docId }}
+										/>
+									) : (
+										<Link to="/doc/$id/teleprompter" params={{ id: docId }} />
+									)
 								}
 							>
 								<ScrollText />

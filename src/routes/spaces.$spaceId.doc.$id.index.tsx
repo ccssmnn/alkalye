@@ -321,6 +321,7 @@ function SpaceEditorContent({
 								navigate({ to: "/" })
 							}
 						}}
+						spaceId={spaceId}
 					/>
 				</ListSidebar>
 			</ImportDropZone>
