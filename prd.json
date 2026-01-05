@@ -152,7 +152,7 @@
 			"priority": 19,
 			"story": "Add spaceId field to Document schema",
 			"acceptance": "Document has optional spaceId string field",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "5.3",

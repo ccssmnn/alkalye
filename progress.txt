@@ -134,3 +134,8 @@
 - When no space: create new Group per doc, push to me.root.documents
 - File: src/routes/doc.$id.index.tsx
 - Commit: feat: update makeCreateDocument to accept optional space parameter
+
+## Story 5.2 - Add spaceId field to Document schema
+- Added optional spaceId string field to Document schema
+- File: src/schema/index.ts (line 67)
+- Commit: feat: add spaceId field to Document schema
