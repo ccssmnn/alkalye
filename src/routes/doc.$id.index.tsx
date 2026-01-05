@@ -23,6 +23,7 @@ import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
 import { SpaceProvider, useSelectedSpace } from "@/components/space-selector"
+import { CreateSpaceDialog } from "@/components/create-space-dialog"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 import { ImportDropZone } from "@/components/import-drop-zone"
 import {
@@ -118,6 +119,7 @@ function EditorPage() {
 			<SidebarProvider>
 				<EditorContent doc={doc} docId={id} />
 			</SidebarProvider>
+			<CreateSpaceDialog />
 		</SpaceProvider>
 	)
 }
