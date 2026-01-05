@@ -40,7 +40,7 @@
 			"priority": 5,
 			"story": "Create SpaceSelector dropdown component",
 			"acceptance": "Dropdown component renders in left sidebar header, shows Personal option",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "2.2",
@@ -48,7 +48,7 @@
 			"priority": 6,
 			"story": "Show all user spaces in dropdown alphabetically",
 			"acceptance": "Dropdown lists Personal + all spaces from UserRoot.spaces sorted A-Z",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "2.3",

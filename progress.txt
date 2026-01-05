@@ -22,3 +22,16 @@
 - After settings init, checks `!root.$jazz.has("spaces")` and creates empty list
 - File: src/schema/index.ts (lines 163-166)
 - Commit: feat: add migration to initialize empty spaces list for existing users
+
+## Story 2.1 - Create SpaceSelector dropdown component
+- Created SpaceSelector component with dropdown showing "Personal" option
+- Replaced static "Alkalye" text in ListSidebar header with SpaceSelector
+- Files: src/components/space-selector.tsx (new), src/components/list-sidebar.tsx
+- Commit: feat: add SpaceSelector dropdown component in left sidebar header
+
+## Story 2.2 - Show all user spaces in dropdown alphabetically
+- Added useAccount hook to fetch user's spaces with spacesQuery
+- Added getSortedSpaces helper to filter deleted spaces and sort A-Z
+- Dropdown now shows Personal + all user spaces sorted alphabetically
+- File: src/components/space-selector.tsx
+- Commit: feat: show user spaces in dropdown sorted alphabetically
