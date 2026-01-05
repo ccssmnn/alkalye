@@ -160,7 +160,7 @@
 			"priority": 20,
 			"story": "Push new doc to space.documents when in space context",
 			"acceptance": "Creating doc in space adds it to space.documents, not UserRoot.documents",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "6.1",
@@ -168,7 +168,7 @@
 			"priority": 21,
 			"story": "Create spaces.$spaceId.index.tsx route",
 			"acceptance": "Route redirects to latest doc in space or creates new doc",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "6.2",
@@ -176,7 +176,7 @@
 			"priority": 22,
 			"story": "Redirect /doc/$id to space URL when user is space member",
 			"acceptance": "Opening /doc/$id for a space doc redirects to /spaces/$spaceId/doc/$id",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "6.3",

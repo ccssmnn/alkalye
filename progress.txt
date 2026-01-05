@@ -139,3 +139,27 @@
 - Added optional spaceId string field to Document schema
 - File: src/schema/index.ts (line 67)
 - Commit: feat: add spaceId field to Document schema
+
+## Story 5.3 - Push new doc to space.documents when in space context
+- Updated `/new` route to accept optional `spaceId` search parameter
+- When spaceId provided: creates doc with space.$jazz.owner, sets spaceId field, pushes to space.documents, redirects to /spaces/$spaceId/doc/$id
+- When no spaceId: creates doc with new Group, pushes to me.root.documents (personal)
+- Updated space editor route to pass spaceId to /new link
+- Updated personal editor route to pass selectedSpace?.id to /new link
+- Files: src/routes/new.tsx, src/routes/spaces.$spaceId.doc.$id.index.tsx, src/routes/doc.$id.index.tsx
+- Commit: feat: push new doc to space.documents when in space context
+
+## Story 6.1 - Create spaces.$spaceId.index.tsx route
+- Created new route that loads space with documents
+- Redirects to most recent non-deleted doc in space (sorted by updatedAt)
+- If no docs exist, creates new empty doc with space.$jazz.owner and spaceId field
+- Handles deleted space by redirecting to /
+- File: src/routes/spaces.$spaceId.index.tsx (new)
+- Commit: feat: add spaces index route that redirects to latest doc or creates new
+
+## Story 6.2 - Redirect /doc/$id to space URL when user is space member
+- Added useEffect in EditorPage to check if doc has spaceId field
+- If spaceId exists, navigate to /spaces/$spaceId/doc/$id with replace: true
+- Shows loading spinner while redirect is pending
+- File: src/routes/doc.$id.index.tsx
+- Commit: feat: redirect /doc/$id to space URL when doc has spaceId
