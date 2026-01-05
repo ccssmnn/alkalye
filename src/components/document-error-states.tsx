@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router"
-import { FileX, FolderX, ShieldOff } from "lucide-react"
+import { FileX, FolderSearch, FolderX, ShieldOff } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
 	Empty,
@@ -10,7 +10,7 @@ import {
 	EmptyContent,
 } from "@/components/ui/empty"
 
-export { DocumentNotFound, DocumentUnauthorized, SpaceDeleted }
+export { DocumentNotFound, DocumentUnauthorized, SpaceDeleted, SpaceNotFound }
 
 function DocumentNotFound() {
 	return (
@@ -69,6 +69,29 @@ function SpaceDeleted() {
 					<EmptyTitle>Space deleted</EmptyTitle>
 					<EmptyDescription>
 						This space has been deleted and is no longer available.
+					</EmptyDescription>
+				</EmptyHeader>
+				<EmptyContent>
+					<Button nativeButton={false} render={<Link to="/" />}>
+						Go to App
+					</Button>
+				</EmptyContent>
+			</Empty>
+		</div>
+	)
+}
+
+function SpaceNotFound() {
+	return (
+		<div className="bg-background flex min-h-dvh items-center justify-center">
+			<Empty>
+				<EmptyHeader>
+					<EmptyMedia>
+						<FolderSearch className="text-muted-foreground size-12" />
+					</EmptyMedia>
+					<EmptyTitle>Space not found</EmptyTitle>
+					<EmptyDescription>
+						This space doesn&apos;t exist or may have been removed.
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
