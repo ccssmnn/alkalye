@@ -400,7 +400,7 @@
 			"priority": 50,
 			"story": "Create SpaceUnauthorized component",
 			"acceptance": "Component renders error state for unauthorized space access",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "13.3",
@@ -408,7 +408,7 @@
 			"priority": 51,
 			"story": "Use error components in space routes",
 			"acceptance": "Space routes show appropriate error when space missing or unauthorized",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "14.1",

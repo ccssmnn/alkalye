@@ -422,3 +422,20 @@
 - Exported from document-error-states.tsx alongside existing error components
 - File: src/components/document-error-states.tsx
 - Commit: feat: add SpaceNotFound component for missing space error state
+
+## Story 13.2 - Create SpaceUnauthorized component
+- Added SpaceUnauthorized component to document-error-states.tsx
+- Uses FolderLock icon (differentiates from DocumentUnauthorized which uses ShieldOff)
+- Shows "Access denied" title and "You don't have permission to view this space." description
+- Includes "Go to App" button linking to home
+- Exported from document-error-states.tsx alongside existing error components
+- File: src/components/document-error-states.tsx
+- Commit: feat: add SpaceUnauthorized component for unauthorized space access
+
+## Story 13.3 - Use error components in space routes
+- Updated all 5 space routes to use SpaceNotFound/SpaceUnauthorized for space errors
+- Space routes now show SpaceNotFound when space doesn't exist (instead of DocumentNotFound)
+- Space routes now show SpaceUnauthorized when user lacks access (instead of DocumentUnauthorized)
+- Document errors still use DocumentNotFound/DocumentUnauthorized (for doc within space)
+- Files: spaces.$spaceId.doc.$id.index.tsx, preview.tsx, slideshow.tsx, teleprompter.tsx, settings.tsx
+- Commit: feat: use SpaceNotFound/SpaceUnauthorized in space routes
