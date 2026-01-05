@@ -89,12 +89,36 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
+	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
+
+	// Redirect to space route if doc belongs to a space
+	useEffect(() => {
+		if (data.doc?.spaceId) {
+			navigate({
+				to: "/spaces/$spaceId/doc/$id",
+				params: { spaceId: data.doc.spaceId, id },
+				replace: true,
+			})
+		}
+	}, [data.doc?.spaceId, id, navigate])
 
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
+	}
+
+	// Show loading while redirecting to space route
+	if (data.doc.spaceId) {
+		return (
+			<Empty className="h-screen">
+				<EmptyHeader>
+					<Loader2 className="text-muted-foreground size-8 animate-spin" />
+					<EmptyTitle>Loading document...</EmptyTitle>
+				</EmptyHeader>
+			</Empty>
+		)
 	}
 
 	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
