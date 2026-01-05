@@ -16,7 +16,15 @@ import {
 	type BackupDoc,
 } from "@/lib/backup-sync"
 
-export { BackupSubscriber, BackupSettings }
+export {
+	BackupSubscriber,
+	BackupSettings,
+	SpaceBackupSettings,
+	useSpaceBackupPath,
+	getSpaceBackupPath,
+	setSpaceBackupPath,
+	clearSpaceBackupPath,
+}
 
 // File System Access API type augmentation
 declare global {
@@ -491,6 +499,160 @@ function BackupSettings() {
 							variant="outline"
 							size="sm"
 							disabled={isLoading}
+						>
+							<FolderOpen className="mr-1.5 size-3.5" />
+							Choose backup folder
+						</Button>
+					</>
+				)}
+			</div>
+		</section>
+	)
+}
+
+// Space-specific backup path settings stored in localStorage
+
+let SPACE_BACKUP_KEY_PREFIX = "backup-settings-space-"
+
+function getSpaceBackupStorageKey(spaceId: string): string {
+	return `${SPACE_BACKUP_KEY_PREFIX}${spaceId}`
+}
+
+interface SpaceBackupState {
+	directoryName: string | null
+}
+
+function getSpaceBackupPath(spaceId: string): string | null {
+	try {
+		let key = getSpaceBackupStorageKey(spaceId)
+		let stored = localStorage.getItem(key)
+		if (!stored) return null
+		let parsed = JSON.parse(stored) as SpaceBackupState
+		return parsed.directoryName
+	} catch {
+		return null
+	}
+}
+
+function setSpaceBackupPath(spaceId: string, directoryName: string): void {
+	let key = getSpaceBackupStorageKey(spaceId)
+	let state: SpaceBackupState = { directoryName }
+	localStorage.setItem(key, JSON.stringify(state))
+}
+
+function clearSpaceBackupPath(spaceId: string): void {
+	let key = getSpaceBackupStorageKey(spaceId)
+	localStorage.removeItem(key)
+}
+
+function useSpaceBackupPath(spaceId: string): {
+	directoryName: string | null
+	setDirectoryName: (name: string | null) => void
+} {
+	let [directoryName, setDirectoryNameState] = useState<string | null>(() =>
+		getSpaceBackupPath(spaceId),
+	)
+
+	function setDirectoryName(name: string | null) {
+		if (name) {
+			setSpaceBackupPath(spaceId, name)
+		} else {
+			clearSpaceBackupPath(spaceId)
+		}
+		setDirectoryNameState(name)
+	}
+
+	return { directoryName, setDirectoryName }
+}
+
+interface SpaceBackupSettingsProps {
+	spaceId: string
+	isAdmin: boolean
+}
+
+function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
+	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
+	let [isLoading, setIsLoading] = useState(false)
+
+	if (!isBackupSupported()) return null
+
+	async function handleChooseFolder() {
+		setIsLoading(true)
+		try {
+			let handle = await window.showDirectoryPicker({ mode: "readwrite" })
+			// Store handle in IndexedDB with space-specific key
+			await idbSet(`${HANDLE_STORAGE_KEY}-space-${spaceId}`, handle)
+			setDirectoryName(handle.name)
+		} catch (e) {
+			if (!(e instanceof Error && e.name === "AbortError")) {
+				console.error("Failed to select folder:", e)
+			}
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
+	async function handleChangeFolder() {
+		await handleChooseFolder()
+	}
+
+	async function handleClear() {
+		setIsLoading(true)
+		try {
+			await idbDel(`${HANDLE_STORAGE_KEY}-space-${spaceId}`)
+			setDirectoryName(null)
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				Local Backup
+			</h2>
+			<div className="bg-muted/30 rounded-lg p-4">
+				{directoryName ? (
+					<>
+						<div className="mb-2 flex items-center gap-2 text-green-600 dark:text-green-400">
+							<FolderOpen className="size-4" />
+							<span className="text-sm font-medium">Backup folder set</span>
+						</div>
+						<p className="text-muted-foreground mb-3 text-sm">
+							Folder: <span className="font-medium">{directoryName}</span>
+						</p>
+						<div className="flex gap-2">
+							<Button
+								onClick={handleChangeFolder}
+								variant="outline"
+								size="sm"
+								disabled={isLoading || !isAdmin}
+							>
+								Change folder
+							</Button>
+							<Button
+								onClick={handleClear}
+								variant="ghost"
+								size="sm"
+								disabled={isLoading || !isAdmin}
+							>
+								Clear
+							</Button>
+						</div>
+					</>
+				) : (
+					<>
+						<div className="text-foreground mb-2 text-sm font-medium">
+							No backup folder set
+						</div>
+						<p className="text-muted-foreground mb-4 text-sm">
+							Set a backup folder for this space&apos;s documents.
+						</p>
+						<Button
+							onClick={handleChooseFolder}
+							variant="outline"
+							size="sm"
+							disabled={isLoading || !isAdmin}
 						>
 							<FolderOpen className="mr-1.5 size-3.5" />
 							Choose backup folder

@@ -16,6 +16,7 @@ import {
 	SpaceNotFound,
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
+import { SpaceBackupSettings } from "@/lib/backup"
 
 export { Route }
 
@@ -110,6 +111,7 @@ function SpaceSettingsContent({
 				<div className="mx-auto max-w-2xl px-4 py-8">
 					<div className="space-y-8">
 						<SpaceNameSection space={space} />
+						<SpaceBackupSettingsSection space={space} spaceId={spaceId} />
 						<SpaceMembersSection space={space} />
 						<DeleteSpaceSection space={space} />
 					</div>
@@ -148,6 +150,19 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 			</div>
 		</section>
 	)
+}
+
+function SpaceBackupSettingsSection({
+	space,
+	spaceId,
+}: {
+	space: LoadedSpace
+	spaceId: string
+}) {
+	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let isAdmin = spaceGroup?.myRole() === "admin"
+
+	return <SpaceBackupSettings spaceId={spaceId} isAdmin={isAdmin} />
 }
 
 function SpaceAvatarUpload({
