@@ -15,6 +15,8 @@ import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 	SpaceDeleted,
+	SpaceNotFound,
+	SpaceUnauthorized,
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
@@ -102,8 +104,8 @@ function SpacePreviewPage() {
 
 	// Space not found or unauthorized
 	if (!data.space) {
-		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
-		return <DocumentNotFound />
+		if (data.loadingState === "unauthorized") return <SpaceUnauthorized />
+		return <SpaceNotFound />
 	}
 
 	// Space deleted
