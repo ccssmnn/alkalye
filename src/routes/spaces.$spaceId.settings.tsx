@@ -3,8 +3,9 @@ import { Group, co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, Image } from "jazz-tools/react"
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Loader2, Upload } from "lucide-react"
+import { ArrowLeft, Loader2, Upload, UserRoundPlus } from "lucide-react"
 import { Space, UserAccount, deleteSpace } from "@/schema"
+import { SpaceShareDialog } from "@/components/space-share-dialog"
 import { SpaceInitials } from "@/components/space-selector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -111,8 +112,8 @@ function SpaceSettingsContent({
 				<div className="mx-auto max-w-2xl px-4 py-8">
 					<div className="space-y-8">
 						<SpaceNameSection space={space} />
-						<SpaceBackupSettingsSection space={space} spaceId={spaceId} />
 						<SpaceMembersSection space={space} />
+						<SpaceBackupSettingsSection space={space} spaceId={spaceId} />
 						<DeleteSpaceSection space={space} />
 					</div>
 				</div>
@@ -253,7 +254,9 @@ type SpaceMember = {
 function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 	let me = useAccount(UserAccount)
 	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let isAdmin = spaceGroup?.myRole() === "admin"
 	let [members, setMembers] = useState<SpaceMember[]>([])
+	let [shareOpen, setShareOpen] = useState(false)
 
 	useEffect(() => {
 		if (!spaceGroup) return
@@ -283,33 +286,52 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 		loadMembers()
 	}, [spaceGroup])
 
-	if (!spaceGroup || members.length === 0) return null
+	if (!spaceGroup) return null
 
 	return (
 		<section>
-			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Members
-			</h2>
-			<div className="bg-muted/30 rounded-lg p-4">
-				<ul className="space-y-2">
-					{members.map(member => (
-						<li
-							key={member.id}
-							className="flex items-center justify-between py-1"
-						>
-							<span className="flex items-center gap-2 text-sm">
-								{member.name}
-								{member.id === me?.$jazz.id && (
-									<Badge variant="secondary">You</Badge>
-								)}
-							</span>
-							<span className="text-muted-foreground text-xs capitalize">
-								{getRoleLabel(member.role)}
-							</span>
-						</li>
-					))}
-				</ul>
+			<div className="mb-3 flex items-center justify-between">
+				<h2 className="text-muted-foreground text-sm font-medium">Members</h2>
+				{isAdmin && (
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setShareOpen(true)}
+					>
+						<UserRoundPlus />
+						Invite
+					</Button>
+				)}
 			</div>
+			<div className="bg-muted/30 rounded-lg p-4">
+				{members.length > 0 ? (
+					<ul className="space-y-2">
+						{members.map(member => (
+							<li
+								key={member.id}
+								className="flex items-center justify-between py-1"
+							>
+								<span className="flex items-center gap-2 text-sm">
+									{member.name}
+									{member.id === me?.$jazz.id && (
+										<Badge variant="secondary">You</Badge>
+									)}
+								</span>
+								<span className="text-muted-foreground text-xs">
+									{getRoleLabel(member.role)}
+								</span>
+							</li>
+						))}
+					</ul>
+				) : (
+					<p className="text-muted-foreground text-sm">Loading members...</p>
+				)}
+			</div>
+			<SpaceShareDialog
+				space={space}
+				open={shareOpen}
+				onOpenChange={setShareOpen}
+			/>
 		</section>
 	)
 }
@@ -317,11 +339,13 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 function getRoleLabel(role: string): string {
 	switch (role) {
 		case "admin":
-			return "Admin"
+			return "Owner"
+		case "manager":
+			return "Manager"
 		case "writer":
-			return "Can edit"
+			return "Writer"
 		case "reader":
-			return "Can view"
+			return "Reader"
 		default:
 			return role
 	}

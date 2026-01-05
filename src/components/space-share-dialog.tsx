@@ -19,6 +19,13 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Space, UserAccount } from "@/schema"
@@ -26,7 +33,7 @@ import { Space, UserAccount } from "@/schema"
 export { SpaceShareDialog }
 export type { SpaceShareDialogProps }
 
-type InviteRole = "writer" | "reader" | "admin"
+type InviteRole = "manager" | "writer" | "reader"
 
 type Collaborator = {
 	id: string
@@ -244,11 +251,11 @@ function SpaceShareDialog({
 										variant="outline"
 										size="sm"
 										className="flex-1"
-										onClick={() => handleCreateLink("admin")}
+										onClick={() => handleCreateLink("manager")}
 										disabled={loading}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
-										Admin
+										Manager
 									</Button>
 									<Button
 										variant="outline"
@@ -258,7 +265,7 @@ function SpaceShareDialog({
 										disabled={loading}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
-										Can edit
+										Writer
 									</Button>
 									<Button
 										variant="outline"
@@ -268,7 +275,7 @@ function SpaceShareDialog({
 										disabled={loading}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
-										Can view
+										Reader
 									</Button>
 								</div>
 							</div>
@@ -354,18 +361,41 @@ function SpaceShareDialog({
 										)}
 									</span>
 									<div className="flex items-center gap-2">
-										<span className="text-muted-foreground text-xs capitalize">
-											{getRoleLabel(c.role)}
-										</span>
-										{isAdmin && c.id !== me?.$jazz.id && (
-											<Button
-												variant="ghost"
-												size="icon-sm"
-												onClick={() => handleRevoke(c.inviteGroupId)}
-												aria-label="Remove access"
-											>
-												<Trash2 className="text-destructive size-3" />
-											</Button>
+										{isAdmin && c.id !== me?.$jazz.id ? (
+											<>
+												<Select
+													value={c.role}
+													onValueChange={newRole => {
+														changeCollaboratorRole(
+															space,
+															c.inviteGroupId,
+															newRole as InviteRole,
+														)
+														refreshCollaboratorsRef.current()
+													}}
+												>
+													<SelectTrigger size="sm" className="h-6 text-xs">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="manager">Manager</SelectItem>
+														<SelectItem value="writer">Writer</SelectItem>
+														<SelectItem value="reader">Reader</SelectItem>
+													</SelectContent>
+												</Select>
+												<Button
+													variant="ghost"
+													size="icon-sm"
+													onClick={() => handleRevoke(c.inviteGroupId)}
+													aria-label="Remove access"
+												>
+													<Trash2 className="text-destructive size-3" />
+												</Button>
+											</>
+										) : (
+											<span className="text-muted-foreground text-xs">
+												{getRoleLabel(c.role)}
+											</span>
 										)}
 									</div>
 								</li>
@@ -429,11 +459,13 @@ function getSpaceGroup(space: LoadedSpace): Group | null {
 function getRoleLabel(role: string | null): string {
 	switch (role) {
 		case "admin":
-			return "Admin"
+			return "Owner"
+		case "manager":
+			return "Manager"
 		case "writer":
-			return "Can edit"
+			return "Writer"
 		case "reader":
-			return "Can view"
+			return "Reader"
 		default:
 			return "Unknown"
 	}
@@ -535,6 +567,24 @@ function revokeSpaceInvite(space: LoadedSpace, inviteGroupId: string): void {
 	if (!inviteGroup) throw new Error("Invite group not found")
 
 	spaceGroup.removeMember(inviteGroup)
+}
+
+function changeCollaboratorRole(
+	space: LoadedSpace,
+	inviteGroupId: string,
+	newRole: InviteRole,
+): void {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) throw new Error("Space is not group-owned")
+	if (spaceGroup.myRole() !== "admin") {
+		throw new Error("Only admins can change roles")
+	}
+
+	let parentGroups = spaceGroup.getParentGroups()
+	let inviteGroup = parentGroups.find(g => g.$jazz.id === inviteGroupId)
+	if (!inviteGroup) throw new Error("Invite group not found")
+
+	spaceGroup.addMember(inviteGroup, newRole)
 }
 
 async function handleLeaveSpace(
