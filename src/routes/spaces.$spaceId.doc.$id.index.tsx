@@ -8,7 +8,13 @@ import {
 import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
-import { Asset, Document, Space, UserAccount } from "@/schema"
+import {
+	Asset,
+	Document,
+	Space,
+	UserAccount,
+	createSpaceDocument,
+} from "@/schema"
 import {
 	MarkdownEditor,
 	useMarkdownEditorRef,
@@ -323,6 +329,7 @@ function SpaceEditorContent({
 							}
 						}}
 						spaceId={spaceId}
+						spaceGroupId={space.$jazz.owner.$jazz.id}
 					/>
 				</ListSidebar>
 			</ImportDropZone>
@@ -399,7 +406,7 @@ function SpaceEditorContent({
 								editor={editor}
 								disabled={readOnly}
 								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocForWikilink(space, doc)}
+								onCreateDocument={makeCreateDocForWikilink(space)}
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -408,7 +415,10 @@ function SpaceEditorContent({
 				<SidebarSeparator />
 
 				<SidebarGroup>
-					<SidebarCollaboration docId={docId} />
+					<SidebarCollaboration
+						docId={docId}
+						spaceGroupId={space.$jazz.owner.$jazz.id}
+					/>
 				</SidebarGroup>
 
 				<SidebarSeparator />
@@ -461,16 +471,7 @@ function SettingsButton({ pathname }: { pathname: string }) {
 function makeCreateDocument(space: LoadedSpace) {
 	return async function handleCreateDocument(title: string): Promise<string> {
 		if (!space.documents?.$isLoaded) throw new Error("Space not loaded")
-		let now = new Date()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, space.$jazz.owner),
-				createdAt: now,
-				updatedAt: now,
-			},
-			space.$jazz.owner,
-		)
+		let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
 		space.documents.$jazz.push(newDoc)
 		return newDoc.$jazz.id
 	}
@@ -547,21 +548,12 @@ function makeRenameAsset(doc: LoadedDocument) {
 	}
 }
 
-function makeCreateDocForWikilink(space: LoadedSpace, doc: LoadedDocument) {
+function makeCreateDocForWikilink(space: LoadedSpace) {
 	return async function handleCreateDocForWikilink(
 		title: string,
 	): Promise<string> {
 		if (!space.documents?.$isLoaded) throw new Error("Space not loaded")
-		let now = new Date()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, doc.$jazz.owner),
-				createdAt: now,
-				updatedAt: now,
-			},
-			doc.$jazz.owner,
-		)
+		let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
 		space.documents.$jazz.push(newDoc)
 		return newDoc.$jazz.id
 	}
@@ -636,17 +628,9 @@ function handleDuplicateDocument(
 	spaceId: string,
 ) {
 	if (!space.documents?.$isLoaded) return
-	let now = new Date()
-	let newDoc = Document.create(
-		{
-			version: 1,
-			content: co
-				.plainText()
-				.create(doc.content?.toString() ?? "", space.$jazz.owner),
-			createdAt: now,
-			updatedAt: now,
-		},
+	let newDoc = createSpaceDocument(
 		space.$jazz.owner,
+		doc.content?.toString() ?? "",
 	)
 	space.documents.$jazz.push(newDoc)
 	if (isMobile) setLeftOpenMobile(false)

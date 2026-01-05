@@ -275,7 +275,10 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			throw new Error("Target space not found or not loaded")
 		}
 		targetSpace = space as LoadedSpace
-		owner = space.$jazz.owner as Group
+		// Create document-specific group with space group as admin
+		// This allows document-level sharing separate from space membership
+		owner = Group.create()
+		owner.addMember(space.$jazz.owner as Group, "admin")
 	} else {
 		// Personal document - create new group
 		owner = Group.create()

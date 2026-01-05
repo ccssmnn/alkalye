@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
 import { z } from "zod"
-import { UserAccount, Document, Space } from "@/schema"
+import { UserAccount, Document, Space, createSpaceDocument } from "@/schema"
 
 export { Route }
 
@@ -32,17 +32,7 @@ let Route = createFileRoute("/new")({
 				throw redirect({ to: "/" })
 			}
 
-			let now = new Date()
-			let newDoc = Document.create(
-				{
-					version: 1,
-					content: co.plainText().create("", space.$jazz.owner),
-					spaceId,
-					createdAt: now,
-					updatedAt: now,
-				},
-				space.$jazz.owner,
-			)
+			let newDoc = createSpaceDocument(space.$jazz.owner, "")
 			space.documents.$jazz.push(newDoc)
 
 			throw redirect({

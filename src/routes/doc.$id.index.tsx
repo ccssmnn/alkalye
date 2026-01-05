@@ -8,7 +8,13 @@ import {
 import { co, Group, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
-import { Asset, Document, Space, UserAccount } from "@/schema"
+import {
+	Asset,
+	Document,
+	Space,
+	UserAccount,
+	createSpaceDocument,
+} from "@/schema"
 import {
 	MarkdownEditor,
 	useMarkdownEditorRef,
@@ -441,24 +447,16 @@ function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
 	return async function handleCreateDocument(title: string): Promise<string> {
 		if (!me.$isLoaded || !me.root?.documents)
 			throw new Error("Not authenticated")
-		let now = new Date()
 
 		if (space?.documents?.$isLoaded) {
-			// Space context: use space's group as owner
-			let newDoc = Document.create(
-				{
-					version: 1,
-					content: co.plainText().create(`# ${title}\n\n`, space.$jazz.owner),
-					createdAt: now,
-					updatedAt: now,
-				},
-				space.$jazz.owner,
-			)
+			// Space context: create doc with its own group (space group as admin)
+			let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
 			space.documents.$jazz.push(newDoc)
 			return newDoc.$jazz.id
 		}
 
 		// Personal context: create new group per document
+		let now = new Date()
 		let group = Group.create()
 		let newDoc = Document.create(
 			{

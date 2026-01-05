@@ -15,6 +15,7 @@ export {
 	CursorFeed,
 	getRandomWriterName,
 	createSpace,
+	createSpaceDocument,
 	deleteSpace,
 }
 
@@ -255,17 +256,9 @@ function createSpace(
 	let group = Group.create()
 	let now = new Date()
 
-	// Create welcome document for the space
+	// Create welcome document with its own group (space group as admin)
 	let welcomeContent = getSpaceWelcomeContent(name)
-	let welcomeDoc = Document.create(
-		{
-			version: 1,
-			content: co.plainText().create(welcomeContent, group),
-			createdAt: now,
-			updatedAt: now,
-		},
-		group,
-	)
+	let welcomeDoc = createSpaceDocument(group, welcomeContent)
 
 	let space = Space.create(
 		{
@@ -291,6 +284,29 @@ function createSpace(
 function deleteSpace(space: co.loaded<typeof Space>): void {
 	space.$jazz.set("deletedAt", new Date())
 	space.$jazz.set("updatedAt", new Date())
+}
+
+function createSpaceDocument(
+	spaceGroup: Group,
+	content: string = "",
+): co.loaded<typeof Document, { content: true }> {
+	// Create a document-specific group with space group as admin
+	// This allows document-level sharing separate from space membership
+	let docGroup = Group.create()
+	docGroup.addMember(spaceGroup, "admin")
+
+	let now = new Date()
+	let doc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(content, docGroup),
+			createdAt: now,
+			updatedAt: now,
+		},
+		docGroup,
+	)
+
+	return doc as co.loaded<typeof Document, { content: true }>
 }
 
 async function migrateAnonymousData(

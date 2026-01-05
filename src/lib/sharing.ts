@@ -14,6 +14,7 @@ export {
 	leaveDocument,
 	getSharingStatus,
 	hasPendingInvites,
+	hasIndividualShares,
 	makeDocumentPublic,
 	makeDocumentPrivate,
 	isDocumentPublic,
@@ -120,7 +121,10 @@ async function createInviteLink(
 	return `${baseURL}/invite#/doc/${doc.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
 }
 
-async function getCollaborators(doc: LoadedDocument): Promise<{
+async function getCollaborators(
+	doc: LoadedDocument,
+	spaceGroupId?: string,
+): Promise<{
 	collaborators: Collaborator[]
 	pendingInvites: { inviteGroupId: string }[]
 }> {
@@ -129,10 +133,26 @@ async function getCollaborators(doc: LoadedDocument): Promise<{
 		return { collaborators: [], pendingInvites: [] }
 	}
 
+	let docGroupId = (docGroup as unknown as { $jazz: { id: string } }).$jazz.id
+
+	// If doc uses the space group directly, it has no individual collaborators
+	if (spaceGroupId && docGroupId === spaceGroupId) {
+		return { collaborators: [], pendingInvites: [] }
+	}
+
 	let collaborators: Collaborator[] = []
 	let pendingInvites: { inviteGroupId: string }[] = []
 
-	for (let inviteGroup of docGroup.getParentGroups()) {
+	let parentGroups = docGroup.getParentGroups()
+	// Exclude the space group if provided (space members aren't individual collaborators)
+	if (spaceGroupId) {
+		parentGroups = parentGroups.filter(
+			g =>
+				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
+		)
+	}
+
+	for (let inviteGroup of parentGroups) {
 		let members: Collaborator[] = []
 
 		for (let member of inviteGroup.members) {
@@ -247,6 +267,31 @@ function hasPendingInvites(doc: LoadedDocument): boolean {
 		if (!hasMembers) return true
 	}
 	return false
+}
+
+function hasIndividualShares(
+	doc: LoadedDocument,
+	spaceGroupId?: string,
+): boolean {
+	let owner = doc.$jazz.owner
+	if (!(owner instanceof Group)) return false
+
+	let ownerId = (owner as unknown as { $jazz: { id: string } }).$jazz.id
+
+	// If doc uses the space group directly, it has no individual shares
+	// (any parent groups belong to the space, not the doc)
+	if (spaceGroupId && ownerId === spaceGroupId) return false
+
+	// Doc has its own group - check for invite groups (individual shares)
+	let parentGroups = owner.getParentGroups()
+	// Exclude the space group if it's a parent (that's space membership, not individual sharing)
+	if (spaceGroupId) {
+		parentGroups = parentGroups.filter(
+			g =>
+				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
+		)
+	}
+	return parentGroups.length > 0
 }
 
 function isDocumentPublic(doc: LoadedDocument): boolean {

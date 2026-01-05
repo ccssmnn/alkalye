@@ -27,9 +27,13 @@ type LoadedDocWithContent = co.loaded<typeof Document, typeof docResolve>
 
 interface SidebarCollaborationProps {
 	docId: string
+	spaceGroupId?: string
 }
 
-function SidebarCollaboration({ docId }: SidebarCollaborationProps) {
+function SidebarCollaboration({
+	docId,
+	spaceGroupId,
+}: SidebarCollaborationProps) {
 	let [shareOpen, setShareOpen] = useState(false)
 	let [collaborators, setCollaborators] = useState<Collaborator[]>([])
 
@@ -44,11 +48,11 @@ function SidebarCollaboration({ docId }: SidebarCollaborationProps) {
 	useEffect(() => {
 		async function loadCollaborators() {
 			if (!doc?.$isLoaded) return
-			let result = await getCollaborators(doc)
+			let result = await getCollaborators(doc, spaceGroupId)
 			setCollaborators(result.collaborators)
 		}
 		loadCollaborators()
-	}, [doc])
+	}, [doc, spaceGroupId])
 
 	let otherCollaborators = collaborators.filter(c => c.id !== currentUserId)
 	let hasCollaborators = otherCollaborators.length > 0 || isPublic

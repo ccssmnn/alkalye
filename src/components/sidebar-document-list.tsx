@@ -62,6 +62,7 @@ import { Spinner } from "@/components/ui/spinner"
 import {
 	getSharingStatus,
 	isDocumentPublic,
+	hasIndividualShares,
 	getDocumentGroup,
 	leaveDocument,
 } from "@/lib/sharing"
@@ -87,6 +88,7 @@ interface SidebarDocumentListProps {
 	onDuplicate: (doc: LoadedDocument) => void
 	onDelete: (doc: LoadedDocument) => void
 	spaceId?: string
+	spaceGroupId?: string
 }
 
 type ListItem =
@@ -101,6 +103,7 @@ function SidebarDocumentList({
 	onDuplicate,
 	onDelete,
 	spaceId,
+	spaceGroupId,
 }: SidebarDocumentListProps) {
 	let [search, setSearch] = useState("")
 	let [sort, setSort] = useState<SortMode>("latest")
@@ -186,6 +189,7 @@ function SidebarDocumentList({
 						onDuplicate={onDuplicate}
 						onDelete={onDelete}
 						spaceId={spaceId}
+						spaceGroupId={spaceGroupId}
 					/>
 				</SidebarGroupContent>
 			</SidebarGroup>
@@ -319,6 +323,7 @@ function DocumentListContent({
 	onDuplicate,
 	onDelete,
 	spaceId,
+	spaceGroupId,
 }: {
 	docs: LoadedDocument[]
 	currentDocId: string | undefined
@@ -329,6 +334,7 @@ function DocumentListContent({
 	onDuplicate: (doc: LoadedDocument) => void
 	onDelete: (doc: LoadedDocument) => void
 	spaceId?: string
+	spaceGroupId?: string
 }) {
 	let parentRef = useRef<HTMLDivElement>(null)
 	let { viewMode, isCollapsed, toggleFolder } = useFolderStore()
@@ -410,6 +416,7 @@ function DocumentListContent({
 									existingFolders={existingFolders}
 									depth={item.depth}
 									spaceId={spaceId}
+									spaceGroupId={spaceGroupId}
 								/>
 							)}
 						</div>
@@ -431,6 +438,7 @@ function DocumentItem({
 	existingFolders,
 	depth = 0,
 	spaceId,
+	spaceGroupId,
 }: {
 	doc: LoadedDocument
 	isActive: boolean
@@ -442,6 +450,7 @@ function DocumentItem({
 	existingFolders: string[]
 	depth?: number
 	spaceId?: string
+	spaceGroupId?: string
 }) {
 	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 	let [shareOpen, setShareOpen] = useState(false)
@@ -454,7 +463,9 @@ function DocumentItem({
 	let date = formatRelativeDate(doc.updatedAt)
 	let isPublic = isDocumentPublic(doc)
 	let status = getSharingStatus(doc)
-	let hasIndicator = isPublic || status !== "none"
+	let hasIndividual = hasIndividualShares(doc, spaceGroupId)
+	// In spaces, only show indicator for individually shared docs, not just because it's in a space
+	let hasIndicator = isPublic || (spaceId ? hasIndividual : status !== "none")
 	let isPresentation = getPresentationMode(content)
 	let isPinned = isDocumentPinned(doc)
 	let tags = getTags(content)
