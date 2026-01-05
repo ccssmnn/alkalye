@@ -22,12 +22,7 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
-import {
-	SpaceProvider,
-	SpaceSelector,
-	useSelectedSpace,
-} from "@/components/space-selector"
-import { CreateSpaceDialog } from "@/components/create-space-dialog"
+import { SpaceSelector } from "@/components/space-selector"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 import { ImportDropZone } from "@/components/import-drop-zone"
 import {
@@ -143,12 +138,9 @@ function EditorPage() {
 	}
 
 	return (
-		<SpaceProvider>
-			<SidebarProvider>
-				<EditorContent doc={doc} docId={id} />
-			</SidebarProvider>
-			<CreateSpaceDialog />
-		</SpaceProvider>
+		<SidebarProvider>
+			<EditorContent doc={doc} docId={id} />
+		</SidebarProvider>
 	)
 }
 
@@ -163,7 +155,6 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
-	let { selectedSpace } = useSelectedSpace()
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, { resolve: meResolve })
@@ -182,31 +173,20 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let { updateCursor, remoteCursors } = usePresence({ doc })
 	let assets = doc.assets?.map(a => ({ id: a.$jazz.id, name: a.name })) ?? []
 
-	// Get documents for wikilink autocomplete - filtered by current space selection
+	// Get documents for wikilink autocomplete - personal docs only
 	let documents: WikilinkDoc[] = []
-	if (me.$isLoaded) {
-		let docsSource: typeof me.root.documents | undefined
-		if (selectedSpace) {
-			// Space selected: use space's documents
-			let space = me.root.spaces?.find(s => s?.$jazz.id === selectedSpace.id)
-			docsSource = space?.$isLoaded ? space.documents : undefined
-		} else {
-			// Personal: use user's own documents
-			docsSource = me.root.documents
-		}
-		if (docsSource?.$isLoaded) {
-			documents = [...docsSource]
-				.filter(d => d?.$isLoaded && !d.deletedAt && d.$jazz.id !== docId)
-				.map(d => {
-					let content = d.content?.toString() ?? ""
-					return {
-						id: d.$jazz.id,
-						title: getDocumentTitle(content),
-						path: getPath(content),
-						tags: getTags(content),
-					}
-				})
-		}
+	if (me.$isLoaded && me.root.documents?.$isLoaded) {
+		documents = [...me.root.documents]
+			.filter(d => d?.$isLoaded && !d.deletedAt && d.$jazz.id !== docId)
+			.map(d => {
+				let content = d.content?.toString() ?? ""
+				return {
+					id: d.$jazz.id,
+					title: getDocumentTitle(content),
+					path: getPath(content),
+					tags: getTags(content),
+				}
+			})
 	}
 
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
@@ -230,22 +210,13 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				imageId: a.image?.$jazz.id,
 			})) ?? []
 
-	// Get documents for wikilink insertion menu - filtered by current space selection
+	// Get documents for wikilink insertion menu - personal docs only
 	let wikiLinkDocs: { id: string; title: string }[] = []
-	if (me.$isLoaded) {
-		let docsSource: typeof me.root.documents | undefined
-		if (selectedSpace) {
-			let space = me.root.spaces?.find(s => s?.$jazz.id === selectedSpace.id)
-			docsSource = space?.$isLoaded ? space.documents : undefined
-		} else {
-			docsSource = me.root.documents
-		}
-		if (docsSource?.$isLoaded) {
-			for (let d of [...docsSource]) {
-				if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
-				let title = getDocumentTitle(d)
-				wikiLinkDocs.push({ id: d.$jazz.id, title })
-			}
+	if (me.$isLoaded && me.root.documents?.$isLoaded) {
+		for (let d of [...me.root.documents]) {
+			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
+			let title = getDocumentTitle(d)
+			wikiLinkDocs.push({ id: d.$jazz.id, title })
 		}
 	}
 
@@ -275,7 +246,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		})
 	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
 
-	let allDocs = getFilteredDocs(me, selectedSpace)
+	let allDocs = getPersonalDocs(me)
 
 	return (
 		<>
@@ -294,7 +265,6 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								render={
 									<Link
 										to="/new"
-										search={{ spaceId: selectedSpace?.id }}
 										onClick={() => isMobile && setLeftOpenMobile(false)}
 									/>
 								}
@@ -403,15 +373,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								editor={editor}
 								disabled={readOnly}
 								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocForWikilink(
-									me,
-									doc,
-									selectedSpace && me.$isLoaded
-										? me.root.spaces?.find(
-												s => s?.$jazz.id === selectedSpace.id,
-											)
-										: undefined,
-								)}
+								onCreateDocument={makeCreateDocForWikilink(me, doc)}
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -583,39 +545,13 @@ function makeRenameAsset(doc: LoadedDocument) {
 	}
 }
 
-type MaybeSpace =
-	| co.loaded<typeof Space, { documents: { $each: { content: true } } }>
-	| undefined
-
-function makeCreateDocForWikilink(
-	me: LoadedMe,
-	doc: LoadedDocument,
-	space?: MaybeSpace,
-) {
+function makeCreateDocForWikilink(me: LoadedMe, doc: LoadedDocument) {
 	return async function handleCreateDocForWikilink(
 		title: string,
 	): Promise<string> {
-		let now = new Date()
-
-		// If space is selected and loaded, create doc in space
-		if (space?.$isLoaded && space.documents?.$isLoaded) {
-			let newDoc = Document.create(
-				{
-					version: 1,
-					content: co.plainText().create(`# ${title}\n\n`, space.$jazz.owner),
-					createdAt: now,
-					updatedAt: now,
-					spaceId: space.$jazz.id,
-				},
-				space.$jazz.owner,
-			)
-			space.documents.$jazz.push(newDoc)
-			return newDoc.$jazz.id
-		}
-
-		// Otherwise create in personal docs
 		if (!me.$isLoaded || !me.root?.documents?.$isLoaded)
 			throw new Error("Not ready")
+		let now = new Date()
 		let newDoc = Document.create(
 			{
 				version: 1,
@@ -799,24 +735,11 @@ let meResolve = {
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
-function getFilteredDocs(
+function getPersonalDocs(
 	me: LoadedMe,
-	selectedSpace: { id: string; name: string } | null,
 ): co.loaded<typeof Document, { content: true }>[] {
 	if (!me.$isLoaded) return []
-
-	if (!selectedSpace) {
-		// Personal: show user's own documents
-		return [...me.root.documents].filter(
-			d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
-		)
-	}
-
-	// Space: find the space and return its documents
-	let space = me.root.spaces?.find(s => s?.$jazz.id === selectedSpace.id)
-	if (!space?.$isLoaded || !space.documents?.$isLoaded) return []
-
-	return [...space.documents].filter(
+	return [...me.root.documents].filter(
 		d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
 	)
 }

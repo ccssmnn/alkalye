@@ -1,6 +1,7 @@
-import { createContext, useContext, useState } from "react"
+import { useState, useRef } from "react"
 import { co } from "jazz-tools"
 import { useAccount, Image } from "jazz-tools/react"
+import { useParams, useNavigate, Link } from "@tanstack/react-router"
 import {
 	ChevronDown,
 	User,
@@ -16,148 +17,180 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
-import { UserAccount } from "@/schema"
-import { Link } from "@tanstack/react-router"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { UserAccount, createSpace } from "@/schema"
 
-export {
-	SpaceSelector,
-	SpaceProvider,
-	useSelectedSpace,
-	useCreateSpaceDialog,
-	SpaceInitials,
-}
-export type { SelectedSpace }
-
-type SelectedSpace = { id: string; name: string } | null
-
-type SpaceContextValue = {
-	selectedSpace: SelectedSpace
-	setSelectedSpace: (space: SelectedSpace) => void
-	isCreateDialogOpen: boolean
-	setCreateDialogOpen: (open: boolean) => void
-}
-
-let SpaceContext = createContext<SpaceContextValue | null>(null)
-
-function SpaceProvider({
-	children,
-	initialSpace,
-}: {
-	children: React.ReactNode
-	initialSpace?: SelectedSpace
-}) {
-	let [selectedSpace, setSelectedSpace] = useState<SelectedSpace>(
-		initialSpace ?? null,
-	)
-	let [isCreateDialogOpen, setCreateDialogOpen] = useState(false)
-	return (
-		<SpaceContext.Provider
-			value={{
-				selectedSpace,
-				setSelectedSpace,
-				isCreateDialogOpen,
-				setCreateDialogOpen,
-			}}
-		>
-			{children}
-		</SpaceContext.Provider>
-	)
-}
-
-function useSelectedSpace(): Pick<
-	SpaceContextValue,
-	"selectedSpace" | "setSelectedSpace"
-> {
-	let ctx = useContext(SpaceContext)
-	if (!ctx)
-		throw new Error("useSelectedSpace must be used within SpaceProvider")
-	return ctx
-}
-
-function useCreateSpaceDialog(): Pick<
-	SpaceContextValue,
-	"isCreateDialogOpen" | "setCreateDialogOpen"
-> {
-	let ctx = useContext(SpaceContext)
-	if (!ctx)
-		throw new Error("useCreateSpaceDialog must be used within SpaceProvider")
-	return ctx
-}
+export { SpaceSelector, SpaceInitials }
 
 let spacesQuery = { root: { spaces: { $each: { avatar: true } } } } as const
 type LoadedSpaces = co.loaded<typeof UserAccount, typeof spacesQuery>
 
 function SpaceSelector() {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
-	let { selectedSpace, setSelectedSpace } = useSelectedSpace()
-	let { setCreateDialogOpen } = useCreateSpaceDialog()
+	let params = useParams({ strict: false })
+	let spaceId = "spaceId" in params ? (params.spaceId as string) : null
+	let [dialogOpen, setDialogOpen] = useState(false)
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
-	let displayName = selectedSpace?.name ?? "Personal"
-	let Icon = selectedSpace ? Users : User
+	let currentSpace = spaceId ? spaces.find(s => s.$jazz.id === spaceId) : null
+	let displayName = currentSpace?.name ?? "Personal"
+	let Icon = currentSpace ? Users : User
 
 	return (
-		<DropdownMenu>
-			<div className="flex items-center gap-1 border-b p-2">
-				<DropdownMenuTrigger
-					render={
+		<>
+			<DropdownMenu>
+				<div className="flex items-center gap-1 border-b p-2">
+					<DropdownMenuTrigger
+						render={
+							<Button
+								variant="ghost"
+								className="flex-1 justify-between"
+								nativeButton={false}
+							>
+								<span className="inline-flex gap-3">
+									<Icon />
+									<span className="truncate">{displayName}</span>
+								</span>
+								<ChevronDown />
+							</Button>
+						}
+					/>
+					{currentSpace && (
 						<Button
 							variant="ghost"
-							className="flex-1 justify-between"
-							nativeButton={false}
+							size="icon"
+							render={
+								<Link
+									to="/spaces/$spaceId/settings"
+									params={{ spaceId: currentSpace.$jazz.id }}
+								/>
+							}
 						>
-							<span className="inline-flex gap-3">
-								<Icon />
-								<span className="truncate">{displayName}</span>
-							</span>
-							<ChevronDown />
+							<SettingsIcon />
+							<span className="sr-only">Space Settings</span>
 						</Button>
-					}
-				/>
-				{selectedSpace && (
-					<Button
-						variant="ghost"
-						size="icon"
-						render={
-							<Link
-								to="/spaces/$spaceId/settings"
-								params={{ spaceId: selectedSpace.id }}
-							/>
-						}
-					>
-						<SettingsIcon />
-						<span className="sr-only">Space Settings</span>
-					</Button>
-				)}
-			</div>
-			<DropdownMenuContent align="center" sideOffset={4}>
-				<DropdownMenuItem onClick={() => setSelectedSpace(null)}>
-					<User className="size-4" />
-					<span>Personal</span>
-					{!selectedSpace && <Check className="ml-auto size-4" />}
-				</DropdownMenuItem>
-				{spaces.map(space => (
-					<DropdownMenuItem
-						key={space.$jazz.id}
-						onClick={() =>
-							setSelectedSpace({ id: space.$jazz.id, name: space.name })
-						}
-					>
-						<SpaceAvatar space={space} />
-						<span>{space.name}</span>
-						{selectedSpace?.id === space.$jazz.id && (
-							<Check className="ml-auto size-4" />
-						)}
+					)}
+				</div>
+				<DropdownMenuContent align="center" sideOffset={4}>
+					<DropdownMenuItem render={<Link to="/" />}>
+						<User className="size-4" />
+						<span>Personal</span>
+						{!spaceId && <Check className="ml-auto size-4" />}
 					</DropdownMenuItem>
-				))}
-				<DropdownMenuSeparator />
-				<DropdownMenuItem onClick={makeOpenCreateDialog(setCreateDialogOpen)}>
-					<Plus className="size-4" />
-					<span>New Space</span>
-				</DropdownMenuItem>
-			</DropdownMenuContent>
-		</DropdownMenu>
+					{spaces.map(space => (
+						<DropdownMenuItem
+							key={space.$jazz.id}
+							render={
+								<Link
+									to="/spaces/$spaceId"
+									params={{ spaceId: space.$jazz.id }}
+								/>
+							}
+						>
+							<SpaceAvatar space={space} />
+							<span>{space.name}</span>
+							{spaceId === space.$jazz.id && (
+								<Check className="ml-auto size-4" />
+							)}
+						</DropdownMenuItem>
+					))}
+					<DropdownMenuSeparator />
+					<DropdownMenuItem onClick={() => setDialogOpen(true)}>
+						<Plus className="size-4" />
+						<span>New Space</span>
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
+			<CreateSpaceDialog
+				open={dialogOpen}
+				onOpenChange={setDialogOpen}
+				me={me}
+			/>
+		</>
+	)
+}
+
+function CreateSpaceDialog({
+	open,
+	onOpenChange,
+	me,
+}: {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	me: ReturnType<typeof useAccount<typeof UserAccount, typeof spacesQuery>>
+}) {
+	let navigate = useNavigate()
+	let [name, setName] = useState("")
+	let inputRef = useRef<HTMLInputElement>(null)
+
+	function handleOpenChangeComplete(open: boolean) {
+		if (!open) setName("")
+	}
+
+	function handleSubmit(e: React.FormEvent) {
+		e.preventDefault()
+		let trimmed = name.trim()
+		if (!trimmed || !me.$isLoaded || !me.root) return
+
+		let space = createSpace(trimmed, me.root)
+		onOpenChange(false)
+		setName("")
+		navigate({ to: "/spaces/$spaceId", params: { spaceId: space.$jazz.id } })
+	}
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={onOpenChange}
+			onOpenChangeComplete={handleOpenChangeComplete}
+		>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>Create space</DialogTitle>
+					<DialogDescription>
+						Spaces let you organize documents and collaborate with others.
+					</DialogDescription>
+				</DialogHeader>
+
+				<form onSubmit={handleSubmit}>
+					<div className="space-y-2">
+						<Label htmlFor="space-name">Name</Label>
+						<Input
+							ref={inputRef}
+							id="space-name"
+							placeholder="My Space"
+							value={name}
+							onChange={e => setName(e.target.value)}
+							autoComplete="off"
+						/>
+					</div>
+
+					<DialogFooter className="mt-4">
+						<Button
+							type="button"
+							variant="outline"
+							size="sm"
+							onClick={() => onOpenChange(false)}
+						>
+							Cancel
+						</Button>
+						<Button type="submit" size="sm" disabled={!name.trim()}>
+							Create
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
 	)
 }
 
@@ -176,12 +209,6 @@ function getSortedSpaces(
 				s != null && s.$isLoaded && !s.deletedAt,
 		)
 		.sort((a, b) => a.name.localeCompare(b.name))
-}
-
-function makeOpenCreateDialog(setOpen: (open: boolean) => void) {
-	return function handleOpenCreateDialog() {
-		setOpen(true)
-	}
 }
 
 function SpaceAvatar({ space }: { space: LoadedSpaceWithAvatar }) {
