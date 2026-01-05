@@ -1,6 +1,6 @@
 import { useState, useRef } from "react"
 import { co } from "jazz-tools"
-import { useAccount, Image } from "jazz-tools/react"
+import { useAccount, useIsAuthenticated, Image } from "jazz-tools/react"
 import { useParams, useNavigate, Link } from "@tanstack/react-router"
 import {
 	ChevronDown,
@@ -37,6 +37,7 @@ type LoadedSpaces = co.loaded<typeof UserAccount, typeof spacesQuery>
 
 function SpaceSelector() {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
+	let isAuthenticated = useIsAuthenticated()
 	let params = useParams({ strict: false })
 	let spaceId = "spaceId" in params ? (params.spaceId as string) : null
 	let [dialogOpen, setDialogOpen] = useState(false)
@@ -104,11 +105,15 @@ function SpaceSelector() {
 							)}
 						</DropdownMenuItem>
 					))}
-					<DropdownMenuSeparator />
-					<DropdownMenuItem onClick={() => setDialogOpen(true)}>
-						<Plus className="size-4" />
-						<span>New Space</span>
-					</DropdownMenuItem>
+					{isAuthenticated && (
+						<>
+							<DropdownMenuSeparator />
+							<DropdownMenuItem onClick={() => setDialogOpen(true)}>
+								<Plus className="size-4" />
+								<span>New Space</span>
+							</DropdownMenuItem>
+						</>
+					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
 			<CreateSpaceDialog
