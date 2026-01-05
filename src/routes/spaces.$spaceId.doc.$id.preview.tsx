@@ -135,8 +135,12 @@ function SpacePreviewPage() {
 
 	let isPresentation = getPresentationMode(content)
 	if (isPresentation) {
-		// Redirect to doc route until slideshow route exists (story 4.3)
-		return <Navigate to="/spaces/$spaceId/doc/$id" params={{ spaceId, id }} />
+		return (
+			<Navigate
+				to="/spaces/$spaceId/doc/$id/slideshow"
+				params={{ spaceId, id }}
+			/>
+		)
 	}
 
 	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
