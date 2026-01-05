@@ -22,6 +22,7 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
+import { SpaceProvider, useSelectedSpace } from "@/components/space-selector"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 import { ImportDropZone } from "@/components/import-drop-zone"
 import {
@@ -113,9 +114,11 @@ function EditorPage() {
 	}
 
 	return (
-		<SidebarProvider>
-			<EditorContent doc={doc} docId={id} />
-		</SidebarProvider>
+		<SpaceProvider>
+			<SidebarProvider>
+				<EditorContent doc={doc} docId={id} />
+			</SidebarProvider>
+		</SpaceProvider>
 	)
 }
 
@@ -130,6 +133,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
+	let { selectedSpace } = useSelectedSpace()
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, { resolve: meResolve })
@@ -219,11 +223,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		})
 	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
 
-	let allDocs = me.$isLoaded
-		? [...me.root.documents].filter(
-				d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
-			)
-		: []
+	let allDocs = getFilteredDocs(me, selectedSpace)
 
 	return (
 		<>
@@ -684,6 +684,29 @@ let settingsResolve = {
 let meResolve = {
 	root: {
 		documents: { $each: { content: true } },
+		spaces: { $each: { documents: { $each: { content: true } } } },
 		settings: true,
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
+
+function getFilteredDocs(
+	me: LoadedMe,
+	selectedSpace: { id: string; name: string } | null,
+): co.loaded<typeof Document, { content: true }>[] {
+	if (!me.$isLoaded) return []
+
+	if (!selectedSpace) {
+		// Personal: show user's own documents
+		return [...me.root.documents].filter(
+			d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
+		)
+	}
+
+	// Space: find the space and return its documents
+	let space = me.root.spaces?.find(s => s?.$jazz.id === selectedSpace.id)
+	if (!space?.$isLoaded || !space.documents?.$isLoaded) return []
+
+	return [...space.documents].filter(
+		d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
+	)
+}
