@@ -392,7 +392,7 @@
 			"priority": 49,
 			"story": "Create SpaceNotFound component",
 			"acceptance": "Component renders error state for missing space",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "13.2",

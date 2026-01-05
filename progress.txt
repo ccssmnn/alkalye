@@ -413,3 +413,12 @@
 - If destination is personal: navigates to /doc/$id
 - File: src/components/sidebar-file-menu.tsx
 - Commit: feat: add duplicate option to file menu in right sidebar
+
+## Story 13.1 - Create SpaceNotFound component
+- Added SpaceNotFound component to document-error-states.tsx
+- Uses FolderSearch icon (differentiates from SpaceDeleted which uses FolderX)
+- Shows "Space not found" title and "This space doesn't exist or may have been removed." description
+- Includes "Go to App" button linking to home
+- Exported from document-error-states.tsx alongside existing error components
+- File: src/components/document-error-states.tsx
+- Commit: feat: add SpaceNotFound component for missing space error state

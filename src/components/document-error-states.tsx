@@ -1,5 +1,11 @@
 import { Link } from "@tanstack/react-router"
-import { FileX, FolderSearch, FolderX, ShieldOff } from "lucide-react"
+import {
+	FileX,
+	FolderLock,
+	FolderSearch,
+	FolderX,
+	ShieldOff,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
 	Empty,
@@ -10,7 +16,13 @@ import {
 	EmptyContent,
 } from "@/components/ui/empty"
 
-export { DocumentNotFound, DocumentUnauthorized, SpaceDeleted, SpaceNotFound }
+export {
+	DocumentNotFound,
+	DocumentUnauthorized,
+	SpaceDeleted,
+	SpaceNotFound,
+	SpaceUnauthorized,
+}
 
 function DocumentNotFound() {
 	return (
@@ -92,6 +104,29 @@ function SpaceNotFound() {
 					<EmptyTitle>Space not found</EmptyTitle>
 					<EmptyDescription>
 						This space doesn&apos;t exist or may have been removed.
+					</EmptyDescription>
+				</EmptyHeader>
+				<EmptyContent>
+					<Button nativeButton={false} render={<Link to="/" />}>
+						Go to App
+					</Button>
+				</EmptyContent>
+			</Empty>
+		</div>
+	)
+}
+
+function SpaceUnauthorized() {
+	return (
+		<div className="bg-background flex min-h-dvh items-center justify-center">
+			<Empty>
+				<EmptyHeader>
+					<EmptyMedia>
+						<FolderLock className="text-muted-foreground size-12" />
+					</EmptyMedia>
+					<EmptyTitle>Access denied</EmptyTitle>
+					<EmptyDescription>
+						You don&apos;t have permission to view this space.
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
