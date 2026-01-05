@@ -244,6 +244,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								render={
 									<Link
 										to="/new"
+										search={{ spaceId: selectedSpace?.id }}
 										onClick={() => isMobile && setLeftOpenMobile(false)}
 									/>
 								}
