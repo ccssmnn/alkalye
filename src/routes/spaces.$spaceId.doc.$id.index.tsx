@@ -22,7 +22,7 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
-import { SpaceProvider } from "@/components/space-selector"
+import { SpaceProvider, SpaceSelector } from "@/components/space-selector"
 import { CreateSpaceDialog } from "@/components/create-space-dialog"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 import { ImportDropZone } from "@/components/import-drop-zone"
@@ -304,6 +304,7 @@ function SpaceEditorContent({
 					}
 					footer={<SidebarSyncStatus />}
 				>
+					<SpaceSelector />
 					<SidebarDocumentList
 						docs={allDocs}
 						currentDocId={docId}

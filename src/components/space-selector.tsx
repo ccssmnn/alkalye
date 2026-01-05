@@ -1,7 +1,14 @@
 import { createContext, useContext, useState } from "react"
 import { co } from "jazz-tools"
 import { useAccount, Image } from "jazz-tools/react"
-import { ChevronDown, User, Users, Check, Plus } from "lucide-react"
+import {
+	ChevronDown,
+	User,
+	Users,
+	Check,
+	Plus,
+	SettingsIcon,
+} from "lucide-react"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,6 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { UserAccount } from "@/schema"
+import { Link } from "@tanstack/react-router"
 
 export {
 	SpaceSelector,
@@ -91,21 +99,39 @@ function SpaceSelector() {
 
 	return (
 		<DropdownMenu>
-			<DropdownMenuTrigger
-				render={
+			<div className="flex items-center gap-1 border-b p-2">
+				<DropdownMenuTrigger
+					render={
+						<Button
+							variant="ghost"
+							className="flex-1 justify-between"
+							nativeButton={false}
+						>
+							<span className="inline-flex gap-3">
+								<Icon />
+								<span className="truncate">{displayName}</span>
+							</span>
+							<ChevronDown />
+						</Button>
+					}
+				/>
+				{selectedSpace && (
 					<Button
 						variant="ghost"
-						size="sm"
-						className="gap-1 px-2 font-semibold"
-						nativeButton={false}
+						size="icon"
+						render={
+							<Link
+								to="/spaces/$spaceId/settings"
+								params={{ spaceId: selectedSpace.id }}
+							/>
+						}
 					>
-						<Icon className="size-4" />
-						<span className="max-w-24 truncate">{displayName}</span>
-						<ChevronDown className="size-3 opacity-50" />
+						<SettingsIcon />
+						<span className="sr-only">Space Settings</span>
 					</Button>
-				}
-			/>
-			<DropdownMenuContent align="start" sideOffset={4}>
+				)}
+			</div>
+			<DropdownMenuContent align="center" sideOffset={4}>
 				<DropdownMenuItem onClick={() => setSelectedSpace(null)}>
 					<User className="size-4" />
 					<span>Personal</span>

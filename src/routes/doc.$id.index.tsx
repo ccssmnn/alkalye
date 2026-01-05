@@ -22,7 +22,11 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
-import { SpaceProvider, useSelectedSpace } from "@/components/space-selector"
+import {
+	SpaceProvider,
+	SpaceSelector,
+	useSelectedSpace,
+} from "@/components/space-selector"
 import { CreateSpaceDialog } from "@/components/create-space-dialog"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 import { ImportDropZone } from "@/components/import-drop-zone"
@@ -302,6 +306,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					}
 					footer={<SidebarSyncStatus />}
 				>
+					<SpaceSelector />
 					<SidebarDocumentList
 						docs={allDocs}
 						currentDocId={docId}

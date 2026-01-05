@@ -4,7 +4,6 @@ import {
 	SidebarFooter,
 	SidebarHeader,
 } from "@/components/ui/sidebar"
-import { SpaceSelector } from "@/components/space-selector"
 
 export { ListSidebar }
 
@@ -23,7 +22,9 @@ function ListSidebar({
 				className="border-border flex-row items-center justify-between border-b p-2"
 				style={{ height: "calc(48px + 1px)" }}
 			>
-				<SpaceSelector />
+				<span className="text-foreground px-2 text-sm font-semibold">
+					Alkalye
+				</span>
 				<div className="flex items-center gap-1">{header}</div>
 			</SidebarHeader>
 
