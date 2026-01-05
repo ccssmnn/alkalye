@@ -13,12 +13,23 @@ export {
 	parseInviteLink,
 }
 
-export type { PersonalDocumentOperation, Collaborator, DocInviteData }
+export type {
+	PersonalDocumentOperation,
+	Collaborator,
+	DocInviteData,
+	CollaboratorsResult,
+}
 
 type Collaborator = {
-	userId: string
+	id: string
+	name: string
+	role: string
 	inviteGroupId: string
-	role: "writer" | "reader"
+}
+
+type CollaboratorsResult = {
+	collaborators: Collaborator[]
+	pendingInvites: { inviteGroupId: string }[]
 }
 
 type PersonalDocumentOperation =
@@ -133,24 +144,65 @@ function revokeDocumentInvite(
 	docGroup.removeMember(inviteGroup)
 }
 
-function listCollaborators(doc: co.loaded<typeof Document>): Collaborator[] {
+async function listCollaborators(
+	doc: co.loaded<typeof Document>,
+	spaceGroupId?: string,
+	resolveNames: boolean = true,
+): Promise<CollaboratorsResult> {
 	let docGroup = doc.$jazz.owner
 
-	let collaborators: Collaborator[] = []
+	if (!(docGroup instanceof Group)) {
+		return { collaborators: [], pendingInvites: [] }
+	}
 
-	for (let inviteGroup of docGroup.getParentGroups()) {
+	let docGroupId = (docGroup as unknown as { $jazz: { id: string } }).$jazz.id
+
+	if (spaceGroupId && docGroupId === spaceGroupId) {
+		return { collaborators: [], pendingInvites: [] }
+	}
+
+	let collaborators: Collaborator[] = []
+	let pendingInvites: { inviteGroupId: string }[] = []
+
+	let parentGroups = docGroup.getParentGroups()
+	if (spaceGroupId) {
+		parentGroups = parentGroups.filter(
+			g =>
+				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
+		)
+	}
+
+	for (let inviteGroup of parentGroups) {
+		let members: Collaborator[] = []
+
 		for (let member of inviteGroup.members) {
-			if (member.role === "writer" || member.role === "reader") {
-				collaborators.push({
-					userId: member.id,
-					inviteGroupId: inviteGroup.$jazz.id,
+			if (member.role === "admin") continue
+
+			if (member.account?.$isLoaded) {
+				let name = "Unknown"
+				if (resolveNames) {
+					let profile = await member.account.$jazz.ensureLoaded({
+						resolve: { profile: true },
+					})
+					name = profile.profile?.name ?? "Unknown"
+				}
+				members.push({
+					id: member.id,
+					name,
 					role: member.role,
+					inviteGroupId: inviteGroup.$jazz.id,
 				})
 			}
 		}
+
+		if (members.length > 0) {
+			collaborators.push(...members)
+		} else {
+			pendingInvites.push({ inviteGroupId: inviteGroup.$jazz.id })
+		}
 	}
 
-	return collaborators
+	return { collaborators, pendingInvites }
 }
 
 type DocInviteData = {

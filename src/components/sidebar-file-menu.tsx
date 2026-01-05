@@ -21,7 +21,8 @@ import { DuplicateDocDialog } from "@/components/duplicate-doc-dialog"
 import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
-import { canEdit, getDocumentGroup, leaveDocument } from "@/lib/sharing"
+import { canEdit, getDocumentGroup } from "@/lib/sharing"
+import { leavePersonalDocument } from "@/lib/documents"
 import {
 	parseFrontmatter,
 	togglePinned,
@@ -443,7 +444,7 @@ function makeLeave(
 ) {
 	return async function handleLeave() {
 		if (!docWithContent?.$isLoaded || !me) return
-		await leaveDocument(docWithContent, me)
+		await leavePersonalDocument(docWithContent, me)
 		let idx = me.root?.documents?.findIndex(d => d?.$jazz.id === doc.$jazz.id)
 		if (idx !== undefined && idx !== -1 && me.root?.documents?.$isLoaded) {
 			me.root.documents.$jazz.splice(idx, 1)

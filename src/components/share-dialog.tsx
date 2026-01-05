@@ -25,12 +25,10 @@ import { Button } from "@/components/ui/button"
 import { Document, UserAccount } from "@/schema"
 import {
 	migrateDocumentToGroup,
-	createInviteLink,
 	getDocumentGroup,
 	isGroupOwned,
 	getCollaborators,
 	getDocumentOwner,
-	revokeInvite,
 	makeDocumentPublic,
 	makeDocumentPrivate,
 	isDocumentPublic,
@@ -38,7 +36,11 @@ import {
 	type Collaborator,
 	type InviteRole,
 } from "@/lib/sharing"
-import { leavePersonalDocument } from "@/lib/documents"
+import {
+	createDocumentInvite,
+	revokeDocumentInvite,
+	leavePersonalDocument,
+} from "@/lib/documents"
 
 export { ShareDialog }
 
@@ -137,7 +139,7 @@ function ShareDialog({
 				currentDoc = result.document
 			}
 
-			let link = await createInviteLink(currentDoc, role)
+			let link = await createDocumentInvite(currentDoc, role)
 			setInviteLink(link)
 			await refreshCollaboratorsRef.current()
 		} catch (e) {
@@ -190,7 +192,7 @@ function ShareDialog({
 	}
 
 	function handleRevoke(inviteGroupId: string) {
-		revokeInvite(doc, inviteGroupId)
+		revokeDocumentInvite(doc, inviteGroupId)
 		refreshCollaboratorsRef.current()
 		if (inviteLink?.includes(inviteGroupId)) {
 			setInviteLink(null)

@@ -123,6 +123,7 @@ describe("Document Collaboration", () => {
 		let writerAccount = await createJazzTestAccount({
 			AccountSchema: UserAccount,
 		})
+
 		let readerAccount = await createJazzTestAccount({
 			AccountSchema: UserAccount,
 		})
@@ -136,23 +137,24 @@ describe("Document Collaboration", () => {
 		await acceptDocumentInvite(writerAccount, writerData)
 		await acceptDocumentInvite(readerAccount, readerData)
 
-		let collaborators = listCollaborators(doc)
-		expect(collaborators.length).toBe(2)
+		let result = await listCollaborators(doc, undefined, false)
+		expect(result.collaborators.length).toBe(2)
 
-		let writerCollabs = collaborators.filter(c => c.role === "writer")
-		let readerCollabs = collaborators.filter(c => c.role === "reader")
+		let writerCollabs = result.collaborators.filter(c => c.role === "writer")
+		let readerCollabs = result.collaborators.filter(c => c.role === "reader")
 
 		expect(writerCollabs.length).toBe(1)
 		expect(readerCollabs.length).toBe(1)
-		expect(writerCollabs[0].userId).toBe(writerAccount.$jazz.id)
-		expect(readerCollabs[0].userId).toBe(readerAccount.$jazz.id)
-	})
+		expect(writerCollabs[0].id).toBe(writerAccount.$jazz.id)
+		expect(readerCollabs[0].id).toBe(readerAccount.$jazz.id)
+	}, 30000)
 
 	test("leaving document removes it from personal docs and collaborator list", async () => {
 		let inviteLink = await createDocumentInvite(doc, "writer")
 		let inviteData = parseInviteLink(inviteLink)
 
 		await acceptDocumentInvite(otherAccount, inviteData)
+		await otherAccount.$jazz.waitForAllCoValuesSync()
 
 		setActiveAccount(otherAccount)
 
@@ -163,14 +165,20 @@ describe("Document Collaboration", () => {
 			true,
 		)
 
-		let collaboratorsBefore = listCollaborators(doc)
+		setActiveAccount(adminAccount)
+		let collaboratorsBefore = await listCollaborators(doc, undefined, false)
 		expect(
-			collaboratorsBefore.some(c => c.userId === otherAccount.$jazz.id),
+			collaboratorsBefore.collaborators.some(
+				c => c.id === otherAccount.$jazz.id,
+			),
 		).toBe(true)
 		expect(
-			collaboratorsBefore.find(c => c.userId === otherAccount.$jazz.id)?.role,
+			collaboratorsBefore.collaborators.find(
+				c => c.id === otherAccount.$jazz.id,
+			)?.role,
 		).toBe("writer")
 
+		setActiveAccount(otherAccount)
 		await leavePersonalDocument(doc, otherAccount)
 		await otherAccount.$jazz.waitForAllCoValuesSync()
 
@@ -181,33 +189,69 @@ describe("Document Collaboration", () => {
 			false,
 		)
 
-		let collaboratorsAfter = listCollaborators(doc)
+		setActiveAccount(adminAccount)
+		let collaboratorsAfter = await listCollaborators(doc, undefined, false)
 		expect(
-			collaboratorsAfter.some(c => c.userId === otherAccount.$jazz.id),
+			collaboratorsAfter.collaborators.some(
+				c => c.id === otherAccount.$jazz.id,
+			),
 		).toBe(false)
-	})
+	}, 30000)
 
 	test("changing collaborator role is reflected in listCollaborators", async () => {
 		let inviteLink = await createDocumentInvite(doc, "reader")
 		let inviteData = parseInviteLink(inviteLink)
 
 		await acceptDocumentInvite(otherAccount, inviteData)
+		await otherAccount.$jazz.waitForAllCoValuesSync()
 
-		let collaboratorsBefore = listCollaborators(doc)
-		let otherCollabsBefore = collaboratorsBefore.filter(
-			c => c.userId === otherAccount.$jazz.id,
+		let collaboratorsBefore = await listCollaborators(doc, undefined, false)
+		let otherCollabsBefore = collaboratorsBefore.collaborators.filter(
+			c => c.id === otherAccount.$jazz.id,
 		)
 		expect(otherCollabsBefore.length).toBe(1)
 		expect(otherCollabsBefore[0].role).toBe("reader")
 
-		setActiveAccount(adminAccount)
 		await changeCollaboratorRole(doc, inviteData.inviteGroupId, "writer")
 
-		let collaboratorsAfter = listCollaborators(doc)
-		let otherCollabsAfter = collaboratorsAfter.filter(
-			c => c.userId === otherAccount.$jazz.id,
+		let collaboratorsAfter = await listCollaborators(doc, undefined, false)
+		let otherCollabsAfter = collaboratorsAfter.collaborators.filter(
+			c => c.id === otherAccount.$jazz.id,
 		)
 		expect(otherCollabsAfter.length).toBe(1)
 		expect(otherCollabsAfter[0].role).toBe("writer")
+	}, 30000)
+
+	test("listCollaborators returns pending invites for empty invite groups", async () => {
+		let inviteLink = await createDocumentInvite(doc, "writer")
+		let inviteData = parseInviteLink(inviteLink)
+
+		let result = await listCollaborators(doc)
+		expect(result.pendingInvites.length).toBe(1)
+		expect(result.pendingInvites[0].inviteGroupId).toBe(
+			inviteData.inviteGroupId,
+		)
+		expect(result.collaborators.length).toBe(0)
+	})
+
+	test("listCollaborators excludes space group from collaborators", async () => {
+		let writerAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+
+		let inviteLink = await createDocumentInvite(doc, "writer")
+		let inviteData = parseInviteLink(inviteLink)
+
+		await acceptDocumentInvite(writerAccount, inviteData)
+
+		let result = await listCollaborators(doc, "space-group-id", false)
+		expect(result.collaborators.length).toBe(1)
+		expect(result.pendingInvites.length).toBe(0)
+	})
+
+	test("listCollaborators returns empty when doc uses space group directly", async () => {
+		let result = await listCollaborators(doc, doc.$jazz.id)
+		expect(result.collaborators.length).toBe(0)
+		expect(result.pendingInvites.length).toBe(0)
 	})
 })

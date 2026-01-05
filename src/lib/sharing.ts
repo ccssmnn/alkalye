@@ -1,17 +1,15 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Document, UserAccount } from "@/schema"
-import { createDocumentInvite, revokeDocumentInvite } from "@/lib/documents"
+import { listCollaborators, type Collaborator } from "@/lib/documents"
 
 export {
 	migrateDocumentToGroup,
-	createInviteLink,
 	getDocumentGroup,
 	isGroupOwned,
 	canEdit,
 	getMyRole,
 	getCollaborators,
 	getDocumentOwner,
-	revokeInvite,
 	leaveDocument,
 	getSharingStatus,
 	hasPendingInvites,
@@ -25,13 +23,6 @@ export {
 export type { Collaborator, InviteRole, SharingStatus }
 
 type InviteRole = "writer" | "reader"
-
-type Collaborator = {
-	id: string
-	name: string
-	role: string
-	inviteGroupId: string
-}
 
 type LoadedDocument = co.loaded<typeof Document, { content: true }>
 
@@ -100,13 +91,6 @@ async function migrateDocumentToGroup(
 	return { group, document: loaded as LoadedDocument }
 }
 
-async function createInviteLink(
-	doc: LoadedDocument,
-	role: InviteRole,
-): Promise<string> {
-	return createDocumentInvite(doc, role)
-}
-
 async function getCollaborators(
 	doc: LoadedDocument,
 	spaceGroupId?: string,
@@ -114,63 +98,7 @@ async function getCollaborators(
 	collaborators: Collaborator[]
 	pendingInvites: { inviteGroupId: string }[]
 }> {
-	let docGroup = getDocumentGroup(doc)
-	if (!docGroup) {
-		return { collaborators: [], pendingInvites: [] }
-	}
-
-	let docGroupId = (docGroup as unknown as { $jazz: { id: string } }).$jazz.id
-
-	// If doc uses the space group directly, it has no individual collaborators
-	if (spaceGroupId && docGroupId === spaceGroupId) {
-		return { collaborators: [], pendingInvites: [] }
-	}
-
-	let collaborators: Collaborator[] = []
-	let pendingInvites: { inviteGroupId: string }[] = []
-
-	let parentGroups = docGroup.getParentGroups()
-	// Exclude the space group if provided (space members aren't individual collaborators)
-	if (spaceGroupId) {
-		parentGroups = parentGroups.filter(
-			g =>
-				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
-		)
-	}
-
-	for (let inviteGroup of parentGroups) {
-		let members: Collaborator[] = []
-
-		for (let member of inviteGroup.members) {
-			if (member.role === "admin") continue
-
-			if (member.account?.$isLoaded) {
-				let profile = await member.account.$jazz.ensureLoaded({
-					resolve: { profile: true },
-				})
-				members.push({
-					id: member.id,
-					name:
-						(profile as { profile?: { name?: string } }).profile?.name ??
-						"Unknown",
-					role: member.role,
-					inviteGroupId: inviteGroup.$jazz.id,
-				})
-			}
-		}
-
-		if (members.length > 0) {
-			collaborators.push(...members)
-		} else {
-			pendingInvites.push({ inviteGroupId: inviteGroup.$jazz.id })
-		}
-	}
-
-	return { collaborators, pendingInvites }
-}
-
-function revokeInvite(doc: LoadedDocument, inviteGroupId: string): void {
-	revokeDocumentInvite(doc, inviteGroupId)
+	return listCollaborators(doc, spaceGroupId)
 }
 
 async function leaveDocument(
