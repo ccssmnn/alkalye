@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useCoState } from "jazz-tools/react"
-import { type ResolveQuery, co } from "jazz-tools"
+import { type ResolveQuery } from "jazz-tools"
 import { Document, Space } from "@/schema"
 import {
 	DocumentNotFound,
@@ -14,15 +14,14 @@ import {
 	EmptyContent,
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import { Slideshow, type Slide } from "@/components/slideshow"
-import { parsePresentation, type PresentationItem } from "@/lib/presentation"
+import { Teleprompter, groupBySlide } from "@/components/teleprompter"
+import { parsePresentation } from "@/lib/presentation"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
 import {
 	resolveDocTitles,
 	useDocTitles,
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
-import { canEdit } from "@/lib/sharing"
 import { Loader2, FileText } from "lucide-react"
 
 export { Route }
@@ -35,7 +34,7 @@ let spaceResolve = {
 	documents: true,
 } as const satisfies ResolveQuery<typeof Space>
 
-let Route = createFileRoute("/spaces/$spaceId/doc/$id/slideshow")({
+let Route = createFileRoute("/spaces/$spaceId/doc/$id/teleprompter")({
 	loader: async ({ params }) => {
 		let [space, doc] = await Promise.all([
 			Space.load(params.spaceId, { resolve: spaceResolve }),
@@ -69,10 +68,10 @@ let Route = createFileRoute("/spaces/$spaceId/doc/$id/slideshow")({
 
 		return { space, doc, loadingState: null, wikilinkCache }
 	},
-	component: SpaceSlideshowPage,
+	component: SpaceTeleprompterPage,
 })
 
-function SpaceSlideshowPage() {
+function SpaceTeleprompterPage() {
 	let { spaceId, id } = Route.useParams()
 	let data = Route.useLoaderData()
 	let navigate = useNavigate()
@@ -112,16 +111,15 @@ function SpaceSlideshowPage() {
 			<Empty className="h-screen">
 				<EmptyHeader>
 					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading presentation...</EmptyTitle>
+					<EmptyTitle>Loading document...</EmptyTitle>
 				</EmptyHeader>
 			</Empty>
 		)
 	}
 
 	let items = content ? parsePresentation(content) : []
-	let slides = getSlides(items)
 
-	if (slides.length === 0) {
+	if (items.length === 0) {
 		return (
 			<Empty className="h-screen">
 				<EmptyHeader>
@@ -146,62 +144,81 @@ function SpaceSlideshowPage() {
 		)
 	}
 
+	let slideGroups = groupBySlide(items)
 	let currentSlideNumber =
 		doc.presentationLine !== undefined && items[doc.presentationLine]
 			? items[doc.presentationLine].slideNumber
-			: 1
-
-	let canEditDoc = canEdit(doc)
+			: 0
+	let currentSlideIdx = slideGroups.findIndex(
+		s => s.slideNumber === currentSlideNumber,
+	)
 
 	return (
-		<Slideshow
-			content={content}
-			slides={slides}
-			wikilinks={wikilinks}
-			currentSlideNumber={currentSlideNumber}
-			onSlideChange={canEditDoc ? makeSlideChange(doc, items) : undefined}
-			onExit={
-				canEditDoc
-					? () =>
-							navigate({
-								to: "/spaces/$spaceId/doc/$id",
-								params: { spaceId, id },
-							})
-					: undefined
-			}
-			onGoToTeleprompter={() =>
-				navigate({
-					to: "/spaces/$spaceId/doc/$id/teleprompter",
-					params: { spaceId, id },
-				})
-			}
-		/>
+		<div className="bg-background fixed inset-0 flex flex-col">
+			<TopBar
+				spaceId={spaceId}
+				id={id}
+				currentSlideIdx={currentSlideIdx}
+				totalSlides={slideGroups.length}
+			/>
+			<Teleprompter
+				items={items}
+				wikilinks={wikilinks}
+				presentationIndex={doc.presentationLine}
+				onIndexChange={index => doc.$jazz.set("presentationLine", index)}
+				onExit={() =>
+					navigate({ to: "/spaces/$spaceId/doc/$id", params: { spaceId, id } })
+				}
+			/>
+		</div>
 	)
 }
 
-type LoadedDoc = co.loaded<typeof Document, typeof resolve>
-
-function makeSlideChange(doc: LoadedDoc, items: PresentationItem[]) {
-	return function handleSlideChange(slideNumber: number) {
-		let idx = items.findIndex(
-			i => i.slideNumber === slideNumber && i.type === "block",
-		)
-		if (idx >= 0) {
-			doc.$jazz.set("presentationLine", idx)
-		}
-	}
-}
-
-function getSlides(items: PresentationItem[]): Slide[] {
-	let slideMap = new Map<number, Slide["blocks"]>()
-	for (let item of items) {
-		if (item.type === "block") {
-			let blocks = slideMap.get(item.slideNumber) ?? []
-			blocks.push(item.block)
-			slideMap.set(item.slideNumber, blocks)
-		}
-	}
-	return Array.from(slideMap.entries())
-		.sort((a, b) => a[0] - b[0])
-		.map(([slideNumber, blocks]) => ({ slideNumber, blocks }))
+function TopBar({
+	spaceId,
+	id,
+	currentSlideIdx,
+	totalSlides,
+}: {
+	spaceId: string
+	id: string
+	currentSlideIdx: number
+	totalSlides: number
+}) {
+	return (
+		<div
+			className="border-border relative flex shrink-0 items-center justify-between border-b px-4 py-2"
+			style={{
+				paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+				paddingLeft: "max(1rem, env(safe-area-inset-left))",
+				paddingRight: "max(1rem, env(safe-area-inset-right))",
+			}}
+		>
+			<Button
+				variant="ghost"
+				size="sm"
+				nativeButton={false}
+				render={<Link to="/spaces/$spaceId/doc/$id" params={{ spaceId, id }} />}
+			>
+				Editor
+			</Button>
+			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 text-sm">
+				Slide {currentSlideIdx + 1} / {totalSlides}
+			</span>
+			<Button
+				variant="ghost"
+				size="sm"
+				nativeButton={false}
+				render={
+					<a
+						href={`/spaces/${spaceId}/doc/${id}/slideshow`}
+						target="_blank"
+						rel="noopener noreferrer"
+					/>
+				}
+			>
+				Slideshow
+			</Button>
+		</div>
+	)
 }

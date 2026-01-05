@@ -112,7 +112,7 @@
 			"priority": 14,
 			"story": "Create spaces.$spaceId.doc.$id.preview.tsx route",
 			"acceptance": "Route file exists, renders preview component for space doc",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "4.3",
@@ -120,7 +120,7 @@
 			"priority": 15,
 			"story": "Create spaces.$spaceId.doc.$id.slideshow.tsx route",
 			"acceptance": "Route file exists, renders slideshow component for space doc",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "4.4",
@@ -128,7 +128,7 @@
 			"priority": 16,
 			"story": "Create spaces.$spaceId.doc.$id.teleprompter.tsx route",
 			"acceptance": "Route file exists, renders teleprompter component for space doc",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "4.5",

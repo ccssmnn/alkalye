@@ -92,3 +92,29 @@
 - New docs created via wikilinks/duplicate use space's Group as owner
 - Files: src/routes/spaces.$spaceId.doc.$id.index.tsx (new), src/components/space-selector.tsx
 - Commit: feat: add space doc editor route
+
+## Story 4.2 - Create spaces.$spaceId.doc.$id.preview.tsx route
+- Created new route for previewing space docs
+- Loads Space and Document in parallel, handles auth/not-found/deleted states
+- TopBar navigates back to space editor route (not personal)
+- Presentation mode redirects to editor until slideshow route exists (story 4.3)
+- File: src/routes/spaces.$spaceId.doc.$id.preview.tsx (new)
+- Commit: feat: add spaces preview route
+
+## Story 4.3 - Create spaces.$spaceId.doc.$id.slideshow.tsx route
+- Created new route for slideshow presentation in space context
+- Loads Space and Document in parallel, handles auth/not-found/deleted states
+- Back to Editor button links to space editor route
+- Teleprompter button disabled (awaiting story 4.4)
+- Updated preview route to redirect presentations to slideshow route
+- Files: src/routes/spaces.$spaceId.doc.$id.slideshow.tsx (new), src/routes/spaces.$spaceId.doc.$id.preview.tsx
+- Commit: feat: add spaces slideshow route
+
+## Story 4.4 - Create spaces.$spaceId.doc.$id.teleprompter.tsx route
+- Created new route for teleprompter in space context
+- Loads Space and Document in parallel, handles auth/not-found/deleted states
+- TopBar links to space editor route and space slideshow route
+- Teleprompter component reused from personal doc route
+- Updated slideshow route to enable teleprompter navigation
+- Files: src/routes/spaces.$spaceId.doc.$id.teleprompter.tsx (new), src/routes/spaces.$spaceId.doc.$id.slideshow.tsx
+- Commit: feat: add spaces teleprompter route
