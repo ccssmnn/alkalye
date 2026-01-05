@@ -80,7 +80,7 @@
 			"priority": 10,
 			"story": "On submit create Space with group and add to UserRoot.spaces",
 			"acceptance": "Submitting form creates Space covalue with new Group, adds to user's spaces list",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "3.3",
@@ -88,7 +88,7 @@
 			"priority": 11,
 			"story": "Auto-select newly created space in dropdown",
 			"acceptance": "After creation, dropdown shows the new space as selected",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "3.4",
@@ -96,7 +96,7 @@
 			"priority": 12,
 			"story": "Create welcome doc in new space",
 			"acceptance": "New space contains one welcome document explaining spaces",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "4.1",
@@ -104,7 +104,7 @@
 			"priority": 13,
 			"story": "Create spaces.$spaceId.doc.$id.index.tsx route",
 			"acceptance": "Route file exists, renders editor component, loads space and doc",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "4.2",

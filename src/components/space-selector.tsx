@@ -26,8 +26,16 @@ type SpaceContextValue = {
 
 let SpaceContext = createContext<SpaceContextValue | null>(null)
 
-function SpaceProvider({ children }: { children: React.ReactNode }) {
-	let [selectedSpace, setSelectedSpace] = useState<SelectedSpace>(null)
+function SpaceProvider({
+	children,
+	initialSpace,
+}: {
+	children: React.ReactNode
+	initialSpace?: SelectedSpace
+}) {
+	let [selectedSpace, setSelectedSpace] = useState<SelectedSpace>(
+		initialSpace ?? null,
+	)
 	let [isCreateDialogOpen, setCreateDialogOpen] = useState(false)
 	return (
 		<SpaceContext.Provider

@@ -21,6 +21,7 @@ import { Route as DocIdIndexRouteImport } from './routes/doc.$id.index'
 import { Route as DocIdTeleprompterRouteImport } from './routes/doc.$id.teleprompter'
 import { Route as DocIdSlideshowRouteImport } from './routes/doc.$id.slideshow'
 import { Route as DocIdPreviewRouteImport } from './routes/doc.$id.preview'
+import { Route as SpacesSpaceIdDocIdIndexRouteImport } from './routes/spaces.$spaceId.doc.$id.index'
 
 const WelcomeRoute = WelcomeRouteImport.update({
   id: '/welcome',
@@ -82,6 +83,11 @@ const DocIdPreviewRoute = DocIdPreviewRouteImport.update({
   path: '/doc/$id/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SpacesSpaceIdDocIdIndexRoute = SpacesSpaceIdDocIdIndexRouteImport.update({
+  id: '/spaces/$spaceId/doc/$id/',
+  path: '/spaces/$spaceId/doc/$id/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -96,6 +102,7 @@ export interface FileRoutesByFullPath {
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
   '/doc/$id': typeof DocIdIndexRoute
+  '/spaces/$spaceId/doc/$id': typeof SpacesSpaceIdDocIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -110,6 +117,7 @@ export interface FileRoutesByTo {
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
   '/doc/$id': typeof DocIdIndexRoute
+  '/spaces/$spaceId/doc/$id': typeof SpacesSpaceIdDocIdIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -125,6 +133,7 @@ export interface FileRoutesById {
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
   '/doc/$id/': typeof DocIdIndexRoute
+  '/spaces/$spaceId/doc/$id/': typeof SpacesSpaceIdDocIdIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -141,6 +150,7 @@ export interface FileRouteTypes {
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
     | '/doc/$id'
+    | '/spaces/$spaceId/doc/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
     | '/doc/$id'
+    | '/spaces/$spaceId/doc/$id'
   id:
     | '__root__'
     | '/'
@@ -169,6 +180,7 @@ export interface FileRouteTypes {
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
     | '/doc/$id/'
+    | '/spaces/$spaceId/doc/$id/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -184,6 +196,7 @@ export interface RootRouteChildren {
   DocIdSlideshowRoute: typeof DocIdSlideshowRoute
   DocIdTeleprompterRoute: typeof DocIdTeleprompterRoute
   DocIdIndexRoute: typeof DocIdIndexRoute
+  SpacesSpaceIdDocIdIndexRoute: typeof SpacesSpaceIdDocIdIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -272,6 +285,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocIdPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/spaces/$spaceId/doc/$id/': {
+      id: '/spaces/$spaceId/doc/$id/'
+      path: '/spaces/$spaceId/doc/$id'
+      fullPath: '/spaces/$spaceId/doc/$id'
+      preLoaderRoute: typeof SpacesSpaceIdDocIdIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -288,6 +308,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocIdSlideshowRoute: DocIdSlideshowRoute,
   DocIdTeleprompterRoute: DocIdTeleprompterRoute,
   DocIdIndexRoute: DocIdIndexRoute,
+  SpacesSpaceIdDocIdIndexRoute: SpacesSpaceIdDocIdIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

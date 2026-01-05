@@ -61,3 +61,34 @@
 - Dialog integrated into EditorPage within SpaceProvider
 - Files: src/components/create-space-dialog.tsx (new), src/routes/doc.$id.index.tsx
 - Commit: feat: add CreateSpaceDialog component with name input
+
+## Story 3.2 - On submit create Space with group and add to UserRoot.spaces
+- Updated CreateSpaceDialog to call createSpace from schema on form submit
+- Added useAccount hook with spacesResolve to load user's root.spaces
+- Added useSelectedSpace hook to auto-select newly created space
+- On submit: validates name + user loaded, calls createSpace(name, root), then setSelectedSpace
+- File: src/components/create-space-dialog.tsx
+- Commit: feat: create Space with group on dialog submit and add to UserRoot.spaces
+
+## Story 3.3 - Auto-select newly created space in dropdown
+- Already implemented in Story 3.2: line 46 of create-space-dialog.tsx calls setSelectedSpace after createSpace
+- After space creation, dropdown immediately shows new space as selected
+- File: src/components/create-space-dialog.tsx (line 46)
+- No changes needed, marking as passed
+
+## Story 3.4 - Create welcome doc in new space
+- Added getSpaceWelcomeContent helper function that generates welcome content with space name
+- Modified createSpace function to create a welcome Document before creating the Space
+- Welcome doc is created with the space's Group for proper ownership/permissions
+- Space now initializes with documents list containing the welcome doc
+- File: src/schema/index.ts
+- Commit: feat: create welcome doc in new space
+
+## Story 4.1 - Create spaces.$spaceId.doc.$id.index.tsx route
+- Created new route file for editing docs within a space context
+- Route loads both Space and Document in parallel, handles auth/not-found states
+- SpaceProvider now accepts initialSpace prop to pre-select space on mount
+- Editor uses space's documents for wikilinks and duplicate operations
+- New docs created via wikilinks/duplicate use space's Group as owner
+- Files: src/routes/spaces.$spaceId.doc.$id.index.tsx (new), src/components/space-selector.tsx
+- Commit: feat: add space doc editor route
