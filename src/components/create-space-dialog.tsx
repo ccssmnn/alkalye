@@ -32,10 +32,13 @@ function CreateSpaceDialog() {
 
 	useEffect(() => {
 		if (isCreateDialogOpen) {
-			setName("")
 			setTimeout(() => inputRef.current?.focus(), 0)
 		}
 	}, [isCreateDialogOpen])
+
+	function handleOpenChangeComplete(open: boolean) {
+		if (!open) setName("")
+	}
 
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
@@ -49,7 +52,11 @@ function CreateSpaceDialog() {
 	}
 
 	return (
-		<Dialog open={isCreateDialogOpen} onOpenChange={setCreateDialogOpen}>
+		<Dialog
+			open={isCreateDialogOpen}
+			onOpenChange={setCreateDialogOpen}
+			onOpenChangeComplete={handleOpenChangeComplete}
+		>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Create space</DialogTitle>
