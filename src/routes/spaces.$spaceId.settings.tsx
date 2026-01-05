@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
-import { co, type ResolveQuery } from "jazz-tools"
+import { Group, co, type ResolveQuery } from "jazz-tools"
 import { useCoState } from "jazz-tools/react"
 import { ArrowLeft, Loader2 } from "lucide-react"
 import { Space } from "@/schema"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
 	DocumentNotFound,
@@ -111,6 +112,15 @@ function SpaceSettingsContent({
 }
 
 function SpaceNameSection({ space }: { space: LoadedSpace }) {
+	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let isAdmin = spaceGroup?.myRole() === "admin"
+
+	function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
+		let newName = e.target.value
+		space.$jazz.set("name", newName)
+		space.$jazz.set("updatedAt", new Date())
+	}
+
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
@@ -119,7 +129,15 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 			<div className="bg-muted/30 rounded-lg p-4">
 				<div>
 					<div className="text-muted-foreground mb-1 text-xs">Space name</div>
-					<div className="text-lg font-medium">{space.name}</div>
+					{isAdmin ? (
+						<Input
+							value={space.name}
+							onChange={handleNameChange}
+							className="text-lg font-medium"
+						/>
+					) : (
+						<div className="text-lg font-medium">{space.name}</div>
+					)}
 				</div>
 			</div>
 		</section>
