@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
+import { DuplicateDocDialog } from "@/components/duplicate-doc-dialog"
 import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
@@ -66,6 +67,7 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
 	let [leaveOpen, setLeaveOpen] = useState(false)
 	let [moveOpen, setMoveOpen] = useState(false)
+	let [duplicateOpen, setDuplicateOpen] = useState(false)
 
 	let docWithContent = useCoState(Document, doc.$jazz.id, {
 		resolve: { content: true },
@@ -140,6 +142,9 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 							Save as...
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
 						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => setDuplicateOpen(true)}>
+							Duplicate
+						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						{isAdmin ? (
 							<DropdownMenuItem
@@ -186,6 +191,12 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 				confirmLabel="Leave"
 				variant="destructive"
 				onConfirm={makeLeave(docWithContent, me, doc, navigate)}
+			/>
+			<DuplicateDocDialog
+				doc={doc}
+				open={duplicateOpen}
+				onOpenChange={setDuplicateOpen}
+				onDuplicate={makeDuplicate(navigate)}
 			/>
 		</>
 	)
@@ -438,6 +449,22 @@ function makeLeave(
 			me.root.documents.$jazz.splice(idx, 1)
 		}
 		navigate({ to: "/" })
+	}
+}
+
+function makeDuplicate(navigate: ReturnType<typeof useNavigate>) {
+	return function handleDuplicate(
+		newDocId: string,
+		destination: { id: string; name: string } | null,
+	) {
+		if (destination) {
+			navigate({
+				to: "/spaces/$spaceId/doc/$id",
+				params: { spaceId: destination.id, id: newDocId },
+			})
+		} else {
+			navigate({ to: "/doc/$id", params: { id: newDocId } })
+		}
 	}
 }
 
