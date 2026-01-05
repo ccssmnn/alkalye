@@ -178,19 +178,31 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let { updateCursor, remoteCursors } = usePresence({ doc })
 	let assets = doc.assets?.map(a => ({ id: a.$jazz.id, name: a.name })) ?? []
 
+	// Get documents for wikilink autocomplete - filtered by current space selection
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded) {
-		documents = me.root.documents
-			.filter(d => !d.deletedAt && d.$jazz.id !== docId)
-			.map(d => {
-				let content = d.content.toString()
-				return {
-					id: d.$jazz.id,
-					title: getDocumentTitle(content),
-					path: getPath(content),
-					tags: getTags(content),
-				}
-			})
+		let docsSource: typeof me.root.documents | undefined
+		if (selectedSpace) {
+			// Space selected: use space's documents
+			let space = me.root.spaces?.find(s => s?.$jazz.id === selectedSpace.id)
+			docsSource = space?.$isLoaded ? space.documents : undefined
+		} else {
+			// Personal: use user's own documents
+			docsSource = me.root.documents
+		}
+		if (docsSource?.$isLoaded) {
+			documents = [...docsSource]
+				.filter(d => d?.$isLoaded && !d.deletedAt && d.$jazz.id !== docId)
+				.map(d => {
+					let content = d.content?.toString() ?? ""
+					return {
+						id: d.$jazz.id,
+						title: getDocumentTitle(content),
+						path: getPath(content),
+						tags: getTags(content),
+					}
+				})
+		}
 	}
 
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
@@ -214,12 +226,22 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				imageId: a.image?.$jazz.id,
 			})) ?? []
 
+	// Get documents for wikilink insertion menu - filtered by current space selection
 	let wikiLinkDocs: { id: string; title: string }[] = []
-	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
-		for (let d of [...me.root.documents]) {
-			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
-			let title = getDocumentTitle(d)
-			wikiLinkDocs.push({ id: d.$jazz.id, title })
+	if (me.$isLoaded) {
+		let docsSource: typeof me.root.documents | undefined
+		if (selectedSpace) {
+			let space = me.root.spaces?.find(s => s?.$jazz.id === selectedSpace.id)
+			docsSource = space?.$isLoaded ? space.documents : undefined
+		} else {
+			docsSource = me.root.documents
+		}
+		if (docsSource?.$isLoaded) {
+			for (let d of [...docsSource]) {
+				if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
+				let title = getDocumentTitle(d)
+				wikiLinkDocs.push({ id: d.$jazz.id, title })
+			}
 		}
 	}
 
@@ -376,7 +398,15 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								editor={editor}
 								disabled={readOnly}
 								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocForWikilink(me, doc)}
+								onCreateDocument={makeCreateDocForWikilink(
+									me,
+									doc,
+									selectedSpace && me.$isLoaded
+										? me.root.spaces?.find(
+												s => s?.$jazz.id === selectedSpace.id,
+											)
+										: undefined,
+								)}
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -548,13 +578,39 @@ function makeRenameAsset(doc: LoadedDocument) {
 	}
 }
 
-function makeCreateDocForWikilink(me: LoadedMe, doc: LoadedDocument) {
+type MaybeSpace =
+	| co.loaded<typeof Space, { documents: { $each: { content: true } } }>
+	| undefined
+
+function makeCreateDocForWikilink(
+	me: LoadedMe,
+	doc: LoadedDocument,
+	space?: MaybeSpace,
+) {
 	return async function handleCreateDocForWikilink(
 		title: string,
 	): Promise<string> {
+		let now = new Date()
+
+		// If space is selected and loaded, create doc in space
+		if (space?.$isLoaded && space.documents?.$isLoaded) {
+			let newDoc = Document.create(
+				{
+					version: 1,
+					content: co.plainText().create(`# ${title}\n\n`, space.$jazz.owner),
+					createdAt: now,
+					updatedAt: now,
+					spaceId: space.$jazz.id,
+				},
+				space.$jazz.owner,
+			)
+			space.documents.$jazz.push(newDoc)
+			return newDoc.$jazz.id
+		}
+
+		// Otherwise create in personal docs
 		if (!me.$isLoaded || !me.root?.documents?.$isLoaded)
 			throw new Error("Not ready")
-		let now = new Date()
 		let newDoc = Document.create(
 			{
 				version: 1,
