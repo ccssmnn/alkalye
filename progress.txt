@@ -348,3 +348,31 @@
 - Updated space editor route to pass { spaceId } to useBacklinkSync
 - Files: src/lib/backlink-sync.ts, src/routes/spaces.$spaceId.doc.$id.index.tsx
 - Commit: feat: update backlink sync to only update links within same space
+
+## Story 12.1 - Create DuplicateDocDialog component
+- Created DuplicateDocDialog component with name input and destination picker
+- Dialog renders with title "Duplicate document", description, name input, destination Select dropdown
+- Name input pre-filled with "Original (copy)" where Original is derived from doc's first heading
+- Destination picker shows Personal option + all user spaces (sorted A-Z, filtered deleted)
+- Uses SpaceInitials from space-selector for space icons in dropdown
+- Submit button disabled until name has value
+- onDuplicate callback receives (name, destination) where destination is null for personal or { id, name } for space
+- File: src/components/duplicate-doc-dialog.tsx (new)
+- Commit: feat: add DuplicateDocDialog component with destination picker and name input
+
+## Story 12.2 - Show destination picker with Personal and all spaces
+- Already implemented in Story 12.1: DuplicateDocDialog has destination Select dropdown
+- Personal option rendered at lines 121-124 with User icon
+- All user spaces mapped at lines 125-130 with SpaceInitials
+- getSortedSpaces helper (lines 159-170) filters deleted spaces and sorts A-Z
+- File: src/components/duplicate-doc-dialog.tsx
+- No changes needed, marking as passed
+
+## Story 12.3 - Prompt for new name with default 'Original (copy)'
+- Already implemented in Story 12.1: DuplicateDocDialog pre-fills name input
+- Line 57: `let docName = getDocName(doc)` extracts doc name from first heading
+- Line 62: `setName(\`${docName} (copy)\`)` pre-fills with "Original (copy)" format
+- Lines 172-177: getDocName() extracts title from first heading, strips #, defaults to "Untitled"
+- Lines 64-67: Focuses and selects input on dialog open for easy replacement
+- File: src/components/duplicate-doc-dialog.tsx
+- No changes needed, marking as passed

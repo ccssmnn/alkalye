@@ -344,7 +344,7 @@
 			"priority": 43,
 			"story": "Create DuplicateDocDialog component",
 			"acceptance": "Dialog renders with destination picker and name input",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "12.2",
@@ -352,7 +352,7 @@
 			"priority": 44,
 			"story": "Show destination picker with Personal and all spaces",
 			"acceptance": "Dropdown lists Personal + all user spaces as destinations",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "12.3",
@@ -360,7 +360,7 @@
 			"priority": 45,
 			"story": "Prompt for new name with default 'Original (copy)'",
 			"acceptance": "Name input pre-filled with original name + ' (copy)'",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "12.4",
