@@ -11,6 +11,10 @@ import {
 	createDocumentInvite,
 	acceptDocumentInvite,
 	revokeDocumentInvite,
+	listCollaborators,
+	leavePersonalDocument,
+	parseInviteLink,
+	changeCollaboratorRole,
 } from "@/lib/documents"
 import type { co } from "jazz-tools"
 
@@ -69,16 +73,9 @@ describe("Document Collaboration", () => {
 
 	test("invited user can find document in personal docs after accepting invite", async () => {
 		let inviteLink = await createDocumentInvite(doc, "writer")
+		let inviteData = parseInviteLink(inviteLink)
 
-		let parts = inviteLink.split("/")
-		let inviteGroupId = parts[parts.length - 2]
-		let inviteSecret = parts[parts.length - 1]
-
-		await acceptDocumentInvite(otherAccount, {
-			docId: doc.$jazz.id,
-			inviteGroupId: inviteGroupId,
-			inviteSecret: inviteSecret as `inviteSecret_z${string}`,
-		})
+		await acceptDocumentInvite(otherAccount, inviteData)
 
 		let { root } = await otherAccount.$jazz.ensureLoaded({
 			resolve: { root: { documents: true } },
@@ -88,23 +85,16 @@ describe("Document Collaboration", () => {
 
 	test("revoked user cannot access document", async () => {
 		let inviteLink = await createDocumentInvite(doc, "writer")
+		let inviteData = parseInviteLink(inviteLink)
 
-		let parts = inviteLink.split("/")
-		let inviteGroupId = parts[parts.length - 2]
-		let inviteSecret = parts[parts.length - 1]
-
-		await acceptDocumentInvite(otherAccount, {
-			docId: doc.$jazz.id,
-			inviteGroupId: inviteGroupId,
-			inviteSecret: inviteSecret as `inviteSecret_z${string}`,
-		})
+		await acceptDocumentInvite(otherAccount, inviteData)
 
 		setActiveAccount(otherAccount)
 		let loadedDoc = await Document.load(doc.$jazz.id)
 		expect(loadedDoc.$isLoaded).toBe(true)
 
 		setActiveAccount(adminAccount)
-		revokeDocumentInvite(doc, inviteGroupId)
+		revokeDocumentInvite(doc, inviteData.inviteGroupId)
 
 		await otherAccount.$jazz.waitForAllCoValuesSync()
 
@@ -116,23 +106,108 @@ describe("Document Collaboration", () => {
 	test("accepting a revoked invite should throw", async () => {
 		setActiveAccount(adminAccount)
 		let inviteLink = await createDocumentInvite(doc, "writer")
+		let inviteData = parseInviteLink(inviteLink)
 
-		let parts = inviteLink.split("/")
-		let inviteGroupId = parts[parts.length - 2]
-		let inviteSecret = parts[parts.length - 1]
-
-		revokeDocumentInvite(doc, inviteGroupId)
+		revokeDocumentInvite(doc, inviteData.inviteGroupId)
 
 		await adminAccount.$jazz.waitForAllCoValuesSync()
 		await otherAccount.$jazz.waitForAllCoValuesSync()
 
 		setActiveAccount(otherAccount)
 		await expect(
-			acceptDocumentInvite(otherAccount, {
-				docId: doc.$jazz.id,
-				inviteGroupId: inviteGroupId,
-				inviteSecret: inviteSecret as `inviteSecret_z${string}`,
-			}),
-		).rejects.toThrow("Document not found or invite was revoked")
+			acceptDocumentInvite(otherAccount, inviteData),
+		).rejects.toThrow()
+	})
+
+	test("list collaborators returns all invited users with their roles", async () => {
+		let writerAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+		let readerAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+
+		let writerInvite = await createDocumentInvite(doc, "writer")
+		let readerInvite = await createDocumentInvite(doc, "reader")
+
+		let writerData = parseInviteLink(writerInvite)
+		let readerData = parseInviteLink(readerInvite)
+
+		await acceptDocumentInvite(writerAccount, writerData)
+		await acceptDocumentInvite(readerAccount, readerData)
+
+		let collaborators = listCollaborators(doc)
+		expect(collaborators.length).toBe(2)
+
+		let writerCollabs = collaborators.filter(c => c.role === "writer")
+		let readerCollabs = collaborators.filter(c => c.role === "reader")
+
+		expect(writerCollabs.length).toBe(1)
+		expect(readerCollabs.length).toBe(1)
+		expect(writerCollabs[0].userId).toBe(writerAccount.$jazz.id)
+		expect(readerCollabs[0].userId).toBe(readerAccount.$jazz.id)
+	})
+
+	test("leaving document removes it from personal docs and collaborator list", async () => {
+		let inviteLink = await createDocumentInvite(doc, "writer")
+		let inviteData = parseInviteLink(inviteLink)
+
+		await acceptDocumentInvite(otherAccount, inviteData)
+
+		setActiveAccount(otherAccount)
+
+		let { root: beforeRoot } = await otherAccount.$jazz.ensureLoaded({
+			resolve: { root: { documents: true } },
+		})
+		expect(beforeRoot.documents.some(d => d.$jazz.id === doc.$jazz.id)).toBe(
+			true,
+		)
+
+		let collaboratorsBefore = listCollaborators(doc)
+		expect(
+			collaboratorsBefore.some(c => c.userId === otherAccount.$jazz.id),
+		).toBe(true)
+		expect(
+			collaboratorsBefore.find(c => c.userId === otherAccount.$jazz.id)?.role,
+		).toBe("writer")
+
+		await leavePersonalDocument(doc, otherAccount)
+		await otherAccount.$jazz.waitForAllCoValuesSync()
+
+		let { root: afterRoot } = await otherAccount.$jazz.ensureLoaded({
+			resolve: { root: { documents: true } },
+		})
+		expect(afterRoot.documents.some(d => d.$jazz.id === doc.$jazz.id)).toBe(
+			false,
+		)
+
+		let collaboratorsAfter = listCollaborators(doc)
+		expect(
+			collaboratorsAfter.some(c => c.userId === otherAccount.$jazz.id),
+		).toBe(false)
+	})
+
+	test("changing collaborator role is reflected in listCollaborators", async () => {
+		let inviteLink = await createDocumentInvite(doc, "reader")
+		let inviteData = parseInviteLink(inviteLink)
+
+		await acceptDocumentInvite(otherAccount, inviteData)
+
+		let collaboratorsBefore = listCollaborators(doc)
+		let otherCollabsBefore = collaboratorsBefore.filter(
+			c => c.userId === otherAccount.$jazz.id,
+		)
+		expect(otherCollabsBefore.length).toBe(1)
+		expect(otherCollabsBefore[0].role).toBe("reader")
+
+		setActiveAccount(adminAccount)
+		await changeCollaboratorRole(doc, inviteData.inviteGroupId, "writer")
+
+		let collaboratorsAfter = listCollaborators(doc)
+		let otherCollabsAfter = collaboratorsAfter.filter(
+			c => c.userId === otherAccount.$jazz.id,
+		)
+		expect(otherCollabsAfter.length).toBe(1)
+		expect(otherCollabsAfter[0].role).toBe("writer")
 	})
 })

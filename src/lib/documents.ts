@@ -10,7 +10,9 @@ export {
 	listCollaborators,
 	acceptDocumentInvite,
 	leavePersonalDocument,
+	parseInviteLink,
 }
+
 export type { PersonalDocumentOperation, Collaborator, DocInviteData }
 
 type Collaborator = {
@@ -133,7 +135,6 @@ function revokeDocumentInvite(
 
 function listCollaborators(doc: co.loaded<typeof Document>): Collaborator[] {
 	let docGroup = doc.$jazz.owner
-	if (!(docGroup instanceof Group)) return []
 
 	let collaborators: Collaborator[] = []
 
@@ -219,4 +220,49 @@ async function leavePersonalDocument(
 	) {
 		loadedAccount.root.documents.$jazz.splice(idx, 1)
 	}
+}
+
+function parseInviteLink(link: string): DocInviteData {
+	let match = link.match(/#\/doc\/([^/]+)\/invite\/([^/]+)\/([^/]+)$/)
+	if (!match) {
+		throw new Error("Invalid invite link format")
+	}
+	let docId = match[1]
+	let inviteGroupId = match[2]
+	let inviteSecret = match[3] as `inviteSecret_z${string}`
+	return { docId, inviteGroupId, inviteSecret }
+}
+
+export async function changeCollaboratorRole(
+	doc: co.loaded<typeof Document>,
+	inviteGroupId: string,
+	newRole: "writer" | "reader",
+): Promise<void> {
+	let docGroup = doc.$jazz.owner
+	if (!(docGroup instanceof Group)) {
+		throw new Error("Document is not group-owned")
+	}
+
+	let parentGroups = docGroup.getParentGroups()
+	let oldInviteGroup = parentGroups.find(g => g.$jazz.id === inviteGroupId)
+	if (!oldInviteGroup) {
+		throw new Error("Invite group not found")
+	}
+
+	if (docGroup.myRole() !== "admin") {
+		throw new Error("Only admins can change collaborator roles")
+	}
+
+	for (let member of oldInviteGroup.members) {
+		if (member.role === "writer" || member.role === "reader") {
+			let account = await co.account().load(member.id)
+			if (account.$isLoaded) {
+				let newInviteGroup = Group.create()
+				newInviteGroup.addMember(account, newRole)
+				docGroup.addMember(newInviteGroup, newRole)
+			}
+		}
+	}
+
+	docGroup.removeMember(oldInviteGroup)
 }
