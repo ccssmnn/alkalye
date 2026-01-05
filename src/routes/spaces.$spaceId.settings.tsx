@@ -1,13 +1,14 @@
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount } from "jazz-tools/react"
 import { useState, useEffect } from "react"
 import { ArrowLeft, Loader2 } from "lucide-react"
-import { Space, UserAccount } from "@/schema"
+import { Space, UserAccount, deleteSpace } from "@/schema"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
@@ -107,6 +108,7 @@ function SpaceSettingsContent({
 					<div className="space-y-8">
 						<SpaceNameSection space={space} />
 						<SpaceMembersSection space={space} />
+						<DeleteSpaceSection space={space} />
 					</div>
 				</div>
 			</div>
@@ -228,4 +230,52 @@ function getRoleLabel(role: string): string {
 		default:
 			return role
 	}
+}
+
+function DeleteSpaceSection({ space }: { space: LoadedSpace }) {
+	let navigate = useNavigate()
+	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let isAdmin = spaceGroup?.myRole() === "admin"
+	let confirmDialog = useConfirmDialog()
+
+	if (!isAdmin) return null
+
+	function handleDelete() {
+		deleteSpace(space)
+		navigate({ to: "/" })
+	}
+
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				Danger Zone
+			</h2>
+			<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+				<div className="flex items-center justify-between">
+					<div>
+						<div className="text-sm font-medium">Delete space</div>
+						<div className="text-muted-foreground text-xs">
+							Permanently delete this space and all its documents
+						</div>
+					</div>
+					<Button
+						variant="destructive"
+						size="sm"
+						onClick={() => confirmDialog.setOpen(true)}
+					>
+						Delete
+					</Button>
+				</div>
+			</div>
+			<ConfirmDialog
+				open={confirmDialog.open}
+				onOpenChange={confirmDialog.onOpenChange}
+				title="Delete space?"
+				description={`This will permanently delete "${space.name}" and all documents within it. This action cannot be undone.`}
+				confirmLabel="Delete"
+				variant="destructive"
+				onConfirm={handleDelete}
+			/>
+		</section>
+	)
 }
