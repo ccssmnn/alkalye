@@ -376,7 +376,7 @@
 			"priority": 47,
 			"story": "Show progress indicator for asset copying",
 			"acceptance": "Progress indicator visible during duplication",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "12.6",
@@ -384,7 +384,7 @@
 			"priority": 48,
 			"story": "Add duplicate option to file menu in right sidebar",
 			"acceptance": "File menu has Duplicate option that opens DuplicateDocDialog",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "13.1",

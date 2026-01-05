@@ -392,3 +392,24 @@
 - Exported duplicateDocument function and DuplicateProgress type for reuse
 - File: src/components/duplicate-doc-dialog.tsx
 - Commit: feat: implement deep copy of doc content and assets for duplication
+
+## Story 12.5 - Show progress indicator for asset copying
+- Created Progress UI component (src/components/ui/progress.tsx)
+- Progress bar uses role="progressbar" with aria attributes for accessibility
+- Added visible progress section in DuplicateDocDialog during asset copying
+- Shows "Copying assets..." label with count (e.g., "1/3") and progress bar
+- Progress bar animates with 300ms transition as assets are copied
+- Only displays when isDuplicating && progress.total > 0 (has assets to copy)
+- Files: src/components/ui/progress.tsx (new), src/components/duplicate-doc-dialog.tsx
+- Commit: feat: add progress indicator for asset copying in duplicate dialog
+
+## Story 12.6 - Add duplicate option to file menu in right sidebar
+- Added "Duplicate" menu item to SidebarFileMenu dropdown after "Save as..."
+- Imported DuplicateDocDialog component
+- Added duplicateOpen/setDuplicateOpen state for dialog visibility
+- Clicking "Duplicate" opens DuplicateDocDialog with current doc
+- Added makeDuplicate handler factory that navigates to new doc after duplication
+- If destination is a space: navigates to /spaces/$spaceId/doc/$id
+- If destination is personal: navigates to /doc/$id
+- File: src/components/sidebar-file-menu.tsx
+- Commit: feat: add duplicate option to file menu in right sidebar
