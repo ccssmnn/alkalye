@@ -3,6 +3,7 @@ import { Group, co, z } from "jazz-tools"
 export {
 	Asset,
 	Document,
+	Space,
 	UserProfile,
 	UserRoot,
 	UserAccount,
@@ -63,6 +64,14 @@ let Document = co.map({
 	presentationLine: z.number().optional(),
 	createdAt: z.date(),
 	updatedAt: z.date(),
+})
+
+let Space = co.map({
+	name: z.string(),
+	documents: co.list(Document),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+	deletedAt: z.date().optional(),
 })
 
 let UserProfile = co.profile({
