@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import { useAccount } from "jazz-tools/react"
+import { useAccount, useCoState } from "jazz-tools/react"
 import { co, type ResolveQuery } from "jazz-tools"
 import { FolderOpen, AlertCircle } from "lucide-react"
-import { UserAccount, Document } from "@/schema"
+import { UserAccount, Document, Space } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
@@ -18,6 +18,7 @@ import {
 
 export {
 	BackupSubscriber,
+	SpacesBackupSubscriber,
 	BackupSettings,
 	SpaceBackupSettings,
 	useSpaceBackupPath,
@@ -662,4 +663,149 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 			</div>
 		</section>
 	)
+}
+
+// Space backup subscriber - handles backup sync for a single space
+
+let SPACE_BACKUP_DEBOUNCE_MS = 5000
+
+async function getSpaceBackupHandle(
+	spaceId: string,
+): Promise<FileSystemDirectoryHandle | null> {
+	try {
+		let handle = await idbGet<FileSystemDirectoryHandle>(
+			`${HANDLE_STORAGE_KEY}-space-${spaceId}`,
+		)
+		if (!handle) return null
+		let hasPermission = await verifyPermission(handle)
+		if (!hasPermission) return null
+		return handle
+	} catch {
+		return null
+	}
+}
+
+interface SpaceBackupSubscriberProps {
+	spaceId: string
+}
+
+function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
+	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
+	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	let lastContentHashRef = useRef<string>("")
+
+	// Load space with documents
+	let space = useCoState(Space, spaceId as Parameters<typeof useCoState>[1], {
+		resolve: {
+			documents: {
+				$each: { content: true, assets: { $each: { image: true } } },
+				$onError: "catch",
+			},
+		},
+	})
+
+	useEffect(() => {
+		// Skip if no backup folder configured
+		if (!directoryName) return
+		// Skip if space not loaded
+		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
+		// Skip deleted spaces
+		if (space.deletedAt) return
+
+		let docs = space.documents
+		let activeDocs = [...docs].filter(
+			d => d?.$isLoaded && !d.deletedAt && !d.permanentlyDeletedAt,
+		)
+
+		// Compute content hash to detect changes
+		let contentHash = activeDocs
+			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
+			.sort()
+			.join("|")
+
+		if (contentHash === lastContentHashRef.current) return
+		lastContentHashRef.current = contentHash
+
+		// Debounce backup
+		if (debounceRef.current) clearTimeout(debounceRef.current)
+		debounceRef.current = setTimeout(async () => {
+			try {
+				let handle = await getSpaceBackupHandle(spaceId)
+				if (!handle) {
+					// Permission lost, clear the setting
+					setDirectoryName(null)
+					return
+				}
+
+				let loadedDocs = activeDocs.filter(
+					(d): d is LoadedDocument => d?.$isLoaded === true,
+				)
+				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				await syncBackup(handle, backupDocs)
+			} catch (e) {
+				console.error(`Space backup failed for ${spaceId}:`, e)
+			}
+		}, SPACE_BACKUP_DEBOUNCE_MS)
+
+		return () => {
+			if (debounceRef.current) clearTimeout(debounceRef.current)
+		}
+	}, [directoryName, space, spaceId, setDirectoryName])
+
+	return null
+}
+
+// Component that subscribes to all spaces and renders backup subscribers for each
+
+let spacesBackupQuery = {
+	root: {
+		spaces: true,
+	},
+} as const satisfies ResolveQuery<typeof UserAccount>
+
+function SpacesBackupSubscriber() {
+	let me = useAccount(UserAccount, { resolve: spacesBackupQuery })
+	let [storageVersion, setStorageVersion] = useState(0)
+
+	// Re-render on storage changes (for when user sets backup path in settings)
+	useEffect(() => {
+		function handleStorageChange(e: StorageEvent) {
+			if (e.key?.startsWith(SPACE_BACKUP_KEY_PREFIX)) {
+				setStorageVersion(v => v + 1)
+			}
+		}
+
+		window.addEventListener("storage", handleStorageChange)
+		return () => window.removeEventListener("storage", handleStorageChange)
+	}, [])
+
+	// Compute spaces with backup paths - recomputed when me changes or storage changes
+	let spacesWithBackup = getSpacesWithBackup(me, storageVersion)
+
+	return (
+		<>
+			{spacesWithBackup.map(spaceId => (
+				<SpaceBackupSubscriber key={spaceId} spaceId={spaceId} />
+			))}
+		</>
+	)
+}
+
+function getSpacesWithBackup(
+	me: ReturnType<
+		typeof useAccount<typeof UserAccount, typeof spacesBackupQuery>
+	>,
+	_storageVersion: number,
+): string[] {
+	if (!me.$isLoaded || !me.root?.spaces?.$isLoaded) return []
+
+	let spaceIds: string[] = []
+	for (let space of Array.from(me.root.spaces)) {
+		if (!space?.$isLoaded || space.deletedAt) continue
+		let backupPath = getSpaceBackupPath(space.$jazz.id)
+		if (backupPath) {
+			spaceIds.push(space.$jazz.id)
+		}
+	}
+	return spaceIds
 }
