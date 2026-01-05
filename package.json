@@ -1,12 +1,16 @@
 {
-	"name": "markdown-editor",
+	"name": "alkalye",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "eslint . && tsc -b && vite build",
-		"lint": "eslint .",
+		"build": "vite build",
+		"check": "bun x concurrently \"bun run check:lint\" \"bun run check:types\" \"bun run check:format\" \"bun run check:test\"",
+		"check:lint": "eslint .",
+		"check:types": "tsc -b",
+		"check:format": "prettier --check .",
+		"check:test": "vitest run",
 		"preview": "vite preview",
 		"format": "prettier --write .",
 		"test": "vitest"

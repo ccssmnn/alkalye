@@ -1,5 +1,9 @@
 # Agent Instructions
 
+## Verification
+
+Run `bun run check` to verify changes (runs lint, types, format, tests in parallel).
+
 ## Project Setup
 
 - **Package manager:** Bun (use `bun install`, `bun add`, `bun run`)
