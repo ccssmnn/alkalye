@@ -134,15 +134,12 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 			<div className="bg-muted/30 rounded-lg p-4">
 				<div>
 					<div className="text-muted-foreground mb-1 text-xs">Space name</div>
-					{isAdmin ? (
-						<Input
-							value={space.name}
-							onChange={handleNameChange}
-							className="text-lg font-medium"
-						/>
-					) : (
-						<div className="text-lg font-medium">{space.name}</div>
-					)}
+					<Input
+						value={space.name}
+						onChange={handleNameChange}
+						disabled={!isAdmin}
+						className="text-lg font-medium"
+					/>
 				</div>
 			</div>
 		</section>
@@ -238,8 +235,6 @@ function DeleteSpaceSection({ space }: { space: LoadedSpace }) {
 	let isAdmin = spaceGroup?.myRole() === "admin"
 	let confirmDialog = useConfirmDialog()
 
-	if (!isAdmin) return null
-
 	function handleDelete() {
 		deleteSpace(space)
 		navigate({ to: "/" })
@@ -261,6 +256,7 @@ function DeleteSpaceSection({ space }: { space: LoadedSpace }) {
 					<Button
 						variant="destructive"
 						size="sm"
+						disabled={!isAdmin}
 						onClick={() => confirmDialog.setOpen(true)}
 					>
 						Delete
