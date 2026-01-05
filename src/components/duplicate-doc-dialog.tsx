@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react"
-import { co } from "jazz-tools"
+import { co, Group } from "jazz-tools"
+import { createImage } from "jazz-tools/media"
 import { useAccount } from "jazz-tools/react"
 import { User } from "lucide-react"
 import {
@@ -21,14 +22,29 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import { SpaceInitials } from "@/components/space-selector"
-import { Document, UserAccount } from "@/schema"
+import { Asset, Document, Space, UserAccount } from "@/schema"
 
-export { DuplicateDocDialog }
-export type { DuplicateDocDialogProps }
+export { DuplicateDocDialog, duplicateDocument }
+export type { DuplicateDocDialogProps, DuplicateProgress }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<
+	typeof Document,
+	{ content: true; assets: { $each: { image: true } } }
+>
 
-let spacesQuery = { root: { spaces: { $each: { avatar: true } } } } as const
+type DuplicateProgress = {
+	total: number
+	copied: number
+	status: "idle" | "copying" | "done" | "error"
+	error?: string
+}
+
+let spacesQuery = {
+	root: {
+		documents: true,
+		spaces: { $each: { avatar: true, documents: true } },
+	},
+} as const
 type LoadedSpaces = co.loaded<typeof UserAccount, typeof spacesQuery>
 
 type SpaceOption = {
@@ -40,7 +56,7 @@ interface DuplicateDocDialogProps {
 	doc: LoadedDocument
 	open: boolean
 	onOpenChange: (open: boolean) => void
-	onDuplicate?: (name: string, destination: SpaceOption | null) => void
+	onDuplicate?: (newDocId: string, destination: SpaceOption | null) => void
 }
 
 function DuplicateDocDialog({
@@ -52,15 +68,22 @@ function DuplicateDocDialog({
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [name, setName] = useState("")
 	let [destination, setDestination] = useState<string>("personal")
+	let [progress, setProgress] = useState<DuplicateProgress>({
+		total: 0,
+		copied: 0,
+		status: "idle",
+	})
 	let inputRef = useRef<HTMLInputElement>(null)
 
 	let docName = getDocName(doc)
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
+	let isDuplicating = progress.status === "copying"
 
 	useEffect(() => {
 		if (open) {
 			setName(`${docName} (copy)`)
 			setDestination("personal")
+			setProgress({ total: 0, copied: 0, status: "idle" })
 			setTimeout(() => {
 				inputRef.current?.focus()
 				inputRef.current?.select()
@@ -68,10 +91,10 @@ function DuplicateDocDialog({
 		}
 	}, [open, docName])
 
-	function handleSubmit(e: React.FormEvent) {
+	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
 		let trimmed = name.trim()
-		if (!trimmed) return
+		if (!trimmed || !me?.$isLoaded) return
 
 		let selectedSpace: SpaceOption | null = null
 		if (destination !== "personal") {
@@ -81,8 +104,23 @@ function DuplicateDocDialog({
 			}
 		}
 
-		onDuplicate?.(trimmed, selectedSpace)
-		onOpenChange(false)
+		try {
+			let newDocId = await duplicateDocument({
+				doc,
+				newName: trimmed,
+				destination: selectedSpace,
+				me,
+				onProgress: setProgress,
+			})
+			onDuplicate?.(newDocId, selectedSpace)
+			onOpenChange(false)
+		} catch (err) {
+			setProgress(p => ({
+				...p,
+				status: "error",
+				error: err instanceof Error ? err.message : "Unknown error",
+			}))
+		}
 	}
 
 	return (
@@ -133,17 +171,30 @@ function DuplicateDocDialog({
 						</div>
 					</div>
 
+					{progress.status === "error" && (
+						<p className="text-destructive text-sm">{progress.error}</p>
+					)}
+
 					<DialogFooter className="mt-4">
 						<Button
 							type="button"
 							variant="outline"
 							size="sm"
 							onClick={() => onOpenChange(false)}
+							disabled={isDuplicating}
 						>
 							Cancel
 						</Button>
-						<Button type="submit" size="sm" disabled={!name.trim()}>
-							Duplicate
+						<Button
+							type="submit"
+							size="sm"
+							disabled={!name.trim() || isDuplicating}
+						>
+							{isDuplicating
+								? progress.total > 0
+									? `Copying assets (${progress.copied}/${progress.total})...`
+									: "Duplicating..."
+								: "Duplicate"}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -174,4 +225,137 @@ function getDocName(doc: LoadedDocument): string {
 	let firstLine = content.split("\n")[0] ?? ""
 	let title = firstLine.replace(/^#\s*/, "").trim()
 	return title || "Untitled"
+}
+
+type DuplicateOptions = {
+	doc: LoadedDocument
+	newName: string
+	destination: SpaceOption | null
+	me: co.loaded<typeof UserAccount, { root: { documents: true; spaces: true } }>
+	onProgress?: (progress: DuplicateProgress) => void
+}
+
+type LoadedSpace = co.loaded<typeof Space, { documents: true }>
+
+async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
+	let { doc, newName, destination, me, onProgress } = opts
+	let content = doc.content?.toString() ?? ""
+	let assets = doc.assets ?? []
+	let totalAssets = assets.filter(
+		a => a?.$isLoaded && a.image?.$isLoaded,
+	).length
+	let progress: DuplicateProgress = {
+		total: totalAssets,
+		copied: 0,
+		status: "copying",
+	}
+	onProgress?.(progress)
+
+	// Determine the owner group for the new document
+	let owner: Group
+	let targetSpace: LoadedSpace | undefined
+
+	if (destination) {
+		// Find the target space
+		let space = me.root.spaces?.find(s => s?.$jazz.id === destination.id)
+		if (!space?.$isLoaded) {
+			throw new Error("Target space not found or not loaded")
+		}
+		targetSpace = space as LoadedSpace
+		owner = space.$jazz.owner as Group
+	} else {
+		// Personal document - create new group
+		owner = Group.create()
+	}
+
+	// Build a map of old asset ID -> new asset ID for content replacement
+	let assetIdMap = new Map<string, string>()
+
+	// Create the new assets list
+	let newAssets = co.list(Asset).create([], owner)
+
+	// Deep copy each asset
+	for (let asset of [...assets]) {
+		if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
+
+		let original = asset.image.original
+		if (!original?.$isLoaded) continue
+
+		let blob = original.toBlob()
+		if (!blob) continue
+
+		try {
+			// Create a new image from the blob
+			let newImage = await createImage(blob, {
+				owner,
+				maxSize: 2048,
+			})
+
+			// Create a new asset with the copied image
+			let newAsset = Asset.create(
+				{
+					type: "image",
+					name: asset.name,
+					image: newImage,
+					createdAt: new Date(),
+				},
+				owner,
+			)
+
+			newAssets.$jazz.push(newAsset)
+			assetIdMap.set(asset.$jazz.id, newAsset.$jazz.id)
+
+			progress = { ...progress, copied: progress.copied + 1 }
+			onProgress?.(progress)
+		} catch (err) {
+			console.error("Failed to copy asset:", err)
+			// Continue with other assets even if one fails
+		}
+	}
+
+	// Replace asset references in content with new asset IDs
+	let newContent = content
+	for (let [oldId, newId] of assetIdMap) {
+		// Replace asset:oldId with asset:newId in markdown image syntax
+		newContent = newContent.replace(
+			new RegExp(`\\(asset:${oldId}\\)`, "g"),
+			`(asset:${newId})`,
+		)
+	}
+
+	// Replace the first heading with the new name
+	let lines = newContent.split("\n")
+	if (lines[0]?.startsWith("#")) {
+		lines[0] = `# ${newName}`
+		newContent = lines.join("\n")
+	} else {
+		// If no heading, prepend one
+		newContent = `# ${newName}\n\n${newContent}`
+	}
+
+	// Create the new document
+	let now = new Date()
+	let newDoc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(newContent, owner),
+			assets: newAssets,
+			createdAt: now,
+			updatedAt: now,
+			spaceId: destination?.id,
+		},
+		owner,
+	)
+
+	// Add to the appropriate list
+	if (targetSpace) {
+		targetSpace.documents.$jazz.push(newDoc)
+	} else {
+		me.root.documents.$jazz.push(newDoc)
+	}
+
+	progress = { ...progress, status: "done" }
+	onProgress?.(progress)
+
+	return newDoc.$jazz.id
 }
