@@ -216,3 +216,14 @@
 - Added optional avatar field of type co.image() to Space schema
 - File: src/schema/index.ts (line 74)
 - Commit: feat: add avatar field to Space schema
+
+## Story 8.2 - Add avatar upload in space settings
+- Added SpaceAvatarUpload component in SpaceNameSection (General settings area)
+- Uses createImage from jazz-tools/media to upload and resize avatar (max 512px)
+- Uses Image component from jazz-tools/react to display uploaded avatar
+- Shows User icon placeholder when no avatar set
+- Upload button disabled for non-admins, shows loading state during upload
+- Hidden file input with accept="image/*" for file selection
+- Updated spaceQuery to also resolve avatar field
+- File: src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: add avatar upload in space settings

@@ -240,7 +240,7 @@
 			"priority": 30,
 			"story": "Add avatar upload in space settings",
 			"acceptance": "Settings page has avatar upload, saves to space.avatar",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "8.3",
