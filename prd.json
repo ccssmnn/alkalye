@@ -64,7 +64,7 @@
 			"priority": 8,
 			"story": "Add New Space button in dropdown",
 			"acceptance": "Button appears in dropdown, clicking it triggers modal open (modal can be stub)",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "3.1",
@@ -72,7 +72,7 @@
 			"priority": 9,
 			"story": "Create CreateSpaceDialog component with name input",
 			"acceptance": "Dialog renders with name input field and submit button",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "3.2",

@@ -45,3 +45,19 @@
 - Added getFilteredDocs helper that returns personal docs or space docs based on selection
 - Files: src/components/space-selector.tsx, src/routes/doc.$id.index.tsx
 - Commit: feat: store selected space in state and filter document list
+
+## Story 2.4 - Add New Space button in dropdown
+- Added isCreateDialogOpen/setCreateDialogOpen state to SpaceContext
+- Added useCreateSpaceDialog hook to access dialog state
+- Added separator and "New Space" button with Plus icon in dropdown
+- Clicking button sets isCreateDialogOpen to true (dialog component to be implemented in 3.1)
+- File: src/components/space-selector.tsx
+- Commit: feat: add New Space button in dropdown that triggers modal open
+
+## Story 3.1 - Create CreateSpaceDialog component with name input
+- Created CreateSpaceDialog component with name input field and submit button
+- Dialog renders with title, description, name input, Cancel and Create buttons
+- Submit button disabled until name has non-empty value
+- Dialog integrated into EditorPage within SpaceProvider
+- Files: src/components/create-space-dialog.tsx (new), src/routes/doc.$id.index.tsx
+- Commit: feat: add CreateSpaceDialog component with name input
