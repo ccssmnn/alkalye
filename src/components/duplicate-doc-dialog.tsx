@@ -21,6 +21,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select"
+import { Progress } from "@/components/ui/progress"
 import { SpaceInitials } from "@/components/space-selector"
 import { Asset, Document, Space, UserAccount } from "@/schema"
 
@@ -170,6 +171,18 @@ function DuplicateDocDialog({
 							</Select>
 						</div>
 					</div>
+
+					{isDuplicating && progress.total > 0 && (
+						<div className="space-y-2 pt-2">
+							<div className="text-muted-foreground flex justify-between text-sm">
+								<span>Copying assets...</span>
+								<span>
+									{progress.copied}/{progress.total}
+								</span>
+							</div>
+							<Progress value={progress.copied} max={progress.total} />
+						</div>
+					)}
 
 					{progress.status === "error" && (
 						<p className="text-destructive text-sm">{progress.error}</p>
