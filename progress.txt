@@ -194,3 +194,13 @@
 - Uses Badge component for "You" indicator
 - File: src/routes/spaces.$spaceId.settings.tsx
 - Commit: feat: show member list with roles in space settings
+
+## Story 7.4 - Add delete space button for owner only
+- Added DeleteSpaceSection component to space settings page
+- Only renders for admins (isAdmin = spaceGroup?.myRole() === "admin")
+- Shows "Danger Zone" section with red-themed border and background
+- Delete button opens ConfirmDialog with destructive variant
+- On confirm: calls deleteSpace(space) from schema, navigates to home
+- Added imports: useNavigate, deleteSpace, ConfirmDialog, useConfirmDialog
+- File: src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: add delete space button for owner only

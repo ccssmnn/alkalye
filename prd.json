@@ -216,7 +216,7 @@
 			"priority": 27,
 			"story": "Add delete space button for owner only",
 			"acceptance": "Delete button visible only to owner, requires confirmation, marks space deleted",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "7.5",
