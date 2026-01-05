@@ -11,7 +11,11 @@ import {
 // =============================================================================
 
 function createFile(name: string, content: string): File {
-	return new File([content], name, { type: "text/markdown" })
+	let file = new File([content], name, { type: "text/markdown" })
+	// Add text() method for Node environment compatibility
+	;(file as File & { text: () => Promise<string> }).text = () =>
+		Promise.resolve(content)
+	return file
 }
 
 function createImageFile(name: string): File {
@@ -24,7 +28,11 @@ function createImageFile(name: string): File {
 		0x05, 0x00, 0x01, 0x0d, 0x0a, 0x2d, 0xb4, 0x00, 0x00, 0x00, 0x00, 0x49,
 		0x45, 0x4e, 0x44, 0xae, 0x42, 0x60, 0x82,
 	])
-	return new File([png], name, { type: "image/png" })
+	let file = new File([png], name, { type: "image/png" })
+	// Add text() method for Node environment compatibility
+	;(file as File & { text: () => Promise<string> }).text = () =>
+		Promise.resolve("")
+	return file
 }
 
 async function createZip(

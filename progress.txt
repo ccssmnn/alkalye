@@ -1,0 +1,11 @@
+
+## Story 1.1 - Add Space schema
+- Added Space covalue with: name, documents (co.list(Document)), createdAt, updatedAt, deletedAt
+- File: src/schema/index.ts
+- Exported Space from schema
+- Commit: feat: add Space schema with name, documents, timestamps
+
+## Story 1.2 - Add spaces list to UserRoot schema
+- Already implemented in story 1.1: UserRoot has `spaces: co.optional(co.list(Space))`
+- File: src/schema/index.ts (line 84)
+- No changes needed, marking as passed

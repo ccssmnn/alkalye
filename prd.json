@@ -8,7 +8,7 @@
 			"priority": 1,
 			"story": "Add Space schema with name, documents list, createdAt, updatedAt, deletedAt fields",
 			"acceptance": "Space covalue exists in schema with all fields, exports correctly",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "1.2",
@@ -16,7 +16,7 @@
 			"priority": 2,
 			"story": "Add spaces list to UserRoot schema",
 			"acceptance": "UserRoot has optional spaces field of type co.list(Space)",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "1.3",

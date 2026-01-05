@@ -2,7 +2,7 @@
 
 set -e
 
-MAX_ITERATIONS=10
+MAX_ITERATIONS=50
 PRD_FILE="prd.json"
 PROGRESS_FILE="progress.txt"
 COMPLETE_TOKEN="<promise>COMPLETE</promise>"
@@ -18,8 +18,8 @@ for i in $(seq 1 $MAX_ITERATIONS); do
   PRD_CONTENT=$(cat "$PRD_FILE")
   PROGRESS_CONTENT=$(cat "$PROGRESS_FILE")
   
-  # Run opencode with the prompt
-  OUTPUT=$(opencode --model "$MODEL" -p "You are working on a codebase with a PRD (Product Requirements Document) of user stories.
+  # Build the prompt
+  PROMPT="You are working on a codebase with a PRD (Product Requirements Document) of user stories.
 
 ## PRD (prd.json)
 $PRD_CONTENT
@@ -46,8 +46,10 @@ $PROGRESS_CONTENT
 CRITICAL: 
 - Only work on ONE user story per run
 - All commits MUST pass typecheck and tests
-- Always append to progress.txt, never overwrite
-")
+- Always append to progress.txt, never overwrite"
+
+  # Run opencode with the prompt using 'run' subcommand
+  OUTPUT=$(opencode run --model "$MODEL" "$PROMPT" 2>&1) || true
 
   echo "$OUTPUT"
   

@@ -14,6 +14,8 @@ export {
 	CursorEntry,
 	CursorFeed,
 	getRandomWriterName,
+	createSpace,
+	deleteSpace,
 }
 
 let CursorEntry = z.object({
@@ -81,6 +83,7 @@ let UserProfile = co.profile({
 let UserRoot = co.map({
 	documents: co.list(Document),
 	inactiveDocuments: co.optional(co.list(Document)),
+	spaces: co.optional(co.list(Space)),
 	settings: co.optional(Settings),
 	migrationVersion: z.number().optional(),
 })
@@ -227,6 +230,38 @@ function getRandomWriterName(): string {
 	let adjIndex = Math.floor(Math.random() * adjectives.length)
 	let nameIndex = Math.floor(Math.random() * writerNames.length)
 	return `${adjectives[adjIndex]} ${writerNames[nameIndex]}`
+}
+
+function createSpace(
+	name: string,
+	userRoot: co.loaded<typeof UserRoot, { spaces: true }>,
+): co.loaded<typeof Space> {
+	let group = Group.create()
+	let now = new Date()
+	let space = Space.create(
+		{
+			name,
+			documents: co.list(Document).create([], group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+
+	if (!userRoot.spaces) {
+		userRoot.$jazz.set(
+			"spaces",
+			co.list(Space).create([], userRoot.$jazz.owner),
+		)
+	}
+	userRoot.spaces!.$jazz.push(space)
+
+	return space
+}
+
+function deleteSpace(space: co.loaded<typeof Space>): void {
+	space.$jazz.set("deletedAt", new Date())
+	space.$jazz.set("updatedAt", new Date())
 }
 
 async function migrateAnonymousData(
