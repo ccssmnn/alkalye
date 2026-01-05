@@ -97,6 +97,15 @@ Your words are end-to-end encrypted. Collaborate in real-time. Works on any devi
 **Get started:** Edit this document, create a new one, or open a tutor from the Help menu.
 `
 
+function getSpaceWelcomeContent(spaceName: string): string {
+	return `# Welcome to ${spaceName}
+
+This is your new shared space. Documents here are shared with all space members.
+
+**Get started:** Edit this document or create a new one.
+`
+}
+
 async function fetchWelcomeContent(): Promise<string> {
 	try {
 		let response = await fetch("/docs/welcome.md")
@@ -243,10 +252,23 @@ function createSpace(
 ): co.loaded<typeof Space> {
 	let group = Group.create()
 	let now = new Date()
+
+	// Create welcome document for the space
+	let welcomeContent = getSpaceWelcomeContent(name)
+	let welcomeDoc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(welcomeContent, group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+
 	let space = Space.create(
 		{
 			name,
-			documents: co.list(Document).create([], group),
+			documents: co.list(Document).create([welcomeDoc], group),
 			createdAt: now,
 			updatedAt: now,
 		},
