@@ -272,7 +272,7 @@
 			"priority": 34,
 			"story": "Support reader/writer/admin invite links for spaces",
 			"acceptance": "Can generate invite links for each role type",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "9.3",
@@ -280,7 +280,7 @@
 			"priority": 35,
 			"story": "Create space invite URL format",
 			"acceptance": "Invite URLs use /invite#/space/{spaceId}/invite/{groupId}/{secret} format",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "9.4",

@@ -258,3 +258,18 @@
 - Helper functions: getSpaceGroup, createSpaceInviteLink, getSpaceCollaborators, getSpaceOwner, revokeSpaceInvite, handleLeaveSpace
 - File: src/components/space-share-dialog.tsx (new)
 - Commit: feat: add SpaceShareDialog component with invite options
+
+## Story 9.2 - Support reader/writer/admin invite links for spaces
+- Already implemented in Story 9.1: SpaceShareDialog has 3 buttons (Admin, Can edit, Can view)
+- Each button calls handleCreateLink with role: "admin", "writer", or "reader"
+- createSpaceInviteLink function (lines 347-366) creates invite group, adds to space group with role
+- Generates URL format: /invite#/space/{spaceId}/invite/{groupId}/{secret}
+- File: src/components/space-share-dialog.tsx (lines 207-238, 347-366)
+- No changes needed, marking as passed
+
+## Story 9.3 - Create space invite URL format
+- Already implemented in Story 9.1: createSpaceInviteLink generates correct URL format
+- Line 366: `${baseURL}/invite#/space/${space.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
+- This matches required format /invite#/space/{spaceId}/invite/{groupId}/{secret}
+- File: src/components/space-share-dialog.tsx (line 366)
+- No changes needed, marking as passed
