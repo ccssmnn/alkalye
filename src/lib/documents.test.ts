@@ -8,6 +8,9 @@ import { Document, UserAccount } from "@/schema"
 import {
 	createPersonalDocument,
 	permanentlyDeletePersonalDocument,
+	createDocumentInvite,
+	acceptDocumentInvite,
+	revokeDocumentInvite,
 } from "@/lib/documents"
 import type { co } from "jazz-tools"
 
@@ -62,5 +65,74 @@ describe("Document Collaboration", () => {
 		})
 
 		expect(root.documents.some(d => d.$jazz.id === doc.$jazz.id)).toBe(false)
+	})
+
+	test("invited user can find document in personal docs after accepting invite", async () => {
+		let inviteLink = await createDocumentInvite(doc, "writer")
+
+		let parts = inviteLink.split("/")
+		let inviteGroupId = parts[parts.length - 2]
+		let inviteSecret = parts[parts.length - 1]
+
+		await acceptDocumentInvite(otherAccount, {
+			docId: doc.$jazz.id,
+			inviteGroupId: inviteGroupId,
+			inviteSecret: inviteSecret as `inviteSecret_z${string}`,
+		})
+
+		let { root } = await otherAccount.$jazz.ensureLoaded({
+			resolve: { root: { documents: true } },
+		})
+		expect(root.documents.some(d => d.$jazz.id === doc.$jazz.id)).toBe(true)
+	})
+
+	test("revoked user cannot access document", async () => {
+		let inviteLink = await createDocumentInvite(doc, "writer")
+
+		let parts = inviteLink.split("/")
+		let inviteGroupId = parts[parts.length - 2]
+		let inviteSecret = parts[parts.length - 1]
+
+		await acceptDocumentInvite(otherAccount, {
+			docId: doc.$jazz.id,
+			inviteGroupId: inviteGroupId,
+			inviteSecret: inviteSecret as `inviteSecret_z${string}`,
+		})
+
+		setActiveAccount(otherAccount)
+		let loadedDoc = await Document.load(doc.$jazz.id)
+		expect(loadedDoc.$isLoaded).toBe(true)
+
+		setActiveAccount(adminAccount)
+		revokeDocumentInvite(doc, inviteGroupId)
+
+		await otherAccount.$jazz.waitForAllCoValuesSync()
+
+		setActiveAccount(otherAccount)
+		let loadedDocAfterRevoke = await Document.load(doc.$jazz.id)
+		expect(loadedDocAfterRevoke.$jazz.loadingState).toEqual("unauthorized")
+	})
+
+	test("accepting a revoked invite should throw", async () => {
+		setActiveAccount(adminAccount)
+		let inviteLink = await createDocumentInvite(doc, "writer")
+
+		let parts = inviteLink.split("/")
+		let inviteGroupId = parts[parts.length - 2]
+		let inviteSecret = parts[parts.length - 1]
+
+		revokeDocumentInvite(doc, inviteGroupId)
+
+		await adminAccount.$jazz.waitForAllCoValuesSync()
+		await otherAccount.$jazz.waitForAllCoValuesSync()
+
+		setActiveAccount(otherAccount)
+		await expect(
+			acceptDocumentInvite(otherAccount, {
+				docId: doc.$jazz.id,
+				inviteGroupId: inviteGroupId,
+				inviteSecret: inviteSecret as `inviteSecret_z${string}`,
+			}),
+		).rejects.toThrow("Document not found or invite was revoked")
 	})
 })

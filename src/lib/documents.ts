@@ -168,18 +168,11 @@ async function acceptDocumentInvite(
 		Group,
 	)
 
-	await new Promise(resolve => setTimeout(resolve, 500))
+	let doc = await Document.load(inviteData.docId, {
+		resolve: { content: true },
+	})
 
-	let doc = null
-	for (let i = 0; i < 3; i++) {
-		doc = await Document.load(inviteData.docId, {
-			resolve: { content: true },
-		})
-		if (doc) break
-		await new Promise(resolve => setTimeout(resolve, 500))
-	}
-
-	if (!doc) {
+	if (doc.$jazz.loadingState !== "loaded") {
 		throw new Error("Document not found or invite was revoked")
 	}
 
@@ -187,10 +180,10 @@ async function acceptDocumentInvite(
 		resolve: { root: { documents: true } },
 	})
 
-	let alreadyHas = loadedAccount.root?.documents?.some(
-		d => d?.$jazz.id === inviteData.docId,
+	let alreadyHas = loadedAccount.root.documents.some(
+		d => d.$jazz.id === inviteData.docId,
 	)
-	if (!alreadyHas && loadedAccount.root?.documents?.$isLoaded) {
+	if (!alreadyHas && loadedAccount.root.documents.$isLoaded) {
 		loadedAccount.root.documents.$jazz.push(doc)
 	}
 }
