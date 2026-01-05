@@ -31,7 +31,6 @@ import {
 	getCollaborators,
 	getDocumentOwner,
 	revokeInvite,
-	leaveDocument,
 	makeDocumentPublic,
 	makeDocumentPrivate,
 	isDocumentPublic,
@@ -39,6 +38,7 @@ import {
 	type Collaborator,
 	type InviteRole,
 } from "@/lib/sharing"
+import { leavePersonalDocument } from "@/lib/documents"
 
 export { ShareDialog }
 
@@ -445,13 +445,7 @@ async function handleLeaveDocument(
 	navigate: ReturnType<typeof useNavigate>,
 	setOpen: (open: boolean) => void,
 ) {
-	await leaveDocument(doc, me)
-
-	// Remove from user's documents list
-	let idx = me.root?.documents?.findIndex(d => d?.$jazz.id === doc.$jazz.id)
-	if (idx !== undefined && idx !== -1 && me.root?.documents) {
-		me.root.documents.$jazz.splice(idx, 1)
-	}
+	await leavePersonalDocument(doc, me)
 
 	setOpen(false)
 	navigate({ to: "/" })

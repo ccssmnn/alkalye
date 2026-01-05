@@ -6,6 +6,7 @@ import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AuthForm } from "@/components/auth-form"
 import { Document, Space, UserAccount } from "@/schema"
+import { acceptDocumentInvite } from "@/lib/documents"
 
 export { Route }
 
@@ -96,26 +97,11 @@ function InvitePage() {
 			await new Promise(resolve => setTimeout(resolve, 500))
 
 			if (inviteData.type === "doc") {
-				let doc = null
-				for (let i = 0; i < 3; i++) {
-					doc = await Document.load(inviteData.docId, {
-						resolve: { content: true },
-					})
-					if (doc) break
-					await new Promise(resolve => setTimeout(resolve, 500))
-				}
-
-				if (!doc) {
-					setStatus("revoked")
-					return
-				}
-
-				let alreadyHas = me.root?.documents?.some(
-					d => d?.$jazz.id === inviteData.docId,
-				)
-				if (!alreadyHas && me.root?.documents) {
-					me.root.documents.$jazz.push(doc)
-				}
+				await acceptDocumentInvite(me, {
+					docId: inviteData.docId,
+					inviteGroupId: inviteData.inviteGroupId,
+					inviteSecret: inviteData.inviteSecret,
+				})
 
 				setStatus("success")
 				setTimeout(() => {
@@ -173,26 +159,11 @@ function InvitePage() {
 				await new Promise(resolve => setTimeout(resolve, 500))
 
 				if (inviteData.type === "doc") {
-					let doc = null
-					for (let i = 0; i < 3; i++) {
-						doc = await Document.load(inviteData.docId, {
-							resolve: { content: true },
-						})
-						if (doc) break
-						await new Promise(resolve => setTimeout(resolve, 500))
-					}
-
-					if (!doc) {
-						setStatus("revoked")
-						return
-					}
-
-					let alreadyHas = me.root?.documents?.some(
-						d => d?.$jazz.id === inviteData.docId,
-					)
-					if (!alreadyHas && me.root?.documents) {
-						me.root.documents.$jazz.push(doc)
-					}
+					await acceptDocumentInvite(me, {
+						docId: inviteData.docId,
+						inviteGroupId: inviteData.inviteGroupId,
+						inviteSecret: inviteData.inviteSecret,
+					})
 
 					setStatus("success")
 					setTimeout(() => {

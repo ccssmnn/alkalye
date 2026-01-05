@@ -12,6 +12,7 @@ import {
 	countContentMatches,
 	getDaysUntilPermanentDelete,
 } from "@/lib/document-utils"
+import { permanentlyDeletePersonalDocument } from "@/lib/documents"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -704,6 +705,7 @@ function DeletedDocumentItem({
 	searchQuery: string
 }) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
+	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 
 	let title = getDocumentTitle(doc)
 	let daysLeft = doc.deletedAt ? getDaysUntilPermanentDelete(doc.deletedAt) : 0
@@ -712,6 +714,14 @@ function DeletedDocumentItem({
 	let contentMatchCount = searchQuery.trim()
 		? countContentMatches(content, searchQuery)
 		: 0
+
+	async function handlePermanentDelete() {
+		if (me.$isLoaded) {
+			await permanentlyDeletePersonalDocument(doc, me)
+		} else {
+			doc.$jazz.set("permanentlyDeletedAt", new Date())
+		}
+	}
 
 	return (
 		<SidebarMenuItem>
@@ -762,7 +772,7 @@ function DeletedDocumentItem({
 				description="This cannot be undone."
 				confirmLabel="Delete permanently"
 				variant="destructive"
-				onConfirm={() => doc.$jazz.set("permanentlyDeletedAt", new Date())}
+				onConfirm={handlePermanentDelete}
 			>
 				{preview && (
 					<div className="bg-muted/50 text-muted-foreground max-h-32 overflow-auto rounded border p-3 text-sm whitespace-pre-wrap">

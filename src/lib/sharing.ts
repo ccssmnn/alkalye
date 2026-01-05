@@ -1,5 +1,6 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Document, UserAccount } from "@/schema"
+import { createDocumentInvite, revokeDocumentInvite } from "@/lib/documents"
 
 export {
 	migrateDocumentToGroup,
@@ -103,22 +104,7 @@ async function createInviteLink(
 	doc: LoadedDocument,
 	role: InviteRole,
 ): Promise<string> {
-	let docGroup = getDocumentGroup(doc)
-	if (!docGroup) {
-		throw new Error("Document not shareable - not owned by a Group")
-	}
-
-	if (docGroup.myRole() !== "admin") {
-		throw new Error("Only admins can create invite links")
-	}
-
-	let inviteGroup = Group.create()
-	docGroup.addMember(inviteGroup, role)
-
-	let inviteSecret = inviteGroup.$jazz.createInvite(role)
-	let baseURL = window.location.origin
-
-	return `${baseURL}/invite#/doc/${doc.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
+	return createDocumentInvite(doc, role)
 }
 
 async function getCollaborators(
@@ -184,14 +170,7 @@ async function getCollaborators(
 }
 
 function revokeInvite(doc: LoadedDocument, inviteGroupId: string): void {
-	let docGroup = getDocumentGroup(doc)
-	if (!docGroup) throw new Error("Document is not group-owned")
-
-	let parentGroups = docGroup.getParentGroups()
-	let inviteGroup = parentGroups.find(g => g.$jazz.id === inviteGroupId)
-	if (!inviteGroup) throw new Error("Invite group not found")
-
-	docGroup.removeMember(inviteGroup)
+	revokeDocumentInvite(doc, inviteGroupId)
 }
 
 async function leaveDocument(

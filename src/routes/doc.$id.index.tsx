@@ -52,6 +52,7 @@ import {
 	copyDocumentToMyList,
 	getDocumentGroup,
 } from "@/lib/sharing"
+import { deletePersonalDocument } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
@@ -298,7 +299,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 							)
 						}
 						onDelete={docToDelete => {
-							docToDelete.$jazz.set("deletedAt", new Date())
+							deletePersonalDocument(docToDelete)
 							if (docToDelete.$jazz.id === docId) {
 								navigate({ to: "/" })
 							}
