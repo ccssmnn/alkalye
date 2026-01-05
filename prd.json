@@ -24,7 +24,7 @@
 			"priority": 3,
 			"story": "Create helper functions createSpace and deleteSpace",
 			"acceptance": "Functions exist in schema or lib, createSpace creates space with group, deleteSpace marks as deleted",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "1.4",
@@ -32,7 +32,7 @@
 			"priority": 4,
 			"story": "Add migration to initialize spaces list for existing users",
 			"acceptance": "UserAccount migration creates empty spaces list if not present",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "2.1",

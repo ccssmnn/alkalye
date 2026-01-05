@@ -157,6 +157,11 @@ let UserAccount = co
 			)
 		}
 
+		// Initialize empty spaces list if not present
+		if (root && !root.$jazz.has("spaces")) {
+			root.$jazz.set("spaces", co.list(Space).create([], root.$jazz.owner))
+		}
+
 		if (!account.$jazz.has("profile")) {
 			let profileGroup = Group.create()
 			profileGroup.makePublic()

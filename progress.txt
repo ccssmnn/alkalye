@@ -9,3 +9,16 @@
 - Already implemented in story 1.1: UserRoot has `spaces: co.optional(co.list(Space))`
 - File: src/schema/index.ts (line 84)
 - No changes needed, marking as passed
+
+## Story 1.3 - Create helper functions createSpace and deleteSpace
+- Added `createSpace(name, userRoot)`: creates Space with new Group, adds to user's spaces list
+- Added `deleteSpace(space)`: marks space as deleted with deletedAt timestamp
+- File: src/schema/index.ts (lines 233-258)
+- Exported both functions from schema
+- Commit: feat: add createSpace and deleteSpace helper functions
+
+## Story 1.4 - Add migration to initialize spaces list for existing users
+- Added spaces list initialization in UserAccount migration
+- After settings init, checks `!root.$jazz.has("spaces")` and creates empty list
+- File: src/schema/index.ts (lines 163-166)
+- Commit: feat: add migration to initialize empty spaces list for existing users
