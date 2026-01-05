@@ -1,4 +1,6 @@
 import { useState, useRef, useEffect } from "react"
+import { co } from "jazz-tools"
+import { useAccount } from "jazz-tools/react"
 import {
 	Dialog,
 	DialogContent,
@@ -10,16 +12,21 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { useCreateSpaceDialog } from "@/components/space-selector"
+import {
+	useCreateSpaceDialog,
+	useSelectedSpace,
+} from "@/components/space-selector"
+import { UserAccount, createSpace } from "@/schema"
 
 export { CreateSpaceDialog }
 
-interface CreateSpaceDialogProps {
-	onSubmit?: (name: string) => void
-}
+let spacesResolve = { root: { spaces: true } } as const
+type LoadedMe = co.loaded<typeof UserAccount, typeof spacesResolve>
 
-function CreateSpaceDialog({ onSubmit }: CreateSpaceDialogProps) {
+function CreateSpaceDialog() {
 	let { isCreateDialogOpen, setCreateDialogOpen } = useCreateSpaceDialog()
+	let { setSelectedSpace } = useSelectedSpace()
+	let me = useAccount(UserAccount, { resolve: spacesResolve })
 	let [name, setName] = useState("")
 	let inputRef = useRef<HTMLInputElement>(null)
 
@@ -33,8 +40,10 @@ function CreateSpaceDialog({ onSubmit }: CreateSpaceDialogProps) {
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
 		let trimmed = name.trim()
-		if (!trimmed) return
-		onSubmit?.(trimmed)
+		if (!trimmed || !me.$isLoaded || !me.root) return
+
+		let space = createSpace(trimmed, me.root as LoadedMe["root"])
+		setSelectedSpace({ id: space.$jazz.id, name: space.name })
 		setCreateDialogOpen(false)
 		setName("")
 	}
