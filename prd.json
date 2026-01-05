@@ -416,7 +416,7 @@
 			"priority": 52,
 			"story": "Add backup path setting in space settings",
 			"acceptance": "Space settings has backup path input, stored in local storage",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "14.2",
@@ -424,7 +424,7 @@
 			"priority": 53,
 			"story": "Extend backup sync to handle space-specific paths",
 			"acceptance": "Backup sync checks for space-specific paths and syncs accordingly",
-			"passes": false
+			"passes": true
 		}
 	]
 }

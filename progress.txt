@@ -439,3 +439,29 @@
 - Document errors still use DocumentNotFound/DocumentUnauthorized (for doc within space)
 - Files: spaces.$spaceId.doc.$id.index.tsx, preview.tsx, slideshow.tsx, teleprompter.tsx, settings.tsx
 - Commit: feat: use SpaceNotFound/SpaceUnauthorized in space routes
+
+## Story 14.1 - Add backup path setting in space settings
+- Added SpaceBackupSettings component to backup.tsx
+- Uses local storage with key "backup-settings-space-{spaceId}" to store directory name
+- Uses IndexedDB (idb-keyval) to store FileSystemDirectoryHandle for each space
+- Helper functions: getSpaceBackupPath, setSpaceBackupPath, clearSpaceBackupPath
+- useSpaceBackupPath hook for React state management
+- SpaceBackupSettings renders in space settings with folder picker UI
+- Admin-only controls: non-admins see disabled buttons
+- Shows folder name when set, with Change/Clear buttons
+- Added SpaceBackupSettingsSection wrapper to space settings page
+- Files: src/lib/backup.tsx, src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: add backup path setting in space settings
+
+## Story 14.2 - Extend backup sync to handle space-specific paths
+- Added SpaceBackupSubscriber component that handles backup sync for individual spaces
+- Uses useCoState to load space with documents and assets
+- Debounces backup sync with content hash change detection (same pattern as personal backup)
+- Added getSpaceBackupHandle helper to retrieve space-specific directory handle from IndexedDB
+- Added SpacesBackupSubscriber component that orchestrates all space backups
+- Loads user's spaces, checks which have backup paths configured via getSpaceBackupPath
+- Renders SpaceBackupSubscriber for each space with a backup path set
+- Listens to storage events to re-render when backup paths change in other tabs
+- Added SpacesBackupSubscriber to main.tsx alongside existing BackupSubscriber
+- Files: src/lib/backup.tsx, src/main.tsx
+- Commit: feat: extend backup sync to handle space-specific paths
