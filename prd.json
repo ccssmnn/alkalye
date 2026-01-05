@@ -1,0 +1,430 @@
+{
+	"project": "Spaces Feature",
+	"description": "Collaborative document collections with shared ownership",
+	"stories": [
+		{
+			"id": "1.1",
+			"phase": 1,
+			"priority": 1,
+			"story": "Add Space schema with name, documents list, createdAt, updatedAt, deletedAt fields",
+			"acceptance": "Space covalue exists in schema with all fields, exports correctly",
+			"passes": false
+		},
+		{
+			"id": "1.2",
+			"phase": 1,
+			"priority": 2,
+			"story": "Add spaces list to UserRoot schema",
+			"acceptance": "UserRoot has optional spaces field of type co.list(Space)",
+			"passes": false
+		},
+		{
+			"id": "1.3",
+			"phase": 1,
+			"priority": 3,
+			"story": "Create helper functions createSpace and deleteSpace",
+			"acceptance": "Functions exist in schema or lib, createSpace creates space with group, deleteSpace marks as deleted",
+			"passes": false
+		},
+		{
+			"id": "1.4",
+			"phase": 1,
+			"priority": 4,
+			"story": "Add migration to initialize spaces list for existing users",
+			"acceptance": "UserAccount migration creates empty spaces list if not present",
+			"passes": false
+		},
+		{
+			"id": "2.1",
+			"phase": 2,
+			"priority": 5,
+			"story": "Create SpaceSelector dropdown component",
+			"acceptance": "Dropdown component renders in left sidebar header, shows Personal option",
+			"passes": false
+		},
+		{
+			"id": "2.2",
+			"phase": 2,
+			"priority": 6,
+			"story": "Show all user spaces in dropdown alphabetically",
+			"acceptance": "Dropdown lists Personal + all spaces from UserRoot.spaces sorted A-Z",
+			"passes": false
+		},
+		{
+			"id": "2.3",
+			"phase": 2,
+			"priority": 7,
+			"story": "Store selected space in state and filter document list",
+			"acceptance": "Selecting a space updates state, document list shows only that space's docs",
+			"passes": false
+		},
+		{
+			"id": "2.4",
+			"phase": 2,
+			"priority": 8,
+			"story": "Add New Space button in dropdown",
+			"acceptance": "Button appears in dropdown, clicking it triggers modal open (modal can be stub)",
+			"passes": false
+		},
+		{
+			"id": "3.1",
+			"phase": 3,
+			"priority": 9,
+			"story": "Create CreateSpaceDialog component with name input",
+			"acceptance": "Dialog renders with name input field and submit button",
+			"passes": false
+		},
+		{
+			"id": "3.2",
+			"phase": 3,
+			"priority": 10,
+			"story": "On submit create Space with group and add to UserRoot.spaces",
+			"acceptance": "Submitting form creates Space covalue with new Group, adds to user's spaces list",
+			"passes": false
+		},
+		{
+			"id": "3.3",
+			"phase": 3,
+			"priority": 11,
+			"story": "Auto-select newly created space in dropdown",
+			"acceptance": "After creation, dropdown shows the new space as selected",
+			"passes": false
+		},
+		{
+			"id": "3.4",
+			"phase": 3,
+			"priority": 12,
+			"story": "Create welcome doc in new space",
+			"acceptance": "New space contains one welcome document explaining spaces",
+			"passes": false
+		},
+		{
+			"id": "4.1",
+			"phase": 4,
+			"priority": 13,
+			"story": "Create spaces.$spaceId.doc.$id.index.tsx route",
+			"acceptance": "Route file exists, renders editor component, loads space and doc",
+			"passes": false
+		},
+		{
+			"id": "4.2",
+			"phase": 4,
+			"priority": 14,
+			"story": "Create spaces.$spaceId.doc.$id.preview.tsx route",
+			"acceptance": "Route file exists, renders preview component for space doc",
+			"passes": false
+		},
+		{
+			"id": "4.3",
+			"phase": 4,
+			"priority": 15,
+			"story": "Create spaces.$spaceId.doc.$id.slideshow.tsx route",
+			"acceptance": "Route file exists, renders slideshow component for space doc",
+			"passes": false
+		},
+		{
+			"id": "4.4",
+			"phase": 4,
+			"priority": 16,
+			"story": "Create spaces.$spaceId.doc.$id.teleprompter.tsx route",
+			"acceptance": "Route file exists, renders teleprompter component for space doc",
+			"passes": false
+		},
+		{
+			"id": "4.5",
+			"phase": 4,
+			"priority": 17,
+			"story": "Update sidebar to show space-specific doc list when in space route",
+			"acceptance": "Sidebar shows docs from current space, not personal docs",
+			"passes": false
+		},
+		{
+			"id": "5.1",
+			"phase": 5,
+			"priority": 18,
+			"story": "Update makeCreateDocument to accept optional space parameter",
+			"acceptance": "Function signature accepts space, creates doc with space group as owner when provided",
+			"passes": false
+		},
+		{
+			"id": "5.2",
+			"phase": 5,
+			"priority": 19,
+			"story": "Add spaceId field to Document schema",
+			"acceptance": "Document has optional spaceId string field",
+			"passes": false
+		},
+		{
+			"id": "5.3",
+			"phase": 5,
+			"priority": 20,
+			"story": "Push new doc to space.documents when in space context",
+			"acceptance": "Creating doc in space adds it to space.documents, not UserRoot.documents",
+			"passes": false
+		},
+		{
+			"id": "6.1",
+			"phase": 6,
+			"priority": 21,
+			"story": "Create spaces.$spaceId.index.tsx route",
+			"acceptance": "Route redirects to latest doc in space or creates new doc",
+			"passes": false
+		},
+		{
+			"id": "6.2",
+			"phase": 6,
+			"priority": 22,
+			"story": "Redirect /doc/$id to space URL when user is space member",
+			"acceptance": "Opening /doc/$id for a space doc redirects to /spaces/$spaceId/doc/$id",
+			"passes": false
+		},
+		{
+			"id": "6.3",
+			"phase": 6,
+			"priority": 23,
+			"story": "Handle deleted space case with error page",
+			"acceptance": "Opening deleted space shows appropriate error",
+			"passes": false
+		},
+		{
+			"id": "7.1",
+			"phase": 7,
+			"priority": 24,
+			"story": "Create spaces.$spaceId.settings.tsx route",
+			"acceptance": "Route file exists, renders settings page for space",
+			"passes": false
+		},
+		{
+			"id": "7.2",
+			"phase": 7,
+			"priority": 25,
+			"story": "Show editable space name in settings",
+			"acceptance": "Space name displays and is editable by owner/admin",
+			"passes": false
+		},
+		{
+			"id": "7.3",
+			"phase": 7,
+			"priority": 26,
+			"story": "Show member list with roles in settings",
+			"acceptance": "Settings page lists all space members with their roles",
+			"passes": false
+		},
+		{
+			"id": "7.4",
+			"phase": 7,
+			"priority": 27,
+			"story": "Add delete space button for owner only",
+			"acceptance": "Delete button visible only to owner, requires confirmation, marks space deleted",
+			"passes": false
+		},
+		{
+			"id": "7.5",
+			"phase": 7,
+			"priority": 28,
+			"story": "Disable controls based on user role in space group",
+			"acceptance": "Non-admin users see disabled controls for admin-only actions",
+			"passes": false
+		},
+		{
+			"id": "8.1",
+			"phase": 8,
+			"priority": 29,
+			"story": "Add avatar field to Space schema",
+			"acceptance": "Space has optional avatar field of type co.image()",
+			"passes": false
+		},
+		{
+			"id": "8.2",
+			"phase": 8,
+			"priority": 30,
+			"story": "Add avatar upload in space settings",
+			"acceptance": "Settings page has avatar upload, saves to space.avatar",
+			"passes": false
+		},
+		{
+			"id": "8.3",
+			"phase": 8,
+			"priority": 31,
+			"story": "Show avatar in space selector dropdown",
+			"acceptance": "Dropdown shows space avatar next to name",
+			"passes": false
+		},
+		{
+			"id": "8.4",
+			"phase": 8,
+			"priority": 32,
+			"story": "Fallback to initials when no avatar",
+			"acceptance": "Spaces without avatar show initials derived from name",
+			"passes": false
+		},
+		{
+			"id": "9.1",
+			"phase": 9,
+			"priority": 33,
+			"story": "Create SpaceShareDialog component",
+			"acceptance": "Dialog component renders with invite options similar to doc share dialog",
+			"passes": false
+		},
+		{
+			"id": "9.2",
+			"phase": 9,
+			"priority": 34,
+			"story": "Support reader/writer/admin invite links for spaces",
+			"acceptance": "Can generate invite links for each role type",
+			"passes": false
+		},
+		{
+			"id": "9.3",
+			"phase": 9,
+			"priority": 35,
+			"story": "Create space invite URL format",
+			"acceptance": "Invite URLs use /invite#/space/{spaceId}/invite/{groupId}/{secret} format",
+			"passes": false
+		},
+		{
+			"id": "9.4",
+			"phase": 9,
+			"priority": 36,
+			"story": "Update /invite route to handle space invites",
+			"acceptance": "Invite route parses space invites, accepts them correctly",
+			"passes": false
+		},
+		{
+			"id": "9.5",
+			"phase": 9,
+			"priority": 37,
+			"story": "On space invite accept add space to user's list and redirect",
+			"acceptance": "After accepting, space appears in user's spaces list, redirects to space",
+			"passes": false
+		},
+		{
+			"id": "10.1",
+			"phase": 10,
+			"priority": 38,
+			"story": "Add public toggle in space share dialog",
+			"acceptance": "Toggle exists to make space public/private",
+			"passes": false
+		},
+		{
+			"id": "10.2",
+			"phase": 10,
+			"priority": 39,
+			"story": "Implement makePublic/removeMember for space group",
+			"acceptance": "Toggle calls spaceGroup.makePublic() or removeMember('everyone')",
+			"passes": false
+		},
+		{
+			"id": "10.3",
+			"phase": 10,
+			"priority": 40,
+			"story": "Public space URL works without invite",
+			"acceptance": "Anyone can access public space docs without invite link",
+			"passes": false
+		},
+		{
+			"id": "11.1",
+			"phase": 11,
+			"priority": 41,
+			"story": "Update wikilink autocomplete to filter by current space",
+			"acceptance": "Wikilink suggestions only show docs from same space or personal",
+			"passes": false
+		},
+		{
+			"id": "11.2",
+			"phase": 11,
+			"priority": 42,
+			"story": "Update backlink sync to only update links within same space",
+			"acceptance": "Renaming doc only updates backlinks in same space",
+			"passes": false
+		},
+		{
+			"id": "12.1",
+			"phase": 12,
+			"priority": 43,
+			"story": "Create DuplicateDocDialog component",
+			"acceptance": "Dialog renders with destination picker and name input",
+			"passes": false
+		},
+		{
+			"id": "12.2",
+			"phase": 12,
+			"priority": 44,
+			"story": "Show destination picker with Personal and all spaces",
+			"acceptance": "Dropdown lists Personal + all user spaces as destinations",
+			"passes": false
+		},
+		{
+			"id": "12.3",
+			"phase": 12,
+			"priority": 45,
+			"story": "Prompt for new name with default 'Original (copy)'",
+			"acceptance": "Name input pre-filled with original name + ' (copy)'",
+			"passes": false
+		},
+		{
+			"id": "12.4",
+			"phase": 12,
+			"priority": 46,
+			"story": "Deep copy doc content and assets",
+			"acceptance": "Duplicate creates new doc, new content covalue, copies all assets",
+			"passes": false
+		},
+		{
+			"id": "12.5",
+			"phase": 12,
+			"priority": 47,
+			"story": "Show progress indicator for asset copying",
+			"acceptance": "Progress indicator visible during duplication",
+			"passes": false
+		},
+		{
+			"id": "12.6",
+			"phase": 12,
+			"priority": 48,
+			"story": "Add duplicate option to file menu in right sidebar",
+			"acceptance": "File menu has Duplicate option that opens DuplicateDocDialog",
+			"passes": false
+		},
+		{
+			"id": "13.1",
+			"phase": 13,
+			"priority": 49,
+			"story": "Create SpaceNotFound component",
+			"acceptance": "Component renders error state for missing space",
+			"passes": false
+		},
+		{
+			"id": "13.2",
+			"phase": 13,
+			"priority": 50,
+			"story": "Create SpaceUnauthorized component",
+			"acceptance": "Component renders error state for unauthorized space access",
+			"passes": false
+		},
+		{
+			"id": "13.3",
+			"phase": 13,
+			"priority": 51,
+			"story": "Use error components in space routes",
+			"acceptance": "Space routes show appropriate error when space missing or unauthorized",
+			"passes": false
+		},
+		{
+			"id": "14.1",
+			"phase": 14,
+			"priority": 52,
+			"story": "Add backup path setting in space settings",
+			"acceptance": "Space settings has backup path input, stored in local storage",
+			"passes": false
+		},
+		{
+			"id": "14.2",
+			"phase": 14,
+			"priority": 53,
+			"story": "Extend backup sync to handle space-specific paths",
+			"acceptance": "Backup sync checks for space-specific paths and syncs accordingly",
+			"passes": false
+		}
+	]
+}
