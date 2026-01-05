@@ -1,8 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
-import { useCoState, useAccount } from "jazz-tools/react"
-import { useState, useEffect } from "react"
-import { ArrowLeft, Loader2 } from "lucide-react"
+import { createImage } from "jazz-tools/media"
+import { useCoState, useAccount, Image } from "jazz-tools/react"
+import { useState, useEffect, useRef } from "react"
+import { ArrowLeft, Loader2, Upload, User } from "lucide-react"
 import { Space, UserAccount, deleteSpace } from "@/schema"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -19,6 +20,7 @@ export { Route }
 
 let spaceQuery = {
 	documents: true,
+	avatar: true,
 } as const satisfies ResolveQuery<typeof Space>
 
 type LoadedSpace = co.loaded<typeof Space, typeof spaceQuery>
@@ -131,7 +133,7 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
 				General
 			</h2>
-			<div className="bg-muted/30 rounded-lg p-4">
+			<div className="bg-muted/30 space-y-4 rounded-lg p-4">
 				<div>
 					<div className="text-muted-foreground mb-1 text-xs">Space name</div>
 					<Input
@@ -141,8 +143,88 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 						className="text-lg font-medium"
 					/>
 				</div>
+				<SpaceAvatarUpload space={space} isAdmin={isAdmin} />
 			</div>
 		</section>
+	)
+}
+
+function SpaceAvatarUpload({
+	space,
+	isAdmin,
+}: {
+	space: LoadedSpace
+	isAdmin: boolean
+}) {
+	let fileInputRef = useRef<HTMLInputElement>(null)
+	let [isUploading, setIsUploading] = useState(false)
+
+	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+		let file = e.target.files?.[0]
+		if (!file) return
+
+		setIsUploading(true)
+		try {
+			let image = await createImage(file, {
+				owner: space.$jazz.owner,
+				maxSize: 512,
+			})
+			space.$jazz.set("avatar", image)
+			space.$jazz.set("updatedAt", new Date())
+		} finally {
+			setIsUploading(false)
+			if (fileInputRef.current) {
+				fileInputRef.current.value = ""
+			}
+		}
+	}
+
+	let avatarId = space.avatar?.$jazz.id
+
+	return (
+		<div>
+			<div className="text-muted-foreground mb-1 text-xs">Space avatar</div>
+			<div className="flex items-center gap-3">
+				<div className="bg-muted flex size-12 items-center justify-center overflow-hidden rounded-lg">
+					{avatarId ? (
+						<Image
+							imageId={avatarId}
+							width={48}
+							height={48}
+							alt={space.name}
+							className="size-full object-cover"
+						/>
+					) : (
+						<User className="text-muted-foreground size-6" />
+					)}
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					disabled={!isAdmin || isUploading}
+					onClick={() => fileInputRef.current?.click()}
+				>
+					{isUploading ? (
+						<>
+							<Loader2 className="mr-2 size-4 animate-spin" />
+							Uploading...
+						</>
+					) : (
+						<>
+							<Upload className="mr-2 size-4" />
+							Upload
+						</>
+					)}
+				</Button>
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept="image/*"
+					className="hidden"
+					onChange={handleFileChange}
+				/>
+			</div>
+		</div>
 	)
 }
 
