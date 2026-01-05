@@ -33,6 +33,7 @@ import {
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
+	SpaceDeleted,
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
@@ -119,7 +120,7 @@ function SpaceEditorPage() {
 
 	// Space deleted
 	if (space.$isLoaded && space.deletedAt) {
-		return <DocumentNotFound />
+		return <SpaceDeleted />
 	}
 
 	// Doc not found or unauthorized

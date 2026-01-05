@@ -5,6 +5,7 @@ import { Document, Space } from "@/schema"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
+	SpaceDeleted,
 } from "@/components/document-error-states"
 import {
 	Empty,
@@ -92,7 +93,7 @@ function SpaceSlideshowPage() {
 
 	// Space deleted
 	if (space.$isLoaded && space.deletedAt) {
-		return <DocumentNotFound />
+		return <SpaceDeleted />
 	}
 
 	// Doc not found or unauthorized

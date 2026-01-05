@@ -14,6 +14,7 @@ import { Loader2, EllipsisIcon, Pencil } from "lucide-react"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
+	SpaceDeleted,
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
@@ -107,7 +108,7 @@ function SpacePreviewPage() {
 
 	// Space deleted
 	if (space.$isLoaded && space.deletedAt) {
-		return <DocumentNotFound />
+		return <SpaceDeleted />
 	}
 
 	// Doc not found or unauthorized
