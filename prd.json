@@ -56,7 +56,7 @@
 			"priority": 7,
 			"story": "Store selected space in state and filter document list",
 			"acceptance": "Selecting a space updates state, document list shows only that space's docs",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "2.4",
