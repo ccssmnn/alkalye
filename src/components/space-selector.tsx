@@ -1,17 +1,18 @@
 import { createContext, useContext, useState } from "react"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
-import { ChevronDown, User, Users, Check } from "lucide-react"
+import { ChevronDown, User, Users, Check, Plus } from "lucide-react"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
 import { UserAccount, Space } from "@/schema"
 
-export { SpaceSelector, SpaceProvider, useSelectedSpace }
+export { SpaceSelector, SpaceProvider, useSelectedSpace, useCreateSpaceDialog }
 export type { SelectedSpace }
 
 type SelectedSpace = { id: string; name: string } | null
@@ -19,23 +20,46 @@ type SelectedSpace = { id: string; name: string } | null
 type SpaceContextValue = {
 	selectedSpace: SelectedSpace
 	setSelectedSpace: (space: SelectedSpace) => void
+	isCreateDialogOpen: boolean
+	setCreateDialogOpen: (open: boolean) => void
 }
 
 let SpaceContext = createContext<SpaceContextValue | null>(null)
 
 function SpaceProvider({ children }: { children: React.ReactNode }) {
 	let [selectedSpace, setSelectedSpace] = useState<SelectedSpace>(null)
+	let [isCreateDialogOpen, setCreateDialogOpen] = useState(false)
 	return (
-		<SpaceContext.Provider value={{ selectedSpace, setSelectedSpace }}>
+		<SpaceContext.Provider
+			value={{
+				selectedSpace,
+				setSelectedSpace,
+				isCreateDialogOpen,
+				setCreateDialogOpen,
+			}}
+		>
 			{children}
 		</SpaceContext.Provider>
 	)
 }
 
-function useSelectedSpace(): SpaceContextValue {
+function useSelectedSpace(): Pick<
+	SpaceContextValue,
+	"selectedSpace" | "setSelectedSpace"
+> {
 	let ctx = useContext(SpaceContext)
 	if (!ctx)
 		throw new Error("useSelectedSpace must be used within SpaceProvider")
+	return ctx
+}
+
+function useCreateSpaceDialog(): Pick<
+	SpaceContextValue,
+	"isCreateDialogOpen" | "setCreateDialogOpen"
+> {
+	let ctx = useContext(SpaceContext)
+	if (!ctx)
+		throw new Error("useCreateSpaceDialog must be used within SpaceProvider")
 	return ctx
 }
 
@@ -45,6 +69,7 @@ type LoadedSpaces = co.loaded<typeof UserAccount, typeof spacesQuery>
 function SpaceSelector() {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let { selectedSpace, setSelectedSpace } = useSelectedSpace()
+	let { setCreateDialogOpen } = useCreateSpaceDialog()
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let displayName = selectedSpace?.name ?? "Personal"
@@ -86,6 +111,11 @@ function SpaceSelector() {
 						)}
 					</DropdownMenuItem>
 				))}
+				<DropdownMenuSeparator />
+				<DropdownMenuItem onClick={makeOpenCreateDialog(setCreateDialogOpen)}>
+					<Plus className="size-4" />
+					<span>New Space</span>
+				</DropdownMenuItem>
 			</DropdownMenuContent>
 		</DropdownMenu>
 	)
@@ -102,4 +132,10 @@ function getSortedSpaces(
 				s != null && s.$isLoaded && !s.deletedAt,
 		)
 		.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function makeOpenCreateDialog(setOpen: (open: boolean) => void) {
+	return function handleOpenCreateDialog() {
+		setOpen(true)
+	}
 }
