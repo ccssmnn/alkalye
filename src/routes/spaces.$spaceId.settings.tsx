@@ -3,8 +3,9 @@ import { Group, co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, Image } from "jazz-tools/react"
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Loader2, Upload, User } from "lucide-react"
+import { ArrowLeft, Loader2, Upload } from "lucide-react"
 import { Space, UserAccount, deleteSpace } from "@/schema"
+import { SpaceInitials } from "@/components/space-selector"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -185,7 +186,7 @@ function SpaceAvatarUpload({
 		<div>
 			<div className="text-muted-foreground mb-1 text-xs">Space avatar</div>
 			<div className="flex items-center gap-3">
-				<div className="bg-muted flex size-12 items-center justify-center overflow-hidden rounded-lg">
+				<div className="flex size-12 items-center justify-center overflow-hidden rounded-lg">
 					{avatarId ? (
 						<Image
 							imageId={avatarId}
@@ -195,7 +196,7 @@ function SpaceAvatarUpload({
 							className="size-full object-cover"
 						/>
 					) : (
-						<User className="text-muted-foreground size-6" />
+						<SpaceInitials name={space.name} size="md" />
 					)}
 				</div>
 				<Button

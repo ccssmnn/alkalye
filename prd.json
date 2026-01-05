@@ -248,7 +248,7 @@
 			"priority": 31,
 			"story": "Show avatar in space selector dropdown",
 			"acceptance": "Dropdown shows space avatar next to name",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "8.4",
@@ -256,7 +256,7 @@
 			"priority": 32,
 			"story": "Fallback to initials when no avatar",
 			"acceptance": "Spaces without avatar show initials derived from name",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "9.1",

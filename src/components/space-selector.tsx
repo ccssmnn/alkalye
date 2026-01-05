@@ -12,7 +12,13 @@ import {
 import { Button } from "@/components/ui/button"
 import { UserAccount } from "@/schema"
 
-export { SpaceSelector, SpaceProvider, useSelectedSpace, useCreateSpaceDialog }
+export {
+	SpaceSelector,
+	SpaceProvider,
+	useSelectedSpace,
+	useCreateSpaceDialog,
+	SpaceInitials,
+}
 export type { SelectedSpace }
 
 type SelectedSpace = { id: string; name: string } | null
@@ -167,5 +173,31 @@ function SpaceAvatar({ space }: { space: LoadedSpaceWithAvatar }) {
 		)
 	}
 
-	return <Users className="size-4" />
+	return <SpaceInitials name={space.name} size="sm" />
+}
+
+function SpaceInitials({
+	name,
+	size = "sm",
+}: {
+	name: string
+	size?: "sm" | "md"
+}) {
+	let initials = getInitials(name)
+	let sizeClasses = size === "sm" ? "size-4 text-[8px]" : "size-12 text-base"
+
+	return (
+		<div
+			className={`bg-muted text-muted-foreground flex shrink-0 items-center justify-center rounded font-medium ${sizeClasses}`}
+		>
+			{initials}
+		</div>
+	)
+}
+
+function getInitials(name: string): string {
+	let words = name.trim().split(/\s+/)
+	if (words.length === 0 || words[0] === "") return "?"
+	if (words.length === 1) return words[0].charAt(0).toUpperCase()
+	return (words[0].charAt(0) + words[words.length - 1].charAt(0)).toUpperCase()
 }

@@ -227,3 +227,22 @@
 - Updated spaceQuery to also resolve avatar field
 - File: src/routes/spaces.$spaceId.settings.tsx
 - Commit: feat: add avatar upload in space settings
+
+## Story 8.3 - Show avatar in space selector dropdown
+- Updated spacesQuery to resolve avatar field for each space
+- Added SpaceAvatar component that renders Image or falls back to Users icon
+- Uses Image component from jazz-tools/react with size-4 (16x16) dimensions
+- Replaced static Users icon with SpaceAvatar in dropdown menu items
+- Added LoadedSpaceWithAvatar type for proper type inference
+- File: src/components/space-selector.tsx
+- Commit: feat: show avatar in space selector dropdown
+
+## Story 8.4 - Fallback to initials when no avatar
+- Added SpaceInitials component that derives initials from space name
+- Added getInitials helper: single word → first char, multi-word → first + last initials
+- SpaceInitials supports size variants: "sm" (16px) for dropdown, "md" (48px) for settings
+- Updated SpaceAvatar in dropdown to use SpaceInitials instead of Users icon
+- Updated SpaceAvatarUpload in settings to use SpaceInitials instead of User icon
+- Exported SpaceInitials from space-selector.tsx for reuse
+- Files: src/components/space-selector.tsx, src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: fallback to initials when space has no avatar
