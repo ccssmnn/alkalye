@@ -376,3 +376,19 @@
 - Lines 64-67: Focuses and selects input on dialog open for easy replacement
 - File: src/components/duplicate-doc-dialog.tsx
 - No changes needed, marking as passed
+
+## Story 12.4 - Deep copy doc content and assets
+- Implemented duplicateDocument async function that performs deep copy with progress tracking
+- Creates new Group for personal docs or uses space.$jazz.owner for space docs
+- Deep copies each asset: extracts blob via original.toBlob(), creates new image with createImage()
+- Builds asset ID map (old -> new) and replaces all asset:oldId references in content
+- Updates first heading in content to new name, or prepends heading if none exists
+- Creates new Document with copied content and cloned assets list
+- Pushes to targetSpace.documents or me.root.documents based on destination
+- Added DuplicateProgress type for tracking: total, copied, status, error
+- Updated DuplicateDocDialog to show progress during duplication ("Copying assets (1/3)...")
+- Cancel and Duplicate buttons disabled while duplication in progress
+- Error state displayed if duplication fails
+- Exported duplicateDocument function and DuplicateProgress type for reuse
+- File: src/components/duplicate-doc-dialog.tsx
+- Commit: feat: implement deep copy of doc content and assets for duplication

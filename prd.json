@@ -368,7 +368,7 @@
 			"priority": 46,
 			"story": "Deep copy doc content and assets",
 			"acceptance": "Duplicate creates new doc, new content covalue, copies all assets",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "12.5",
