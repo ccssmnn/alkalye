@@ -273,3 +273,35 @@
 - This matches required format /invite#/space/{spaceId}/invite/{groupId}/{secret}
 - File: src/components/space-share-dialog.tsx (line 366)
 - No changes needed, marking as passed
+
+## Story 9.4 - Update /invite route to handle space invites
+- Added SpaceInviteData type with type: "space", spaceId, inviteGroupId, inviteSecret
+- Updated parseInviteHash to detect space invites: #/space/{spaceId}/invite/{groupId}/{secret}
+- Updated useAccount resolve to include spaces: true
+- acceptInviteRef now handles both doc and space invites
+- For space invites: loads Space, adds to user's spaces list, redirects to /spaces/$spaceId
+- Updated UI components (LoadingState, SuccessState, NeedsAuthState) to show space-specific text/icons
+- Uses FolderOpen icon for space invites, FileText for doc invites
+- File: src/routes/invite.tsx
+- Commit: feat: update invite route to handle space invites
+
+## Story 9.5 - On space invite accept add space to user's list and redirect
+- Already implemented in Story 9.4: acceptInviteRef handles space invites
+- Lines 128-132: Adds space to me.root.spaces.$jazz.push(space) if not already present
+- Lines 134-136: Redirects to /spaces/$spaceId after successful accept
+- File: src/routes/invite.tsx
+- No additional changes needed, marking as passed
+
+## Story 10.1 - Add public toggle in space share dialog
+- Added "Public access" section in SpaceShareDialog for admins
+- When public: shows Globe icon, public link with copy button, "Make private" button
+- When private: shows description and "Make public" button
+- Added spaceIsPublic/publicCopied state variables
+- Added handleCopyPublicLink, handleMakePublic, handleMakePrivate handlers
+- Added helper functions: isSpacePublic, makeSpacePublic, makeSpacePrivate, getSpacePublicLink
+- isSpacePublic checks if "everyone" has a role via spaceGroup.getRoleOf("everyone")
+- makeSpacePublic calls spaceGroup.makePublic() and updates space.updatedAt
+- makeSpacePrivate calls spaceGroup.removeMember("everyone") and updates space.updatedAt
+- getSpacePublicLink returns /spaces/{spaceId} URL
+- File: src/components/space-share-dialog.tsx
+- Commit: feat: add public toggle in space share dialog

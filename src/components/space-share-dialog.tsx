@@ -8,6 +8,8 @@ import {
 	Trash2,
 	LogOut,
 	CloudOff,
+	Globe,
+	Lock,
 } from "lucide-react"
 import { co, Group } from "jazz-tools"
 import {
@@ -62,6 +64,8 @@ function SpaceShareDialog({
 		{ inviteGroupId: string }[]
 	>([])
 	let [owner, setOwner] = useState<{ id: string; name: string } | null>(null)
+	let [spaceIsPublic, setSpaceIsPublic] = useState(() => isSpacePublic(space))
+	let [publicCopied, setPublicCopied] = useState(false)
 	let me = useAccount(UserAccount, { resolve: { root: { spaces: true } } })
 
 	let spaceGroup = getSpaceGroup(space)
@@ -127,6 +131,37 @@ function SpaceShareDialog({
 		setLoading(true)
 		try {
 			await handleLeaveSpace(space, me, navigate, setOpen)
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	async function handleCopyPublicLink() {
+		let link = getSpacePublicLink(space)
+		await navigator.clipboard.writeText(link)
+		setPublicCopied(true)
+		setTimeout(() => setPublicCopied(false), 2000)
+	}
+
+	function handleMakePublic() {
+		setLoading(true)
+		try {
+			makeSpacePublic(space)
+			setSpaceIsPublic(true)
+		} catch (e) {
+			console.error("Failed to make space public:", e)
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	function handleMakePrivate() {
+		setLoading(true)
+		try {
+			makeSpacePrivate(space)
+			setSpaceIsPublic(false)
+		} catch (e) {
+			console.error("Failed to make space private:", e)
 		} finally {
 			setLoading(false)
 		}
@@ -238,6 +273,66 @@ function SpaceShareDialog({
 								</div>
 							</div>
 						)}
+
+						<div className="border-border space-y-2 border-t pt-3">
+							<div className="text-muted-foreground text-xs font-medium">
+								Public access
+							</div>
+							{spaceIsPublic ? (
+								<div className="space-y-2">
+									<div className="bg-muted flex items-center gap-2 rounded p-2 text-xs">
+										<Globe className="size-3.5 shrink-0 text-green-600 dark:text-green-400" />
+										<input
+											type="text"
+											value={getSpacePublicLink(space)}
+											readOnly
+											className="flex-1 truncate bg-transparent outline-none"
+										/>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={handleCopyPublicLink}
+											aria-label="Copy public link"
+										>
+											{publicCopied ? (
+												<Check className="size-3.5" />
+											) : (
+												<Copy className="size-3.5" />
+											)}
+										</Button>
+									</div>
+									<p className="text-muted-foreground text-xs">
+										Anyone with this link can view this space and its documents
+									</p>
+									<Button
+										variant="ghost"
+										size="sm"
+										className="w-full"
+										onClick={handleMakePrivate}
+										disabled={loading}
+									>
+										<Lock className="mr-1 size-3.5" />
+										Make private
+									</Button>
+								</div>
+							) : (
+								<div className="space-y-2">
+									<p className="text-muted-foreground text-xs">
+										Make this space publicly readable by anyone with the link
+									</p>
+									<Button
+										variant="outline"
+										size="sm"
+										className="w-full"
+										onClick={handleMakePublic}
+										disabled={loading}
+									>
+										<Globe className="mr-1 size-3.5" />
+										Make public
+									</Button>
+								</div>
+							)}
+						</div>
 					</div>
 				)}
 
@@ -468,4 +563,36 @@ async function handleLeaveSpace(
 
 	setOpen(false)
 	navigate({ to: "/" })
+}
+
+function isSpacePublic(space: LoadedSpace): boolean {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) return false
+	let everyoneRole = spaceGroup.getRoleOf("everyone")
+	return everyoneRole === "reader" || everyoneRole === "writer"
+}
+
+function makeSpacePublic(space: LoadedSpace): void {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) throw new Error("Space is not group-owned")
+	if (spaceGroup.myRole() !== "admin") {
+		throw new Error("Only admins can make spaces public")
+	}
+	spaceGroup.makePublic()
+	space.$jazz.set("updatedAt", new Date())
+}
+
+function makeSpacePrivate(space: LoadedSpace): void {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) throw new Error("Space is not group-owned")
+	if (spaceGroup.myRole() !== "admin") {
+		throw new Error("Only admins can make spaces private")
+	}
+	spaceGroup.removeMember("everyone")
+	space.$jazz.set("updatedAt", new Date())
+}
+
+function getSpacePublicLink(space: LoadedSpace): string {
+	let baseURL = window.location.origin
+	return `${baseURL}/spaces/${space.$jazz.id}`
 }

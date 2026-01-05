@@ -288,7 +288,7 @@
 			"priority": 36,
 			"story": "Update /invite route to handle space invites",
 			"acceptance": "Invite route parses space invites, accepts them correctly",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "9.5",
@@ -296,7 +296,7 @@
 			"priority": 37,
 			"story": "On space invite accept add space to user's list and redirect",
 			"acceptance": "After accepting, space appears in user's spaces list, redirects to space",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "10.1",
@@ -304,7 +304,7 @@
 			"priority": 38,
 			"story": "Add public toggle in space share dialog",
 			"acceptance": "Toggle exists to make space public/private",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "10.2",
