@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
-import { useCoState } from "jazz-tools/react"
+import { useCoState, useAccount } from "jazz-tools/react"
+import { useState, useEffect } from "react"
 import { ArrowLeft, Loader2 } from "lucide-react"
-import { Space } from "@/schema"
+import { Space, UserAccount } from "@/schema"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
 	DocumentNotFound,
@@ -104,6 +106,7 @@ function SpaceSettingsContent({
 				<div className="mx-auto max-w-2xl px-4 py-8">
 					<div className="space-y-8">
 						<SpaceNameSection space={space} />
+						<SpaceMembersSection space={space} />
 					</div>
 				</div>
 			</div>
@@ -142,4 +145,87 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 			</div>
 		</section>
 	)
+}
+
+type SpaceMember = {
+	id: string
+	name: string
+	role: string
+}
+
+function SpaceMembersSection({ space }: { space: LoadedSpace }) {
+	let me = useAccount(UserAccount)
+	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let [members, setMembers] = useState<SpaceMember[]>([])
+
+	useEffect(() => {
+		if (!spaceGroup) return
+
+		async function loadMembers() {
+			if (!spaceGroup) return
+			let loaded: SpaceMember[] = []
+
+			for (let member of spaceGroup.members) {
+				if (member.account?.$isLoaded) {
+					let profile = await member.account.$jazz.ensureLoaded({
+						resolve: { profile: true },
+					})
+					loaded.push({
+						id: member.id,
+						name:
+							(profile as { profile?: { name?: string } }).profile?.name ??
+							"Unknown",
+						role: member.role,
+					})
+				}
+			}
+
+			setMembers(loaded)
+		}
+
+		loadMembers()
+	}, [spaceGroup])
+
+	if (!spaceGroup || members.length === 0) return null
+
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				Members
+			</h2>
+			<div className="bg-muted/30 rounded-lg p-4">
+				<ul className="space-y-2">
+					{members.map(member => (
+						<li
+							key={member.id}
+							className="flex items-center justify-between py-1"
+						>
+							<span className="flex items-center gap-2 text-sm">
+								{member.name}
+								{member.id === me?.$jazz.id && (
+									<Badge variant="secondary">You</Badge>
+								)}
+							</span>
+							<span className="text-muted-foreground text-xs capitalize">
+								{getRoleLabel(member.role)}
+							</span>
+						</li>
+					))}
+				</ul>
+			</div>
+		</section>
+	)
+}
+
+function getRoleLabel(role: string): string {
+	switch (role) {
+		case "admin":
+			return "Admin"
+		case "writer":
+			return "Can edit"
+		case "reader":
+			return "Can view"
+		default:
+			return role
+	}
 }

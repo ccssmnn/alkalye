@@ -200,7 +200,7 @@
 			"priority": 25,
 			"story": "Show editable space name in settings",
 			"acceptance": "Space name displays and is editable by owner/admin",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "7.3",
@@ -208,7 +208,7 @@
 			"priority": 26,
 			"story": "Show member list with roles in settings",
 			"acceptance": "Settings page lists all space members with their roles",
-			"passes": false
+			"passes": true
 		},
 		{
 			"id": "7.4",

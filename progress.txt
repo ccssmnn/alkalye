@@ -178,3 +178,19 @@
 - Shows space name in General section (read-only for now, editing in story 7.2)
 - File: src/routes/spaces.$spaceId.settings.tsx (new)
 - Commit: feat: add space settings route
+
+## Story 7.2 - Show editable space name in settings
+- Added isAdmin check via space.$jazz.owner.myRole() === "admin"
+- Admins see Input field, non-admins see read-only text
+- handleNameChange updates space.name and space.updatedAt on change
+- File: src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: make space name editable for admins in settings
+
+## Story 7.3 - Show member list with roles in settings
+- Added SpaceMembersSection component to space settings page
+- Loads members from spaceGroup.members via useEffect async loader
+- Each member shows name, "You" badge for current user, and role label
+- getRoleLabel helper maps role to display text (Admin, Can edit, Can view)
+- Uses Badge component for "You" indicator
+- File: src/routes/spaces.$spaceId.settings.tsx
+- Commit: feat: show member list with roles in space settings
