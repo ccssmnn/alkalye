@@ -377,6 +377,78 @@ describe("Space Collaboration", () => {
 			),
 		).rejects.toThrow("Only admins can change collaborator roles")
 	})
+
+	test("manager role can add/remove readers and writers", async () => {
+		let spaceGroup = getSpaceGroup(space)
+		if (!spaceGroup) throw new Error("Space group not found")
+
+		// Add manager directly to space
+		let managerAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+		spaceGroup.addMember(managerAccount, "manager")
+
+		// Manager can add a writer
+		setActiveAccount(managerAccount)
+		let writerAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+		spaceGroup.addMember(writerAccount, "writer")
+
+		// Verify writer was added
+		let writerMember = spaceGroup.members.find(
+			m => m.id === writerAccount.$jazz.id,
+		)
+		expect(writerMember?.role).toBe("writer")
+
+		// Manager can remove the writer
+		spaceGroup.removeMember(writerAccount)
+		let writerMemberAfter = spaceGroup.members.find(
+			m => m.id === writerAccount.$jazz.id,
+		)
+		expect(writerMemberAfter).toBeUndefined()
+	})
+
+	test("manager cannot remove admins", async () => {
+		let spaceGroup = getSpaceGroup(space)
+		if (!spaceGroup) throw new Error("Space group not found")
+
+		let managerAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+		spaceGroup.addMember(managerAccount, "manager")
+
+		setActiveAccount(managerAccount)
+
+		// Manager cannot remove the existing admin
+		expect(() => spaceGroup.removeMember(adminAccount)).toThrow()
+	})
+
+	test("changing collaborator role to manager works", async () => {
+		let { link: inviteLink } = await createSpaceInvite(space, "writer")
+		let inviteData = parseSpaceInviteLink(inviteLink)
+
+		await acceptSpaceInvite(otherAccount, inviteData)
+		await otherAccount.$jazz.waitForAllCoValuesSync()
+
+		let collaboratorsBefore = await listSpaceCollaborators(space, false)
+		let otherBefore = collaboratorsBefore.collaborators.find(
+			c => c.id === otherAccount.$jazz.id,
+		)
+		expect(otherBefore?.role).toBe("writer")
+
+		await changeSpaceCollaboratorRole(
+			space,
+			inviteData.inviteGroupId,
+			"manager",
+		)
+
+		let collaboratorsAfter = await listSpaceCollaborators(space, false)
+		let otherAfter = collaboratorsAfter.collaborators.find(
+			c => c.id === otherAccount.$jazz.id,
+		)
+		expect(otherAfter?.role).toBe("manager")
+	}, 30000)
 })
 
 describe("Space Public Access", () => {

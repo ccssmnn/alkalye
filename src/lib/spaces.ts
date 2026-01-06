@@ -6,6 +6,7 @@ export {
 	acceptSpaceInvite,
 	revokeSpaceInvite,
 	listSpaceCollaborators,
+	listSpaceMembers,
 	leaveSpace,
 	changeSpaceCollaboratorRole,
 	parseSpaceInviteLink,
@@ -20,6 +21,7 @@ export {
 export type {
 	SpaceInviteData,
 	SpaceCollaborator,
+	SpaceMember,
 	SpaceCollaboratorsResult,
 	SpaceInviteResult,
 }
@@ -29,6 +31,13 @@ type SpaceCollaborator = {
 	name: string
 	role: string
 	inviteGroupId: string
+}
+
+type SpaceMember = {
+	id: string
+	name: string
+	role: string
+	inviteGroupId?: string
 }
 
 type SpaceCollaboratorsResult = {
@@ -140,6 +149,47 @@ async function listSpaceCollaborators(
 	return { collaborators, pendingInvites }
 }
 
+async function listSpaceMembers(
+	space: co.loaded<typeof Space>,
+): Promise<SpaceMember[]> {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) return []
+
+	let members: SpaceMember[] = []
+	let seenIds = new Set<string>()
+
+	// First, collect inviteGroupIds for collaborators
+	let inviteGroupByMemberId = new Map<string, string>()
+	for (let inviteGroup of spaceGroup.getParentGroups()) {
+		for (let member of inviteGroup.members) {
+			if (member.role === "admin") continue
+			if (member.account?.$isLoaded) {
+				inviteGroupByMemberId.set(member.id, inviteGroup.$jazz.id)
+			}
+		}
+	}
+
+	// Load all members from spaceGroup.members (includes inherited collaborators)
+	for (let member of spaceGroup.members) {
+		if (member.account?.$isLoaded && !seenIds.has(member.id)) {
+			seenIds.add(member.id)
+			let profile = await member.account.$jazz.ensureLoaded({
+				resolve: { profile: true },
+			})
+			members.push({
+				id: member.id,
+				name:
+					(profile as { profile?: { name?: string } }).profile?.name ??
+					"Unknown",
+				role: member.role,
+				inviteGroupId: inviteGroupByMemberId.get(member.id),
+			})
+		}
+	}
+
+	return members
+}
+
 async function acceptSpaceInvite(
 	account: co.loaded<typeof UserAccount>,
 	inviteData: SpaceInviteData,
@@ -224,7 +274,7 @@ function parseSpaceInviteLink(link: string): SpaceInviteData {
 async function changeSpaceCollaboratorRole(
 	space: co.loaded<typeof Space>,
 	inviteGroupId: string,
-	newRole: "writer" | "reader",
+	newRole: "admin" | "manager" | "writer" | "reader",
 ): Promise<void> {
 	let spaceGroup = getSpaceGroup(space)
 	if (!spaceGroup) throw new Error("Space is not group-owned")

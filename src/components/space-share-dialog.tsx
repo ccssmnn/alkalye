@@ -464,7 +464,7 @@ function SpaceShareDialog({
 function getRoleLabel(role: string | null): string {
 	switch (role) {
 		case "admin":
-			return "Owner"
+			return "Admin"
 		case "writer":
 			return "Writer"
 		case "reader":

@@ -13,12 +13,34 @@ import { Badge } from "@/components/ui/badge"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/components/ui/dialog"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
+import {
 	SpaceDeleted,
 	SpaceNotFound,
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
 import { SpaceBackupSettings } from "@/lib/backup"
-import { getSpaceGroup } from "@/lib/spaces"
+import {
+	getSpaceGroup,
+	leaveSpace,
+	changeSpaceCollaboratorRole,
+	revokeSpaceInvite,
+	listSpaceMembers,
+	type SpaceMember,
+} from "@/lib/spaces"
 
 export { Route }
 
@@ -115,7 +137,7 @@ function SpaceSettingsContent({
 						<SpaceNameSection space={space} />
 						<SpaceMembersSection space={space} />
 						<SpaceBackupSettingsSection space={space} spaceId={spaceId} />
-						<DeleteSpaceSection space={space} />
+						<DangerZoneSection space={space} />
 					</div>
 				</div>
 			</div>
@@ -246,54 +268,55 @@ function SpaceAvatarUpload({
 	)
 }
 
-type SpaceMember = {
-	id: string
-	name: string
-	role: string
-}
-
 function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 	let me = useAccount(UserAccount)
 	let spaceGroup = getSpaceGroup(space)
-	let isAdmin = spaceGroup?.myRole() === "admin"
+	let myRole = spaceGroup?.myRole()
+	let canEditMembers = myRole === "admin" || myRole === "manager"
 	let [members, setMembers] = useState<SpaceMember[]>([])
 	let [shareOpen, setShareOpen] = useState(false)
+	let [editMember, setEditMember] = useState<SpaceMember | null>(null)
+
+	let loadMembersRef = useRef(async () => {
+		let loaded = await listSpaceMembers(space)
+		setMembers(loaded)
+	})
 
 	useEffect(() => {
-		if (!spaceGroup) return
-
-		async function loadMembers() {
-			if (!spaceGroup) return
-			let loaded: SpaceMember[] = []
-
-			for (let member of spaceGroup.members) {
-				if (member.account?.$isLoaded) {
-					let profile = await member.account.$jazz.ensureLoaded({
-						resolve: { profile: true },
-					})
-					loaded.push({
-						id: member.id,
-						name:
-							(profile as { profile?: { name?: string } }).profile?.name ??
-							"Unknown",
-						role: member.role,
-					})
-				}
-			}
-
+		loadMembersRef.current = async () => {
+			let loaded = await listSpaceMembers(space)
 			setMembers(loaded)
 		}
+	})
 
-		loadMembers()
+	useEffect(() => {
+		loadMembersRef.current()
 	}, [spaceGroup])
 
 	if (!spaceGroup) return null
+
+	let adminCount =
+		spaceGroup?.members.filter(m => m.role === "admin").length ?? 0
+
+	function handleEditMember(member: SpaceMember) {
+		if (!canEditMembers) return
+		// Can't edit other admins
+		if (member.role === "admin" && member.id !== me?.$jazz.id) return
+		// Can't edit yourself if you're the last admin
+		if (
+			member.id === me?.$jazz.id &&
+			member.role === "admin" &&
+			adminCount <= 1
+		)
+			return
+		setEditMember(member)
+	}
 
 	return (
 		<section>
 			<div className="mb-3 flex items-center justify-between">
 				<h2 className="text-muted-foreground text-sm font-medium">Members</h2>
-				{isAdmin && (
+				{myRole === "admin" && (
 					<Button
 						variant="outline"
 						size="sm"
@@ -307,22 +330,38 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 			<div className="bg-muted/30 rounded-lg p-4">
 				{members.length > 0 ? (
 					<ul className="space-y-2">
-						{members.map(member => (
-							<li
-								key={member.id}
-								className="flex items-center justify-between py-1"
-							>
-								<span className="flex items-center gap-2 text-sm">
-									{member.name}
-									{member.id === me?.$jazz.id && (
-										<Badge variant="secondary">You</Badge>
-									)}
-								</span>
-								<span className="text-muted-foreground text-xs">
-									{getRoleLabel(member.role)}
-								</span>
-							</li>
-						))}
+						{members.map(member => {
+							let isMe = member.id === me?.$jazz.id
+							let isOtherAdmin = member.role === "admin" && !isMe
+							let isLastAdmin =
+								isMe && member.role === "admin" && adminCount <= 1
+							let isEditable = canEditMembers && !isOtherAdmin && !isLastAdmin
+							return (
+								<li
+									key={member.id}
+									className="flex items-center justify-between py-1"
+								>
+									<span className="flex items-center gap-2 text-sm">
+										{member.name}
+										{isMe && <Badge variant="secondary">You</Badge>}
+									</span>
+									<span className="flex items-center gap-2">
+										{isEditable && (
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => handleEditMember(member)}
+											>
+												Edit
+											</Button>
+										)}
+										<span className="text-muted-foreground w-14 text-right text-xs">
+											{getRoleLabel(member.role)}
+										</span>
+									</span>
+								</li>
+							)
+						})}
 					</ul>
 				) : (
 					<p className="text-muted-foreground text-sm">Loading members...</p>
@@ -333,14 +372,118 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 				open={shareOpen}
 				onOpenChange={setShareOpen}
 			/>
+			<MemberEditDialog
+				space={space}
+				member={editMember}
+				onOpenChange={open => !open && setEditMember(null)}
+				onMemberUpdated={() => loadMembersRef.current()}
+			/>
 		</section>
+	)
+}
+
+function MemberEditDialog({
+	space,
+	member,
+	onOpenChange,
+	onMemberUpdated,
+}: {
+	space: LoadedSpace
+	member: SpaceMember | null
+	onOpenChange: (open: boolean) => void
+	onMemberUpdated: () => void
+}) {
+	let [role, setRole] = useState<string>(member?.role ?? "reader")
+	let [loading, setLoading] = useState(false)
+
+	useEffect(() => {
+		if (member) setRole(member.role)
+	}, [member])
+
+	async function handleSave() {
+		if (!member?.inviteGroupId) return
+		if (role === member.role) {
+			onOpenChange(false)
+			return
+		}
+		setLoading(true)
+		try {
+			await changeSpaceCollaboratorRole(
+				space,
+				member.inviteGroupId,
+				role as "admin" | "manager" | "writer" | "reader",
+			)
+			onMemberUpdated()
+			onOpenChange(false)
+		} catch (e) {
+			console.error("Failed to change role:", e)
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	async function handleRemove() {
+		if (!member?.inviteGroupId) return
+		setLoading(true)
+		try {
+			revokeSpaceInvite(space, member.inviteGroupId)
+			onMemberUpdated()
+			onOpenChange(false)
+		} finally {
+			setLoading(false)
+		}
+	}
+
+	return (
+		<Dialog open={!!member} onOpenChange={onOpenChange}>
+			<DialogContent showCloseButton={false}>
+				<DialogHeader>
+					<DialogTitle>Edit member</DialogTitle>
+					<DialogDescription>
+						Change permissions or remove {member?.name} from this space.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-4 py-2">
+					<div>
+						<div className="text-muted-foreground mb-1 text-xs">Role</div>
+						<Select value={role} onValueChange={v => v && setRole(v)}>
+							<SelectTrigger className="w-full">
+								<SelectValue>{getRoleLabel(role)}</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="admin">Admin</SelectItem>
+								<SelectItem value="manager">Manager</SelectItem>
+								<SelectItem value="writer">Writer</SelectItem>
+								<SelectItem value="reader">Reader</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+				</div>
+				<DialogFooter className="flex-col gap-2 sm:flex-row">
+					<Button
+						variant="destructive"
+						onClick={handleRemove}
+						disabled={loading}
+						className="sm:mr-auto"
+					>
+						Remove from space
+					</Button>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button onClick={handleSave} disabled={loading}>
+						Save
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	)
 }
 
 function getRoleLabel(role: string): string {
 	switch (role) {
 		case "admin":
-			return "Owner"
+			return "Admin"
 		case "manager":
 			return "Manager"
 		case "writer":
@@ -352,11 +495,34 @@ function getRoleLabel(role: string): string {
 	}
 }
 
-function DeleteSpaceSection({ space }: { space: LoadedSpace }) {
+function DangerZoneSection({ space }: { space: LoadedSpace }) {
 	let navigate = useNavigate()
+	let me = useAccount(UserAccount)
 	let spaceGroup = getSpaceGroup(space)
-	let isAdmin = spaceGroup?.myRole() === "admin"
-	let confirmDialog = useConfirmDialog()
+	let myRole = spaceGroup?.myRole()
+	let isAdmin = myRole === "admin"
+
+	// Count admins
+	let adminCount =
+		spaceGroup?.members.filter(m => m.role === "admin").length ?? 0
+	let isLastAdmin = isAdmin && adminCount === 1
+	let canLeave = !isLastAdmin
+	let canDelete = isLastAdmin
+
+	let leaveDialog = useConfirmDialog()
+	let deleteDialog = useConfirmDialog()
+	let [loading, setLoading] = useState(false)
+
+	async function handleLeave() {
+		if (!me?.$isLoaded) return
+		setLoading(true)
+		try {
+			await leaveSpace(space, me)
+			navigate({ to: "/" })
+		} finally {
+			setLoading(false)
+		}
+	}
 
 	function handleDelete() {
 		deleteSpace(space)
@@ -368,27 +534,58 @@ function DeleteSpaceSection({ space }: { space: LoadedSpace }) {
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
 				Danger Zone
 			</h2>
-			<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
-				<div className="flex items-center justify-between">
-					<div>
-						<div className="text-sm font-medium">Delete space</div>
-						<div className="text-muted-foreground text-xs">
-							Permanently delete this space and all its documents
+			<div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+				{canLeave && (
+					<div className="flex items-center justify-between">
+						<div>
+							<div className="text-sm font-medium">Leave space</div>
+							<div className="text-muted-foreground text-xs">
+								Remove yourself from this space
+							</div>
 						</div>
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => leaveDialog.setOpen(true)}
+							disabled={loading}
+						>
+							Leave
+						</Button>
 					</div>
-					<Button
-						variant="destructive"
-						size="sm"
-						disabled={!isAdmin}
-						onClick={() => confirmDialog.setOpen(true)}
-					>
-						Delete
-					</Button>
-				</div>
+				)}
+				{isAdmin && (
+					<div className="flex items-center justify-between">
+						<div>
+							<div className="text-sm font-medium">Delete space</div>
+							<div className="text-muted-foreground text-xs">
+								{canDelete
+									? "Permanently delete this space and all its documents"
+									: "All other admins must leave before the space can be deleted"}
+							</div>
+						</div>
+						<Button
+							variant="destructive"
+							size="sm"
+							disabled={!canDelete}
+							onClick={() => deleteDialog.setOpen(true)}
+						>
+							Delete
+						</Button>
+					</div>
+				)}
 			</div>
 			<ConfirmDialog
-				open={confirmDialog.open}
-				onOpenChange={confirmDialog.onOpenChange}
+				open={leaveDialog.open}
+				onOpenChange={leaveDialog.onOpenChange}
+				title="Leave space?"
+				description={`You will lose access to "${space.name}" and all its documents. You'll need a new invite to rejoin.`}
+				confirmLabel="Leave"
+				variant="destructive"
+				onConfirm={handleLeave}
+			/>
+			<ConfirmDialog
+				open={deleteDialog.open}
+				onOpenChange={deleteDialog.onOpenChange}
 				title="Delete space?"
 				description={`This will permanently delete "${space.name}" and all documents within it. This action cannot be undone.`}
 				confirmLabel="Delete"
