@@ -1,6 +1,11 @@
 import { useState, useRef } from "react"
-import { co } from "jazz-tools"
-import { useAccount, useIsAuthenticated, Image } from "jazz-tools/react"
+import { co, type ResolveQuery } from "jazz-tools"
+import {
+	useAccount,
+	useCoState,
+	useIsAuthenticated,
+	Image,
+} from "jazz-tools/react"
 import { useParams, useNavigate, Link } from "@tanstack/react-router"
 import {
 	ChevronDown,
@@ -9,6 +14,7 @@ import {
 	Check,
 	Plus,
 	SettingsIcon,
+	UserPlus,
 } from "lucide-react"
 import {
 	DropdownMenu,
@@ -28,12 +34,17 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { UserAccount, createSpace } from "@/schema"
+import { UserAccount, Space, createSpace } from "@/schema"
+import { getSpaceGroup } from "@/lib/spaces"
 
 export { SpaceSelector, SpaceInitials }
 
 let spacesQuery = { root: { spaces: { $each: { avatar: true } } } } as const
 type LoadedSpaces = co.loaded<typeof UserAccount, typeof spacesQuery>
+
+let currentSpaceQuery = { avatar: true } as const satisfies ResolveQuery<
+	typeof Space
+>
 
 function SpaceSelector() {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
@@ -42,10 +53,40 @@ function SpaceSelector() {
 	let spaceId = "spaceId" in params ? (params.spaceId as string) : null
 	let [dialogOpen, setDialogOpen] = useState(false)
 
+	// Load current space directly (for public spaces not in user's list)
+	let currentSpaceFromUrl = useCoState(
+		Space,
+		spaceId as Parameters<typeof useCoState>[1],
+		{ resolve: currentSpaceQuery },
+	)
+
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
-	let currentSpace = spaceId ? spaces.find(s => s.$jazz.id === spaceId) : null
-	let displayName = currentSpace?.name ?? "Personal"
-	let Icon = currentSpace ? Users : User
+	let currentSpaceInList = spaceId
+		? spaces.find(s => s.$jazz.id === spaceId)
+		: null
+
+	// Use current space from list if available, otherwise from URL (for public spaces)
+	let currentSpace = currentSpaceInList ?? currentSpaceFromUrl
+	let displayName =
+		currentSpace?.$isLoaded && !currentSpace.deletedAt
+			? currentSpace.name
+			: "Personal"
+	let Icon = currentSpace?.$isLoaded && !currentSpace.deletedAt ? Users : User
+
+	// Check if current space is not in user's list (public space they're viewing)
+	let isViewingPublicSpace =
+		spaceId &&
+		currentSpaceFromUrl?.$isLoaded &&
+		!currentSpaceInList &&
+		!currentSpaceFromUrl.deletedAt
+
+	// Check if user can add this space to their list
+	let spaceGroup =
+		currentSpaceFromUrl?.$isLoaded && !currentSpaceFromUrl.deletedAt
+			? getSpaceGroup(currentSpaceFromUrl)
+			: null
+	let canAddToSpaces =
+		isViewingPublicSpace && isAuthenticated && spaceGroup?.myRole()
 
 	return (
 		<>
@@ -66,14 +107,14 @@ function SpaceSelector() {
 							</Button>
 						}
 					/>
-					{currentSpace && (
+					{currentSpaceInList && (
 						<Button
 							variant="ghost"
 							size="icon"
 							render={
 								<Link
 									to="/spaces/$spaceId/settings"
-									params={{ spaceId: currentSpace.$jazz.id }}
+									params={{ spaceId: currentSpaceInList.$jazz.id }}
 								/>
 							}
 						>
@@ -105,9 +146,25 @@ function SpaceSelector() {
 							)}
 						</DropdownMenuItem>
 					))}
+					{isViewingPublicSpace && currentSpaceFromUrl?.$isLoaded && (
+						<>
+							<DropdownMenuSeparator />
+							<div className="text-muted-foreground px-2 py-1.5 text-xs">
+								Viewing public space
+							</div>
+							<DropdownMenuItem disabled>
+								<Users className="size-4" />
+								<span>{currentSpaceFromUrl.name}</span>
+								<Check className="ml-auto size-4" />
+							</DropdownMenuItem>
+						</>
+					)}
 					{isAuthenticated && (
 						<>
 							<DropdownMenuSeparator />
+							{canAddToSpaces && (
+								<AddToSpacesMenuItem space={currentSpaceFromUrl!} me={me} />
+							)}
 							<DropdownMenuItem onClick={() => setDialogOpen(true)}>
 								<Plus className="size-4" />
 								<span>New Space</span>
@@ -122,6 +179,35 @@ function SpaceSelector() {
 				me={me}
 			/>
 		</>
+	)
+}
+
+type MaybeLoadedSpace = ReturnType<
+	typeof useCoState<typeof Space, typeof currentSpaceQuery>
+>
+
+function AddToSpacesMenuItem({
+	space,
+	me,
+}: {
+	space: MaybeLoadedSpace
+	me: ReturnType<typeof useAccount<typeof UserAccount, typeof spacesQuery>>
+}) {
+	async function handleAddToSpaces() {
+		if (!me.$isLoaded || !me.root?.spaces?.$isLoaded || !space?.$isLoaded)
+			return
+		// Check if already in list
+		let alreadyHas = me.root.spaces.some(s => s?.$jazz.id === space.$jazz.id)
+		if (!alreadyHas) {
+			me.root.spaces.$jazz.push(space)
+		}
+	}
+
+	return (
+		<DropdownMenuItem onClick={handleAddToSpaces}>
+			<UserPlus className="size-4" />
+			<span>Add to my spaces</span>
+		</DropdownMenuItem>
 	)
 }
 
