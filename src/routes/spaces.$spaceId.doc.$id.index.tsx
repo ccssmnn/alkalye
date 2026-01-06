@@ -276,17 +276,24 @@ function SpaceEditorContent({
 	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
 
 	let allDocs = getSpaceDocs(space)
+	let spaceDocs = space.documents?.$isLoaded ? space.documents : null
 
 	return (
 		<>
 			<title>{docTitle}</title>
-			<ImportDropZone onImport={files => handleImportFiles(files, me)}>
+			<ImportDropZone
+				onImport={async files => {
+					if (spaceDocs) await handleImportFiles(files, spaceDocs)
+				}}
+			>
 				<ListSidebar
 					header={
 						<>
 							<SidebarImportExport
 								docs={allDocs.filter(d => !d.deletedAt)}
-								onImport={files => handleImportFiles(files, me)}
+								onImport={async files => {
+									if (spaceDocs) await handleImportFiles(files, spaceDocs)
+								}}
 							/>
 							<Button
 								size="sm"

@@ -1,8 +1,7 @@
 import { useRef } from "react"
 import { Group, co } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
-import { useAccount } from "jazz-tools/react"
-import { UserAccount, Document, Asset } from "@/schema"
+import { Document, Asset } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
@@ -137,9 +136,9 @@ async function handleExportDocs(docs: LoadedDocument[]) {
 
 async function handleImportFiles(
 	imported: ImportedFile[],
-	me: ReturnType<typeof useAccount<typeof UserAccount, DocumentsQuery>>,
+	targetDocs: DocumentList,
 ) {
-	if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
+	let listOwner = targetDocs.$jazz.owner
 
 	// Phase 1: Create all documents and collect their info for wikilink resolution
 	let createdDocs: {
@@ -150,7 +149,6 @@ async function handleImportFiles(
 
 	for (let { name, content, assets: importedAssets, path } of imported) {
 		let now = new Date()
-		let group = Group.create()
 
 		let processedContent = content
 		let hasFrontmatter = content.trimStart().startsWith("---")
@@ -166,15 +164,19 @@ async function handleImportFiles(
 			}
 		}
 
+		// Create doc-specific group with list owner as parent
+		let docGroup = Group.create()
+		docGroup.addMember(listOwner)
+
 		let docAssets: co.loaded<typeof Asset>[] = []
 		for (let importedAsset of importedAssets) {
 			let image = await createImage(importedAsset.file, {
-				owner: group,
+				owner: docGroup,
 				maxSize: 2048,
 			})
 			let asset = Asset.create(
 				{ type: "image", name: importedAsset.name, image, createdAt: now },
-				group,
+				docGroup,
 			)
 			docAssets.push(asset)
 
@@ -191,18 +193,18 @@ async function handleImportFiles(
 		let newDoc = Document.create(
 			{
 				version: 1,
-				content: co.plainText().create(processedContent, group),
+				content: co.plainText().create(processedContent, docGroup),
 				assets:
 					docAssets.length > 0
-						? co.list(Asset).create(docAssets, group)
+						? co.list(Asset).create(docAssets, docGroup)
 						: undefined,
 				createdAt: now,
 				updatedAt: now,
 			},
-			group,
+			docGroup,
 		)
-		me.root.documents.$jazz.push(newDoc)
 
+		targetDocs.$jazz.push(newDoc)
 		createdDocs.push({ doc: newDoc, title, path })
 	}
 
@@ -227,6 +229,8 @@ async function handleImportFiles(
 	}
 }
 
+type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
+
 // --- Utilities ---
 
 async function loadDocumentAssets(
@@ -250,15 +254,4 @@ async function loadDocumentAssets(
 	}
 
 	return docAssets
-}
-
-// --- Types ---
-
-type DocumentsQuery = {
-	root: {
-		documents: {
-			$each: { content: true }
-			$onError: "catch"
-		}
-	}
 }

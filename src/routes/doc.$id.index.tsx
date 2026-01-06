@@ -255,16 +255,25 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let allDocs = getPersonalDocs(me)
 
+	let personalDocs =
+		me.$isLoaded && me.root?.documents?.$isLoaded ? me.root.documents : null
+
 	return (
 		<>
 			<title>{docTitle}</title>
-			<ImportDropZone onImport={files => handleImportFiles(files, me)}>
+			<ImportDropZone
+				onImport={async files => {
+					if (personalDocs) await handleImportFiles(files, personalDocs)
+				}}
+			>
 				<ListSidebar
 					header={
 						<>
 							<SidebarImportExport
 								docs={allDocs.filter(d => !d.deletedAt)}
-								onImport={files => handleImportFiles(files, me)}
+								onImport={async files => {
+									if (personalDocs) await handleImportFiles(files, personalDocs)
+								}}
 							/>
 							<Button
 								size="sm"
