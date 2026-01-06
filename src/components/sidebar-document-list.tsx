@@ -65,8 +65,8 @@ import {
 	isDocumentPublic,
 	hasIndividualShares,
 	getDocumentGroup,
-	leaveDocument,
-} from "@/lib/sharing"
+	leavePersonalDocument,
+} from "@/lib/documents"
 import { useFolderStore, FolderRow } from "@/components/folder"
 import { getPresentationMode } from "@/lib/presentation"
 import { exportDocument, type ExportAsset } from "@/lib/export"
@@ -886,11 +886,7 @@ function makeLeaveDocument(
 ) {
 	return async function handleLeaveDocument() {
 		if (!doc?.$isLoaded || !me.$isLoaded) return
-		let idx = me.root?.documents?.findIndex(d => d?.$jazz.id === doc.$jazz.id)
-		if (idx !== undefined && idx !== -1 && me.root?.documents?.$isLoaded) {
-			me.root.documents.$jazz.splice(idx, 1)
-		}
-		await leaveDocument(doc, me)
+		await leavePersonalDocument(doc, me)
 	}
 }
 

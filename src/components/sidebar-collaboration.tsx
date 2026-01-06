@@ -12,10 +12,10 @@ import { Globe, Lock, Users } from "lucide-react"
 import { ShareDialog } from "@/components/share-dialog"
 import { Document, UserAccount } from "@/schema"
 import {
-	getCollaborators,
+	listCollaborators,
 	isDocumentPublic,
 	type Collaborator,
-} from "@/lib/sharing"
+} from "@/lib/documents"
 
 export { SidebarCollaboration }
 
@@ -48,7 +48,7 @@ function SidebarCollaboration({
 	useEffect(() => {
 		async function loadCollaborators() {
 			if (!doc?.$isLoaded) return
-			let result = await getCollaborators(doc, spaceGroupId)
+			let result = await listCollaborators(doc, spaceGroupId)
 			setCollaborators(result.collaborators)
 		}
 		loadCollaborators()

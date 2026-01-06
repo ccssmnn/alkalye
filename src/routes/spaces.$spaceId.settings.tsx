@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { Group, co, type ResolveQuery } from "jazz-tools"
+import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, Image } from "jazz-tools/react"
 import { useState, useEffect, useRef } from "react"
@@ -18,6 +18,7 @@ import {
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
 import { SpaceBackupSettings } from "@/lib/backup"
+import { getSpaceGroup } from "@/lib/spaces"
 
 export { Route }
 
@@ -123,7 +124,7 @@ function SpaceSettingsContent({
 }
 
 function SpaceNameSection({ space }: { space: LoadedSpace }) {
-	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let spaceGroup = getSpaceGroup(space)
 	let isAdmin = spaceGroup?.myRole() === "admin"
 
 	function handleNameChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -160,7 +161,7 @@ function SpaceBackupSettingsSection({
 	space: LoadedSpace
 	spaceId: string
 }) {
-	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let spaceGroup = getSpaceGroup(space)
 	let isAdmin = spaceGroup?.myRole() === "admin"
 
 	return <SpaceBackupSettings spaceId={spaceId} isAdmin={isAdmin} />
@@ -253,7 +254,7 @@ type SpaceMember = {
 
 function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 	let me = useAccount(UserAccount)
-	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let spaceGroup = getSpaceGroup(space)
 	let isAdmin = spaceGroup?.myRole() === "admin"
 	let [members, setMembers] = useState<SpaceMember[]>([])
 	let [shareOpen, setShareOpen] = useState(false)
@@ -353,7 +354,7 @@ function getRoleLabel(role: string): string {
 
 function DeleteSpaceSection({ space }: { space: LoadedSpace }) {
 	let navigate = useNavigate()
-	let spaceGroup = space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+	let spaceGroup = getSpaceGroup(space)
 	let isAdmin = spaceGroup?.myRole() === "admin"
 	let confirmDialog = useConfirmDialog()
 

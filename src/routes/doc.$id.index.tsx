@@ -51,7 +51,7 @@ import {
 	isDocumentPublic,
 	copyDocumentToMyList,
 	getDocumentGroup,
-} from "@/lib/sharing"
+} from "@/lib/documents"
 import { deletePersonalDocument } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"

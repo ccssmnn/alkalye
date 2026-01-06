@@ -25,7 +25,7 @@ import {
 	useDocTitles,
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
-import { canEdit } from "@/lib/sharing"
+import { canEdit } from "@/lib/documents"
 import { Loader2, FileText } from "lucide-react"
 
 export { Route }

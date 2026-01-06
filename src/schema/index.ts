@@ -290,10 +290,11 @@ function createSpaceDocument(
 	spaceGroup: Group,
 	content: string = "",
 ): co.loaded<typeof Document, { content: true }> {
-	// Create a document-specific group with space group as admin
-	// This allows document-level sharing separate from space membership
+	// Create a document-specific group with space group as parent (no role = inherit)
+	// Space members inherit their space role: reader→reader, writer→writer, admin→admin
+	// Doc-level invites go to docGroup, not spaceGroup (so they don't grant space access)
 	let docGroup = Group.create()
-	docGroup.addMember(spaceGroup, "admin")
+	docGroup.addMember(spaceGroup)
 
 	let now = new Date()
 	let doc = Document.create(

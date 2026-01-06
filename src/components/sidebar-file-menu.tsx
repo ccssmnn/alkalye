@@ -21,7 +21,7 @@ import { DuplicateDocDialog } from "@/components/duplicate-doc-dialog"
 import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
-import { canEdit, getDocumentGroup } from "@/lib/sharing"
+import { canEdit, getDocumentGroup } from "@/lib/documents"
 import { leavePersonalDocument } from "@/lib/documents"
 import {
 	parseFrontmatter,

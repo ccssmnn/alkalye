@@ -24,6 +24,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { SpaceInitials } from "@/components/space-selector"
 import { Asset, Document, Space, UserAccount } from "@/schema"
+import { getSpaceGroup } from "@/lib/spaces"
 
 export { DuplicateDocDialog, duplicateDocument }
 export type { DuplicateDocDialogProps, DuplicateProgress }
@@ -275,10 +276,14 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			throw new Error("Target space not found or not loaded")
 		}
 		targetSpace = space as LoadedSpace
-		// Create document-specific group with space group as admin
-		// This allows document-level sharing separate from space membership
+		// Create document-specific group with space group as parent (no role = inherit)
+		// Space members inherit their space role: reader→reader, writer→writer, admin→admin
+		let spaceGroup = getSpaceGroup(space as LoadedSpace)
+		if (!spaceGroup) {
+			throw new Error("Space group not found")
+		}
 		owner = Group.create()
-		owner.addMember(space.$jazz.owner as Group, "admin")
+		owner.addMember(spaceGroup)
 	} else {
 		// Personal document - create new group
 		owner = Group.create()

@@ -11,6 +11,18 @@ export {
 	acceptDocumentInvite,
 	leavePersonalDocument,
 	parseInviteLink,
+	getDocumentGroup,
+	canEdit,
+	getMyRole,
+	isDocumentPublic,
+	makeDocumentPublic,
+	makeDocumentPrivate,
+	getPublicLink,
+	getDocumentOwner,
+	migrateDocumentToGroup,
+	copyDocumentToMyList,
+	getSharingStatus,
+	hasIndividualShares,
 }
 
 export type {
@@ -18,6 +30,9 @@ export type {
 	Collaborator,
 	DocInviteData,
 	CollaboratorsResult,
+	DocumentInviteResult,
+	SharingStatus,
+	InviteRole,
 }
 
 type Collaborator = {
@@ -111,10 +126,15 @@ async function permanentlyDeletePersonalDocument(
 	return { type: "success" }
 }
 
+type DocumentInviteResult = {
+	link: string
+	inviteGroup: Group
+}
+
 async function createDocumentInvite(
 	doc: co.loaded<typeof Document>,
 	role: "writer" | "reader",
-): Promise<string> {
+): Promise<DocumentInviteResult> {
 	let docGroup = doc.$jazz.owner
 
 	if (docGroup.myRole() !== "admin") {
@@ -127,7 +147,8 @@ async function createDocumentInvite(
 	let inviteSecret = inviteGroup.$jazz.createInvite(role)
 	let baseURL = typeof window !== "undefined" ? window.location.origin : ""
 
-	return `${baseURL}/invite#/doc/${doc.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
+	let link = `${baseURL}/invite#/doc/${doc.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
+	return { link, inviteGroup }
 }
 
 function revokeDocumentInvite(
@@ -250,6 +271,10 @@ async function leavePersonalDocument(
 		throw new Error("Document is not group-owned")
 	}
 
+	if (docGroup.myRole() === "admin") {
+		throw new Error("Admins cannot leave their own document")
+	}
+
 	for (let inviteGroup of docGroup.getParentGroups()) {
 		let isMember = inviteGroup.members.some(m => m.id === account.$jazz.id)
 		if (isMember) {
@@ -317,4 +342,195 @@ export async function changeCollaboratorRole(
 	}
 
 	docGroup.removeMember(oldInviteGroup)
+}
+
+type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type SharingStatus = "none" | "owner" | "collaborator"
+type InviteRole = "writer" | "reader"
+
+function getDocumentGroup(doc: LoadedDocument): Group | null {
+	let owner = doc.$jazz.owner
+	return owner instanceof Group ? owner : null
+}
+
+function canEdit(doc: LoadedDocument): boolean {
+	let group = getDocumentGroup(doc)
+	if (!group) return true
+	let role = group.myRole()
+	return role === "admin" || role === "writer"
+}
+
+function getMyRole(doc: LoadedDocument): "admin" | "writer" | "reader" | null {
+	let group = getDocumentGroup(doc)
+	if (!group) return null
+	let role = group.myRole()
+	if (role === "admin" || role === "writer" || role === "reader") return role
+	return null
+}
+
+function isDocumentPublic(doc: LoadedDocument): boolean {
+	let docGroup = getDocumentGroup(doc)
+	if (!docGroup) return false
+	let everyoneRole = docGroup.getRoleOf("everyone")
+	return everyoneRole === "reader" || everyoneRole === "writer"
+}
+
+async function makeDocumentPublic(
+	doc: LoadedDocument,
+	userId: string,
+): Promise<LoadedDocument> {
+	let currentDoc = doc
+
+	if (!getDocumentGroup(doc)) {
+		let result = await migrateDocumentToGroup(doc, userId)
+		currentDoc = result.document
+	}
+
+	let docGroup = getDocumentGroup(currentDoc)
+	if (!docGroup) throw new Error("Document group not found")
+
+	docGroup.makePublic()
+	currentDoc.$jazz.set("updatedAt", new Date())
+	return currentDoc
+}
+
+function makeDocumentPrivate(doc: LoadedDocument): void {
+	let docGroup = getDocumentGroup(doc)
+	if (!docGroup) throw new Error("Document is not group-owned")
+
+	if (docGroup.myRole() !== "admin") {
+		throw new Error("Only admins can make documents private")
+	}
+
+	docGroup.removeMember("everyone")
+	doc.$jazz.set("updatedAt", new Date())
+}
+
+function getPublicLink(doc: LoadedDocument): string {
+	let baseURL = typeof window !== "undefined" ? window.location.origin : ""
+	return `${baseURL}/doc/${doc.$jazz.id}`
+}
+
+async function getDocumentOwner(
+	doc: LoadedDocument,
+): Promise<{ id: string; name: string } | null> {
+	let docGroup = getDocumentGroup(doc)
+	if (!docGroup) return null
+
+	for (let member of docGroup.members) {
+		if (member.role === "admin" && member.account?.$isLoaded) {
+			let profile = await member.account.$jazz.ensureLoaded({
+				resolve: { profile: true },
+			})
+			return {
+				id: member.id,
+				name:
+					(profile as { profile?: { name?: string } }).profile?.name ??
+					"Unknown",
+			}
+		}
+	}
+	return null
+}
+
+async function migrateDocumentToGroup(
+	doc: LoadedDocument,
+	userId: string,
+): Promise<{ group: Group; document: LoadedDocument }> {
+	if (getDocumentGroup(doc)) {
+		return { group: getDocumentGroup(doc)!, document: doc }
+	}
+
+	let group = Group.create()
+
+	let newDoc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(doc.content?.toString() ?? "", group),
+			deletedAt: doc.deletedAt,
+			permanentlyDeletedAt: doc.permanentlyDeletedAt,
+			createdAt: doc.createdAt,
+			updatedAt: new Date(),
+		},
+		group,
+	)
+
+	let account = await UserAccount.load(userId as ID<typeof UserAccount>, {
+		resolve: { root: { documents: true } },
+	})
+
+	if (account?.$isLoaded && account.root?.documents) {
+		let idx = account.root.documents.findIndex(
+			d => d?.$jazz.id === doc.$jazz.id,
+		)
+		if (idx !== -1) {
+			account.root.documents.$jazz.set(idx, newDoc)
+		}
+	}
+
+	let loaded = await Document.load(newDoc.$jazz.id, {
+		resolve: { content: true },
+	})
+	return { group, document: loaded as LoadedDocument }
+}
+
+async function copyDocumentToMyList(
+	doc: LoadedDocument,
+	me: co.loaded<typeof UserAccount, { root: { documents: true } }>,
+): Promise<{ $jazz: { id: string } }> {
+	if (!me.root?.documents) throw new Error("User documents list not loaded")
+
+	let group = Group.create()
+
+	let now = new Date()
+	let newDoc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(doc.content?.toString() ?? "", group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+
+	me.root.documents.$jazz.push(newDoc)
+	return newDoc
+}
+
+function getSharingStatus(doc: LoadedDocument): SharingStatus {
+	let owner = doc.$jazz.owner
+	if (!(owner instanceof Group)) return "none"
+
+	let myRole = owner.myRole()
+	if (myRole !== "admin") return "collaborator"
+
+	for (let inviteGroup of owner.getParentGroups()) {
+		let hasMembers = inviteGroup.members.some(
+			m => m.role !== "admin" && (m.role === "writer" || m.role === "reader"),
+		)
+		if (hasMembers) return "owner"
+	}
+
+	return "none"
+}
+
+function hasIndividualShares(
+	doc: LoadedDocument,
+	spaceGroupId?: string,
+): boolean {
+	let owner = doc.$jazz.owner
+	if (!(owner instanceof Group)) return false
+
+	let ownerId = (owner as unknown as { $jazz: { id: string } }).$jazz.id
+
+	if (spaceGroupId && ownerId === spaceGroupId) return false
+
+	let parentGroups = owner.getParentGroups()
+	if (spaceGroupId) {
+		parentGroups = parentGroups.filter(
+			g =>
+				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
+		)
+	}
+	return parentGroups.length > 0
 }

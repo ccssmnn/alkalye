@@ -66,5 +66,8 @@ export default defineConfig({
 	test: {
 		exclude: ["node_modules", ".reference"],
 		environment: "jsdom",
+		sequence: {
+			shuffle: false,
+		},
 	},
 })

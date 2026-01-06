@@ -24,23 +24,21 @@ import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Document, UserAccount } from "@/schema"
 import {
+	createDocumentInvite,
+	revokeDocumentInvite,
+	leavePersonalDocument,
+	listCollaborators,
 	migrateDocumentToGroup,
 	getDocumentGroup,
-	isGroupOwned,
-	getCollaborators,
 	getDocumentOwner,
 	makeDocumentPublic,
 	makeDocumentPrivate,
 	isDocumentPublic,
 	getPublicLink,
 	type Collaborator,
-	type InviteRole,
-} from "@/lib/sharing"
-import {
-	createDocumentInvite,
-	revokeDocumentInvite,
-	leavePersonalDocument,
 } from "@/lib/documents"
+
+type InviteRole = "writer" | "reader"
 
 export { ShareDialog }
 
@@ -103,11 +101,12 @@ function ShareDialog({
 
 	let docGroup = getDocumentGroup(currentDoc)
 	let isAdmin = docGroup?.myRole() === "admin"
-	let isOwner = !isGroupOwned(currentDoc) || isAdmin
-	let isCollaborator = isGroupOwned(currentDoc) && !isAdmin
+	let isGroupOwned = docGroup !== null
+	let isOwner = !isGroupOwned || isAdmin
+	let isCollaborator = isGroupOwned && !isAdmin
 
 	let refreshCollaboratorsRef = useRef(async () => {
-		let result = await getCollaborators(currentDoc)
+		let result = await listCollaborators(currentDoc)
 		setCollaborators(result.collaborators)
 		setPendingInvites(result.pendingInvites)
 		let docOwner = await getDocumentOwner(currentDoc)
@@ -115,7 +114,7 @@ function ShareDialog({
 	})
 	useEffect(() => {
 		refreshCollaboratorsRef.current = async () => {
-			let result = await getCollaborators(currentDoc)
+			let result = await listCollaborators(currentDoc)
 			setCollaborators(result.collaborators)
 			setPendingInvites(result.pendingInvites)
 			let docOwner = await getDocumentOwner(currentDoc)
@@ -134,12 +133,12 @@ function ShareDialog({
 
 		try {
 			let currentDoc = doc
-			if (!isGroupOwned(doc)) {
+			if (!getDocumentGroup(doc)) {
 				let result = await migrateDocumentToGroup(doc, me.$jazz.id)
 				currentDoc = result.document
 			}
 
-			let link = await createDocumentInvite(currentDoc, role)
+			let { link } = await createDocumentInvite(currentDoc, role)
 			setInviteLink(link)
 			await refreshCollaboratorsRef.current()
 		} catch (e) {

@@ -11,7 +11,7 @@ import {
 	Globe,
 	Lock,
 } from "lucide-react"
-import { co, Group } from "jazz-tools"
+import { co } from "jazz-tools"
 import {
 	Dialog,
 	DialogContent,
@@ -29,11 +29,23 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Space, UserAccount } from "@/schema"
+import {
+	createSpaceInvite,
+	listSpaceCollaborators,
+	getSpaceOwner,
+	revokeSpaceInvite,
+	changeSpaceCollaboratorRole,
+	leaveSpace,
+	isSpacePublic,
+	makeSpacePublic,
+	makeSpacePrivate,
+	getSpaceGroup,
+} from "@/lib/spaces"
 
 export { SpaceShareDialog }
 export type { SpaceShareDialogProps }
 
-type InviteRole = "manager" | "writer" | "reader"
+type InviteRole = "writer" | "reader"
 
 type Collaborator = {
 	id: string
@@ -80,7 +92,7 @@ function SpaceShareDialog({
 	let isCollaborator = spaceGroup && !isAdmin
 
 	let refreshCollaboratorsRef = useRef(async () => {
-		let result = await getSpaceCollaborators(space)
+		let result = await listSpaceCollaborators(space)
 		setCollaborators(result.collaborators)
 		setPendingInvites(result.pendingInvites)
 		let spaceOwner = await getSpaceOwner(space)
@@ -88,7 +100,7 @@ function SpaceShareDialog({
 	})
 	useEffect(() => {
 		refreshCollaboratorsRef.current = async () => {
-			let result = await getSpaceCollaborators(space)
+			let result = await listSpaceCollaborators(space)
 			setCollaborators(result.collaborators)
 			setPendingInvites(result.pendingInvites)
 			let spaceOwner = await getSpaceOwner(space)
@@ -106,7 +118,7 @@ function SpaceShareDialog({
 		setLoading(true)
 
 		try {
-			let link = await createSpaceInviteLink(space, role)
+			let { link } = await createSpaceInvite(space, role)
 			setInviteLink(link)
 			setInviteRole(role)
 			await refreshCollaboratorsRef.current()
@@ -137,7 +149,11 @@ function SpaceShareDialog({
 		if (!me?.$isLoaded) return
 		setLoading(true)
 		try {
-			await handleLeaveSpace(space, me, navigate, setOpen)
+			await leaveSpace(space, me)
+			setOpen(false)
+			navigate({ to: "/" })
+		} catch (e) {
+			console.error("Failed to leave space:", e)
 		} finally {
 			setLoading(false)
 		}
@@ -171,6 +187,15 @@ function SpaceShareDialog({
 			console.error("Failed to make space private:", e)
 		} finally {
 			setLoading(false)
+		}
+	}
+
+	async function handleChangeRole(inviteGroupId: string, newRole: InviteRole) {
+		try {
+			await changeSpaceCollaboratorRole(space, inviteGroupId, newRole)
+			await refreshCollaboratorsRef.current()
+		} catch (e) {
+			console.error("Failed to change role:", e)
 		}
 	}
 
@@ -247,16 +272,6 @@ function SpaceShareDialog({
 									Create invite link
 								</div>
 								<div className="flex gap-2">
-									<Button
-										variant="outline"
-										size="sm"
-										className="flex-1"
-										onClick={() => handleCreateLink("manager")}
-										disabled={loading}
-									>
-										<LinkIcon className="mr-1 size-3.5" />
-										Manager
-									</Button>
 									<Button
 										variant="outline"
 										size="sm"
@@ -365,20 +380,17 @@ function SpaceShareDialog({
 											<>
 												<Select
 													value={c.role}
-													onValueChange={newRole => {
-														changeCollaboratorRole(
-															space,
+													onValueChange={newRole =>
+														handleChangeRole(
 															c.inviteGroupId,
 															newRole as InviteRole,
 														)
-														refreshCollaboratorsRef.current()
-													}}
+													}
 												>
 													<SelectTrigger size="sm" className="h-6 text-xs">
 														<SelectValue />
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem value="manager">Manager</SelectItem>
 														<SelectItem value="writer">Writer</SelectItem>
 														<SelectItem value="reader">Reader</SelectItem>
 													</SelectContent>
@@ -449,19 +461,10 @@ function SpaceShareDialog({
 	)
 }
 
-// Helper functions
-
-function getSpaceGroup(space: LoadedSpace): Group | null {
-	let owner = space.$jazz.owner
-	return owner instanceof Group ? owner : null
-}
-
 function getRoleLabel(role: string | null): string {
 	switch (role) {
 		case "admin":
 			return "Owner"
-		case "manager":
-			return "Manager"
 		case "writer":
 			return "Writer"
 		case "reader":
@@ -469,177 +472,6 @@ function getRoleLabel(role: string | null): string {
 		default:
 			return "Unknown"
 	}
-}
-
-async function createSpaceInviteLink(
-	space: LoadedSpace,
-	role: InviteRole,
-): Promise<string> {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) {
-		throw new Error("Space not shareable - not owned by a Group")
-	}
-
-	if (spaceGroup.myRole() !== "admin") {
-		throw new Error("Only admins can create invite links")
-	}
-
-	let inviteGroup = Group.create()
-	spaceGroup.addMember(inviteGroup, role)
-
-	let inviteSecret = inviteGroup.$jazz.createInvite(role)
-	let baseURL = window.location.origin
-
-	return `${baseURL}/invite#/space/${space.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
-}
-
-async function getSpaceCollaborators(space: LoadedSpace): Promise<{
-	collaborators: Collaborator[]
-	pendingInvites: { inviteGroupId: string }[]
-}> {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) {
-		return { collaborators: [], pendingInvites: [] }
-	}
-
-	let collaborators: Collaborator[] = []
-	let pendingInvites: { inviteGroupId: string }[] = []
-
-	for (let inviteGroup of spaceGroup.getParentGroups()) {
-		let members: Collaborator[] = []
-
-		for (let member of inviteGroup.members) {
-			if (member.role === "admin") continue
-
-			if (member.account?.$isLoaded) {
-				let profile = await member.account.$jazz.ensureLoaded({
-					resolve: { profile: true },
-				})
-				members.push({
-					id: member.id,
-					name:
-						(profile as { profile?: { name?: string } }).profile?.name ??
-						"Unknown",
-					role: member.role,
-					inviteGroupId: inviteGroup.$jazz.id,
-				})
-			}
-		}
-
-		if (members.length > 0) {
-			collaborators.push(...members)
-		} else {
-			pendingInvites.push({ inviteGroupId: inviteGroup.$jazz.id })
-		}
-	}
-
-	return { collaborators, pendingInvites }
-}
-
-async function getSpaceOwner(
-	space: LoadedSpace,
-): Promise<{ id: string; name: string } | null> {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) return null
-
-	for (let member of spaceGroup.members) {
-		if (member.role === "admin" && member.account?.$isLoaded) {
-			let profile = await member.account.$jazz.ensureLoaded({
-				resolve: { profile: true },
-			})
-			return {
-				id: member.id,
-				name:
-					(profile as { profile?: { name?: string } }).profile?.name ??
-					"Unknown",
-			}
-		}
-	}
-	return null
-}
-
-function revokeSpaceInvite(space: LoadedSpace, inviteGroupId: string): void {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) throw new Error("Space is not group-owned")
-
-	let parentGroups = spaceGroup.getParentGroups()
-	let inviteGroup = parentGroups.find(g => g.$jazz.id === inviteGroupId)
-	if (!inviteGroup) throw new Error("Invite group not found")
-
-	spaceGroup.removeMember(inviteGroup)
-}
-
-function changeCollaboratorRole(
-	space: LoadedSpace,
-	inviteGroupId: string,
-	newRole: InviteRole,
-): void {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) throw new Error("Space is not group-owned")
-	if (spaceGroup.myRole() !== "admin") {
-		throw new Error("Only admins can change roles")
-	}
-
-	let parentGroups = spaceGroup.getParentGroups()
-	let inviteGroup = parentGroups.find(g => g.$jazz.id === inviteGroupId)
-	if (!inviteGroup) throw new Error("Invite group not found")
-
-	spaceGroup.addMember(inviteGroup, newRole)
-}
-
-async function handleLeaveSpace(
-	space: LoadedSpace,
-	me: co.loaded<typeof UserAccount, { root: { spaces: true } }>,
-	navigate: ReturnType<typeof useNavigate>,
-	setOpen: (open: boolean) => void,
-) {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) throw new Error("Space is not group-owned")
-
-	// Find the invite group the user belongs to and remove self
-	for (let inviteGroup of spaceGroup.getParentGroups()) {
-		let isMember = inviteGroup.members.some(m => m.id === me.$jazz.id)
-		if (isMember) {
-			inviteGroup.removeMember(me)
-			break
-		}
-	}
-
-	// Remove from user's spaces list
-	let idx = me.root?.spaces?.findIndex(s => s?.$jazz.id === space.$jazz.id)
-	if (idx !== undefined && idx !== -1 && me.root?.spaces) {
-		me.root.spaces.$jazz.splice(idx, 1)
-	}
-
-	setOpen(false)
-	navigate({ to: "/" })
-}
-
-function isSpacePublic(space: LoadedSpace): boolean {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) return false
-	let everyoneRole = spaceGroup.getRoleOf("everyone")
-	return everyoneRole === "reader" || everyoneRole === "writer"
-}
-
-function makeSpacePublic(space: LoadedSpace): void {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) throw new Error("Space is not group-owned")
-	if (spaceGroup.myRole() !== "admin") {
-		throw new Error("Only admins can make spaces public")
-	}
-	spaceGroup.makePublic()
-	space.$jazz.set("updatedAt", new Date())
-}
-
-function makeSpacePrivate(space: LoadedSpace): void {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) throw new Error("Space is not group-owned")
-	if (spaceGroup.myRole() !== "admin") {
-		throw new Error("Only admins can make spaces private")
-	}
-	spaceGroup.removeMember("everyone")
-	space.$jazz.set("updatedAt", new Date())
 }
 
 function getSpacePublicLink(space: LoadedSpace): string {
