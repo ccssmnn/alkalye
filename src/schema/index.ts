@@ -16,7 +16,6 @@ export {
 	getRandomWriterName,
 	createSpace,
 	createSpaceDocument,
-	deleteSpace,
 }
 
 let CursorEntry = z.object({
@@ -279,11 +278,6 @@ function createSpace(
 	userRoot.spaces!.$jazz.push(space)
 
 	return space
-}
-
-function deleteSpace(space: co.loaded<typeof Space>): void {
-	space.$jazz.set("deletedAt", new Date())
-	space.$jazz.set("updatedAt", new Date())
 }
 
 function createSpaceDocument(
