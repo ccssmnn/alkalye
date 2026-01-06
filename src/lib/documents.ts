@@ -176,9 +176,7 @@ async function listCollaborators(
 		return { collaborators: [], pendingInvites: [] }
 	}
 
-	let docGroupId = (docGroup as unknown as { $jazz: { id: string } }).$jazz.id
-
-	if (spaceGroupId && docGroupId === spaceGroupId) {
+	if (spaceGroupId && docGroup.$jazz.id === spaceGroupId) {
 		return { collaborators: [], pendingInvites: [] }
 	}
 
@@ -187,10 +185,7 @@ async function listCollaborators(
 
 	let parentGroups = docGroup.getParentGroups()
 	if (spaceGroupId) {
-		parentGroups = parentGroups.filter(
-			g =>
-				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
-		)
+		parentGroups = parentGroups.filter(g => g.$jazz.id !== spaceGroupId)
 	}
 
 	for (let inviteGroup of parentGroups) {
@@ -377,7 +372,7 @@ function isDocumentPublic(doc: LoadedDocument): boolean {
 
 async function makeDocumentPublic(
 	doc: LoadedDocument,
-	userId: string,
+	userId: ID<typeof UserAccount>,
 ): Promise<LoadedDocument> {
 	let currentDoc = doc
 
@@ -435,7 +430,7 @@ async function getDocumentOwner(
 
 async function migrateDocumentToGroup(
 	doc: LoadedDocument,
-	userId: string,
+	userId: ID<typeof UserAccount>,
 ): Promise<{ group: Group; document: LoadedDocument }> {
 	if (getDocumentGroup(doc)) {
 		return { group: getDocumentGroup(doc)!, document: doc }
@@ -455,7 +450,7 @@ async function migrateDocumentToGroup(
 		group,
 	)
 
-	let account = await UserAccount.load(userId as ID<typeof UserAccount>, {
+	let account = await UserAccount.load(userId, {
 		resolve: { root: { documents: true } },
 	})
 
@@ -521,16 +516,11 @@ function hasIndividualShares(
 	let owner = doc.$jazz.owner
 	if (!(owner instanceof Group)) return false
 
-	let ownerId = (owner as unknown as { $jazz: { id: string } }).$jazz.id
-
-	if (spaceGroupId && ownerId === spaceGroupId) return false
+	if (spaceGroupId && owner.$jazz.id === spaceGroupId) return false
 
 	let parentGroups = owner.getParentGroups()
 	if (spaceGroupId) {
-		parentGroups = parentGroups.filter(
-			g =>
-				(g as unknown as { $jazz: { id: string } }).$jazz.id !== spaceGroupId,
-		)
+		parentGroups = parentGroups.filter(g => g.$jazz.id !== spaceGroupId)
 	}
 	return parentGroups.length > 0
 }
