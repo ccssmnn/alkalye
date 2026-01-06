@@ -12,6 +12,7 @@ export {
 	parseSpaceInviteLink,
 	getSpaceOwner,
 	isSpacePublic,
+	isSpaceMember,
 	makeSpacePublic,
 	makeSpacePrivate,
 	deleteSpace,
@@ -319,6 +320,41 @@ function isSpacePublic(space: co.loaded<typeof Space>): boolean {
 	if (!spaceGroup) return false
 	let everyoneRole = spaceGroup.getRoleOf("everyone")
 	return everyoneRole === "reader" || everyoneRole === "writer"
+}
+
+/**
+ * Check if current user is an actual member of the space (not just a public visitor).
+ * Returns true for admin/writer/reader members, false for public visitors.
+ */
+function isSpaceMember(space: co.loaded<typeof Space>): boolean {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) return false
+
+	let myRole = spaceGroup.myRole()
+	if (!myRole) return false
+
+	// If space is not public, having any role means you're a member
+	if (!isSpacePublic(space)) return true
+
+	// If space is public, check if role comes from actual membership vs "everyone"
+	// Admin/writer roles can only come from actual membership
+	if (myRole === "admin" || myRole === "writer") return true
+
+	// For reader role, we need to check if user is explicitly in the group
+	// If they only have access via "everyone", they're not a real member
+	let everyoneRole = spaceGroup.getRoleOf("everyone")
+	if (everyoneRole === "reader" && myRole === "reader") {
+		// Check if user is in any parent group (invite group) which would make them a real member
+		for (let inviteGroup of spaceGroup.getParentGroups()) {
+			let myInviteRole = inviteGroup.myRole()
+			if (myInviteRole && myInviteRole !== "admin") {
+				return true
+			}
+		}
+		return false
+	}
+
+	return true
 }
 
 function makeSpacePublic(space: co.loaded<typeof Space>): void {

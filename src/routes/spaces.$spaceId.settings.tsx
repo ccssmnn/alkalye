@@ -39,6 +39,7 @@ import {
 	changeSpaceCollaboratorRole,
 	revokeSpaceInvite,
 	listSpaceMembers,
+	isSpaceMember,
 	type SpaceMember,
 } from "@/lib/spaces"
 
@@ -100,6 +101,9 @@ function SpaceSettingsContent({
 	space: LoadedSpace
 	spaceId: string
 }) {
+	// User is just viewing a public space they added to their list (not a real member)
+	let isPublicSpaceViewer = !isSpaceMember(space)
+
 	return (
 		<>
 			<title>{space.name} Settings</title>
@@ -133,15 +137,69 @@ function SpaceSettingsContent({
 					</div>
 				</div>
 				<div className="mx-auto max-w-2xl px-4 py-8">
-					<div className="space-y-8">
-						<SpaceNameSection space={space} />
-						<SpaceMembersSection space={space} />
-						<SpaceBackupSettingsSection space={space} spaceId={spaceId} />
-						<DangerZoneSection space={space} />
-					</div>
+					{isPublicSpaceViewer ? (
+						<PublicSpaceViewerSettings space={space} />
+					) : (
+						<div className="space-y-8">
+							<SpaceNameSection space={space} />
+							<SpaceMembersSection space={space} />
+							<SpaceBackupSettingsSection space={space} spaceId={spaceId} />
+							<DangerZoneSection space={space} />
+						</div>
+					)}
 				</div>
 			</div>
 		</>
+	)
+}
+
+function PublicSpaceViewerSettings({ space }: { space: LoadedSpace }) {
+	let navigate = useNavigate()
+	let me = useAccount(UserAccount, { resolve: { root: { spaces: true } } })
+	let leaveDialog = useConfirmDialog()
+
+	function handleLeave() {
+		if (!me.$isLoaded || !me.root?.spaces?.$isLoaded) return
+		let idx = me.root.spaces.findIndex(s => s?.$jazz.id === space.$jazz.id)
+		if (idx !== -1) {
+			me.root.spaces.$jazz.splice(idx, 1)
+		}
+		navigate({ to: "/" })
+	}
+
+	return (
+		<section>
+			<div className="bg-muted/30 mb-6 rounded-lg p-4">
+				<div className="text-muted-foreground text-sm">
+					Viewing a public space. You can remove it from your spaces list at any
+					time.
+				</div>
+			</div>
+			<div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
+				<div>
+					<div className="text-sm font-medium">Leave space</div>
+					<div className="text-muted-foreground text-xs">
+						Remove this space from your list
+					</div>
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => leaveDialog.setOpen(true)}
+				>
+					Leave
+				</Button>
+			</div>
+			<ConfirmDialog
+				open={leaveDialog.open}
+				onOpenChange={leaveDialog.onOpenChange}
+				title="Leave space?"
+				description={`Remove "${space.name}" from your spaces list? You can add it again anytime since it's public.`}
+				confirmLabel="Leave"
+				variant="destructive"
+				onConfirm={handleLeave}
+			/>
+		</section>
 	)
 }
 
