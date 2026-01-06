@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { co, Group } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useAccount } from "jazz-tools/react"
+import { toast } from "sonner"
 import { User } from "lucide-react"
 import {
 	Dialog,
@@ -330,7 +331,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			onProgress?.(progress)
 		} catch (err) {
 			console.error("Failed to copy asset:", err)
-			// Continue with other assets even if one fails
+			toast.error(`Failed to copy asset: ${asset.name}`)
 		}
 	}
 

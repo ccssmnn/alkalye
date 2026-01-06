@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
+import { toast } from "sonner"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { useNavigate, Link, useLocation } from "@tanstack/react-router"
 import {
@@ -91,26 +92,17 @@ function SpaceShareDialog({
 	let isAdmin = spaceGroup?.myRole() === "admin"
 	let isCollaborator = spaceGroup && !isAdmin
 
-	let refreshCollaboratorsRef = useRef(async () => {
+	async function refreshCollaborators() {
 		let result = await listSpaceCollaborators(space)
 		setCollaborators(result.collaborators)
 		setPendingInvites(result.pendingInvites)
 		let spaceOwner = await getSpaceOwner(space)
 		setOwner(spaceOwner)
-	})
-	useEffect(() => {
-		refreshCollaboratorsRef.current = async () => {
-			let result = await listSpaceCollaborators(space)
-			setCollaborators(result.collaborators)
-			setPendingInvites(result.pendingInvites)
-			let spaceOwner = await getSpaceOwner(space)
-			setOwner(spaceOwner)
-		}
-	})
+	}
 
 	useEffect(() => {
 		if (!open) return
-		refreshCollaboratorsRef.current()
+		refreshCollaborators()
 	}, [open, space])
 
 	async function handleCreateLink(role: InviteRole) {
@@ -121,9 +113,10 @@ function SpaceShareDialog({
 			let { link } = await createSpaceInvite(space, role)
 			setInviteLink(link)
 			setInviteRole(role)
-			await refreshCollaboratorsRef.current()
+			await refreshCollaborators()
 		} catch (e) {
 			console.error("Failed to create invite link:", e)
+			toast.error("Failed to create invite link")
 		} finally {
 			setLoading(false)
 		}
@@ -138,7 +131,7 @@ function SpaceShareDialog({
 
 	function handleRevoke(inviteGroupId: string) {
 		revokeSpaceInvite(space, inviteGroupId)
-		refreshCollaboratorsRef.current()
+		refreshCollaborators()
 		if (inviteLink?.includes(inviteGroupId)) {
 			setInviteLink(null)
 			setInviteRole(null)
@@ -154,6 +147,7 @@ function SpaceShareDialog({
 			navigate({ to: "/" })
 		} catch (e) {
 			console.error("Failed to leave space:", e)
+			toast.error("Failed to leave space")
 		} finally {
 			setLoading(false)
 		}
@@ -173,6 +167,7 @@ function SpaceShareDialog({
 			setSpaceIsPublic(true)
 		} catch (e) {
 			console.error("Failed to make space public:", e)
+			toast.error("Failed to make space public")
 		} finally {
 			setLoading(false)
 		}
@@ -185,6 +180,7 @@ function SpaceShareDialog({
 			setSpaceIsPublic(false)
 		} catch (e) {
 			console.error("Failed to make space private:", e)
+			toast.error("Failed to make space private")
 		} finally {
 			setLoading(false)
 		}
@@ -193,9 +189,10 @@ function SpaceShareDialog({
 	async function handleChangeRole(inviteGroupId: string, newRole: InviteRole) {
 		try {
 			await changeSpaceCollaboratorRole(space, inviteGroupId, newRole)
-			await refreshCollaboratorsRef.current()
+			await refreshCollaborators()
 		} catch (e) {
 			console.error("Failed to change role:", e)
+			toast.error("Failed to change role")
 		}
 	}
 
