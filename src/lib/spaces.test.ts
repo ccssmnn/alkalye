@@ -273,14 +273,14 @@ describe("Space Collaboration", () => {
 		})
 		if (!loadedSpace?.$isLoaded) throw new Error("Space not loaded")
 
-		let result = deleteSpace(loadedSpace)
-		expect(result.type).toBe("error")
+		expect(() => deleteSpace(loadedSpace)).toThrow(
+			"Only admins can delete spaces",
+		)
 		expect(loadedSpace.deletedAt).toBeUndefined()
 	})
 
 	test("admin can soft delete space", async () => {
-		let result = deleteSpace(space)
-		expect(result.type).toBe("success")
+		deleteSpace(space)
 		expect(space.deletedAt).toBeInstanceOf(Date)
 
 		let loadedSpace = await Space.load(space.$jazz.id, {
@@ -538,6 +538,39 @@ describe("Space Public Access", () => {
 			resolve: { documents: true },
 		})
 		expect(loadedSpace?.$isLoaded).toBe(true)
+	})
+
+	test("public space documents can be read without invite", async () => {
+		makeSpacePublic(space)
+		await adminAccount.$jazz.waitForAllCoValuesSync()
+
+		// otherAccount has never received any invite
+		setActiveAccount(otherAccount)
+		let loadedSpace = await Space.load(space.$jazz.id, {
+			resolve: { documents: { $each: { content: true } } },
+		})
+		expect(loadedSpace?.$isLoaded).toBe(true)
+		if (!loadedSpace?.$isLoaded) return
+
+		// Should be able to read the welcome doc
+		let welcomeDoc = loadedSpace.documents[0]
+		expect(welcomeDoc?.$isLoaded).toBe(true)
+		expect(welcomeDoc?.content?.toString()).toContain("Welcome")
+	})
+
+	test("public space visitor has reader role", async () => {
+		makeSpacePublic(space)
+		await adminAccount.$jazz.waitForAllCoValuesSync()
+
+		setActiveAccount(otherAccount)
+		let loadedSpace = await Space.load(space.$jazz.id, {
+			resolve: { documents: true },
+		})
+		expect(loadedSpace?.$isLoaded).toBe(true)
+		if (!loadedSpace?.$isLoaded) return
+
+		let spaceGroup = getSpaceGroup(loadedSpace)
+		expect(spaceGroup?.myRole()).toBe("reader")
 	})
 
 	test("making space private removes public access", async () => {

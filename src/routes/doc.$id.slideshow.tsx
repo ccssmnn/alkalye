@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useCoState } from "jazz-tools/react"
-import { type ID, type ResolveQuery, co } from "jazz-tools"
+import { type ResolveQuery, co } from "jazz-tools"
 import { Document } from "@/schema"
 import {
 	DocumentNotFound,
@@ -33,13 +33,13 @@ let resolve = {
 
 let Route = createFileRoute("/doc/$id/slideshow")({
 	loader: async ({ params }) => {
-		let doc = await Document.load(params.id as ID<typeof Document>, {
+		let doc = await Document.load(params.id, {
 			resolve,
 		})
 		if (!doc.$isLoaded) {
 			return {
 				doc: null,
-				loadingState: doc.$jazz.loadingState as "unauthorized" | "unavailable",
+				loadingState: doc.$jazz.loadingState,
 				wikilinkCache: new Map<string, ResolvedDoc>(),
 			}
 		}

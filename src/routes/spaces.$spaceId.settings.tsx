@@ -762,8 +762,12 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 	}
 
 	function handleDelete() {
-		deleteSpace(space)
-		navigate({ to: "/" })
+		try {
+			deleteSpace(space)
+			navigate({ to: "/" })
+		} catch (e) {
+			console.error("Failed to delete space:", e)
+		}
 	}
 
 	return (

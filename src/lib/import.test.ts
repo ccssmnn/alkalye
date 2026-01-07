@@ -1,5 +1,4 @@
 import { describe, it, expect } from "vitest"
-import JSZip from "jszip"
 import {
 	importMarkdownFiles,
 	importFolderFiles,
@@ -33,17 +32,6 @@ function createImageFile(name: string): File {
 	;(file as File & { text: () => Promise<string> }).text = () =>
 		Promise.resolve("")
 	return file
-}
-
-async function createZip(
-	files: { path: string; content: string | Uint8Array }[],
-): Promise<File> {
-	let zip = new JSZip()
-	for (let { path, content } of files) {
-		zip.file(path, content)
-	}
-	let arrayBuffer = await zip.generateAsync({ type: "arraybuffer" })
-	return new File([arrayBuffer], "test.zip", { type: "application/zip" })
 }
 
 // =============================================================================
@@ -83,116 +71,6 @@ describe("importMarkdownFiles - simple files", () => {
 		let results = await importMarkdownFiles(files)
 
 		expect(results.map(r => r.name)).toEqual(["doc", "doc", "doc"])
-	})
-})
-
-// =============================================================================
-// Import Tests - Zip files with folder structure
-// Note: Zip tests are skipped in vitest/node because JSZip.loadAsync(File)
-// doesn't work the same as in browsers. The folder import tests below
-// cover the same path/asset detection logic.
-// =============================================================================
-
-describe.skip("importMarkdownFiles - zip files", () => {
-	it("imports simple zip with markdown at root", async () => {
-		let zip = await createZip([{ path: "doc.md", content: "# Hello" }])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		expect(results[0].name).toBe("doc")
-		expect(results[0].content).toBe("# Hello")
-		expect(results[0].path).toBeNull()
-	})
-
-	it("imports zip with path structure", async () => {
-		let zip = await createZip([
-			{ path: "some/path/doc.md", content: "# Nested" },
-		])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		expect(results[0].name).toBe("doc")
-		expect(results[0].path).toBe("some/path")
-	})
-
-	it("detects doc-with-assets folder structure (folder name matches doc name)", async () => {
-		// Structure: My Doc/My Doc.md + My Doc/assets/image.png
-		let zip = await createZip([
-			{
-				path: "My Doc/My Doc.md",
-				content: "# Title\n\n![img](assets/image.png)",
-			},
-			{
-				path: "My Doc/assets/image.png",
-				content: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-			},
-		])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		expect(results[0].name).toBe("My Doc")
-		expect(results[0].path).toBeNull() // folder stripped, not treated as path
-		expect(results[0].assets.length).toBeGreaterThan(0)
-	})
-
-	it("detects nested doc-with-assets folder structure", async () => {
-		// Structure: some/path/My Doc/My Doc.md
-		let zip = await createZip([
-			{
-				path: "some/path/My Doc/My Doc.md",
-				content: "# Title\n\n![img](assets/image.png)",
-			},
-			{
-				path: "some/path/My Doc/assets/image.png",
-				content: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-			},
-		])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		expect(results[0].name).toBe("My Doc")
-		expect(results[0].path).toBe("some/path") // doc folder stripped
-	})
-
-	it("preserves path when folder name does not match doc name", async () => {
-		// Structure: folder/doc.md (folder != doc)
-		let zip = await createZip([{ path: "folder/doc.md", content: "# Hello" }])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		expect(results[0].name).toBe("doc")
-		expect(results[0].path).toBe("folder")
-	})
-
-	it("imports referenced assets", async () => {
-		let zip = await createZip([
-			{ path: "doc.md", content: "![alt](assets/img.png)" },
-			{
-				path: "assets/img.png",
-				content: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-			},
-		])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		expect(results[0].assets).toHaveLength(1)
-		expect(results[0].assets[0].refName).toBe("assets/img.png")
-	})
-
-	it("imports unreferenced assets in same directory tree", async () => {
-		let zip = await createZip([
-			{ path: "doc/doc.md", content: "# No images here" },
-			{
-				path: "doc/assets/unused.png",
-				content: new Uint8Array([0x89, 0x50, 0x4e, 0x47]),
-			},
-		])
-		let results = await importMarkdownFiles([zip])
-
-		expect(results).toHaveLength(1)
-		// Unreferenced assets in doc folder should still be imported
-		expect(results[0].assets).toHaveLength(1)
-		expect(results[0].assets[0].refName).toBe("") // not referenced
 	})
 })
 

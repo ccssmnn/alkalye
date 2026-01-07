@@ -103,6 +103,7 @@ function SpaceShareDialog({
 	useEffect(() => {
 		if (!open) return
 		refreshCollaborators()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [open, space])
 
 	async function handleCreateLink(role: InviteRole) {

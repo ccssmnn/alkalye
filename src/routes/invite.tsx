@@ -1,11 +1,10 @@
 import { useState, useEffect, startTransition } from "react"
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
-import { type ID, Group } from "jazz-tools"
 import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AuthForm } from "@/components/auth-form"
-import { Document, Space, UserAccount } from "@/schema"
+import { UserAccount } from "@/schema"
 import { acceptDocumentInvite, type DocInviteData } from "@/lib/documents"
 import { acceptSpaceInvite, type SpaceInviteData } from "@/lib/spaces"
 
@@ -22,8 +21,8 @@ function parseInviteHash(hash: string): InviteData | null {
 	if (docMatch) {
 		return {
 			type: "doc",
-			docId: docMatch[1] as ID<typeof Document>,
-			inviteGroupId: docMatch[2] as ID<Group>,
+			docId: docMatch[1],
+			inviteGroupId: docMatch[2],
 			inviteSecret: docMatch[3] as `inviteSecret_z${string}`,
 		}
 	}
@@ -34,8 +33,8 @@ function parseInviteHash(hash: string): InviteData | null {
 	if (spaceMatch) {
 		return {
 			type: "space",
-			spaceId: spaceMatch[1] as ID<typeof Space>,
-			inviteGroupId: spaceMatch[2] as ID<Group>,
+			spaceId: spaceMatch[1],
+			inviteGroupId: spaceMatch[2],
 			inviteSecret: spaceMatch[3] as `inviteSecret_z${string}`,
 		}
 	}
@@ -114,6 +113,7 @@ function InvitePage() {
 		startTransition(() => {
 			handleAcceptInvite()
 		})
+		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [me.$isLoaded, isAuthenticated, inviteData, status, isAccepting])
 
 	let pageTitle = isSpaceInvite ? "Join Space" : "Join Document"

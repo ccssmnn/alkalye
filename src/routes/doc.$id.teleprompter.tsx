@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useCoState } from "jazz-tools/react"
-import { type ID, type ResolveQuery } from "jazz-tools"
+import { type ResolveQuery } from "jazz-tools"
 import { Document } from "@/schema"
 import {
 	DocumentNotFound,
@@ -32,9 +32,7 @@ let resolve = {
 
 let Route = createFileRoute("/doc/$id/teleprompter")({
 	loader: async ({ params }) => {
-		let doc = await Document.load(params.id as ID<typeof Document>, {
-			resolve,
-		})
+		let doc = await Document.load(params.id, { resolve })
 		if (!doc.$isLoaded) {
 			return {
 				doc: null,

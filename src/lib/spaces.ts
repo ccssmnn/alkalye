@@ -124,12 +124,10 @@ async function listSpaceCollaborators(
 
 				let name = "Unknown"
 				if (resolveNames) {
-					let profile = await member.account.$jazz.ensureLoaded({
+					let account = await member.account.$jazz.ensureLoaded({
 						resolve: { profile: true },
 					})
-					name =
-						(profile as { profile?: { name?: string } }).profile?.name ??
-						"Unknown"
+					name = account.profile.name ?? "Unknown"
 				}
 				members.push({
 					id: member.id,
@@ -377,19 +375,16 @@ function makeSpacePrivate(space: co.loaded<typeof Space>): void {
 	space.$jazz.set("updatedAt", new Date())
 }
 
-function deleteSpace(
-	space: co.loaded<typeof Space>,
-): { type: "success" } | { type: "error"; error: string } {
+function deleteSpace(space: co.loaded<typeof Space>): void {
 	let spaceGroup = getSpaceGroup(space)
 	if (!spaceGroup) {
-		return { type: "error", error: "Space is not group-owned" }
+		throw new Error("Space is not group-owned")
 	}
 
 	if (spaceGroup.myRole() !== "admin") {
-		return { type: "error", error: "Only admins can delete spaces" }
+		throw new Error("Only admins can delete spaces")
 	}
 
 	space.$jazz.set("deletedAt", new Date())
 	space.$jazz.set("updatedAt", new Date())
-	return { type: "success" }
 }

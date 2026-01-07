@@ -202,11 +202,9 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
 
-	let docWithContent = useCoState(
-		Document,
-		docId as Parameters<typeof useCoState>[1],
-		{ resolve: { content: true } },
-	)
+	let docWithContent = useCoState(Document, docId, {
+		resolve: { content: true },
+	})
 
 	let sidebarAssets: SidebarAsset[] =
 		doc.assets

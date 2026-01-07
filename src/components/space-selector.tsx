@@ -50,15 +50,13 @@ function SpaceSelector() {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let isAuthenticated = useIsAuthenticated()
 	let params = useParams({ strict: false })
-	let spaceId = "spaceId" in params ? (params.spaceId as string) : null
+	let spaceId = params.spaceId ?? null
 	let [dialogOpen, setDialogOpen] = useState(false)
 
 	// Load current space directly (for public spaces not in user's list)
-	let currentSpaceFromUrl = useCoState(
-		Space,
-		spaceId as Parameters<typeof useCoState>[1],
-		{ resolve: currentSpaceQuery },
-	)
+	let currentSpaceFromUrl = useCoState(Space, spaceId ?? "", {
+		resolve: currentSpaceQuery,
+	})
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let currentSpaceInList = spaceId

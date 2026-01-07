@@ -413,15 +413,13 @@ async function getDocumentOwner(
 	if (!docGroup) return null
 
 	for (let member of docGroup.members) {
-		if (member.role === "admin" && member.account?.$isLoaded) {
-			let profile = await member.account.$jazz.ensureLoaded({
+		if (member.role === "admin" && member.account.$isLoaded) {
+			let account = await member.account.$jazz.ensureLoaded({
 				resolve: { profile: true },
 			})
 			return {
 				id: member.id,
-				name:
-					(profile as { profile?: { name?: string } }).profile?.name ??
-					"Unknown",
+				name: account.profile.name ?? "Unknown",
 			}
 		}
 	}

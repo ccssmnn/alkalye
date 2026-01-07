@@ -38,7 +38,7 @@ function SidebarCollaboration({
 	let [collaborators, setCollaborators] = useState<Collaborator[]>([])
 
 	let me = useAccount(UserAccount)
-	let doc = useCoState(Document, docId as Parameters<typeof useCoState>[1], {
+	let doc = useCoState(Document, docId, {
 		resolve: docResolve,
 	})
 

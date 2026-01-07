@@ -226,11 +226,9 @@ function SpaceEditorContent({
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
 
-	let docWithContent = useCoState(
-		Document,
-		docId as Parameters<typeof useCoState>[1],
-		{ resolve: { content: true } },
-	)
+	let docWithContent = useCoState(Document, docId, {
+		resolve: { content: true },
+	})
 
 	let sidebarAssets: SidebarAsset[] =
 		doc.assets
@@ -413,7 +411,7 @@ function SpaceEditorContent({
 								editor={editor}
 								disabled={readOnly}
 								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocForWikilink(space)}
+								onCreateDocument={makeCreateDocument(space)}
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -552,17 +550,6 @@ function makeRenameAsset(doc: LoadedDocument) {
 			asset.$jazz.set("name", newName)
 			doc.$jazz.set("updatedAt", new Date())
 		}
-	}
-}
-
-function makeCreateDocForWikilink(space: LoadedSpace) {
-	return async function handleCreateDocForWikilink(
-		title: string,
-	): Promise<string> {
-		if (!space.documents?.$isLoaded) throw new Error("Space not loaded")
-		let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
-		space.documents.$jazz.push(newDoc)
-		return newDoc.$jazz.id
 	}
 }
 
