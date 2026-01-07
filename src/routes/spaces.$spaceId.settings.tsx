@@ -3,7 +3,8 @@ import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, Image } from "jazz-tools/react"
 import { useState, useEffect, useRef } from "react"
-import { ArrowLeft, Loader2, Upload, UserRoundPlus } from "lucide-react"
+import { ArrowLeft, Loader2, Trash2, Upload, UserRoundPlus } from "lucide-react"
+import Cropper from "react-easy-crop"
 import { Space, UserAccount } from "@/schema"
 import { deleteSpace } from "@/lib/spaces"
 import { SpaceShareDialog } from "@/components/space-share-dialog"
@@ -257,14 +258,30 @@ function SpaceAvatarUpload({
 }) {
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [isUploading, setIsUploading] = useState(false)
+	let [cropperOpen, setCropperOpen] = useState(false)
+	let [selectedImage, setSelectedImage] = useState<string | null>(null)
+	let removeDialog = useConfirmDialog()
 
-	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+	function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
 		let file = e.target.files?.[0]
 		if (!file) return
 
+		let reader = new FileReader()
+		reader.onloadend = () => {
+			setSelectedImage(reader.result as string)
+			setCropperOpen(true)
+		}
+		reader.readAsDataURL(file)
+
+		if (fileInputRef.current) {
+			fileInputRef.current.value = ""
+		}
+	}
+
+	async function handleCropComplete(croppedFile: File) {
 		setIsUploading(true)
 		try {
-			let image = await createImage(file, {
+			let image = await createImage(croppedFile, {
 				owner: space.$jazz.owner,
 				maxSize: 512,
 			})
@@ -272,10 +289,13 @@ function SpaceAvatarUpload({
 			space.$jazz.set("updatedAt", new Date())
 		} finally {
 			setIsUploading(false)
-			if (fileInputRef.current) {
-				fileInputRef.current.value = ""
-			}
+			setSelectedImage(null)
 		}
+	}
+
+	function handleRemoveAvatar() {
+		space.$jazz.set("avatar", undefined)
+		space.$jazz.set("updatedAt", new Date())
 	}
 
 	let avatarId = space.avatar?.$jazz.id
@@ -311,20 +331,178 @@ function SpaceAvatarUpload({
 					) : (
 						<>
 							<Upload className="mr-2 size-4" />
-							Upload
+							{avatarId ? "Change" : "Upload"}
 						</>
 					)}
 				</Button>
+				{avatarId && (
+					<Button
+						variant="outline"
+						size="sm"
+						disabled={!isAdmin || isUploading}
+						onClick={() => removeDialog.setOpen(true)}
+					>
+						<Trash2 className="mr-2 size-4" />
+						Remove
+					</Button>
+				)}
 				<input
 					ref={fileInputRef}
 					type="file"
 					accept="image/*"
 					className="hidden"
-					onChange={handleFileChange}
+					onChange={handleFileSelect}
 				/>
 			</div>
+			<AvatarCropperDialog
+				open={cropperOpen}
+				onOpenChange={setCropperOpen}
+				imageSrc={selectedImage}
+				onCrop={handleCropComplete}
+			/>
+			<ConfirmDialog
+				open={removeDialog.open}
+				onOpenChange={removeDialog.onOpenChange}
+				title="Remove avatar?"
+				description="The space avatar will be removed and replaced with initials."
+				confirmLabel="Remove"
+				variant="destructive"
+				onConfirm={handleRemoveAvatar}
+			/>
 		</div>
 	)
+}
+
+function AvatarCropperDialog({
+	open,
+	onOpenChange,
+	imageSrc,
+	onCrop,
+}: {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	imageSrc: string | null
+	onCrop: (croppedFile: File) => void
+}) {
+	let [crop, setCrop] = useState({ x: 0, y: 0 })
+	let [zoom, setZoom] = useState(1)
+	let [croppedAreaPixels, setCroppedAreaPixels] = useState<{
+		x: number
+		y: number
+		width: number
+		height: number
+	} | null>(null)
+
+	function handleCropComplete(
+		_: unknown,
+		croppedAreaPixels: { x: number; y: number; width: number; height: number },
+	) {
+		setCroppedAreaPixels(croppedAreaPixels)
+	}
+
+	async function handleConfirm() {
+		if (!imageSrc || !croppedAreaPixels) return
+
+		try {
+			let file = await getCroppedImg(imageSrc, croppedAreaPixels, "avatar.jpg")
+			onCrop(file)
+			onOpenChange(false)
+		} catch (e) {
+			console.error("Error cropping image:", e)
+		}
+	}
+
+	function handleOpenChangeComplete(nextOpen: boolean) {
+		if (!nextOpen) {
+			setCrop({ x: 0, y: 0 })
+			setZoom(1)
+			setCroppedAreaPixels(null)
+		}
+	}
+
+	if (!imageSrc) return null
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={onOpenChange}
+			onOpenChangeComplete={handleOpenChangeComplete}
+		>
+			<DialogContent className="max-w-md">
+				<DialogHeader>
+					<DialogTitle>Crop avatar</DialogTitle>
+					<DialogDescription>
+						Drag to reposition, scroll or pinch to zoom.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="relative h-64 w-full">
+					<Cropper
+						image={imageSrc}
+						crop={crop}
+						zoom={zoom}
+						aspect={1}
+						onCropChange={setCrop}
+						onCropComplete={handleCropComplete}
+						onZoomChange={setZoom}
+					/>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button onClick={handleConfirm}>Save</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
+	)
+}
+
+async function getCroppedImg(
+	imageSrc: string,
+	pixelCrop: { x: number; y: number; width: number; height: number },
+	fileName: string,
+): Promise<File> {
+	let image = new window.Image()
+	let canvas = document.createElement("canvas")
+	let ctx = canvas.getContext("2d")
+
+	if (!ctx) {
+		throw new Error("No 2d context")
+	}
+
+	return new Promise((resolve, reject) => {
+		image.onload = () => {
+			canvas.width = pixelCrop.width
+			canvas.height = pixelCrop.height
+
+			ctx.drawImage(
+				image,
+				pixelCrop.x,
+				pixelCrop.y,
+				pixelCrop.width,
+				pixelCrop.height,
+				0,
+				0,
+				pixelCrop.width,
+				pixelCrop.height,
+			)
+
+			canvas.toBlob(
+				blob => {
+					if (!blob) {
+						reject(new Error("Canvas is empty"))
+						return
+					}
+					let file = new File([blob], fileName, { type: "image/jpeg" })
+					resolve(file)
+				},
+				"image/jpeg",
+				0.95,
+			)
+		}
+		image.onerror = reject
+		image.src = imageSrc
+	})
 }
 
 function SpaceMembersSection({ space }: { space: LoadedSpace }) {
