@@ -571,18 +571,11 @@ function DocumentItem({
 				<ContextMenuContent>
 					<ContextMenuItem
 						render={
-							spaceId ? (
-								<Link
-									to="/spaces/$spaceId/doc/$id/preview"
-									params={{ spaceId, id: docId }}
-								/>
-							) : (
-								<Link
-									to="/doc/$id/preview"
-									params={{ id: docId }}
-									search={{ from: "list" }}
-								/>
-							)
+							<Link
+								to="/doc/$id/preview"
+								params={{ id: docId }}
+								search={{ from: "list" }}
+							/>
 						}
 					>
 						<Eye />
@@ -591,30 +584,14 @@ function DocumentItem({
 					{isPresentation && (
 						<>
 							<ContextMenuItem
-								render={
-									spaceId ? (
-										<Link
-											to="/spaces/$spaceId/doc/$id/slideshow"
-											params={{ spaceId, id: docId }}
-										/>
-									) : (
-										<Link to="/doc/$id/slideshow" params={{ id: docId }} />
-									)
-								}
+								render={<Link to="/doc/$id/slideshow" params={{ id: docId }} />}
 							>
 								<Presentation />
 								Slideshow
 							</ContextMenuItem>
 							<ContextMenuItem
 								render={
-									spaceId ? (
-										<Link
-											to="/spaces/$spaceId/doc/$id/teleprompter"
-											params={{ spaceId, id: docId }}
-										/>
-									) : (
-										<Link to="/doc/$id/teleprompter" params={{ id: docId }} />
-									)
+									<Link to="/doc/$id/teleprompter" params={{ id: docId }} />
 								}
 							>
 								<ScrollText />

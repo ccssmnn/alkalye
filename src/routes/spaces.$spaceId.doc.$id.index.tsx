@@ -656,7 +656,7 @@ function setupKeyboardShortcuts(opts: {
 	docWithContent: MaybeDocWithContent
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
-		// Cmd+Alt+R: Preview (uses non-space route for now, will be updated in story 4.2)
+		// Cmd+Alt+R: Preview
 		if (
 			(e.metaKey || e.ctrlKey) &&
 			e.altKey &&
