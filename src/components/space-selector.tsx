@@ -71,7 +71,7 @@ function SpaceSelector() {
 		currentSpace?.$isLoaded && !currentSpace.deletedAt
 			? currentSpace.name
 			: "Personal"
-	let Icon = currentSpace?.$isLoaded && !currentSpace.deletedAt ? Users : User
+	let isInSpace = currentSpace?.$isLoaded && !currentSpace.deletedAt
 
 	// Check if current space is not in user's list (public space they're viewing)
 	let isViewingPublicSpace =
@@ -99,8 +99,12 @@ function SpaceSelector() {
 								className="flex-1 justify-between"
 								nativeButton={false}
 							>
-								<span className="inline-flex gap-3">
-									<Icon />
+								<span className="inline-flex items-center gap-3">
+									{isInSpace && currentSpace.$isLoaded ? (
+										<SpaceAvatar space={currentSpace} />
+									) : (
+										<User />
+									)}
 									<span className="truncate">{displayName}</span>
 								</span>
 								<ChevronDown />
