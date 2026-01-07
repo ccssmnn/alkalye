@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { createFileRoute, Link } from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import {
 	useAccount,
 	useIsAuthenticated,
@@ -268,6 +268,8 @@ function SyncSection({ isAuthenticated }: SyncSectionProps) {
 }
 
 function SignInView() {
+	let navigate = useNavigate()
+
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
@@ -277,7 +279,7 @@ function SignInView() {
 				<CloudOff className="size-4" />
 				<span className="text-sm">Local only</span>
 			</div>
-			<AuthForm />
+			<AuthForm onSuccess={() => navigate({ to: "/" })} />
 		</section>
 	)
 }
