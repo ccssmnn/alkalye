@@ -3,6 +3,7 @@ import { Group, co, z } from "jazz-tools"
 export {
 	Asset,
 	Document,
+	Space,
 	UserProfile,
 	UserRoot,
 	UserAccount,
@@ -13,6 +14,8 @@ export {
 	CursorEntry,
 	CursorFeed,
 	getRandomWriterName,
+	createSpace,
+	createSpaceDocument,
 }
 
 let CursorEntry = z.object({
@@ -61,8 +64,18 @@ let Document = co.map({
 	deletedAt: z.date().optional(),
 	permanentlyDeletedAt: z.date().optional(),
 	presentationLine: z.number().optional(),
+	spaceId: z.string().optional(),
 	createdAt: z.date(),
 	updatedAt: z.date(),
+})
+
+let Space = co.map({
+	name: z.string(),
+	avatar: co.optional(co.image()),
+	documents: co.list(Document),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+	deletedAt: z.date().optional(),
 })
 
 let UserProfile = co.profile({
@@ -72,6 +85,7 @@ let UserProfile = co.profile({
 let UserRoot = co.map({
 	documents: co.list(Document),
 	inactiveDocuments: co.optional(co.list(Document)),
+	spaces: co.optional(co.list(Space)),
 	settings: co.optional(Settings),
 	migrationVersion: z.number().optional(),
 })
@@ -84,6 +98,15 @@ Your words are end-to-end encrypted. Collaborate in real-time. Works on any devi
 
 **Get started:** Edit this document, create a new one, or open a tutor from the Help menu.
 `
+
+function getSpaceWelcomeContent(spaceName: string): string {
+	return `# Welcome to ${spaceName}
+
+This is your new shared space. Documents here are shared with all space members.
+
+**Get started:** Edit this document or create a new one.
+`
+}
 
 async function fetchWelcomeContent(): Promise<string> {
 	try {
@@ -143,6 +166,11 @@ let UserAccount = co
 				"settings",
 				Settings.create({ editor: DEFAULT_EDITOR_SETTINGS }, root.$jazz.owner),
 			)
+		}
+
+		// Initialize empty spaces list if not present
+		if (root && !root.$jazz.has("spaces")) {
+			root.$jazz.set("spaces", co.list(Space).create([], root.$jazz.owner))
 		}
 
 		if (!account.$jazz.has("profile")) {
@@ -218,6 +246,62 @@ function getRandomWriterName(): string {
 	let adjIndex = Math.floor(Math.random() * adjectives.length)
 	let nameIndex = Math.floor(Math.random() * writerNames.length)
 	return `${adjectives[adjIndex]} ${writerNames[nameIndex]}`
+}
+
+function createSpace(
+	name: string,
+	userRoot: co.loaded<typeof UserRoot, { spaces: true }>,
+): co.loaded<typeof Space> {
+	let group = Group.create()
+	let now = new Date()
+
+	// Create welcome document with its own group (space group as admin)
+	let welcomeContent = getSpaceWelcomeContent(name)
+	let welcomeDoc = createSpaceDocument(group, welcomeContent)
+
+	let space = Space.create(
+		{
+			name,
+			documents: co.list(Document).create([welcomeDoc], group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+
+	if (!userRoot.spaces) {
+		userRoot.$jazz.set(
+			"spaces",
+			co.list(Space).create([], userRoot.$jazz.owner),
+		)
+	}
+	userRoot.spaces!.$jazz.push(space)
+
+	return space
+}
+
+function createSpaceDocument(
+	spaceGroup: Group,
+	content: string = "",
+): co.loaded<typeof Document, { content: true }> {
+	// Create a document-specific group with space group as parent (no role = inherit)
+	// Space members inherit their space role: reader→reader, writer→writer, admin→admin
+	// Doc-level invites go to docGroup, not spaceGroup (so they don't grant space access)
+	let docGroup = Group.create()
+	docGroup.addMember(spaceGroup)
+
+	let now = new Date()
+	let doc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(content, docGroup),
+			createdAt: now,
+			updatedAt: now,
+		},
+		docGroup,
+	)
+
+	return doc as co.loaded<typeof Document, { content: true }>
 }
 
 async function migrateAnonymousData(

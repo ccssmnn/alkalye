@@ -1,12 +1,12 @@
-import { useState, useEffect, useRef } from "react"
-import { useAccount, useIsAuthenticated, useCoState } from "jazz-tools/react"
+import { useState, useEffect } from "react"
+import { toast } from "sonner"
+import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { useNavigate, Link, useLocation } from "@tanstack/react-router"
 import {
 	Copy,
 	Check,
 	Link as LinkIcon,
 	Trash2,
-	X,
 	LogOut,
 	CloudOff,
 	Globe,
@@ -20,41 +20,54 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "@/components/ui/dialog"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Document, UserAccount } from "@/schema"
+import { Space, UserAccount } from "@/schema"
 import {
-	createDocumentInvite,
-	revokeDocumentInvite,
-	leavePersonalDocument,
-	listCollaborators,
-	migrateDocumentToGroup,
-	getDocumentGroup,
-	getDocumentOwner,
-	makeDocumentPublic,
-	makeDocumentPrivate,
-	isDocumentPublic,
-	getPublicLink,
-	type Collaborator,
-} from "@/lib/documents"
+	createSpaceInvite,
+	listSpaceCollaborators,
+	getSpaceOwner,
+	revokeSpaceInvite,
+	changeSpaceCollaboratorRole,
+	leaveSpace,
+	isSpacePublic,
+	makeSpacePublic,
+	makeSpacePrivate,
+	getSpaceGroup,
+} from "@/lib/spaces"
+
+export { SpaceShareDialog }
+export type { SpaceShareDialogProps }
 
 type InviteRole = "writer" | "reader"
 
-export { ShareDialog }
+type Collaborator = {
+	id: string
+	name: string
+	role: string
+	inviteGroupId: string
+}
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedSpace = co.loaded<typeof Space, { documents: true }>
 
-interface ShareDialogProps {
-	doc: LoadedDocument
+interface SpaceShareDialogProps {
+	space: LoadedSpace
 	open?: boolean
 	onOpenChange?: (open: boolean) => void
 }
 
-function ShareDialog({
-	doc,
+function SpaceShareDialog({
+	space,
 	open: controlledOpen,
 	onOpenChange,
-}: ShareDialogProps) {
+}: SpaceShareDialogProps) {
 	let navigate = useNavigate()
 	let location = useLocation()
 	let isAuthenticated = useIsAuthenticated()
@@ -63,86 +76,48 @@ function ShareDialog({
 	let open = controlledOpen ?? internalOpen
 	let setOpen = onOpenChange ?? setInternalOpen
 	let [inviteLink, setInviteLink] = useState<string | null>(null)
+	let [inviteRole, setInviteRole] = useState<InviteRole | null>(null)
 	let [copied, setCopied] = useState(false)
-	let [publicCopied, setPublicCopied] = useState(false)
 	let [loading, setLoading] = useState(false)
 	let [collaborators, setCollaborators] = useState<Collaborator[]>([])
 	let [pendingInvites, setPendingInvites] = useState<
 		{ inviteGroupId: string }[]
 	>([])
 	let [owner, setOwner] = useState<{ id: string; name: string } | null>(null)
-	let [currentDocId, setCurrentDocId] = useState(doc.$jazz.id)
-	let [docIsPublic, setDocIsPublic] = useState(() => isDocumentPublic(doc))
-	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
+	let [spaceIsPublic, setSpaceIsPublic] = useState(() => isSpacePublic(space))
+	let [publicCopied, setPublicCopied] = useState(false)
+	let me = useAccount(UserAccount, { resolve: { root: { spaces: true } } })
 
-	// Subscribe to the document for reactive updates
-	let subscribedDoc = useCoState(
-		Document,
-		currentDocId as Parameters<typeof useCoState>[1],
-		{ resolve: { content: true } },
-	)
-	let currentDoc = subscribedDoc?.$isLoaded ? subscribedDoc : doc
+	let spaceGroup = getSpaceGroup(space)
+	let isAdmin = spaceGroup?.myRole() === "admin"
+	let isCollaborator = spaceGroup && !isAdmin
 
-	// Reset currentDocId when doc prop changes (e.g., navigating to different doc)
-	let [prevDocId, setPrevDocId] = useState(doc.$jazz.id)
-	if (doc.$jazz.id !== prevDocId) {
-		setPrevDocId(doc.$jazz.id)
-		setCurrentDocId(doc.$jazz.id)
-	}
-
-	// Sync public state when dialog opens (calculate from current state)
-	let [prevOpen, setPrevOpen] = useState(open)
-	if (open && !prevOpen) {
-		setPrevOpen(open)
-		setDocIsPublic(isDocumentPublic(currentDoc))
-	} else if (!open && prevOpen) {
-		setPrevOpen(open)
-	}
-
-	let docGroup = getDocumentGroup(currentDoc)
-	let isAdmin = docGroup?.myRole() === "admin"
-	let isGroupOwned = docGroup !== null
-	let isOwner = !isGroupOwned || isAdmin
-	let isCollaborator = isGroupOwned && !isAdmin
-
-	let refreshCollaboratorsRef = useRef(async () => {
-		let result = await listCollaborators(currentDoc)
+	async function refreshCollaborators() {
+		let result = await listSpaceCollaborators(space)
 		setCollaborators(result.collaborators)
 		setPendingInvites(result.pendingInvites)
-		let docOwner = await getDocumentOwner(currentDoc)
-		setOwner(docOwner)
-	})
-	useEffect(() => {
-		refreshCollaboratorsRef.current = async () => {
-			let result = await listCollaborators(currentDoc)
-			setCollaborators(result.collaborators)
-			setPendingInvites(result.pendingInvites)
-			let docOwner = await getDocumentOwner(currentDoc)
-			setOwner(docOwner)
-		}
-	})
+		let spaceOwner = await getSpaceOwner(space)
+		setOwner(spaceOwner)
+	}
 
 	useEffect(() => {
 		if (!open) return
-		refreshCollaboratorsRef.current()
-	}, [open, currentDoc])
+		refreshCollaborators()
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [open, space])
 
 	async function handleCreateLink(role: InviteRole) {
-		if (!me.$isLoaded) return
+		if (!me?.$isLoaded) return
 		setLoading(true)
 
 		try {
-			let currentDoc = doc
-			if (!getDocumentGroup(doc)) {
-				let result = await migrateDocumentToGroup(doc, me.$jazz.id)
-				currentDoc = result.document
-			}
-
-			let { link } = await createDocumentInvite(currentDoc, role)
+			let { link } = await createSpaceInvite(space, role)
 			setInviteLink(link)
-			await refreshCollaboratorsRef.current()
+			setInviteRole(role)
+			await refreshCollaborators()
 		} catch (e) {
 			console.error("Failed to create invite link:", e)
+			toast.error("Failed to create invite link")
 		} finally {
 			setLoading(false)
 		}
@@ -155,24 +130,45 @@ function ShareDialog({
 		setTimeout(() => setCopied(false), 2000)
 	}
 
+	function handleRevoke(inviteGroupId: string) {
+		revokeSpaceInvite(space, inviteGroupId)
+		refreshCollaborators()
+		if (inviteLink?.includes(inviteGroupId)) {
+			setInviteLink(null)
+			setInviteRole(null)
+		}
+	}
+
+	async function handleLeave() {
+		if (!me?.$isLoaded) return
+		setLoading(true)
+		try {
+			await leaveSpace(space, me)
+			setOpen(false)
+			navigate({ to: "/" })
+		} catch (e) {
+			console.error("Failed to leave space:", e)
+			toast.error("Failed to leave space")
+		} finally {
+			setLoading(false)
+		}
+	}
+
 	async function handleCopyPublicLink() {
-		let link = getPublicLink(currentDoc)
+		let link = getSpacePublicLink(space)
 		await navigator.clipboard.writeText(link)
 		setPublicCopied(true)
 		setTimeout(() => setPublicCopied(false), 2000)
 	}
 
-	async function handleMakePublic() {
-		if (!me.$isLoaded) return
+	function handleMakePublic() {
 		setLoading(true)
-
 		try {
-			let updatedDoc = await makeDocumentPublic(currentDoc, me.$jazz.id)
-			// Update the doc ID in case migration created a new document
-			setCurrentDocId(updatedDoc.$jazz.id)
-			setDocIsPublic(true)
+			makeSpacePublic(space)
+			setSpaceIsPublic(true)
 		} catch (e) {
-			console.error("Failed to make document public:", e)
+			console.error("Failed to make space public:", e)
+			toast.error("Failed to make space public")
 		} finally {
 			setLoading(false)
 		}
@@ -181,30 +177,23 @@ function ShareDialog({
 	function handleMakePrivate() {
 		setLoading(true)
 		try {
-			makeDocumentPrivate(currentDoc)
-			setDocIsPublic(false)
+			makeSpacePrivate(space)
+			setSpaceIsPublic(false)
 		} catch (e) {
-			console.error("Failed to make document private:", e)
+			console.error("Failed to make space private:", e)
+			toast.error("Failed to make space private")
 		} finally {
 			setLoading(false)
 		}
 	}
 
-	function handleRevoke(inviteGroupId: string) {
-		revokeDocumentInvite(doc, inviteGroupId)
-		refreshCollaboratorsRef.current()
-		if (inviteLink?.includes(inviteGroupId)) {
-			setInviteLink(null)
-		}
-	}
-
-	async function handleLeave() {
-		if (!me.$isLoaded) return
-		setLoading(true)
+	async function handleChangeRole(inviteGroupId: string, newRole: InviteRole) {
 		try {
-			await handleLeaveDocument(doc, me, navigate, setOpen)
-		} finally {
-			setLoading(false)
+			await changeSpaceCollaboratorRole(space, inviteGroupId, newRole)
+			await refreshCollaborators()
+		} catch (e) {
+			console.error("Failed to change role:", e)
+			toast.error("Failed to change role")
 		}
 	}
 
@@ -212,19 +201,19 @@ function ShareDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Share document</DialogTitle>
+					<DialogTitle>Share space</DialogTitle>
 					<DialogDescription>
 						{!isAuthenticated
-							? "Sign in to share documents with others"
-							: isOwner
-								? "Invite others to view or edit this document"
+							? "Sign in to share spaces with others"
+							: isAdmin
+								? "Invite others to collaborate on this space"
 								: owner
 									? `Shared with you by ${owner.name}`
-									: "You're viewing a shared document"}
+									: "You're viewing a shared space"}
 					</DialogDescription>
 				</DialogHeader>
 
-				{!isAuthenticated && isOwner && (
+				{!isAuthenticated && isAdmin && (
 					<div className="flex flex-col items-center gap-3 py-4">
 						<CloudOff className="text-muted-foreground size-8" />
 						<p className="text-muted-foreground text-center text-sm">
@@ -236,10 +225,13 @@ function ShareDialog({
 					</div>
 				)}
 
-				{isAuthenticated && isOwner && (
+				{isAuthenticated && isAdmin && (
 					<div className="space-y-4">
 						{inviteLink ? (
 							<div className="space-y-2">
+								<div className="text-muted-foreground text-xs">
+									{getRoleLabel(inviteRole)} invite link
+								</div>
 								<div className="bg-muted flex items-center gap-2 rounded p-2 text-xs">
 									<input
 										type="text"
@@ -264,34 +256,41 @@ function ShareDialog({
 									variant="ghost"
 									size="sm"
 									className="w-full"
-									onClick={() => setInviteLink(null)}
+									onClick={() => {
+										setInviteLink(null)
+										setInviteRole(null)
+									}}
 								>
-									<X className="mr-1 size-3.5" />
-									Dismiss
+									Create different link
 								</Button>
 							</div>
 						) : (
-							<div className="flex gap-2">
-								<Button
-									variant="outline"
-									size="sm"
-									className="flex-1"
-									onClick={() => handleCreateLink("writer")}
-									disabled={loading}
-								>
-									<LinkIcon className="mr-1 size-3.5" />
-									Can edit
-								</Button>
-								<Button
-									variant="outline"
-									size="sm"
-									className="flex-1"
-									onClick={() => handleCreateLink("reader")}
-									disabled={loading}
-								>
-									<LinkIcon className="mr-1 size-3.5" />
-									Can view
-								</Button>
+							<div className="space-y-2">
+								<div className="text-muted-foreground text-xs font-medium">
+									Create invite link
+								</div>
+								<div className="flex gap-2">
+									<Button
+										variant="outline"
+										size="sm"
+										className="flex-1"
+										onClick={() => handleCreateLink("writer")}
+										disabled={loading}
+									>
+										<LinkIcon className="mr-1 size-3.5" />
+										Writer
+									</Button>
+									<Button
+										variant="outline"
+										size="sm"
+										className="flex-1"
+										onClick={() => handleCreateLink("reader")}
+										disabled={loading}
+									>
+										<LinkIcon className="mr-1 size-3.5" />
+										Reader
+									</Button>
+								</div>
 							</div>
 						)}
 
@@ -299,13 +298,13 @@ function ShareDialog({
 							<div className="text-muted-foreground text-xs font-medium">
 								Public access
 							</div>
-							{docIsPublic ? (
+							{spaceIsPublic ? (
 								<div className="space-y-2">
 									<div className="bg-muted flex items-center gap-2 rounded p-2 text-xs">
 										<Globe className="size-3.5 shrink-0 text-green-600 dark:text-green-400" />
 										<input
 											type="text"
-											value={getPublicLink(currentDoc)}
+											value={getSpacePublicLink(space)}
 											readOnly
 											className="flex-1 truncate bg-transparent outline-none"
 										/>
@@ -323,7 +322,7 @@ function ShareDialog({
 										</Button>
 									</div>
 									<p className="text-muted-foreground text-xs">
-										Anyone with this link can view this document
+										Anyone with this link can view this space and its documents
 									</p>
 									<Button
 										variant="ghost"
@@ -339,7 +338,7 @@ function ShareDialog({
 							) : (
 								<div className="space-y-2">
 									<p className="text-muted-foreground text-xs">
-										Make this document publicly readable by anyone with the link
+										Make this space publicly readable by anyone with the link
 									</p>
 									<Button
 										variant="outline"
@@ -360,7 +359,7 @@ function ShareDialog({
 				{collaborators.length > 0 && (
 					<div className="space-y-2">
 						<div className="text-muted-foreground text-xs font-medium">
-							Collaborators
+							Members
 						</div>
 						<ul className="space-y-1">
 							{collaborators.map(c => (
@@ -375,18 +374,38 @@ function ShareDialog({
 										)}
 									</span>
 									<div className="flex items-center gap-2">
-										<span className="text-muted-foreground text-xs capitalize">
-											{c.role === "writer" ? "Can edit" : "Can view"}
-										</span>
-										{isAdmin && (
-											<Button
-												variant="ghost"
-												size="icon-sm"
-												onClick={() => handleRevoke(c.inviteGroupId)}
-												aria-label="Remove access"
-											>
-												<Trash2 className="text-destructive size-3" />
-											</Button>
+										{isAdmin && c.id !== me?.$jazz.id ? (
+											<>
+												<Select
+													value={c.role}
+													onValueChange={newRole =>
+														handleChangeRole(
+															c.inviteGroupId,
+															newRole as InviteRole,
+														)
+													}
+												>
+													<SelectTrigger size="sm" className="h-6 text-xs">
+														<SelectValue />
+													</SelectTrigger>
+													<SelectContent>
+														<SelectItem value="writer">Writer</SelectItem>
+														<SelectItem value="reader">Reader</SelectItem>
+													</SelectContent>
+												</Select>
+												<Button
+													variant="ghost"
+													size="icon-sm"
+													onClick={() => handleRevoke(c.inviteGroupId)}
+													aria-label="Remove access"
+												>
+													<Trash2 className="text-destructive size-3" />
+												</Button>
+											</>
+										) : (
+											<span className="text-muted-foreground text-xs">
+												{getRoleLabel(c.role)}
+											</span>
 										)}
 									</div>
 								</li>
@@ -431,7 +450,7 @@ function ShareDialog({
 							disabled={loading}
 						>
 							<LogOut className="mr-1 size-3.5" />
-							Leave document
+							Leave space
 						</Button>
 					</div>
 				)}
@@ -440,14 +459,20 @@ function ShareDialog({
 	)
 }
 
-async function handleLeaveDocument(
-	doc: LoadedDocument,
-	me: co.loaded<typeof UserAccount, { root: { documents: true } }>,
-	navigate: ReturnType<typeof useNavigate>,
-	setOpen: (open: boolean) => void,
-) {
-	await leavePersonalDocument(doc, me)
+function getRoleLabel(role: string | null): string {
+	switch (role) {
+		case "admin":
+			return "Admin"
+		case "writer":
+			return "Writer"
+		case "reader":
+			return "Reader"
+		default:
+			return "Unknown"
+	}
+}
 
-	setOpen(false)
-	navigate({ to: "/" })
+function getSpacePublicLink(space: LoadedSpace): string {
+	let baseURL = window.location.origin
+	return `${baseURL}/spaces/${space.$jazz.id}`
 }

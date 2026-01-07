@@ -1,4 +1,6 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
+import { useDocTitles } from "@/lib/doc-resolver"
+import { parseWikiLinks } from "./wikilink-parser"
 import { EditorState, type Extension, Prec } from "@codemirror/state"
 import {
 	EditorView,
@@ -197,7 +199,7 @@ function MarkdownEditor(
 		dataRef.current = { assets, documents }
 	})
 
-	// Build title cache for wikilink resolution
+	// Build title cache for wikilink resolution (from documents prop)
 	let titleCache = new Map<string, { title: string; exists: boolean }>()
 	if (documents) {
 		for (let doc of documents) {
@@ -209,8 +211,25 @@ function MarkdownEditor(
 		titleCacheRef.current = titleCache
 	})
 
-	// Resolvers that read from refs
-	let wikilinkResolver = (id: string) => titleCacheRef.current.get(id)
+	// Extract wikilink IDs from content that aren't in local documents
+	let links = parseWikiLinks(value)
+	let externalWikilinkIds = [
+		...new Set(links.map(l => l.id).filter(id => !titleCache.has(id))),
+	]
+
+	// Resolve external wikilinks (public docs not in user's doc list)
+	let externalDocs = useDocTitles(externalWikilinkIds)
+
+	// Resolver: check local cache first, then external resolved docs
+	let wikilinkResolver = (id: string) => {
+		let local = titleCacheRef.current.get(id)
+		if (local) return local
+
+		let external = externalDocs.get(id)
+		if (external) return { title: external.title, exists: external.exists }
+
+		return undefined
+	}
 
 	let imageResolver = (assetId: string) => {
 		let asset = dataRef.current.assets?.find(a => a.id === assetId)
@@ -404,12 +423,12 @@ function MarkdownEditor(
 		lastExternalValue.current = value
 	}, [value, view])
 
-	// Refresh decorations when documents change
+	// Refresh decorations when documents or external docs change
 	useEffect(() => {
-		if (view && documents) {
+		if (view) {
 			view.dispatch({ selection: view.state.selection })
 		}
-	}, [view, documents])
+	}, [view, documents, externalDocs])
 
 	function getContent() {
 		return view?.state.doc.toString() ?? ""

@@ -5,7 +5,7 @@ import {
 	useBlocker,
 	Link,
 } from "@tanstack/react-router"
-import { co, Group, type ResolveQuery } from "jazz-tools"
+import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import {
@@ -38,6 +38,9 @@ import {
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
+	SpaceDeleted,
+	SpaceNotFound,
+	SpaceUnauthorized,
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import {
@@ -52,7 +55,6 @@ import {
 	copyDocumentToMyList,
 	getDocumentGroup,
 } from "@/lib/documents"
-import { deletePersonalDocument } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
@@ -76,55 +78,62 @@ import { HelpMenu } from "@/components/help-menu"
 
 export { Route }
 
-let Route = createFileRoute("/doc/$id/")({
+let Route = createFileRoute("/spaces/$spaceId/doc/$id/")({
 	loader: async ({ params, context }) => {
-		let doc = await Document.load(params.id, { resolve: loaderResolve })
+		let [space, doc] = await Promise.all([
+			Space.load(params.spaceId, { resolve: spaceLoaderResolve }),
+			Document.load(params.id, { resolve: loaderResolve }),
+		])
+
+		if (!space.$isLoaded) {
+			return {
+				space: null,
+				doc: null,
+				loadingState: space.$jazz.loadingState,
+				me: null,
+			}
+		}
+
 		if (!doc.$isLoaded) {
-			return { doc: null, loadingState: doc.$jazz.loadingState, me: null }
+			return {
+				space,
+				doc: null,
+				loadingState: doc.$jazz.loadingState,
+				me: null,
+			}
 		}
 
 		let me = context.me
 			? await context.me.$jazz.ensureLoaded({ resolve: settingsResolve })
 			: null
 
-		return { doc, loadingState: null, me }
+		return { space, doc, loadingState: null, me }
 	},
-	component: EditorPage,
+	component: SpaceEditorPage,
 })
 
-function EditorPage() {
-	let { id } = Route.useParams()
+function SpaceEditorPage() {
+	let { spaceId, id } = Route.useParams()
 	let data = Route.useLoaderData()
-	let navigate = useNavigate()
 
+	let space = useCoState(Space, spaceId, { resolve: spaceResolve })
 	let doc = useCoState(Document, id, { resolve })
 
-	// Redirect to space route if doc belongs to a space
-	useEffect(() => {
-		if (data.doc?.spaceId) {
-			navigate({
-				to: "/spaces/$spaceId/doc/$id",
-				params: { spaceId: data.doc.spaceId, id },
-				replace: true,
-			})
-		}
-	}, [data.doc?.spaceId, id, navigate])
+	// Space not found or unauthorized
+	if (!data.space) {
+		if (data.loadingState === "unauthorized") return <SpaceUnauthorized />
+		return <SpaceNotFound />
+	}
 
+	// Space deleted
+	if (space.$isLoaded && space.deletedAt) {
+		return <SpaceDeleted />
+	}
+
+	// Doc not found or unauthorized
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
-	}
-
-	// Show loading while redirecting to space route
-	if (data.doc.spaceId) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading document...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
 	}
 
 	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
@@ -133,7 +142,7 @@ function EditorPage() {
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded) {
+	if (!doc.$isLoaded || !space.$isLoaded) {
 		return (
 			<Empty className="h-screen">
 				<EmptyHeader>
@@ -146,12 +155,27 @@ function EditorPage() {
 
 	return (
 		<SidebarProvider>
-			<EditorContent doc={doc} docId={id} />
+			<SpaceEditorContent
+				space={space}
+				doc={doc}
+				spaceId={spaceId}
+				docId={id}
+			/>
 		</SidebarProvider>
 	)
 }
 
-function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
+function SpaceEditorContent({
+	space,
+	doc,
+	spaceId,
+	docId,
+}: {
+	space: LoadedSpace
+	doc: LoadedDocument
+	spaceId: string
+	docId: string
+}) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
@@ -180,10 +204,10 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let { updateCursor, remoteCursors } = usePresence({ doc })
 	let assets = doc.assets?.map(a => ({ id: a.$jazz.id, name: a.name })) ?? []
 
-	// Get documents for wikilink autocomplete - personal docs only
+	// Get documents from the space for wikilinks
 	let documents: WikilinkDoc[] = []
-	if (me.$isLoaded && me.root.documents?.$isLoaded) {
-		documents = [...me.root.documents]
+	if (space.documents?.$isLoaded) {
+		documents = [...space.documents]
 			.filter(d => d?.$isLoaded && !d.deletedAt && d.$jazz.id !== docId)
 			.map(d => {
 				let content = d.content?.toString() ?? ""
@@ -196,7 +220,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			})
 	}
 
-	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
+	let { syncBacklinks } = useBacklinkSync(docId, readOnly, { spaceId })
 	useEditorSettings(editorSettings)
 
 	let content = doc.content?.toString() ?? ""
@@ -215,10 +239,9 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				imageId: a.image?.$jazz.id,
 			})) ?? []
 
-	// Get documents for wikilink insertion menu - personal docs only
 	let wikiLinkDocs: { id: string; title: string }[] = []
-	if (me.$isLoaded && me.root.documents?.$isLoaded) {
-		for (let d of [...me.root.documents]) {
+	if (space.documents?.$isLoaded) {
+		for (let d of [...space.documents]) {
 			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
 			let title = getDocumentTitle(d)
 			wikiLinkDocs.push({ id: d.$jazz.id, title })
@@ -227,9 +250,8 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	useBlocker({
 		shouldBlockFn: () => {
-			if (content !== "" || !me.$isLoaded || !me.root) return false
-			let docs = me.root.documents
-			if (!docs.$isLoaded) return false
+			if (content !== "" || !space.documents?.$isLoaded) return false
+			let docs = space.documents
 			let idx = docs.findIndex(d => d?.$jazz.id === doc.$jazz.id)
 			if (idx >= 0) docs.$jazz.splice(idx, 1)
 			return false
@@ -251,17 +273,15 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 		})
 	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
 
-	let allDocs = getPersonalDocs(me)
-
-	let personalDocs =
-		me.$isLoaded && me.root?.documents?.$isLoaded ? me.root.documents : null
+	let allDocs = getSpaceDocs(space)
+	let spaceDocs = space.documents?.$isLoaded ? space.documents : null
 
 	return (
 		<>
 			<title>{docTitle}</title>
 			<ImportDropZone
 				onImport={async files => {
-					if (personalDocs) await handleImportFiles(files, personalDocs)
+					if (spaceDocs) await handleImportFiles(files, spaceDocs)
 				}}
 			>
 				<ListSidebar
@@ -270,7 +290,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 							<SidebarImportExport
 								docs={allDocs.filter(d => !d.deletedAt)}
 								onImport={async files => {
-									if (personalDocs) await handleImportFiles(files, personalDocs)
+									if (spaceDocs) await handleImportFiles(files, spaceDocs)
 								}}
 							/>
 							<Button
@@ -279,6 +299,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								render={
 									<Link
 										to="/new"
+										search={{ spaceId }}
 										onClick={() => isMobile && setLeftOpenMobile(false)}
 									/>
 								}
@@ -294,23 +315,26 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					<SidebarDocumentList
 						docs={allDocs}
 						currentDocId={docId}
-						isLoading={!me.$isLoaded}
+						isLoading={!space.documents?.$isLoaded}
 						onDocClick={() => isMobile && setLeftOpenMobile(false)}
 						onDuplicate={docToDuplicate =>
 							handleDuplicateDocument(
 								docToDuplicate,
-								me,
+								space,
 								isMobile,
 								setLeftOpenMobile,
 								navigate,
+								spaceId,
 							)
 						}
 						onDelete={docToDelete => {
-							deletePersonalDocument(docToDelete)
+							docToDelete.$jazz.set("deletedAt", new Date())
 							if (docToDelete.$jazz.id === docId) {
 								navigate({ to: "/" })
 							}
 						}}
+						spaceId={spaceId}
+						spaceGroupId={space.$jazz.owner.$jazz.id}
 					/>
 				</ListSidebar>
 			</ImportDropZone>
@@ -330,7 +354,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					assets={assets}
 					documents={documents}
 					remoteCursors={remoteCursors}
-					onCreateDocument={makeCreateDocument(me)}
+					onCreateDocument={makeCreateDocument(space)}
 					onUploadImage={makeUploadImage(doc)}
 				/>
 				<EditorToolbar
@@ -387,7 +411,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								editor={editor}
 								disabled={readOnly}
 								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocForWikilink(me, doc)}
+								onCreateDocument={makeCreateDocument(space)}
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -396,7 +420,10 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				<SidebarSeparator />
 
 				<SidebarGroup>
-					<SidebarCollaboration docId={docId} />
+					<SidebarCollaboration
+						docId={docId}
+						spaceGroupId={space.$jazz.owner.$jazz.id}
+					/>
 				</SidebarGroup>
 
 				<SidebarSeparator />
@@ -446,36 +473,11 @@ function SettingsButton({ pathname }: { pathname: string }) {
 	)
 }
 
-type SpaceWithDocuments = co.loaded<
-	typeof Space,
-	{ documents: { $each: { content: true } } }
->
-
-function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
+function makeCreateDocument(space: LoadedSpace) {
 	return async function handleCreateDocument(title: string): Promise<string> {
-		if (!me.$isLoaded || !me.root?.documents)
-			throw new Error("Not authenticated")
-
-		if (space?.documents?.$isLoaded) {
-			// Space context: create doc with its own group (space group as admin)
-			let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
-			space.documents.$jazz.push(newDoc)
-			return newDoc.$jazz.id
-		}
-
-		// Personal context: create new group per document
-		let now = new Date()
-		let group = Group.create()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, group),
-				createdAt: now,
-				updatedAt: now,
-			},
-			group,
-		)
-		me.root.documents.$jazz.push(newDoc)
+		if (!space.documents?.$isLoaded) throw new Error("Space not loaded")
+		let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
+		space.documents.$jazz.push(newDoc)
 		return newDoc.$jazz.id
 	}
 }
@@ -551,27 +553,6 @@ function makeRenameAsset(doc: LoadedDocument) {
 	}
 }
 
-function makeCreateDocForWikilink(me: LoadedMe, doc: LoadedDocument) {
-	return async function handleCreateDocForWikilink(
-		title: string,
-	): Promise<string> {
-		if (!me.$isLoaded || !me.root?.documents?.$isLoaded)
-			throw new Error("Not ready")
-		let now = new Date()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, doc.$jazz.owner),
-				createdAt: now,
-				updatedAt: now,
-			},
-			doc.$jazz.owner,
-		)
-		me.root.documents.$jazz.push(newDoc)
-		return newDoc.$jazz.id
-	}
-}
-
 function makeIsAssetUsed(docWithContent: MaybeDocWithContent) {
 	return function isAssetUsed(assetId: string): boolean {
 		if (!docWithContent?.$isLoaded || !docWithContent.content) return false
@@ -634,26 +615,23 @@ async function handleSaveCopy(
 
 function handleDuplicateDocument(
 	doc: co.loaded<typeof Document, { content: true }>,
-	me: LoadedMe,
+	space: LoadedSpace,
 	isMobile: boolean,
 	setLeftOpenMobile: (open: boolean) => void,
 	navigate: ReturnType<typeof useNavigate>,
+	spaceId: string,
 ) {
-	if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
-	let now = new Date()
-	let group = Group.create()
-	let newDoc = Document.create(
-		{
-			version: 1,
-			content: co.plainText().create(doc.content?.toString() ?? "", group),
-			createdAt: now,
-			updatedAt: now,
-		},
-		group,
+	if (!space.documents?.$isLoaded) return
+	let newDoc = createSpaceDocument(
+		space.$jazz.owner,
+		doc.content?.toString() ?? "",
 	)
-	me.root.documents.$jazz.push(newDoc)
+	space.documents.$jazz.push(newDoc)
 	if (isMobile) setLeftOpenMobile(false)
-	navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
+	navigate({
+		to: "/spaces/$spaceId/doc/$id",
+		params: { spaceId, id: newDoc.$jazz.id },
+	})
 }
 
 function setupKeyboardShortcuts(opts: {
@@ -709,6 +687,8 @@ function setupKeyboardShortcuts(opts: {
 	document.addEventListener("keydown", handleKeyDown)
 	return () => document.removeEventListener("keydown", handleKeyDown)
 }
+
+type LoadedSpace = co.loaded<typeof Space, typeof spaceResolve>
 type LoadedDocument = co.loaded<typeof Document, typeof resolve>
 type MaybeDocWithContent = ReturnType<
 	typeof useCoState<typeof Document, { content: true }>
@@ -716,6 +696,14 @@ type MaybeDocWithContent = ReturnType<
 type LoadedMe = ReturnType<
 	typeof useAccount<typeof UserAccount, typeof meResolve>
 >
+
+let spaceLoaderResolve = {
+	documents: true,
+} as const satisfies ResolveQuery<typeof Space>
+
+let spaceResolve = {
+	documents: { $each: { content: true } },
+} as const satisfies ResolveQuery<typeof Space>
 
 let loaderResolve = {
 	content: true,
@@ -741,11 +729,11 @@ let meResolve = {
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
-function getPersonalDocs(
-	me: LoadedMe,
+function getSpaceDocs(
+	space: LoadedSpace,
 ): co.loaded<typeof Document, { content: true }>[] {
-	if (!me.$isLoaded) return []
-	return [...me.root.documents].filter(
+	if (!space.documents?.$isLoaded) return []
+	return [...space.documents].filter(
 		d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
 	)
 }

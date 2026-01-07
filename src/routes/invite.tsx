@@ -1,32 +1,45 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, startTransition } from "react"
 import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
-import { Group, type ID } from "jazz-tools"
-import { FileText, AlertCircle, Loader2 } from "lucide-react"
+import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { AuthForm } from "@/components/auth-form"
-import { Document, UserAccount } from "@/schema"
+import { UserAccount } from "@/schema"
+import { acceptDocumentInvite, type DocInviteData } from "@/lib/documents"
+import { acceptSpaceInvite, type SpaceInviteData } from "@/lib/spaces"
 
 export { Route }
 
-type InviteSecret = `inviteSecret_z${string}`
-
-type InviteData = {
-	docId: ID<typeof Document>
-	inviteGroupId: ID<Group>
-	inviteSecret: InviteSecret
-}
+type InviteData =
+	| ({ type: "doc" } & DocInviteData)
+	| ({ type: "space" } & SpaceInviteData)
 
 function parseInviteHash(hash: string): InviteData | null {
-	let match = hash.match(
+	let docMatch = hash.match(
 		/^#\/doc\/(co_[^/]+)\/invite\/(co_[^/]+)\/(inviteSecret_z[^/]+)$/,
 	)
-	if (!match) return null
-	return {
-		docId: match[1] as ID<typeof Document>,
-		inviteGroupId: match[2] as ID<Group>,
-		inviteSecret: match[3] as InviteSecret,
+	if (docMatch) {
+		return {
+			type: "doc",
+			docId: docMatch[1],
+			inviteGroupId: docMatch[2],
+			inviteSecret: docMatch[3] as `inviteSecret_z${string}`,
+		}
 	}
+
+	let spaceMatch = hash.match(
+		/^#\/space\/(co_[^/]+)\/invite\/(co_[^/]+)\/(inviteSecret_z[^/]+)$/,
+	)
+	if (spaceMatch) {
+		return {
+			type: "space",
+			spaceId: spaceMatch[1],
+			inviteGroupId: spaceMatch[2],
+			inviteSecret: spaceMatch[3] as `inviteSecret_z${string}`,
+		}
+	}
+
+	return null
 }
 
 let Route = createFileRoute("/invite")({
@@ -37,7 +50,7 @@ function InvitePage() {
 	let navigate = useNavigate()
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, {
-		resolve: { root: { documents: true } },
+		resolve: { root: { documents: true, spaces: true } },
 	})
 
 	let [inviteData] = useState(() => {
@@ -52,117 +65,62 @@ function InvitePage() {
 		inviteData ? null : "Invalid invite link",
 	)
 
-	let acceptInviteRef = useRef(async () => {
-		if (!me.$isLoaded || !inviteData) return
+	let isSpaceInvite = inviteData?.type === "space"
+	let [isAccepting, setIsAccepting] = useState(false)
+
+	async function handleAcceptInvite() {
+		if (!me.$isLoaded || !inviteData || isAccepting) return
+		setIsAccepting(true)
 		setStatus("accepting")
 
 		try {
-			await me.acceptInvite(
-				inviteData.inviteGroupId,
-				inviteData.inviteSecret,
-				Group,
-			)
-
-			await new Promise(resolve => setTimeout(resolve, 500))
-
-			let doc = null
-			for (let i = 0; i < 3; i++) {
-				doc = await Document.load(inviteData.docId, {
-					resolve: { content: true },
-				})
-				if (doc) break
-				await new Promise(resolve => setTimeout(resolve, 500))
-			}
-
-			if (!doc) {
-				setStatus("revoked")
-				return
-			}
-
-			let alreadyHas = me.root?.documents?.some(
-				d => d?.$jazz.id === inviteData.docId,
-			)
-			if (!alreadyHas && me.root?.documents) {
-				me.root.documents.$jazz.push(doc)
-			}
-
-			setStatus("success")
-			setTimeout(() => {
-				navigate({ to: "/doc/$id", params: { id: inviteData.docId } })
-			}, 1000)
-		} catch (e) {
-			console.error("Failed to accept invite:", e)
-			setStatus("error")
-			setError(e instanceof Error ? e.message : "Failed to accept invite")
-		}
-	})
-	useEffect(() => {
-		acceptInviteRef.current = async () => {
-			if (!me.$isLoaded || !inviteData) return
-			setStatus("accepting")
-
-			try {
-				await me.acceptInvite(
-					inviteData.inviteGroupId,
-					inviteData.inviteSecret,
-					Group,
-				)
-
-				await new Promise(resolve => setTimeout(resolve, 500))
-
-				let doc = null
-				for (let i = 0; i < 3; i++) {
-					doc = await Document.load(inviteData.docId, {
-						resolve: { content: true },
-					})
-					if (doc) break
-					await new Promise(resolve => setTimeout(resolve, 500))
-				}
-
-				if (!doc) {
-					setStatus("revoked")
-					return
-				}
-
-				let alreadyHas = me.root?.documents?.some(
-					d => d?.$jazz.id === inviteData.docId,
-				)
-				if (!alreadyHas && me.root?.documents) {
-					me.root.documents.$jazz.push(doc)
-				}
-
+			if (inviteData.type === "doc") {
+				await acceptDocumentInvite(me, inviteData)
 				setStatus("success")
 				setTimeout(() => {
 					navigate({ to: "/doc/$id", params: { id: inviteData.docId } })
 				}, 1000)
-			} catch (e) {
-				console.error("Failed to accept invite:", e)
+			} else {
+				await acceptSpaceInvite(me, inviteData)
+				setStatus("success")
+				setTimeout(() => {
+					navigate({
+						to: "/spaces/$spaceId",
+						params: { spaceId: inviteData.spaceId },
+					})
+				}, 1000)
+			}
+		} catch (e) {
+			console.error("Failed to accept invite:", e)
+			setIsAccepting(false)
+			if (e instanceof Error && e.message.includes("revoked")) {
+				setStatus("revoked")
+			} else {
 				setStatus("error")
 				setError(e instanceof Error ? e.message : "Failed to accept invite")
 			}
 		}
-	})
-
-	// Adjust state during render: switch to needs-auth when user is loaded but not authenticated
-	let shouldNeedAuth =
-		inviteData && me.$isLoaded && status === "loading" && !isAuthenticated
-	let [prevShouldNeedAuth, setPrevShouldNeedAuth] = useState(shouldNeedAuth)
-	if (shouldNeedAuth && !prevShouldNeedAuth) {
-		setPrevShouldNeedAuth(shouldNeedAuth)
-		setStatus("needs-auth")
-	} else if (!shouldNeedAuth && prevShouldNeedAuth) {
-		setPrevShouldNeedAuth(shouldNeedAuth)
 	}
 
+	// Derive needs-auth state during render
+	let shouldShowAuth =
+		inviteData && me.$isLoaded && !isAuthenticated && status === "loading"
+
+	// Auto-accept when authenticated and ready
 	useEffect(() => {
-		if (!inviteData || !me.$isLoaded || status !== "loading") return
-		if (!isAuthenticated) return
-		acceptInviteRef.current()
-	}, [me.$isLoaded, status, isAuthenticated, inviteData])
+		if (!inviteData || !me.$isLoaded || !isAuthenticated) return
+		if (status !== "loading" || isAccepting) return
+		startTransition(() => {
+			handleAcceptInvite()
+		})
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [me.$isLoaded, isAuthenticated, inviteData, status, isAccepting])
+
+	let pageTitle = isSpaceInvite ? "Join Space" : "Join Document"
 
 	return (
 		<>
-			<title>Join Document</title>
+			<title>{pageTitle}</title>
 			<div
 				className="bg-background fixed inset-0"
 				style={{
@@ -175,12 +133,15 @@ function InvitePage() {
 				<TopBar />
 				<div className="flex min-h-[calc(100dvh-48px)] items-center justify-center px-4">
 					<div className="w-full max-w-sm">
-						{status === "loading" || status === "accepting" ? (
-							<LoadingState status={status} />
+						{shouldShowAuth ? (
+							<NeedsAuthState
+								onAuthSuccess={handleAcceptInvite}
+								isSpace={isSpaceInvite}
+							/>
+						) : status === "loading" || status === "accepting" ? (
+							<LoadingState status={status} isSpace={isSpaceInvite} />
 						) : status === "success" ? (
-							<SuccessState />
-						) : status === "needs-auth" ? (
-							<NeedsAuthState onAuthSuccess={() => acceptInviteRef.current()} />
+							<SuccessState isSpace={isSpaceInvite} />
 						) : status === "revoked" ? (
 							<RevokedState />
 						) : (
@@ -213,37 +174,65 @@ function TopBar() {
 	)
 }
 
-function LoadingState({ status }: { status: "loading" | "accepting" }) {
+function LoadingState({
+	status,
+	isSpace,
+}: {
+	status: "loading" | "accepting"
+	isSpace: boolean
+}) {
 	return (
 		<div className="space-y-4 text-center">
 			<Loader2 className="text-muted-foreground mx-auto size-12 animate-spin" />
 			<p className="text-muted-foreground text-sm">
-				{status === "loading" ? "Loading invite..." : "Joining document..."}
+				{status === "loading"
+					? "Loading invite..."
+					: isSpace
+						? "Joining space..."
+						: "Joining document..."}
 			</p>
 		</div>
 	)
 }
 
-function SuccessState() {
+function SuccessState({ isSpace }: { isSpace: boolean }) {
 	return (
 		<div className="space-y-4 text-center">
-			<FileText className="mx-auto size-12 text-green-600 dark:text-green-400" />
+			{isSpace ? (
+				<FolderOpen className="mx-auto size-12 text-green-600 dark:text-green-400" />
+			) : (
+				<FileText className="mx-auto size-12 text-green-600 dark:text-green-400" />
+			)}
 			<div className="space-y-2">
 				<h1 className="text-lg font-semibold">Joined successfully</h1>
-				<p className="text-muted-foreground text-sm">Opening document...</p>
+				<p className="text-muted-foreground text-sm">
+					{isSpace ? "Opening space..." : "Opening document..."}
+				</p>
 			</div>
 		</div>
 	)
 }
 
-function NeedsAuthState({ onAuthSuccess }: { onAuthSuccess: () => void }) {
+function NeedsAuthState({
+	onAuthSuccess,
+	isSpace,
+}: {
+	onAuthSuccess: () => void
+	isSpace: boolean
+}) {
 	return (
 		<div className="space-y-6">
 			<div className="space-y-2 text-center">
-				<FileText className="text-muted-foreground mx-auto size-12" />
+				{isSpace ? (
+					<FolderOpen className="text-muted-foreground mx-auto size-12" />
+				) : (
+					<FileText className="text-muted-foreground mx-auto size-12" />
+				)}
 				<h1 className="text-lg font-semibold">You&apos;ve been invited</h1>
 				<p className="text-muted-foreground text-sm">
-					Sign in to join this document and start collaborating.
+					{isSpace
+						? "Sign in to join this space and start collaborating."
+						: "Sign in to join this document and start collaborating."}
 				</p>
 			</div>
 			<AuthForm onSuccess={onAuthSuccess} />

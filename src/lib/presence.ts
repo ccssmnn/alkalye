@@ -77,8 +77,16 @@ function computeRemoteCursors(
 	if (!doc?.$isLoaded || !doc.cursors || !doc.cursors.$isLoaded || !mySessionId)
 		return []
 
-	let cursors: RemoteCursor[] = []
 	let now = Date.now()
+
+	// Group by user ID, keeping only the most recent cursor per user
+	let latestByUser = new Map<
+		string,
+		{
+			sessionId: string
+			entry: NonNullable<(typeof doc.cursors.perSession)[string]>
+		}
+	>()
 
 	let entries = Object.entries(doc.cursors.perSession)
 	for (let [sessionId, entry] of entries) {
@@ -88,6 +96,16 @@ function computeRemoteCursors(
 		let age = now - entry.madeAt.getTime()
 		if (age > STALE_CURSOR_MS) continue
 
+		let userId = entry.by?.$jazz.id ?? sessionId
+
+		let existing = latestByUser.get(userId)
+		if (!existing || entry.madeAt.getTime() > existing.entry.madeAt.getTime()) {
+			latestByUser.set(userId, { sessionId, entry })
+		}
+	}
+
+	let cursors: RemoteCursor[] = []
+	for (let [userId, { sessionId, entry }] of latestByUser) {
 		let name = "Anonymous"
 		let by = entry.by
 		if (by?.profile?.$isLoaded) {
@@ -95,12 +113,12 @@ function computeRemoteCursors(
 		}
 
 		cursors.push({
-			id: by?.$jazz.id ?? sessionId,
+			id: userId,
 			sessionId,
 			name,
-			color: getColorForId(sessionId),
-			position: entry.value.position,
-			selectionEnd: entry.value.selectionEnd,
+			color: getColorForId(userId),
+			position: entry.value!.position,
+			selectionEnd: entry.value!.selectionEnd,
 		})
 	}
 

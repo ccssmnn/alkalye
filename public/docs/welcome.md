@@ -18,6 +18,10 @@ Everything you write is **end-to-end encrypted**. Not even we can read your docu
 
 Share a document link and collaborate instantly. Just like you would expect.
 
+## Organize with Spaces
+
+Create Spaces to organize documents for yourself, your team, or the public. Invite collaborators to entire collections instead of individual docs. Admin, manager, writer, and reader roles give you fine-grained control.
+
 ## Connect your thoughts
 
 Link documents together with `[[wikilinks]]`. Type `[[` to search and link. Backlinks update automatically—see what's referencing each note.

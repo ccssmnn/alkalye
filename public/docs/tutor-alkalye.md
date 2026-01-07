@@ -133,6 +133,45 @@ See their cursors move in real-time. No refresh needed.
 
 ---
 
+## Spaces
+
+Spaces are collaborative document collections. Use them to organize your personal notes, coordinate with a team, or publish public knowledge bases.
+
+### Creating a Space
+
+Click the space selector in the left sidebar header and select "New Space". Give it a name—you can add an avatar later in space settings.
+
+### Switching Spaces
+
+The space selector dropdown shows your personal space plus all spaces you belong to. Select one to see its documents.
+
+### Space Roles
+
+Spaces support four roles:
+
+- **Admin** - Full control: manage members, edit settings, delete space
+- **Manager** - Invite members (at or below their role), edit docs
+- **Writer** - Create and edit documents
+- **Reader** - View documents only
+
+### Inviting to a Space
+
+Open space settings and use the share dialog to generate invite links. Choose the role for new members. When someone accepts, they see the space in their sidebar.
+
+### Public Spaces
+
+Toggle "Public" in space settings to make all documents readable by anyone with the link. Great for documentation, wikis, or shared knowledge bases.
+
+### Document-Level Permissions
+
+Space membership provides base access. You can still invite individuals to specific documents with additional permissions—space and doc permissions are additive.
+
+### Duplicating Documents
+
+Documents belong to one space. To share across spaces, use "Duplicate to Space" from the file menu. This creates an independent copy with its own assets.
+
+---
+
 ## Public documents
 
 Make any document public to share a read-only link.

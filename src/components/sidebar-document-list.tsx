@@ -12,6 +12,7 @@ import {
 	countContentMatches,
 	getDaysUntilPermanentDelete,
 } from "@/lib/document-utils"
+import { permanentlyDeletePersonalDocument } from "@/lib/documents"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -62,9 +63,10 @@ import { Spinner } from "@/components/ui/spinner"
 import {
 	getSharingStatus,
 	isDocumentPublic,
+	hasIndividualShares,
 	getDocumentGroup,
-	leaveDocument,
-} from "@/lib/sharing"
+	leavePersonalDocument,
+} from "@/lib/documents"
 import { useFolderStore, FolderRow } from "@/components/folder"
 import { getPresentationMode } from "@/lib/presentation"
 import { exportDocument, type ExportAsset } from "@/lib/export"
@@ -86,6 +88,8 @@ interface SidebarDocumentListProps {
 	onDocClick: () => void
 	onDuplicate: (doc: LoadedDocument) => void
 	onDelete: (doc: LoadedDocument) => void
+	spaceId?: string
+	spaceGroupId?: string
 }
 
 type ListItem =
@@ -99,6 +103,8 @@ function SidebarDocumentList({
 	onDocClick,
 	onDuplicate,
 	onDelete,
+	spaceId,
+	spaceGroupId,
 }: SidebarDocumentListProps) {
 	let [search, setSearch] = useState("")
 	let [sort, setSort] = useState<SortMode>("latest")
@@ -183,6 +189,8 @@ function SidebarDocumentList({
 						onDocClick={onDocClick}
 						onDuplicate={onDuplicate}
 						onDelete={onDelete}
+						spaceId={spaceId}
+						spaceGroupId={spaceGroupId}
 					/>
 				</SidebarGroupContent>
 			</SidebarGroup>
@@ -212,7 +220,7 @@ function SearchFilterBar({
 	let { viewMode, setViewMode } = useFolderStore()
 
 	return (
-		<div className="border-border flex items-center gap-1 border-b p-2">
+		<div className="border-border flex items-center gap-1 border-b px-2 pb-2">
 			<div className="relative flex-1">
 				<Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
 				<Input
@@ -315,6 +323,8 @@ function DocumentListContent({
 	onDocClick,
 	onDuplicate,
 	onDelete,
+	spaceId,
+	spaceGroupId,
 }: {
 	docs: LoadedDocument[]
 	currentDocId: string | undefined
@@ -324,6 +334,8 @@ function DocumentListContent({
 	onDocClick: () => void
 	onDuplicate: (doc: LoadedDocument) => void
 	onDelete: (doc: LoadedDocument) => void
+	spaceId?: string
+	spaceGroupId?: string
 }) {
 	let parentRef = useRef<HTMLDivElement>(null)
 	let { viewMode, isCollapsed, toggleFolder } = useFolderStore()
@@ -331,6 +343,7 @@ function DocumentListContent({
 	let listItems: ListItem[] = buildListItems(docs, viewMode, isCollapsed)
 	let existingFolders = getExistingFolders(docs)
 
+	// eslint-disable-next-line react-hooks/incompatible-library
 	let virtualizer = useVirtualizer({
 		count: listItems.length,
 		getScrollElement: () => parentRef.current,
@@ -403,6 +416,8 @@ function DocumentListContent({
 									showPath={viewMode === "flat"}
 									existingFolders={existingFolders}
 									depth={item.depth}
+									spaceId={spaceId}
+									spaceGroupId={spaceGroupId}
 								/>
 							)}
 						</div>
@@ -423,6 +438,8 @@ function DocumentItem({
 	showPath = false,
 	existingFolders,
 	depth = 0,
+	spaceId,
+	spaceGroupId,
 }: {
 	doc: LoadedDocument
 	isActive: boolean
@@ -433,6 +450,8 @@ function DocumentItem({
 	showPath?: boolean
 	existingFolders: string[]
 	depth?: number
+	spaceId?: string
+	spaceGroupId?: string
 }) {
 	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 	let [shareOpen, setShareOpen] = useState(false)
@@ -445,7 +464,9 @@ function DocumentItem({
 	let date = formatRelativeDate(doc.updatedAt)
 	let isPublic = isDocumentPublic(doc)
 	let status = getSharingStatus(doc)
-	let hasIndicator = isPublic || status !== "none"
+	let hasIndividual = hasIndividualShares(doc, spaceGroupId)
+	// In spaces, only show indicator for individually shared docs, not just because it's in a space
+	let hasIndicator = isPublic || (spaceId ? hasIndividual : status !== "none")
 	let isPresentation = getPresentationMode(content)
 	let isPinned = isDocumentPinned(doc)
 	let tags = getTags(content)
@@ -457,15 +478,21 @@ function DocumentItem({
 		: 0
 	let docId = doc.$jazz.id
 
+	// Build link props based on whether we're in a space context
+	let docLinkProps = spaceId
+		? {
+				to: "/spaces/$spaceId/doc/$id" as const,
+				params: { spaceId, id: docId },
+			}
+		: { to: "/doc/$id" as const, params: { id: docId } }
+
 	return (
 		<SidebarMenuItem>
 			<ContextMenu>
 				<ContextMenuTrigger
 					render={
 						<SidebarMenuButton
-							render={
-								<Link to="/doc/$id" params={{ id: docId }} onClick={onClick} />
-							}
+							render={<Link {...docLinkProps} onClick={onClick} />}
 							isActive={isActive}
 							className="h-auto py-2"
 							style={
@@ -655,6 +682,7 @@ function DeletedDocumentItem({
 	searchQuery: string
 }) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
+	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 
 	let title = getDocumentTitle(doc)
 	let daysLeft = doc.deletedAt ? getDaysUntilPermanentDelete(doc.deletedAt) : 0
@@ -663,6 +691,14 @@ function DeletedDocumentItem({
 	let contentMatchCount = searchQuery.trim()
 		? countContentMatches(content, searchQuery)
 		: 0
+
+	async function handlePermanentDelete() {
+		if (me.$isLoaded) {
+			await permanentlyDeletePersonalDocument(doc, me)
+		} else {
+			doc.$jazz.set("permanentlyDeletedAt", new Date())
+		}
+	}
 
 	return (
 		<SidebarMenuItem>
@@ -713,7 +749,7 @@ function DeletedDocumentItem({
 				description="This cannot be undone."
 				confirmLabel="Delete permanently"
 				variant="destructive"
-				onConfirm={() => doc.$jazz.set("permanentlyDeletedAt", new Date())}
+				onConfirm={handlePermanentDelete}
 			>
 				{preview && (
 					<div className="bg-muted/50 text-muted-foreground max-h-32 overflow-auto rounded border p-3 text-sm whitespace-pre-wrap">
@@ -827,11 +863,7 @@ function makeLeaveDocument(
 ) {
 	return async function handleLeaveDocument() {
 		if (!doc?.$isLoaded || !me.$isLoaded) return
-		let idx = me.root?.documents?.findIndex(d => d?.$jazz.id === doc.$jazz.id)
-		if (idx !== undefined && idx !== -1 && me.root?.documents?.$isLoaded) {
-			me.root.documents.$jazz.splice(idx, 1)
-		}
-		await leaveDocument(doc, me)
+		await leavePersonalDocument(doc, me)
 	}
 }
 

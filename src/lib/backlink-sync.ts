@@ -1,38 +1,76 @@
 import { useRef, useEffect } from "react"
-import { Document, UserAccount } from "@/schema"
+import { Document, Space, UserAccount } from "@/schema"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
 import { getBacklinks, addBacklink, removeBacklink } from "@/editor/frontmatter"
 import { co } from "jazz-tools"
-import { useAccount } from "jazz-tools/react"
+import { useAccount, useCoState } from "jazz-tools/react"
 
 export { useBacklinkSync }
 
 type LoadedDoc = co.loaded<typeof Document, { content: true }>
 
-function useBacklinkSync(docId: string, readOnly: boolean) {
+// Backlink sync options - when spaceId is provided, only sync within that space
+type BacklinkSyncOptions = {
+	spaceId?: string
+}
+
+function useBacklinkSync(
+	docId: string,
+	readOnly: boolean,
+	options: BacklinkSyncOptions = {},
+) {
+	let { spaceId } = options
+
 	let me = useAccount(UserAccount, {
 		resolve: { root: { documents: { $each: { content: true } } } },
 	})
 
-	// Store the me reference so syncBacklinks can access fresh documents
+	// Load space documents when in space context
+	let space = useCoState(Space, spaceId, {
+		resolve: { documents: { $each: { content: true } } },
+	})
+
+	// Store refs so syncBacklinks can access fresh documents
 	let meRef = useRef(me)
+	let spaceRef = useRef(space)
 	useEffect(() => {
 		meRef.current = me
+		spaceRef.current = space
 	})
 
 	function getDocuments(): LoadedDoc[] {
+		let currentSpace = spaceRef.current
 		let currentMe = meRef.current
+
+		// If in space context, only return space documents
+		if (spaceId) {
+			if (!currentSpace?.$isLoaded || !currentSpace.documents?.$isLoaded) {
+				return []
+			}
+			return currentSpace.documents.filter(
+				(d): d is LoadedDoc =>
+					d?.$isLoaded === true && d.content !== undefined && !d.deletedAt,
+			)
+		}
+
+		// Personal context: only return personal documents (no spaceId)
 		if (!currentMe.$isLoaded || !currentMe.root?.documents?.$isLoaded) return []
 		return currentMe.root.documents.filter(
 			(d): d is LoadedDoc =>
-				d?.$isLoaded === true && d.content !== undefined && !d.deletedAt,
+				d?.$isLoaded === true &&
+				d.content !== undefined &&
+				!d.deletedAt &&
+				!d.spaceId,
 		)
 	}
 
 	let lastSyncedLinkIdsRef = useRef(new Set<string>())
 	let timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	let docsReady = me.$isLoaded && me.root?.documents?.$isLoaded
+	// Determine if docs are ready based on context
+	let docsReady = spaceId
+		? space?.$isLoaded && space.documents?.$isLoaded
+		: me.$isLoaded && me.root?.documents?.$isLoaded
 
 	// Cleanup on unmount
 	useEffect(() => {

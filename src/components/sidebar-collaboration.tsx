@@ -12,10 +12,10 @@ import { Globe, Lock, Users } from "lucide-react"
 import { ShareDialog } from "@/components/share-dialog"
 import { Document, UserAccount } from "@/schema"
 import {
-	getCollaborators,
+	listCollaborators,
 	isDocumentPublic,
 	type Collaborator,
-} from "@/lib/sharing"
+} from "@/lib/documents"
 
 export { SidebarCollaboration }
 
@@ -27,14 +27,18 @@ type LoadedDocWithContent = co.loaded<typeof Document, typeof docResolve>
 
 interface SidebarCollaborationProps {
 	docId: string
+	spaceGroupId?: string
 }
 
-function SidebarCollaboration({ docId }: SidebarCollaborationProps) {
+function SidebarCollaboration({
+	docId,
+	spaceGroupId,
+}: SidebarCollaborationProps) {
 	let [shareOpen, setShareOpen] = useState(false)
 	let [collaborators, setCollaborators] = useState<Collaborator[]>([])
 
 	let me = useAccount(UserAccount)
-	let doc = useCoState(Document, docId as Parameters<typeof useCoState>[1], {
+	let doc = useCoState(Document, docId, {
 		resolve: docResolve,
 	})
 
@@ -44,11 +48,11 @@ function SidebarCollaboration({ docId }: SidebarCollaborationProps) {
 	useEffect(() => {
 		async function loadCollaborators() {
 			if (!doc?.$isLoaded) return
-			let result = await getCollaborators(doc)
+			let result = await listCollaborators(doc, spaceGroupId)
 			setCollaborators(result.collaborators)
 		}
 		loadCollaborators()
-	}, [doc])
+	}, [doc, spaceGroupId])
 
 	let otherCollaborators = collaborators.filter(c => c.id !== currentUserId)
 	let hasCollaborators = otherCollaborators.length > 0 || isPublic

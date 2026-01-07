@@ -1,12 +1,16 @@
 {
-	"name": "markdown-editor",
+	"name": "alkalye",
 	"private": true,
 	"version": "0.0.0",
 	"type": "module",
 	"scripts": {
 		"dev": "vite",
-		"build": "eslint . && tsc -b && vite build",
-		"lint": "eslint .",
+		"build": "vite build",
+		"check": "bun x concurrently \"bun run check:lint\" \"bun run check:types\" \"bun run check:format\" \"bun run check:test\"",
+		"check:lint": "eslint .",
+		"check:types": "tsc -b",
+		"check:format": "prettier --check .",
+		"check:test": "bun test",
 		"preview": "vite preview",
 		"format": "prettier --write .",
 		"test": "vitest"
@@ -45,6 +49,7 @@
 		"motion": "^12.23.26",
 		"react": "^19.2.3",
 		"react-dom": "^19.2.3",
+		"react-easy-crop": "^5.5.6",
 		"shadcn": "^3.6.2",
 		"shiki": "^3.20.0",
 		"sonner": "^2.0.7",
@@ -61,6 +66,7 @@
 	},
 	"devDependencies": {
 		"@eslint/js": "^9.39.2",
+		"@happy-dom/global-registrator": "^20.0.11",
 		"@types/node": "^24.10.4",
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",
@@ -72,6 +78,7 @@
 		"eslint-plugin-react": "^7.37.5",
 		"eslint-plugin-react-hooks": "^7.0.1",
 		"globals": "^16.5.0",
+		"happy-dom": "^20.0.11",
 		"jsdom": "^27.4.0",
 		"prettier": "^3.7.4",
 		"prettier-plugin-tailwindcss": "^0.7.2",
