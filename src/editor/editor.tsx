@@ -1,4 +1,5 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
+import { diff } from "fast-myers-diff"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
 import { EditorState, type Extension, Prec } from "@codemirror/state"
@@ -412,13 +413,27 @@ function MarkdownEditor(
 		let currentContent = view.state.doc.toString()
 		if (value !== currentContent && value !== lastExternalValue.current) {
 			let cursorPos = view.state.selection.main.head
-			view.dispatch({
-				changes: { from: 0, to: view.state.doc.length, insert: value },
-			})
-			let newCursorPos = Math.min(cursorPos, value.length)
-			view.dispatch({
-				selection: { anchor: newCursorPos },
-			})
+			let anchorPos = view.state.selection.main.anchor
+
+			// Compute diff and map cursor through changes
+			let changes: { from: number; to: number; insert: string }[] = []
+			for (let [fromA, toA, fromB, toB] of diff(currentContent, value)) {
+				changes.push({
+					from: fromA,
+					to: toA,
+					insert: value.slice(fromB, toB),
+				})
+			}
+
+			if (changes.length > 0) {
+				let tr = view.state.update({ changes })
+				let newCursorPos = tr.changes.mapPos(cursorPos, 1)
+				let newAnchorPos = tr.changes.mapPos(anchorPos, 1)
+				view.dispatch({
+					changes,
+					selection: { anchor: newAnchorPos, head: newCursorPos },
+				})
+			}
 		}
 		lastExternalValue.current = value
 	}, [value, view])
