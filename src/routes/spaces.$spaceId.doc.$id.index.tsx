@@ -22,7 +22,7 @@ import {
 } from "@/editor/editor"
 import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { getPath, getTags } from "@/editor/frontmatter"
 import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
@@ -405,6 +405,7 @@ function SpaceEditorContent({
 								doc={doc}
 								editor={editor}
 								me={me.$isLoaded ? me : undefined}
+								spaceId={spaceId}
 							/>
 							<SidebarEditMenu editor={editor} disabled={readOnly} />
 							<SidebarFormatMenu
@@ -622,10 +623,9 @@ function handleDuplicateDocument(
 	spaceId: string,
 ) {
 	if (!space.documents?.$isLoaded) return
-	let newDoc = createSpaceDocument(
-		space.$jazz.owner,
-		doc.content?.toString() ?? "",
-	)
+	let content = doc.content?.toString() ?? ""
+	let newContent = addCopyToTitle(content)
+	let newDoc = createSpaceDocument(space.$jazz.owner, newContent)
 	space.documents.$jazz.push(newDoc)
 	if (isMobile) setLeftOpenMobile(false)
 	navigate({

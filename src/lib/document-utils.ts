@@ -3,6 +3,7 @@ import { parseSearchTerms } from "@/components/ui/text-highlight"
 
 export {
 	getDocumentTitle,
+	addCopyToTitle,
 	isDocumentPinned,
 	formatRelativeDate,
 	countContentMatches,
@@ -79,4 +80,35 @@ function getDaysUntilPermanentDelete(deletedAt: Date): number {
 	let diff = Date.now() - new Date(deletedAt).getTime()
 	let daysSinceDelete = Math.floor(diff / (1000 * 60 * 60 * 24))
 	return Math.max(0, PERMANENT_DELETE_DAYS - daysSinceDelete)
+}
+
+function addCopyToTitle(content: string): string {
+	let { frontmatter } = parseFrontmatter(content)
+
+	// If frontmatter has title, add (copy) to it
+	if (frontmatter?.title) {
+		return content.replace(
+			/^(---\s*\n[\s\S]*?title:\s*)(.+?)(\s*\n[\s\S]*?---)/m,
+			`$1$2 (copy)$3`,
+		)
+	}
+
+	// Otherwise, look for first heading and add (copy) to it
+	let lines = content.split("\n")
+	for (let i = 0; i < lines.length; i++) {
+		let match = lines[i].match(/^(#{1,6}\s+)(.+)$/)
+		if (match) {
+			lines[i] = `${match[1]}${match[2]} (copy)`
+			return lines.join("\n")
+		}
+		// Skip empty lines and frontmatter when looking for heading
+		if (lines[i].trim() && !lines[i].startsWith("---")) {
+			// First non-empty content that's not a heading - prepend a heading
+			break
+		}
+	}
+
+	// No heading found, prepend one with the inferred title
+	let title = getDocumentTitle(content)
+	return `# ${title} (copy)\n\n${content}`
 }

@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from "react"
 import { useNavigate } from "@tanstack/react-router"
-import { co } from "jazz-tools"
+import { co, Group } from "jazz-tools"
 import { useCoState } from "jazz-tools/react"
 import {
 	SidebarMenuButton,
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
-import { DuplicateDocDialog } from "@/components/duplicate-doc-dialog"
+import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
 import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
@@ -31,7 +31,7 @@ import {
 } from "@/editor/frontmatter"
 import { unfoldEffect } from "@codemirror/language"
 import { getPresentationMode } from "@/lib/presentation"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
 import type { MarkdownEditorRef } from "@/editor/editor"
 
@@ -56,11 +56,12 @@ interface SidebarFileMenuProps {
 	doc: LoadedDocument
 	editor: EditorRef
 	me?: LoadedMe
+	spaceId?: string
 }
 
 // --- Component ---
 
-function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
+function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
 	let { isMobile, setRightOpenMobile } = useSidebar()
 
@@ -68,7 +69,7 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
 	let [leaveOpen, setLeaveOpen] = useState(false)
 	let [moveOpen, setMoveOpen] = useState(false)
-	let [duplicateOpen, setDuplicateOpen] = useState(false)
+	let [moveSpaceOpen, setMoveSpaceOpen] = useState(false)
 
 	let docWithContent = useCoState(Document, doc.$jazz.id, {
 		resolve: { content: true },
@@ -127,6 +128,12 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 							Move to Folder
 						</DropdownMenuItem>
 						<DropdownMenuItem
+							onClick={() => setMoveSpaceOpen(true)}
+							disabled={!me}
+						>
+							Move to Space
+						</DropdownMenuItem>
+						<DropdownMenuItem
 							onClick={makeTurnIntoPresentation(
 								editor,
 								isMobile,
@@ -143,7 +150,9 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 							Save as...
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
 						</DropdownMenuItem>
-						<DropdownMenuItem onClick={() => setDuplicateOpen(true)}>
+						<DropdownMenuItem
+							onClick={makeDuplicate(doc, me, spaceId, navigate)}
+						>
 							Duplicate
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
@@ -193,12 +202,16 @@ function SidebarFileMenu({ doc, editor, me }: SidebarFileMenuProps) {
 				variant="destructive"
 				onConfirm={makeLeave(docWithContent, me, doc, navigate)}
 			/>
-			<DuplicateDocDialog
-				doc={doc}
-				open={duplicateOpen}
-				onOpenChange={setDuplicateOpen}
-				onDuplicate={makeDuplicate(navigate)}
-			/>
+
+			{docWithContent?.$isLoaded && (
+				<MoveToSpaceDialog
+					doc={docWithContent}
+					open={moveSpaceOpen}
+					onOpenChange={setMoveSpaceOpen}
+					currentSpaceId={spaceId}
+					onMove={makeMoveToSpace(navigate, spaceId)}
+				/>
+			)}
 		</>
 	)
 }
@@ -453,18 +466,67 @@ function makeLeave(
 	}
 }
 
-function makeDuplicate(navigate: ReturnType<typeof useNavigate>) {
-	return function handleDuplicate(
-		newDocId: string,
-		destination: { id: string; name: string } | null,
-	) {
-		if (destination) {
+function makeDuplicate(
+	doc: LoadedDocument,
+	me: LoadedMe | undefined,
+	spaceId: string | undefined,
+	navigate: ReturnType<typeof useNavigate>,
+) {
+	return function handleDuplicate() {
+		if (!me?.root?.documents?.$isLoaded) return
+
+		let content = doc.content?.toString() ?? ""
+		let newContent = addCopyToTitle(content)
+
+		let now = new Date()
+		let group = Group.create()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(newContent, group),
+				createdAt: now,
+				updatedAt: now,
+			},
+			group,
+		)
+		me.root.documents.$jazz.push(newDoc)
+
+		if (spaceId) {
 			navigate({
 				to: "/spaces/$spaceId/doc/$id",
-				params: { spaceId: destination.id, id: newDocId },
+				params: { spaceId, id: newDoc.$jazz.id },
 			})
 		} else {
-			navigate({ to: "/doc/$id", params: { id: newDocId } })
+			navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
+		}
+	}
+}
+
+function makeMoveToSpace(
+	navigate: ReturnType<typeof useNavigate>,
+	currentSpaceId?: string,
+) {
+	return function handleMoveToSpace(
+		destination: { id: string; name: string } | null,
+	) {
+		// Navigate to the document's new location
+		// We need to get the doc ID from the current route, but since we're in a callback
+		// the navigation will happen after the move completes
+		if (destination) {
+			// Get current doc ID from URL and navigate to new space location
+			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
+			if (docId) {
+				navigate({
+					to: "/spaces/$spaceId/doc/$id",
+					params: { spaceId: destination.id, id: docId },
+				})
+			}
+		} else if (currentSpaceId) {
+			// Moving from space to personal
+			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
+			if (docId) {
+				navigate({ to: "/doc/$id", params: { id: docId } })
+			}
 		}
 	}
 }

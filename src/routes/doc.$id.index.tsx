@@ -22,7 +22,7 @@ import {
 } from "@/editor/editor"
 import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { getPath, getTags } from "@/editor/frontmatter"
 import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
@@ -640,12 +640,14 @@ function handleDuplicateDocument(
 	navigate: ReturnType<typeof useNavigate>,
 ) {
 	if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
+	let content = doc.content?.toString() ?? ""
+	let newContent = addCopyToTitle(content)
 	let now = new Date()
 	let group = Group.create()
 	let newDoc = Document.create(
 		{
 			version: 1,
-			content: co.plainText().create(doc.content?.toString() ?? "", group),
+			content: co.plainText().create(newContent, group),
 			createdAt: now,
 			updatedAt: now,
 		},
