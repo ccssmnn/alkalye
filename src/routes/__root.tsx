@@ -1,6 +1,7 @@
 import {
 	Outlet,
 	createRootRouteWithContext,
+	redirect,
 	Link,
 } from "@tanstack/react-router"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -25,6 +26,17 @@ export type RouterContext = {
 }
 
 let Route = createRootRouteWithContext<RouterContext>()({
+	beforeLoad: () => {
+		// PWA cold start: redirect deep links to / so user lands on their own docs
+		// iOS Safari ignores manifest start_url and uses current URL when adding to homescreen
+		if (
+			(window as { __pwaColdStartRedirect?: boolean }).__pwaColdStartRedirect
+		) {
+			delete (window as { __pwaColdStartRedirect?: boolean })
+				.__pwaColdStartRedirect
+			throw redirect({ to: "/" })
+		}
+	},
 	component: RootComponent,
 	errorComponent: ErrorComponent,
 	notFoundComponent: NotFoundComponent,

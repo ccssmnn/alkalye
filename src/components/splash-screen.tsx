@@ -66,7 +66,7 @@ function SplashScreen({ show }: { show: boolean }) {
 
 function SplashIcon() {
 	return (
-		<div className="text-foreground bg-background dark:to-background flex aspect-square size-48 flex-col items-center justify-center rounded-3xl font-mono text-[36px] leading-none font-bold tracking-tighter dark:bg-radial dark:from-emerald-900 dark:from-0% dark:via-emerald-950 dark:via-30% dark:to-70%">
+		<div className="text-foreground bg-background flex aspect-square size-48 flex-col items-center justify-center rounded-3xl font-mono text-[36px] leading-none font-bold tracking-tighter">
 			Alkalye
 		</div>
 	)
