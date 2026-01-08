@@ -296,8 +296,10 @@ function buildCursorDecorations(
 let cursorDecorationPlugin = ViewPlugin.fromClass(
 	class {
 		decorations: DecorationSet
+		view: EditorView
 
 		constructor(view: EditorView) {
+			this.view = view
 			let cursors = view.state.field(remoteCursorsField)
 			this.decorations = buildCursorDecorations(cursors, view.state.doc.length)
 		}
@@ -310,6 +312,16 @@ let cursorDecorationPlugin = ViewPlugin.fromClass(
 					cursors,
 					update.state.doc.length,
 				)
+
+				// Force Safari to repaint removed cursor elements
+				if (cursors !== oldCursors) {
+					requestAnimationFrame(() => {
+						this.view.contentDOM.style.transform = "translateZ(0)"
+						requestAnimationFrame(() => {
+							this.view.contentDOM.style.transform = ""
+						})
+					})
+				}
 			}
 		}
 	},
