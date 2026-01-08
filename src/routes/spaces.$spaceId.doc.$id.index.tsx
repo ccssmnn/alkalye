@@ -356,6 +356,7 @@ function SpaceEditorContent({
 					remoteCursors={remoteCursors}
 					onCreateDocument={makeCreateDocument(space)}
 					onUploadImage={makeUploadImage(doc)}
+					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 				/>
 				<EditorToolbar
 					editor={editor}

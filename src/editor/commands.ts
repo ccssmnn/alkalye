@@ -1,4 +1,5 @@
 import { EditorView } from "@codemirror/view"
+import { sortTaskLists } from "@/lib/sort-tasks"
 
 type Command = (view: EditorView) => boolean
 
@@ -10,6 +11,7 @@ export {
 	moveLineUp,
 	setBody,
 	setHeadingLevel,
+	sortTasks,
 	toggleBlockquote,
 	toggleBold,
 	toggleBulletList,
@@ -19,6 +21,7 @@ export {
 	toggleOrderedList,
 	toggleStrikethrough,
 	toggleTaskComplete,
+	toggleTaskCompleteWithSort,
 	toggleTaskList,
 	wrapSelection,
 }
@@ -409,3 +412,51 @@ let toggleBulletList = toggleLinePrefix("- ")
 let toggleOrderedList = toggleLinePrefix("1. ")
 let toggleTaskList = toggleLinePrefix("- [ ] ")
 let toggleBlockquote = toggleLinePrefix("> ")
+
+let sortTasks: Command = view => {
+	let content = view.state.doc.toString()
+	let sorted = sortTaskLists(content)
+	if (sorted === content) return false
+	let cursorPos = view.state.selection.main.head
+	view.dispatch({
+		changes: { from: 0, to: view.state.doc.length, insert: sorted },
+		selection: { anchor: Math.min(cursorPos, sorted.length) },
+	})
+	return true
+}
+
+function toggleTaskCompleteWithSort(autoSort: boolean): Command {
+	return view => {
+		let { from } = view.state.selection.main
+		let line = view.state.doc.lineAt(from)
+		let lineText = line.text
+
+		let uncheckedMatch = lineText.match(/^(\s*[-*]\s)\[ \](\s)/)
+		let checkedMatch = lineText.match(/^(\s*[-*]\s)\[x\](\s)/i)
+
+		if (!uncheckedMatch && !checkedMatch) return false
+
+		let prefixLength = uncheckedMatch
+			? uncheckedMatch[1].length
+			: checkedMatch![1].length
+		let checkboxStart = line.from + prefixLength
+		let newCheckbox = uncheckedMatch ? "[x]" : "[ ]"
+
+		// Apply checkbox change
+		let newDoc = view.state.doc
+			.slice(0, checkboxStart)
+			.toString()
+			.concat(newCheckbox)
+			.concat(view.state.doc.slice(checkboxStart + 3).toString())
+
+		// Optionally sort after toggle
+		let finalDoc = autoSort ? sortTaskLists(newDoc) : newDoc
+
+		// Single transaction for both changes (one undo)
+		view.dispatch({
+			changes: { from: 0, to: view.state.doc.length, insert: finalDoc },
+			selection: { anchor: Math.min(from, finalDoc.length) },
+		})
+		return true
+	}
+}

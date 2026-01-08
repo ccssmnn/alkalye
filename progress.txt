@@ -30,3 +30,27 @@ Verified all 16 PRD items against existing implementation and tests.
 **Notes for next person:**
 - All features implemented and verified
 - PRD is complete
+
+## 2026-01-08: UI integration complete
+
+Wired `sortTaskLists()` to the UI.
+
+**What was done:**
+- Added `autoSortTasks` boolean to `EditorSettings` schema (default: false)
+- Added "Auto-sort tasks on toggle" switch in Settings > Editor
+- Created `sortTasks` command in `src/editor/commands.ts`
+- Created `toggleTaskCompleteWithSort(autoSort)` - toggles checkbox + sorts as single undoable action
+- Keyboard shortcuts: `Alt-Mod-x` (toggle complete w/ auto-sort), `Alt-Mod-Shift-x` (manual sort)
+- Edit menu: "Toggle Complete" and "Sort Tasks" items
+- Floating action button uses `toggleTaskComplete()` which respects auto-sort setting
+- Passed `autoSortTasks` prop from doc routes to MarkdownEditor
+
+**Files changed:**
+- `src/schema/index.ts` - added autoSortTasks to EditorSettings
+- `src/routes/settings.tsx` - added toggle UI
+- `src/editor/commands.ts` - added sortTasks and toggleTaskCompleteWithSort
+- `src/editor/editor.tsx` - added autoSortTasks prop, keyboard bindings, sortTasks method
+- `src/components/sidebar-edit-menu.tsx` - added Toggle Complete and Sort Tasks menu items
+- `src/components/floating-actions.tsx` - TaskAction uses editor.toggleTaskComplete()
+- `src/routes/doc.$id.index.tsx` - passed autoSortTasks to editor
+- `src/routes/spaces.$spaceId.doc.$id.index.tsx` - passed autoSortTasks to editor

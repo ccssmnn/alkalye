@@ -394,6 +394,13 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 								: ""
 						}
 					/>
+
+					<ToggleSetting
+						id="auto-sort-toggle"
+						label="Auto-sort tasks on toggle"
+						checked={settings.autoSortTasks}
+						onChange={v => setSettings({ autoSortTasks: v })}
+					/>
 				</div>
 			</div>
 		</section>
