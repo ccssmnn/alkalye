@@ -1,0 +1,18 @@
+
+## 2026-01-08: Basic sorting implementation
+
+Implemented `sortTaskLists()` in `src/lib/sort-tasks.ts`.
+
+**What was done:**
+- Created `sortTaskLists(markdown: string): string` function
+- Sorts unchecked tasks before checked tasks (stable sort)
+- Handles: multiple lists, nested children, code fences, all bullet syntaxes (-, *, +), ordered lists
+- Preserves relative order within groups
+- Full test coverage in `src/lib/sort-tasks.test.ts`
+
+**PRD item completed:** "Basic sorting - unchecked tasks before checked tasks"
+
+**Notes for next person:**
+- Ordered list renumbering NOT implemented (PRD item 13 expects `1. [ ]` then `2. [x]` but current impl preserves original numbers)
+- The implementation is comprehensive - most other PRD items likely pass but weren't marked as complete per single-feature-per-run rule
+- Run `bun test src/lib/sort-tasks.test.ts` to verify
