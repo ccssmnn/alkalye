@@ -17,6 +17,7 @@ import {
 	Minus,
 	Plus,
 	RefreshCw,
+	WifiOff,
 } from "lucide-react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
@@ -42,6 +43,12 @@ import { wordlist } from "@/lib/wordlist"
 import { Footer } from "@/components/footer"
 import { usePWA, useIsPWAInstalled, PWAInstallDialog } from "@/lib/pwa"
 import { BackupSettings } from "@/lib/backup"
+import {
+	Tooltip,
+	TooltipTrigger,
+	TooltipContent,
+} from "@/components/ui/tooltip"
+import { useIsOnline } from "@/lib/use-online"
 
 export { Route }
 
@@ -513,9 +520,57 @@ function ToggleSetting({
 	)
 }
 
+function SyncNowSection() {
+	let me = useAccount(UserAccount)
+	let isOnline = useIsOnline()
+	let [isSyncing, setIsSyncing] = useState(false)
+	let [error, setError] = useState<string | null>(null)
+
+	async function handleSyncNow() {
+		if (!me.$isLoaded) return
+		setIsSyncing(true)
+		setError(null)
+		try {
+			await me.$jazz.waitForAllCoValuesSync({ timeout: 10000 })
+		} catch {
+			setError("Sync timed out. Check your connection.")
+			setTimeout(() => setError(null), 5000)
+		} finally {
+			setIsSyncing(false)
+		}
+	}
+
+	return (
+		<Tooltip open={!!error}>
+			<TooltipTrigger
+				render={
+					<Button
+						onClick={handleSyncNow}
+						variant="outline"
+						size="sm"
+						disabled={isSyncing || !me.$isLoaded || !isOnline}
+					>
+						<RefreshCw
+							className={`mr-1.5 size-3.5 ${isSyncing ? "animate-spin" : ""}`}
+						/>
+						{isSyncing ? "Syncing..." : "Sync now"}
+					</Button>
+				}
+			/>
+			<TooltipContent
+				side="bottom"
+				className="text-destructive bg-destructive/10"
+			>
+				{error}
+			</TooltipContent>
+		</Tooltip>
+	)
+}
+
 function SignedInView() {
 	let auth = usePassphraseAuth({ wordlist })
 	let logOut = useLogOut()
+	let isOnline = useIsOnline()
 	let [showPassphrase, setShowPassphrase] = useState(false)
 	let [isCopied, setIsCopied] = useState(false)
 
@@ -531,12 +586,22 @@ function SignedInView() {
 				Cloud Sync & Backup
 			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
-				<div className="mb-4 flex items-center gap-2 text-green-600 dark:text-green-400">
-					<Cloud className="size-4" />
-					<span className="text-sm font-medium">Syncing</span>
-				</div>
+				{isOnline ? (
+					<div className="mb-4 flex items-center gap-2 text-green-600 dark:text-green-400">
+						<Cloud className="size-4" />
+						<span className="flex-1 text-sm font-medium">Syncing</span>
+						<SyncNowSection />
+					</div>
+				) : (
+					<div className="text-muted-foreground mb-4 flex items-center gap-2">
+						<WifiOff className="size-4" />
+						<span className="text-sm font-medium">Offline</span>
+					</div>
+				)}
 				<p className="text-muted-foreground mb-4 text-sm">
-					Your notes are synced across devices.
+					{isOnline
+						? "Your notes are synced across devices."
+						: "You're offline. Changes will sync when you reconnect."}
 				</p>
 				{showPassphrase ? (
 					<>
