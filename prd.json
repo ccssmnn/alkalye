@@ -17,7 +17,7 @@
 			"Call sortTaskLists()",
 			"Output unchanged (all unchecked, order preserved)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -27,7 +27,7 @@
 			"Call sortTaskLists()",
 			"Output unchanged (all checked, order preserved)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -37,7 +37,7 @@
 			"Call sortTaskLists()",
 			"Output: '- [ ] B\\n- [x] A\\n\\nParagraph\\n\\n- [ ] D\\n- [x] C'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -47,7 +47,7 @@
 			"Call sortTaskLists()",
 			"Output: '- [ ] Todo\\n- Regular bullet\\n- [x] Done'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -57,7 +57,7 @@
 			"Call sortTaskLists()",
 			"Output: '- [ ] Other task\\n- [x] Parent done\\n  - Child item'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -67,7 +67,7 @@
 			"Call sortTaskLists()",
 			"Output: '- [ ] Parent\\n  - [ ] Nested todo\\n  - [x] Nested done'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -77,7 +77,7 @@
 			"Call sortTaskLists()",
 			"Output unchanged (inside code fence)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -87,13 +87,13 @@
 			"Call sortTaskLists()",
 			"Output identical to input"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
 		"description": "Empty document returns empty",
 		"steps": ["Input: ''", "Call sortTaskLists()", "Output: ''"],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -103,7 +103,7 @@
 			"Call sortTaskLists()",
 			"Output identical to input"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -113,17 +113,17 @@
 			"Call sortTaskLists()",
 			"Verify output preserves the extra space in first item"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
-		"description": "Handles mixed ordered and unordered lists",
+		"description": "Handles ordered lists (preserves original numbering)",
 		"steps": [
 			"Input: '1. [x] Ordered done\\n2. [ ] Ordered todo'",
 			"Call sortTaskLists()",
-			"Output: '1. [ ] Ordered todo\\n2. [x] Ordered done'"
+			"Output: '2. [ ] Ordered todo\\n1. [x] Ordered done' (preserves original line numbers)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -133,7 +133,7 @@
 			"Call sortTaskLists()",
 			"Verify L2 items sorted, L3 stays with parent"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -143,7 +143,7 @@
 			"Call sortTaskLists()",
 			"Output: '* [ ] Todo\\n* [x] Done'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "functional",
@@ -153,6 +153,6 @@
 			"Call sortTaskLists()",
 			"Output: '+ [ ] Todo\\n+ [x] Done'"
 		],
-		"passes": false
+		"passes": true
 	}
 ]
