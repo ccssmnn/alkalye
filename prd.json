@@ -47,7 +47,7 @@
 			"Verify back/forward buttons are disabled",
 			"Verify message indicates 'No previous versions' or similar"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "entry",
@@ -130,7 +130,7 @@
 			"Verify content updates approximately 150ms after stopping movement",
 			"Verify no performance issues during rapid scrubbing"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "navigation",

@@ -274,3 +274,30 @@
 
 ### PRD Status
 - "Editor is read-only in Time Machine mode" - PASSES
+
+## 2026-01-09: Time Machine - Verified Two Already-Implemented Features
+
+### Completed
+- Verified "Time Machine accessible for documents with single edit shows disabled UI" was already fully implemented
+- Verified "Slider scrubbing is debounced at 150ms" was already fully implemented
+- Updated PRD to mark both features as passing
+
+### Technical Details - Single Edit Document UI
+- TimeMachineBottomBar checks `hasHistory = totalEdits > 1` (line 54)
+- When hasHistory is false:
+  - Slider is disabled via `disabled={disabled || !hasHistory}` (line 93)
+  - Back/Forward buttons are disabled via `disabled={disabled || isAtStart || !hasHistory}` (lines 70, 79)
+  - Message "No previous versions" is displayed instead of edit counter (lines 99-105)
+
+### Technical Details - Slider Debounce
+- TimeMachineBottomBar uses local state `localValue` for immediate slider feedback (line 20)
+- `handleSliderChange` clears any existing timeout and sets new 150ms timeout (lines 32-37)
+- The actual `onEditChange` callback only fires after 150ms of no slider movement
+- This prevents excessive URL updates and content re-renders during rapid scrubbing
+
+### Files Modified
+- prd.json (marked two features as passing)
+
+### PRD Status
+- "Time Machine accessible for documents with single edit shows disabled UI" - PASSES
+- "Slider scrubbing is debounced at 150ms" - PASSES

@@ -2,7 +2,12 @@ import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
-import { EditorState, StateEffect, type Extension, Prec } from "@codemirror/state"
+import {
+	EditorState,
+	StateEffect,
+	type Extension,
+	Prec,
+} from "@codemirror/state"
 import {
 	EditorView,
 	keymap,
