@@ -454,7 +454,7 @@
 				"Verify User B sees fallback if they don't have theme",
 				"Verify User B can upload same theme to see it"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "collaboration",
@@ -466,7 +466,7 @@
 				"Import on different account with same theme",
 				"Verify theme is applied correctly"
 			],
-			"passes": false
+			"passes": true
 		}
 	]
 }

@@ -881,7 +881,12 @@ async function parseIAPresenterTheme(
 
 	// Look for thumbnail
 	let thumbnail: File | undefined
-	let thumbnailNames = ["thumbnail.png", "thumbnail.jpg", "preview.png", "preview.jpg"]
+	let thumbnailNames = [
+		"thumbnail.png",
+		"thumbnail.jpg",
+		"preview.png",
+		"preview.jpg",
+	]
 	for (let thumbName of thumbnailNames) {
 		let thumbPath = basePath + thumbName
 		let thumbFile = zip.file(thumbPath)
@@ -949,13 +954,19 @@ function convertIAPresenterPreset(
 		"textColor",
 		"fg",
 	])
-	let accent = extractColor(preset, ["accent", "accentColor", "primary", "highlight"])
+	let accent = extractColor(preset, [
+		"accent",
+		"accentColor",
+		"primary",
+		"highlight",
+	])
 
 	// If essential colors are missing, try nested colors object
 	let colors = preset.colors as Record<string, unknown> | undefined
 	if (colors && typeof colors === "object") {
 		background = background || extractColor(colors, ["background", "bg"])
-		foreground = foreground || extractColor(colors, ["foreground", "text", "fg"])
+		foreground =
+			foreground || extractColor(colors, ["foreground", "text", "fg"])
 		accent = accent || extractColor(colors, ["accent", "primary"])
 	}
 

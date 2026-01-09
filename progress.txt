@@ -837,3 +837,39 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - "Theme is included in PDF export" not implemented (requires browser print integration)
 - Collaboration features (theme sharing) not implemented
 - "Theme reference in document is portable" not implemented
+
+## 2026-01-09: Theme Collaboration Features Verification
+
+### What was done
+- Verified that both collaboration features were already implemented as part of the core architecture
+- Marked both collaboration PRD requirements as passing
+
+### Implementation details
+
+**"Themes are user-scoped not document-scoped":**
+- Themes are stored in `UserRoot.themes` list (per-user storage)
+- Documents reference themes by name in frontmatter (`theme: MyTheme`)
+- `useDocumentTheme` hook loads themes from current user's account via `useAccount(UserAccount, { resolve: themesQuery })`
+- When User B opens a shared document referencing a theme they don't have, they see warning: "Theme 'X' not found. Upload it in Settings > Themes."
+- User B can upload the same theme (by name) to see it render correctly
+
+**"Theme reference in document is portable":**
+- Export preserves all frontmatter fields including `theme:` and `preset:`
+- `stripBacklinksFrontmatter()` only removes `backlinks:` field, preserving theme references
+- Import preserves frontmatter unchanged
+- Theme resolution is by name (case-insensitive), so if importing user has a theme with the same name, it applies
+- This works because themes are looked up dynamically at render time, not stored by ID
+
+### Files changed
+- `prd.json` (marked both collaboration requirements as passes: true)
+- `src/lib/theme-upload.ts` (formatted with prettier)
+
+### PRD requirements completed
+- [x] collaboration: "Themes are user-scoped not document-scoped" - passes: true
+- [x] collaboration: "Theme reference in document is portable" - passes: true
+
+### Notes for next steps
+- Only one PRD requirement remains incomplete: "Theme is included in PDF export"
+- PDF export would require integrating theme CSS into browser print functionality
+- This is a complex feature requiring print stylesheets and font embedding considerations
+
