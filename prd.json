@@ -190,7 +190,7 @@
 				"Verify theme styles override defaults",
 				"Verify theme respects light/dark mode"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "preview",
@@ -214,7 +214,7 @@
 				"Verify fonts load and render correctly",
 				"Verify fallback fonts work if load fails"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "slideshow",

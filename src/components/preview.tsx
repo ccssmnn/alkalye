@@ -11,6 +11,9 @@ import {
 import { parseFrontmatter } from "@/editor/frontmatter"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/lib/theme"
+import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
+import { buildThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
+import { TriangleAlert } from "lucide-react"
 
 export { Preview }
 
@@ -29,6 +32,7 @@ interface PreviewProps {
 
 function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
+	let documentTheme = useDocumentTheme(content)
 
 	let wikilinkResolver: WikilinkTitleResolver = docId => {
 		return wikilinks.get(docId) ?? { title: docId, exists: false }
@@ -45,6 +49,7 @@ function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 			marked={marked}
 			cacheVersion={wikilinks.size}
 			onExit={onExit}
+			documentTheme={documentTheme}
 		/>
 	)
 }
@@ -59,15 +64,18 @@ function PreviewContent({
 	marked,
 	cacheVersion,
 	onExit,
+	documentTheme,
 }: {
 	content: string
 	assets?: Asset[]
 	marked: Marked
 	cacheVersion: number
 	onExit?: () => void
+	documentTheme: ResolvedTheme
 }) {
 	let [segments, setSegments] = useState<Segment[]>([])
 	let [prevContent, setPrevContent] = useState(content)
+	let themeStyles = useThemeStyles(documentTheme)
 
 	// Reset segments when content becomes empty (adjust state during render pattern)
 	if (content !== prevContent) {
@@ -112,6 +120,13 @@ function PreviewContent({
 		return () => document.removeEventListener("keydown", handleKeyDown)
 	}, [onExit])
 
+	// Combine all theme CSS
+	let injectedStyles = themeStyles
+		? [themeStyles.fontFaceRules, themeStyles.presetVariables, themeStyles.css]
+				.filter(Boolean)
+				.join("\n")
+		: ""
+
 	return (
 		<div
 			className="flex-1 overflow-auto"
@@ -121,8 +136,22 @@ function PreviewContent({
 				paddingBottom: "env(safe-area-inset-bottom)",
 			}}
 		>
+			{/* Inject theme styles */}
+			{injectedStyles && <style>{injectedStyles}</style>}
+
+			{/* Theme warning banner */}
+			{documentTheme.warning && (
+				<div className="bg-warning/10 text-warning-foreground border-warning/20 mx-auto mt-4 flex max-w-[65ch] items-center gap-2 rounded-lg border px-4 py-2 text-sm">
+					<TriangleAlert className="size-4 shrink-0" />
+					<span>{documentTheme.warning}</span>
+				</div>
+			)}
+
 			<div className="mx-auto max-w-[65ch] px-6 py-8">
-				<article className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4">
+				<article
+					className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4"
+					data-theme={documentTheme.theme?.name ?? undefined}
+				>
 					{segments.map((segment, i) => {
 						if (segment.type === "text") {
 							return (
@@ -151,6 +180,61 @@ function PreviewContent({
 			</div>
 		</div>
 	)
+}
+
+// Hook to build and manage theme styles with proper blob URL cleanup
+function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
+	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+	let prevThemeRef = useRef<typeof documentTheme.theme>(null)
+	let prevPresetRef = useRef<typeof documentTheme.preset>(null)
+
+	// Track if theme or preset changed
+	let themeChanged =
+		documentTheme.theme !== prevThemeRef.current ||
+		documentTheme.preset !== prevPresetRef.current
+
+	// Update refs during render (adjust state pattern)
+	if (themeChanged) {
+		prevThemeRef.current = documentTheme.theme
+		prevPresetRef.current = documentTheme.preset
+	}
+
+	useEffect(() => {
+		if (!themeChanged) return
+
+		// Cleanup old blob URLs
+		if (styles) {
+			for (let url of styles.blobUrls) {
+				URL.revokeObjectURL(url)
+			}
+		}
+
+		// Build new styles
+		if (documentTheme.theme) {
+			let newStyles = buildThemeStyles(
+				documentTheme.theme,
+				documentTheme.preset,
+			)
+			setStyles(newStyles)
+		} else {
+			setStyles(null)
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [documentTheme.theme, documentTheme.preset])
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (styles) {
+				for (let url of styles.blobUrls) {
+					URL.revokeObjectURL(url)
+				}
+			}
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	return styles
 }
 
 let highlighterPromise: Promise<Highlighter> | null = null

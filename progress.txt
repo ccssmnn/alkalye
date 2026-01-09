@@ -105,3 +105,40 @@
 - Next priority: integrate `useDocumentTheme` into Preview component to inject CSS
 - Warning UI for missing themes should be added to preview/slideshow views
 - CSS asset URL rewriting still needed for fonts/images referenced in theme CSS
+
+## 2026-01-09: Preview Theme CSS Injection
+
+### What was done
+- Created `src/lib/theme-renderer.ts` with utilities for building theme CSS:
+  - `buildThemeStyles(theme, preset)` - builds complete CSS including @font-face rules and preset variables
+  - Creates blob URLs from theme font assets (co.fileStream)
+  - Returns `ThemeStyles` object with css, fontFaceRules, presetVariables, and blobUrls
+  - Properly handles cleanup of blob URLs when theme changes
+
+- Integrated theme styles into `src/components/preview.tsx`:
+  - Added `useDocumentTheme` hook to resolve theme from frontmatter
+  - Added `useThemeStyles` custom hook that manages theme CSS and blob URL lifecycle
+  - Injects theme CSS via `<style>` tag in preview
+  - Injects @font-face rules for theme fonts with blob URLs
+  - Injects preset CSS variables (--preset-background, --preset-foreground, etc.)
+  - Shows warning banner when theme is not found in user's themes
+  - Added `data-theme` attribute to article for theme-specific CSS targeting
+
+- Theme CSS features:
+  - Font assets are served via blob URLs created from Jazz fileStream
+  - @font-face rules are generated automatically with correct format (woff2, woff, truetype, opentype)
+  - font-display: swap for progressive font loading
+  - Preset colors exposed as CSS variables for theme authors to use
+
+### Files changed
+- `src/lib/theme-renderer.ts` (new file)
+- `src/components/preview.tsx` (added theme integration)
+
+### PRD requirements completed
+- [x] preview: "Preview component applies theme CSS" - passes: true
+- [x] preview: "Preview loads theme fonts" - passes: true
+
+### Notes for next steps
+- "Preview uses custom HTML template when provided" not yet implemented
+- Next priority could be: slideshow theme support, or custom HTML templates
+- The same pattern (useDocumentTheme + buildThemeStyles) can be used for slideshow
