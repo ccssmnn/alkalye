@@ -27,7 +27,9 @@ import {
 
 import { cn } from "@/lib/utils"
 import { useResolvedTheme } from "@/lib/theme"
-import { EllipsisIcon } from "lucide-react"
+import { EllipsisIcon, TriangleAlert } from "lucide-react"
+import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
+import { buildThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
 
 export { Slideshow }
 export type { Slide }
@@ -63,7 +65,9 @@ function Slideshow({
 	onGoToTeleprompter,
 }: SlideshowProps) {
 	let size = parsePresentationSize(content)
-	let theme = parsePresentationTheme(content)
+	let appearanceTheme = parsePresentationTheme(content)
+	let documentTheme = useDocumentTheme(content)
+	let themeStyles = useThemeStyles(documentTheme)
 
 	let currentSlide = slides.find(s => s.slideNumber === currentSlideNumber)
 	let currentSlideIdx = slides.findIndex(
@@ -78,17 +82,56 @@ function Slideshow({
 		}
 	}
 
+	// Combine all theme CSS
+	let injectedStyles = themeStyles
+		? [themeStyles.fontFaceRules, themeStyles.presetVariables, themeStyles.css]
+				.filter(Boolean)
+				.join("\n")
+		: ""
+
+	// Determine if custom theme provides background/foreground via preset
+	let hasThemeColors = documentTheme.preset != null
+
 	return (
 		<WikilinkContext.Provider value={wikilinks}>
-			<ThemeContext.Provider value={theme}>
+			<ThemeContext.Provider value={appearanceTheme}>
+				{/* Inject theme styles */}
+				{injectedStyles && <style>{injectedStyles}</style>}
+
 				<div
 					className={cn(
 						"fixed inset-0 flex flex-col",
-						theme === "light" && "bg-white text-black",
-						theme === "dark" && "bg-black text-white",
-						!theme && "bg-background text-foreground",
+						// Only use hardcoded colors if no custom theme preset provides colors
+						!hasThemeColors &&
+							appearanceTheme === "light" &&
+							"bg-white text-black",
+						!hasThemeColors &&
+							appearanceTheme === "dark" &&
+							"bg-black text-white",
+						!hasThemeColors &&
+							!appearanceTheme &&
+							"bg-background text-foreground",
 					)}
+					style={
+						hasThemeColors
+							? {
+									backgroundColor: "var(--preset-background)",
+									color: "var(--preset-foreground)",
+								}
+							: undefined
+					}
+					data-theme={documentTheme.theme?.name ?? undefined}
 				>
+					{/* Theme warning banner */}
+					{documentTheme.warning && (
+						<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+							<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+								<TriangleAlert className="size-4 shrink-0" />
+								<span>{documentTheme.warning}</span>
+							</div>
+						</div>
+					)}
+
 					<ScaledSlideContainer
 						blocks={visibleBlocks}
 						size={size}
@@ -653,4 +696,59 @@ function HighlightedCode({
 			<code className="text-foreground font-mono">{code}</code>
 		</pre>
 	)
+}
+
+// Hook to build and manage theme styles with proper blob URL cleanup
+function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
+	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+	let prevThemeRef = useRef<typeof documentTheme.theme>(null)
+	let prevPresetRef = useRef<typeof documentTheme.preset>(null)
+
+	// Track if theme or preset changed
+	let themeChanged =
+		documentTheme.theme !== prevThemeRef.current ||
+		documentTheme.preset !== prevPresetRef.current
+
+	// Update refs during render (adjust state pattern)
+	if (themeChanged) {
+		prevThemeRef.current = documentTheme.theme
+		prevPresetRef.current = documentTheme.preset
+	}
+
+	useEffect(() => {
+		if (!themeChanged) return
+
+		// Cleanup old blob URLs
+		if (styles) {
+			for (let url of styles.blobUrls) {
+				URL.revokeObjectURL(url)
+			}
+		}
+
+		// Build new styles
+		if (documentTheme.theme) {
+			let newStyles = buildThemeStyles(
+				documentTheme.theme,
+				documentTheme.preset,
+			)
+			setStyles(newStyles)
+		} else {
+			setStyles(null)
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [documentTheme.theme, documentTheme.preset])
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (styles) {
+				for (let url of styles.blobUrls) {
+					URL.revokeObjectURL(url)
+				}
+			}
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	return styles
 }

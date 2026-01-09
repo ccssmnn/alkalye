@@ -142,3 +142,37 @@
 - "Preview uses custom HTML template when provided" not yet implemented
 - Next priority could be: slideshow theme support, or custom HTML templates
 - The same pattern (useDocumentTheme + buildThemeStyles) can be used for slideshow
+
+## 2026-01-09: Slideshow Theme Support
+
+### What was done
+- Integrated theme styles into `src/components/slideshow.tsx`:
+  - Added `useDocumentTheme` hook to resolve theme from frontmatter
+  - Added `useThemeStyles` custom hook (same pattern as preview)
+  - Injects theme CSS via `<style>` tag before slide container
+  - Injects @font-face rules for theme fonts with blob URLs
+  - Injects preset CSS variables (--preset-background, --preset-foreground, etc.)
+  - Shows warning banner when theme is not found in user's themes
+  - Added `data-theme` attribute to container for theme-specific CSS targeting
+
+- Background/foreground color handling:
+  - When a preset is available, uses CSS variables for background/foreground colors
+  - Falls back to existing light/dark/system appearance handling when no preset
+  - Renamed internal variable from `theme` to `appearanceTheme` to avoid confusion with custom theme
+
+- Warning banner:
+  - Shows absolute-positioned centered banner at top of slideshow
+  - Same warning messages as preview (missing theme, missing preset fallback)
+
+### Files changed
+- `src/components/slideshow.tsx` (added theme integration)
+
+### PRD requirements completed
+- [x] slideshow: "Slideshow component applies theme CSS" - passes: true
+- [x] slideshow: "Slideshow applies preset colors" - passes: true
+- [x] slideshow: "Slideshow loads theme fonts" - passes: true
+
+### Notes for next steps
+- "Slideshow preset respects appearance mode" not yet implemented - requires connecting preset appearance to system theme
+- CSS variables feature ("Theme CSS can use predefined CSS variables") is partially done - preset colors work but need documentation
+- Next priorities could be: appearance mode handling, security sanitization, or default theme settings

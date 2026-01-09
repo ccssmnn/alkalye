@@ -226,7 +226,7 @@
 				"Verify theme overrides default slide styles",
 				"Verify theme works with all slide layouts"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "slideshow",
@@ -238,7 +238,7 @@
 				"Verify preset text colors are applied",
 				"Verify preset accent colors are available"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "slideshow",
@@ -262,7 +262,7 @@
 				"Verify title headings use TitleFont",
 				"Verify body text uses BodyFont"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "css-variables",
