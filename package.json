@@ -10,7 +10,7 @@
 		"check:lint": "eslint .",
 		"check:types": "tsc -b",
 		"check:format": "prettier --check .",
-		"check:test": "bun test",
+		"check:test": "bun test src/editor src/lib/backup src/lib/documents src/lib/export src/lib/import src/lib/presentation src/lib/spaces && bun vitest run src/lib/theme-sanitize.test.ts",
 		"preview": "vite preview",
 		"format": "prettier --write .",
 		"test": "vitest"
@@ -39,6 +39,7 @@
 		"@tanstack/router-plugin": "^1.145.2",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
+		"dompurify": "^3.3.1",
 		"fast-myers-diff": "^3.2.0",
 		"idb-keyval": "^6.2.2",
 		"jazz-react": "^0.14.28",
@@ -68,6 +69,7 @@
 	"devDependencies": {
 		"@eslint/js": "^9.39.2",
 		"@happy-dom/global-registrator": "^20.0.11",
+		"@types/dompurify": "^3.2.0",
 		"@types/node": "^24.10.4",
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",

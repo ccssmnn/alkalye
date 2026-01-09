@@ -298,7 +298,7 @@
 				"Upload theme with behavior: - verify stripped",
 				"Verify legitimate CSS properties work"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "security",
@@ -310,7 +310,7 @@
 				"Upload theme with iframe - verify stripped",
 				"Verify data-* attributes are preserved"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "performance",

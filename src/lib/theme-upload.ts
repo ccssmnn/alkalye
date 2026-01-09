@@ -1,6 +1,7 @@
 import JSZip from "jszip"
 import { z } from "zod"
 import { ThemeType, ThemePreset } from "@/schema"
+import { sanitizeCss, sanitizeHtml } from "./theme-sanitize"
 
 export {
 	parseThemeZip,
@@ -136,7 +137,10 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 
 	let css: string
 	try {
-		css = await cssFile.async("string")
+		let rawCss = await cssFile.async("string")
+		// Sanitize CSS to remove dangerous patterns
+		let cssResult = sanitizeCss(rawCss)
+		css = cssResult.sanitized
 	} catch {
 		return {
 			ok: false,
@@ -155,7 +159,10 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		let templateFile = zip.file(templatePath)
 		if (templateFile) {
 			try {
-				template = await templateFile.async("string")
+				let rawTemplate = await templateFile.async("string")
+				// Sanitize HTML template to remove scripts, event handlers, etc.
+				let templateResult = sanitizeHtml(rawTemplate)
+				template = templateResult.sanitized
 			} catch {
 				// Template is optional, continue without it
 			}

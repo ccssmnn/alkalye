@@ -248,3 +248,52 @@
 - Security sanitization not yet implemented - templates accept arbitrary HTML (PRD security requirements still pending)
 - Template-mode doesn't render inline Jazz images (only text segments combined)
 - Next priorities: appearance mode handling for slideshow, CSS variables documentation, security sanitization
+
+## 2026-01-09: Theme Security Sanitization
+
+### What was done
+- Added DOMPurify dependency for HTML sanitization
+- Created `src/lib/theme-sanitize.ts` with CSS and HTML sanitization functions:
+  - `sanitizeCss(css)` - Removes dangerous CSS patterns:
+    - javascript: URLs
+    - expression() (IE CSS exploit)
+    - -moz-binding (Firefox XBL exploit)
+    - behavior: (IE HTC exploit)
+    - vbscript: URLs
+    - @import with external http/https URLs
+    - @import with protocol-relative URLs
+    - data:text/html URLs (XSS vector)
+  - `sanitizeHtml(html)` - Uses DOMPurify to remove dangerous HTML:
+    - <script>, <iframe>, <object>, <embed>, <form>, <button>, <base> tags
+    - All event handler attributes (onclick, onload, onmouseover, etc.)
+    - javascript: URLs in href/src attributes
+    - Preserves safe HTML structure and data-* attributes for templates
+  - Both functions return `SanitizeResult` with sanitized content and removal info
+
+- Integrated sanitization into theme upload in `src/lib/theme-upload.ts`:
+  - CSS is sanitized via `sanitizeCss()` before storage
+  - HTML templates are sanitized via `sanitizeHtml()` before storage
+  - Sanitization happens during the `parseThemeZip()` function
+
+- Added comprehensive test suite in `src/lib/theme-sanitize.test.ts`:
+  - 14 CSS sanitization tests covering all dangerous patterns
+  - 19 HTML sanitization tests covering XSS vectors and attribute preservation
+  - Tests require jsdom environment (run via vitest, not bun test)
+
+- Updated `package.json` check:test script to run theme-sanitize tests via vitest
+  (DOMPurify doesn't work properly with happy-dom used by bun test)
+
+### Files changed
+- `package.json` (added dompurify, @types/dompurify, updated check:test script)
+- `src/lib/theme-sanitize.ts` (new file)
+- `src/lib/theme-sanitize.test.ts` (new file)
+- `src/lib/theme-upload.ts` (integrated sanitization)
+
+### PRD requirements completed
+- [x] security: "Theme CSS is sanitized" - passes: true
+- [x] security: "Theme HTML template is sanitized" - passes: true
+
+### Notes for next steps
+- Sanitization happens at upload time, so existing themes are not sanitized
+- For existing themes, users would need to re-upload to get sanitization
+- Remaining priorities: CSS variables documentation, appearance mode handling, performance caching, UX picker
