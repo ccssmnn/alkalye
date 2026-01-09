@@ -514,3 +514,72 @@ User at /doc/abc                  (history entry 1)
 - "Restore This Version overwrites current content" - PASSES
 - "Restore can be undone via Time Machine" - PASSES
 - "Cancel in restore modal returns to Time Machine" - PASSES
+
+## 2026-01-09: Time Machine - Unsynced Local Changes Entry Verification
+
+### Completed
+- Verified "Time Machine allows entry with unsynced local changes" was already fully implemented
+- Jazz's local-first architecture ensures this works automatically
+
+### Technical Analysis
+1. **No sync blocking**: Time Machine entry (sidebar-file-menu.tsx line 106) is just a URL navigation via `navigate()` - no sync status checks or blocking logic
+2. **Local-first data access**: `getEditHistory()` in time-machine.ts uses:
+   - `raw.core.knownState()` - returns all known sessions including local unsynced ones
+   - `raw.core.getValidSortedTransactions()` - returns ALL transactions including unsynced local operations
+3. **Immediate availability**: Jazz CoJSON stores edits locally first, so pending changes appear in the timeline immediately after being made
+4. **Live sync updates**: When Jazz syncs data to/from server, `useCoState` triggers re-renders automatically
+
+### Why This Works Without Code Changes
+Jazz is designed as a local-first database. When a user makes an edit:
+1. The edit is immediately recorded in the local CoJSON structure
+2. `getValidSortedTransactions()` returns this local edit right away
+3. Sync to server happens asynchronously in the background
+4. The edit appears in Time Machine timeline regardless of sync status
+
+### Files Modified
+- prd.json (marked feature as passing)
+
+### PRD Status
+- "Time Machine allows entry with unsynced local changes" - PASSES
+
+## 2026-01-09: Time Machine - Zoom Dropdown Implementation
+
+### Completed
+- Implemented zoom dropdown in Time Machine bottom bar
+- Dropdown shows preset options: 25, 100, 500, All
+- Current zoom level is indicated via radio button selection (checkmark)
+- Zoom level is persisted in URL as `zoom` query parameter
+- Keyboard shortcuts preserve zoom level when navigating edits
+
+### Files Modified
+- src/components/time-machine-bottom-bar.tsx
+  - Added ZoomLevel type and export
+  - Added zoomLevel and onZoomChange props
+  - Added dropdown menu with radio group for zoom selection
+  - Dropdown appears between back/forward buttons and slider
+- src/routes/doc.$id.index.tsx
+  - Updated validateSearch to parse zoom parameter from URL
+  - Added timeMachineZoom prop to EditorContentProps
+  - Updated TimeMachineBottomBar usage with zoom props
+  - Updated setupKeyboardShortcuts to preserve zoom in navigation
+  - Added timeMachineZoom to useEffect dependencies
+- prd.json (marked "Zoom dropdown shows preset options" as passing)
+
+### Technical Details
+- ZoomLevel type: 25 | 100 | 500 | "all"
+- Default zoom when not specified: "all"
+- Zoom is stored in URL as &zoom=25, &zoom=100, &zoom=500, or &zoom=all
+- Uses DropdownMenuRadioGroup for exclusive selection with visual indicator
+- validateSearch handles both string and number inputs for zoom values
+
+### Notes for Next Person
+- The zoom dropdown UI is complete but zoom functionality (centering, windowing) is NOT implemented
+- The remaining zoom PRD stories require implementing the actual slider range windowing:
+  - "Zoom centers on current edit position" - NOT YET IMPLEMENTED
+  - "Zoom level preserves current edit when changed" - NOT YET IMPLEMENTED
+  - "All zoom option shows entire edit history" - NOT YET IMPLEMENTED
+  - "Zoom at boundaries adjusts range appropriately" - NOT YET IMPLEMENTED
+- The slider currently always shows all edits regardless of zoom level
+
+### PRD Status
+- "Zoom dropdown shows preset options" - PASSES

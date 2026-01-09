@@ -203,7 +203,7 @@
 			"Verify options include: 25, 100, 500, All",
 			"Verify current zoom level is indicated"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "zoom",

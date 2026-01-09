@@ -1,14 +1,26 @@
 import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
-import { ChevronLeft, ChevronRight } from "lucide-react"
+import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react"
+import {
+	DropdownMenu,
+	DropdownMenuTrigger,
+	DropdownMenuContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+} from "@/components/ui/dropdown-menu"
 
 export { TimeMachineBottomBar }
+export type { ZoomLevel }
+
+type ZoomLevel = 25 | 100 | 500 | "all"
 
 interface TimeMachineBottomBarProps {
 	currentEdit: number
 	totalEdits: number
 	onEditChange: (editIndex: number) => void
 	disabled?: boolean
+	zoomLevel: ZoomLevel
+	onZoomChange: (zoom: ZoomLevel) => void
 }
 
 function TimeMachineBottomBar({
@@ -16,6 +28,8 @@ function TimeMachineBottomBar({
 	totalEdits,
 	onEditChange,
 	disabled = false,
+	zoomLevel,
+	onZoomChange,
 }: TimeMachineBottomBarProps) {
 	let [localValue, setLocalValue] = useState(currentEdit)
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -82,6 +96,31 @@ function TimeMachineBottomBar({
 					<ChevronRight className="size-4" />
 				</Button>
 			</div>
+
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					disabled={disabled || !hasHistory}
+					className="border-input bg-background hover:bg-accent hover:text-accent-foreground flex h-9 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+				>
+					<span>{zoomLevel === "all" ? "All" : zoomLevel}</span>
+					<ChevronDown className="size-4 opacity-50" />
+				</DropdownMenuTrigger>
+				<DropdownMenuContent side="top" align="start">
+					<DropdownMenuRadioGroup
+						value={String(zoomLevel)}
+						onValueChange={value => {
+							let zoom: ZoomLevel =
+								value === "all" ? "all" : (Number(value) as 25 | 100 | 500)
+							onZoomChange(zoom)
+						}}
+					>
+						<DropdownMenuRadioItem value="25">25</DropdownMenuRadioItem>
+						<DropdownMenuRadioItem value="100">100</DropdownMenuRadioItem>
+						<DropdownMenuRadioItem value="500">500</DropdownMenuRadioItem>
+						<DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+					</DropdownMenuRadioGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
 			<div className="flex flex-1 items-center gap-4">
 				<input

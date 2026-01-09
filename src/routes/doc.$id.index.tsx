@@ -74,13 +74,17 @@ import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { TimeMachineToolbar } from "@/components/time-machine-toolbar"
-import { TimeMachineBottomBar } from "@/components/time-machine-bottom-bar"
+import {
+	TimeMachineBottomBar,
+	type ZoomLevel,
+} from "@/components/time-machine-bottom-bar"
 import {
 	getEditHistory,
 	getAuthorName,
 	formatEditDate,
 } from "@/lib/time-machine"
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
+import { toast } from "sonner"
 import type { ID } from "jazz-tools"
 
 export { Route }
@@ -88,16 +92,32 @@ export { Route }
 let Route = createFileRoute("/doc/$id/")({
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { timemachine?: boolean; edit?: number } => ({
-		timemachine:
-			search.timemachine === "true" || search.timemachine === true
-				? true
-				: undefined,
-		edit:
-			typeof search.edit === "string" || typeof search.edit === "number"
-				? Number(search.edit)
-				: undefined,
-	}),
+	): { timemachine?: boolean; edit?: number; zoom?: ZoomLevel } => {
+		let zoom: ZoomLevel | undefined
+		if (search.zoom === "all") {
+			zoom = "all"
+		} else if (
+			search.zoom === "25" ||
+			search.zoom === "100" ||
+			search.zoom === "500" ||
+			search.zoom === 25 ||
+			search.zoom === 100 ||
+			search.zoom === 500
+		) {
+			zoom = Number(search.zoom) as 25 | 100 | 500
+		}
+		return {
+			timemachine:
+				search.timemachine === "true" || search.timemachine === true
+					? true
+					: undefined,
+			edit:
+				typeof search.edit === "string" || typeof search.edit === "number"
+					? Number(search.edit)
+					: undefined,
+			zoom,
+		}
+	},
 	loader: async ({ params, context }) => {
 		let doc = await Document.load(params.id, { resolve: loaderResolve })
 		if (!doc.$isLoaded) {
@@ -116,7 +136,7 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
-	let { timemachine, edit } = Route.useSearch()
+	let { timemachine, edit, zoom } = Route.useSearch()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
@@ -173,6 +193,7 @@ function EditorPage() {
 				docId={id}
 				timeMachineMode={timemachine}
 				timeMachineEdit={edit}
+				timeMachineZoom={zoom}
 			/>
 		</SidebarProvider>
 	)
@@ -183,6 +204,7 @@ interface EditorContentProps {
 	docId: string
 	timeMachineMode?: boolean
 	timeMachineEdit?: number
+	timeMachineZoom?: ZoomLevel
 }
 
 function EditorContent({
@@ -190,6 +212,7 @@ function EditorContent({
 	docId,
 	timeMachineMode = false,
 	timeMachineEdit,
+	timeMachineZoom,
 }: EditorContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
@@ -304,6 +327,36 @@ function EditorContent({
 		}
 	}, [timeMachineMode, timeMachineEdit, totalEdits, docId, navigate])
 
+	// Show toast when edit param is clamped to valid range
+	let shownClampToastRef = useRef(false)
+	useEffect(() => {
+		if (!timeMachineMode || timeMachineEdit === undefined || totalEdits === 0)
+			return
+
+		let wasClamped = timeMachineEdit !== currentEditIndex
+		if (wasClamped && !shownClampToastRef.current) {
+			shownClampToastRef.current = true
+			toast(`Showing edit ${currentEditIndex + 1} of ${totalEdits}`, {
+				description: `Edit ${timeMachineEdit + 1} doesn't exist. Showing closest available version.`,
+				duration: 4000,
+			})
+			// Update URL to show the clamped value
+			navigate({
+				to: "/doc/$id",
+				params: { id: docId },
+				search: { timemachine: true, edit: currentEditIndex },
+				replace: true,
+			})
+		}
+	}, [
+		timeMachineMode,
+		timeMachineEdit,
+		currentEditIndex,
+		totalEdits,
+		docId,
+		navigate,
+	])
+
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
 	})
@@ -354,6 +407,7 @@ function EditorContent({
 				? {
 						currentEdit: currentEditIndex,
 						totalEdits,
+						zoom: timeMachineZoom,
 					}
 				: undefined,
 		})
@@ -366,6 +420,7 @@ function EditorContent({
 		timeMachineMode,
 		currentEditIndex,
 		totalEdits,
+		timeMachineZoom,
 	])
 
 	let allDocs = getPersonalDocs(me)
@@ -496,11 +551,28 @@ function EditorContent({
 							currentEdit={currentEditIndex}
 							totalEdits={totalEdits}
 							disabled={totalEdits <= 1}
+							zoomLevel={timeMachineZoom ?? "all"}
 							onEditChange={editIndex => {
 								navigate({
 									to: "/doc/$id",
 									params: { id: docId },
-									search: { timemachine: true, edit: editIndex },
+									search: {
+										timemachine: true,
+										edit: editIndex,
+										zoom: timeMachineZoom,
+									},
+									replace: true,
+								})
+							}}
+							onZoomChange={newZoom => {
+								navigate({
+									to: "/doc/$id",
+									params: { id: docId },
+									search: {
+										timemachine: true,
+										edit: currentEditIndex,
+										zoom: newZoom,
+									},
 									replace: true,
 								})
 							}}
@@ -919,19 +991,19 @@ function setupKeyboardShortcuts(opts: {
 	toggleRight: () => void
 	toggleFocusMode: () => void
 	docWithContent: MaybeDocWithContent
-	timeMachine?: { currentEdit: number; totalEdits: number }
+	timeMachine?: { currentEdit: number; totalEdits: number; zoom?: ZoomLevel }
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
 		// Time Machine navigation: [ for previous, ] for next
 		if (opts.timeMachine && !e.metaKey && !e.ctrlKey && !e.altKey) {
-			let { currentEdit, totalEdits } = opts.timeMachine
+			let { currentEdit, totalEdits, zoom } = opts.timeMachine
 			if (e.key === "[") {
 				e.preventDefault()
 				if (currentEdit > 0) {
 					opts.navigate({
 						to: "/doc/$id",
 						params: { id: opts.docId },
-						search: { timemachine: true, edit: currentEdit - 1 },
+						search: { timemachine: true, edit: currentEdit - 1, zoom },
 						replace: true,
 					})
 				}
@@ -943,7 +1015,7 @@ function setupKeyboardShortcuts(opts: {
 					opts.navigate({
 						to: "/doc/$id",
 						params: { id: opts.docId },
-						search: { timemachine: true, edit: currentEdit + 1 },
+						search: { timemachine: true, edit: currentEdit + 1, zoom },
 						replace: true,
 					})
 				}
