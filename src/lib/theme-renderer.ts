@@ -2,7 +2,7 @@ import { type co } from "jazz-tools"
 import { type Theme, type ThemeAsset } from "@/schema"
 import { type ThemesQuery, type ThemePresetType } from "./document-theme"
 
-export { buildThemeStyles, type ThemeStyles }
+export { buildThemeStyles, renderTemplateWithContent, type ThemeStyles }
 
 type LoadedTheme = co.loaded<typeof Theme, ThemesQuery["$each"]>
 type LoadedAsset = co.loaded<typeof ThemeAsset, { data: true }>
@@ -95,4 +95,27 @@ function getFontFormat(mimeType: string): string {
 		"font/otf": "opentype",
 	}
 	return formats[mimeType] ?? "woff2"
+}
+
+// Render document content into an HTML template
+// Template should have an element with [data-document] attribute
+// Returns null if template is invalid (no data-document placeholder)
+function renderTemplateWithContent(
+	template: string,
+	content: string,
+): string | null {
+	// Parse the template to find the data-document placeholder
+	let parser = new DOMParser()
+	let doc = parser.parseFromString(template, "text/html")
+
+	// Find the element with data-document attribute
+	let placeholder = doc.querySelector("[data-document]")
+	if (!placeholder) return null
+
+	// Inject the rendered content into the placeholder
+	placeholder.innerHTML = content
+
+	// Return the body's inner HTML (not the full document)
+	// This allows the preview component to wrap it appropriately
+	return doc.body.innerHTML
 }

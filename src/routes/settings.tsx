@@ -520,7 +520,9 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 	let themesList = themes ?? []
 
 	function isLoadedTheme(t: unknown): t is LoadedTheme {
-		return !!t && typeof t === "object" && "$isLoaded" in t && t.$isLoaded === true
+		return (
+			!!t && typeof t === "object" && "$isLoaded" in t && t.$isLoaded === true
+		)
 	}
 
 	let loadedThemes = Array.from(themesList).filter(isLoadedTheme)

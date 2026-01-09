@@ -12,7 +12,11 @@ import { parseFrontmatter } from "@/editor/frontmatter"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/lib/theme"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
-import { buildThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
+import {
+	buildThemeStyles,
+	renderTemplateWithContent,
+	type ThemeStyles,
+} from "@/lib/theme-renderer"
 import { TriangleAlert } from "lucide-react"
 
 export { Preview }
@@ -127,6 +131,20 @@ function PreviewContent({
 				.join("\n")
 		: ""
 
+	// Get template HTML from theme (if available)
+	let templateHtml = documentTheme.theme?.template?.toString() ?? null
+
+	// For template rendering, combine all segment HTML
+	let combinedHtml = segments
+		.map(seg => (seg.type === "text" ? seg.html : ""))
+		.join("")
+
+	// Try to render with template if available
+	let templatedContent =
+		templateHtml && combinedHtml
+			? renderTemplateWithContent(templateHtml, combinedHtml)
+			: null
+
 	return (
 		<div
 			className="flex-1 overflow-auto"
@@ -147,37 +165,47 @@ function PreviewContent({
 				</div>
 			)}
 
-			<div className="mx-auto max-w-[65ch] px-6 py-8">
-				<article
-					className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4"
+			{templatedContent ? (
+				// Render with custom template
+				<div
+					className="mx-auto max-w-[65ch] px-6 py-8"
 					data-theme={documentTheme.theme?.name ?? undefined}
-				>
-					{segments.map((segment, i) => {
-						if (segment.type === "text") {
+					dangerouslySetInnerHTML={{ __html: templatedContent }}
+				/>
+			) : (
+				// Default rendering without template
+				<div className="mx-auto max-w-[65ch] px-6 py-8">
+					<article
+						className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4"
+						data-theme={documentTheme.theme?.name ?? undefined}
+					>
+						{segments.map((segment, i) => {
+							if (segment.type === "text") {
+								return (
+									<div
+										key={i}
+										dangerouslySetInnerHTML={{ __html: segment.html }}
+									/>
+								)
+							}
 							return (
-								<div
-									key={i}
-									dangerouslySetInnerHTML={{ __html: segment.html }}
-								/>
+								<figure key={i} className="my-4">
+									<JazzImage
+										imageId={segment.imageId}
+										alt={segment.alt}
+										className="w-full rounded-lg"
+									/>
+									{segment.alt && (
+										<figcaption className="text-muted-foreground mt-2 text-center text-sm">
+											{segment.alt}
+										</figcaption>
+									)}
+								</figure>
 							)
-						}
-						return (
-							<figure key={i} className="my-4">
-								<JazzImage
-									imageId={segment.imageId}
-									alt={segment.alt}
-									className="w-full rounded-lg"
-								/>
-								{segment.alt && (
-									<figcaption className="text-muted-foreground mt-2 text-center text-sm">
-										{segment.alt}
-									</figcaption>
-								)}
-							</figure>
-						)
-					})}
-				</article>
-			</div>
+						})}
+					</article>
+				</div>
+			)}
 		</div>
 	)
 }

@@ -202,7 +202,7 @@
 				"Verify data-document placeholder receives content",
 				"Verify template styles are applied"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "preview",

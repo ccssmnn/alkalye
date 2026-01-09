@@ -213,3 +213,38 @@
 ### Notes for next steps
 - Default themes work via theme name lookup (not by ID), so renaming a theme will break the default
 - Remaining priority features: custom HTML templates, appearance mode handling, security, performance, UX picker
+
+## 2026-01-09: Custom HTML Template Support for Preview
+
+### What was done
+- Added custom HTML template rendering support to the preview component
+- Templates use the `data-document` attribute as a placeholder for injected content
+
+- Updated `ThemesQuery` type in `src/lib/document-theme.ts` to include `template: true`
+- Updated `themesQuery` object to load template content alongside CSS and assets
+
+- Added `renderTemplateWithContent(template, content)` function in `src/lib/theme-renderer.ts`:
+  - Parses template HTML using DOMParser
+  - Finds element with `[data-document]` attribute as injection point
+  - Injects rendered markdown HTML into the placeholder
+  - Returns the body's innerHTML for rendering in React
+
+- Updated `PreviewContent` in `src/components/preview.tsx`:
+  - Gets template string from theme via `documentTheme.theme?.template?.toString()`
+  - Combines all segment HTML when template is present
+  - Uses `renderTemplateWithContent` to inject content into template
+  - Renders templated content with `dangerouslySetInnerHTML` when template exists
+  - Falls back to default segment-by-segment rendering when no template
+
+### Files changed
+- `src/lib/document-theme.ts` (added template to ThemesQuery and themesQuery)
+- `src/lib/theme-renderer.ts` (added renderTemplateWithContent function)
+- `src/components/preview.tsx` (added template rendering path)
+
+### PRD requirements completed
+- [x] preview: "Preview uses custom HTML template when provided" - passes: true
+
+### Notes for next steps
+- Security sanitization not yet implemented - templates accept arbitrary HTML (PRD security requirements still pending)
+- Template-mode doesn't render inline Jazz images (only text segments combined)
+- Next priorities: appearance mode handling for slideshow, CSS variables documentation, security sanitization

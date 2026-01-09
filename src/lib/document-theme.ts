@@ -23,7 +23,9 @@ type ResolvedTheme = {
 	warning: string | null
 }
 
-type ThemesQuery = { $each: { css: true; assets: { $each: { data: true } } } }
+type ThemesQuery = {
+	$each: { css: true; template: true; assets: { $each: { data: true } } }
+}
 type LoadedThemes = co.loaded<
 	ReturnType<typeof co.list<typeof Theme>>,
 	ThemesQuery
@@ -100,11 +102,13 @@ function findPresetByName(
 	return null
 }
 
-// Query for loading themes with CSS and assets
+// Query for loading themes with CSS, template, and assets
 let themesQuery = {
 	root: {
 		settings: true,
-		themes: { $each: { css: true, assets: { $each: { data: true } } } },
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
 	},
 } as const
 
@@ -113,7 +117,10 @@ type ThemeMode = "preview" | "slideshow"
 // Hook to resolve theme and preset from document content
 // Returns the theme object if found, preset if applicable, and any warnings
 // mode: 'preview' or 'slideshow' - used to determine which default theme to use
-function useDocumentTheme(content: string, mode: ThemeMode = "preview"): ResolvedTheme {
+function useDocumentTheme(
+	content: string,
+	mode: ThemeMode = "preview",
+): ResolvedTheme {
 	let me = useAccount(UserAccount, { resolve: themesQuery })
 
 	let themeName = getThemeName(content)
@@ -136,8 +143,8 @@ function useDocumentTheme(content: string, mode: ThemeMode = "preview"): Resolve
 		if (settings) {
 			effectiveThemeName =
 				mode === "slideshow"
-					? settings.defaultSlideshowTheme ?? null
-					: settings.defaultPreviewTheme ?? null
+					? (settings.defaultSlideshowTheme ?? null)
+					: (settings.defaultPreviewTheme ?? null)
 		}
 	}
 
