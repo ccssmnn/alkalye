@@ -66,6 +66,8 @@ let ThemePreset = z.object({
 		background: z.string(),
 		foreground: z.string(),
 		accent: z.string(),
+		// Additional accent colors for richer color palettes (accent-2 through accent-6)
+		accents: z.array(z.string()).optional(),
 		heading: z.string().optional(),
 		link: z.string().optional(),
 		codeBackground: z.string().optional(),

@@ -274,7 +274,7 @@
 				"Verify --theme-accent variable works",
 				"Verify preset colors are exposed as variables"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "css-variables",
@@ -286,7 +286,7 @@
 				"Verify --preset-foreground is set",
 				"Verify --preset-accent-1 through accent-6 are set"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "security",

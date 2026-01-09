@@ -297,3 +297,52 @@
 - Sanitization happens at upload time, so existing themes are not sanitized
 - For existing themes, users would need to re-upload to get sanitization
 - Remaining priorities: CSS variables documentation, appearance mode handling, performance caching, UX picker
+
+## 2026-01-09: CSS Variables for Theme Authors
+
+### What was done
+- Extended `ThemePreset` schema in `src/schema/index.ts` to support multiple accent colors:
+  - Added `accents: z.array(z.string()).optional()` to the colors object
+  - Allows theme authors to define accent-2 through accent-6 colors in presets.json
+
+- Updated `buildThemeStyles` in `src/lib/theme-renderer.ts` to inject CSS variables:
+  - `--preset-accent-1` (same as --preset-accent, for consistency)
+  - `--preset-accent-2` through `--preset-accent-6` (from accents array)
+  - `--theme-background`, `--theme-foreground`, `--theme-accent` (aliases for theme authors)
+
+### Available CSS Variables for Theme Authors
+When a theme preset is active, the following CSS variables are injected into `:root`:
+
+**Preset colors:**
+- `--preset-background` - Background color from preset
+- `--preset-foreground` - Foreground/text color from preset
+- `--preset-accent` - Primary accent color
+- `--preset-accent-1` through `--preset-accent-6` - Accent color palette
+- `--preset-heading` - Heading color (if defined)
+- `--preset-link` - Link color (if defined)
+- `--preset-code-background` - Code block background (if defined)
+
+**Preset fonts:**
+- `--preset-font-title` - Title/heading font family (if defined)
+- `--preset-font-body` - Body text font family (if defined)
+
+**Theme aliases:**
+- `--theme-background` - Alias for --preset-background
+- `--theme-foreground` - Alias for --preset-foreground
+- `--theme-accent` - Alias for --preset-accent
+
+**Preset metadata:**
+- `--preset-appearance` - "light" or "dark"
+
+### Files changed
+- `src/schema/index.ts` (added accents array to ThemePreset colors)
+- `src/lib/theme-renderer.ts` (inject accent palette and theme alias variables)
+
+### PRD requirements completed
+- [x] css-variables: "Theme CSS can use predefined CSS variables" - passes: true
+- [x] css-variables: "Preset colors are injected as CSS variables" - passes: true
+
+### Notes for next steps
+- Theme authors can now use `var(--theme-background)` etc. in their CSS
+- Accent palette allows for richer color schemes (up to 6 accent colors)
+- Remaining priorities: appearance mode handling, performance caching, UX picker, fallback handling

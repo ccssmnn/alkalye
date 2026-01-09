@@ -60,6 +60,14 @@ function buildThemeStyles(
 		vars.push(`--preset-foreground: ${colors.foreground}`)
 		vars.push(`--preset-accent: ${colors.accent}`)
 
+		// Accent color palette (accent-1 is the primary accent, accent-2 through accent-6 from accents array)
+		vars.push(`--preset-accent-1: ${colors.accent}`)
+		if (colors.accents) {
+			for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
+				vars.push(`--preset-accent-${i + 2}: ${colors.accents[i]}`)
+			}
+		}
+
 		// Optional colors
 		if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
 		if (colors.link) vars.push(`--preset-link: ${colors.link}`)
@@ -72,6 +80,11 @@ function buildThemeStyles(
 
 		// Add appearance class
 		vars.push(`--preset-appearance: ${preset.appearance}`)
+
+		// Also expose as --theme-* aliases for theme authors who prefer this naming
+		vars.push(`--theme-background: ${colors.background}`)
+		vars.push(`--theme-foreground: ${colors.foreground}`)
+		vars.push(`--theme-accent: ${colors.accent}`)
 
 		presetVariables = `:root {\n\t${vars.join(";\n\t")};\n}`
 	}
