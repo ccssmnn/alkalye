@@ -520,7 +520,7 @@
 			"Verify Time Machine opens at the same edit position",
 			"Verify zoom level is preserved"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "url",

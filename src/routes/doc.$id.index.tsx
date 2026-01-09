@@ -322,11 +322,22 @@ function EditorContent({
 			navigate({
 				to: "/doc/$id",
 				params: { id: docId },
-				search: { timemachine: true, edit: totalEdits - 1 },
+				search: {
+					timemachine: true,
+					edit: totalEdits - 1,
+					zoom: timeMachineZoom,
+				},
 				replace: true,
 			})
 		}
-	}, [timeMachineMode, timeMachineEdit, totalEdits, docId, navigate])
+	}, [
+		timeMachineMode,
+		timeMachineEdit,
+		totalEdits,
+		docId,
+		navigate,
+		timeMachineZoom,
+	])
 
 	// Show toast when edit param is clamped to valid range
 	let shownClampToastRef = useRef(false)
@@ -345,7 +356,11 @@ function EditorContent({
 			navigate({
 				to: "/doc/$id",
 				params: { id: docId },
-				search: { timemachine: true, edit: currentEditIndex },
+				search: {
+					timemachine: true,
+					edit: currentEditIndex,
+					zoom: timeMachineZoom,
+				},
 				replace: true,
 			})
 		}
@@ -356,6 +371,7 @@ function EditorContent({
 		totalEdits,
 		docId,
 		navigate,
+		timeMachineZoom,
 	])
 
 	let docWithContent = useCoState(Document, docId, {

@@ -923,3 +923,30 @@ The implementation in doc.$id.index.tsx handles URL state correctly:
 
 ### PRD Status
 - "Time Machine state is reflected in URL" - PASSES
+
+## 2026-01-09: Time Machine - URL Shareability Fix
+
+### Completed
+- Fixed "Time Machine URL is shareable" feature
+- Fixed zoom level not being preserved when URL redirects occur
+- Two useEffect hooks were losing the zoom parameter during navigation
+
+### Files Modified
+- src/routes/doc.$id.index.tsx
+  - Fixed redirect useEffect (line 319-339): Added `zoom: timeMachineZoom` to search params
+  - Fixed clamp toast redirect (line 344-361): Added `zoom: timeMachineZoom` to search params
+  - Added `timeMachineZoom` to dependency arrays for both useEffects
+- prd.json (marked "Time Machine URL is shareable" as passing)
+
+### Technical Details
+- When opening a Time Machine URL directly (e.g., `?timemachine=true&edit=234&zoom=100`):
+  1. Route loads with search params parsed by validateSearch
+  2. EditorContent receives timeMachineMode=true, timeMachineEdit=234, timeMachineZoom=100
+  3. Time Machine UI renders correctly at the specified edit with the specified zoom level
+- Two edge cases were broken before this fix:
+  1. Opening `?timemachine=true&zoom=100` (no edit) would redirect to add edit but lose zoom
+  2. Opening `?timemachine=true&edit=999&zoom=100` (invalid edit) would clamp edit but lose zoom
+- Both redirects now include the zoom parameter to preserve the full URL state
+
+### PRD Status
+- "Time Machine URL is shareable" - PASSES
