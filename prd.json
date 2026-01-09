@@ -305,7 +305,7 @@
 			"Verify bar has solid background matching app theme",
 			"Verify bar spans full width of content area"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
@@ -316,7 +316,7 @@
 			"Navigate to different edits",
 			"Verify counter updates to reflect current position"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
@@ -336,7 +336,7 @@
 			"Verify back button, forward button, zoom dropdown, and slider are in single row",
 			"Verify edit counter is visible"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",

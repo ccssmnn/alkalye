@@ -323,3 +323,39 @@
 
 ### PRD Status
 - "Exit transition is instant" - PASSES
+
+## 2026-01-09: Time Machine - Verified Bottom Bar Display Features
+
+### Completed
+- Verified "Bottom bar has solid background and spans full width" was already fully implemented
+- Verified "Bottom bar shows edit counter" was already fully implemented
+- Verified "Bottom bar layout is single row on desktop" was already fully implemented
+- Updated PRD to mark all three display features as passing
+
+### Technical Details - Bottom Bar Styling
+- TimeMachineBottomBar (line 58) uses:
+  - `bg-background` for solid background matching app theme
+  - `fixed right-0 bottom-0 left-0` for full viewport width positioning
+  - `border-t border-border` for visual separation from content
+  - `z-20` for proper stacking above content
+
+### Technical Details - Edit Counter
+- Edit counter is in the right section of the bottom bar (lines 98-106)
+- Format: `{currentEdit + 1}/{totalEdits}` (e.g., "234/500")
+- Uses `text-muted-foreground text-sm tabular-nums` for consistent numeric width
+- Falls back to "No previous versions" when `hasHistory` is false
+
+### Technical Details - Single Row Layout
+- Bottom bar uses flexbox with `flex items-center gap-4`
+- Left section: Back/Forward buttons with `gap-2`
+- Center section: Slider with `flex-1` to fill available space
+- Right section: Edit counter with `shrink-0` to prevent compression
+- Note: Zoom dropdown mentioned in PRD is not yet implemented but layout accommodates future addition
+
+### Files Modified
+- prd.json (marked three display features as passing)
+
+### PRD Status
+- "Bottom bar has solid background and spans full width" - PASSES
+- "Bottom bar shows edit counter" - PASSES
+- "Bottom bar layout is single row on desktop" - PASSES
