@@ -418,7 +418,7 @@
 				"Verify CSS is extracted",
 				"Verify theme appears as slideshow type"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "export",

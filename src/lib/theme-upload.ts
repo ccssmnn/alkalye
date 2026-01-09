@@ -18,6 +18,13 @@ export {
 // TemplateName.iatemplate/Contents/Resources/document.html
 // TemplateName.iatemplate/Contents/Resources/style.css
 
+// iA Presenter theme detection and conversion
+// iA Presenter themes have structure:
+// ThemeName.iapresentertheme/template.json (or template.json at root)
+// ThemeName.iapresentertheme/presets.json
+// ThemeName.iapresentertheme/styles.css or theme.css
+// ThemeName.iapresentertheme/fonts/
+
 // Schema for theme.json manifest file
 let ThemeJsonSchema = z.object({
 	version: z.literal(1),
@@ -90,6 +97,13 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 	let plistPath = findIAWriterPlist(zip)
 	if (plistPath) {
 		return parseIAWriterTemplate(zip, plistPath)
+	}
+
+	// Check for iA Presenter theme format
+	// iA Presenter themes have template.json structure
+	let templateJsonPath = findIAPresenterTemplate(zip)
+	if (templateJsonPath) {
+		return parseIAPresenterTheme(zip, templateJsonPath)
 	}
 
 	// Find theme.json - could be at root or in a single top-level folder
@@ -680,4 +694,359 @@ async function parseIAWriterTemplate(
 			thumbnail: undefined,
 		},
 	}
+}
+
+// iA Presenter theme support
+
+// Schema for iA Presenter template.json
+let IAPresenterTemplateSchema = z.object({
+	name: z.string(),
+	author: z.string().optional(),
+	description: z.string().optional(),
+	css: z.string().optional(),
+	presets: z.string().optional(),
+})
+
+type IAPresenterTemplate = z.infer<typeof IAPresenterTemplateSchema>
+
+function findIAPresenterTemplate(zip: JSZip): string | null {
+	// Look for template.json (iA Presenter's manifest file)
+	// Must NOT have theme.json (our standard format) to avoid conflicts
+	let hasThemeJson = false
+	let templateJsonPath: string | null = null
+
+	zip.forEach((path, entry) => {
+		if (entry.dir) return
+		let filename = path.split("/").pop()
+		if (filename === "theme.json") {
+			hasThemeJson = true
+		}
+		if (filename === "template.json" && !templateJsonPath) {
+			templateJsonPath = path
+		}
+	})
+
+	// Only treat as iA Presenter if template.json exists WITHOUT theme.json
+	if (hasThemeJson) return null
+	return templateJsonPath
+}
+
+async function parseIAPresenterTheme(
+	zip: JSZip,
+	templateJsonPath: string,
+): Promise<ParseResult> {
+	// Determine base path (folder containing template.json)
+	let basePath = templateJsonPath.includes("/")
+		? templateJsonPath.substring(0, templateJsonPath.lastIndexOf("/") + 1)
+		: ""
+
+	// Read and parse template.json
+	let templateJsonContent: string
+	try {
+		templateJsonContent = await zip.file(templateJsonPath)!.async("string")
+	} catch {
+		return {
+			ok: false,
+			error: {
+				type: "invalid_manifest",
+				message: "Failed to read template.json",
+				errors: ["Could not read file contents"],
+			},
+		}
+	}
+
+	let templateJson: IAPresenterTemplate
+	try {
+		let parsed = JSON.parse(templateJsonContent)
+		let result = IAPresenterTemplateSchema.safeParse(parsed)
+		if (!result.success) {
+			return {
+				ok: false,
+				error: {
+					type: "invalid_manifest",
+					message: "Invalid template.json format",
+					errors: result.error.issues.map(
+						issue => `${issue.path.join(".")}: ${issue.message}`,
+					),
+				},
+			}
+		}
+		templateJson = result.data
+	} catch (e) {
+		return {
+			ok: false,
+			error: {
+				type: "invalid_manifest",
+				message: "template.json is not valid JSON",
+				errors: [e instanceof Error ? e.message : "Invalid JSON"],
+			},
+		}
+	}
+
+	// Find CSS file - check template.json css field, then common names
+	let cssContent: string | undefined
+	let cssFilesToTry = [
+		templateJson.css,
+		"styles.css",
+		"theme.css",
+		"style.css",
+	].filter(Boolean) as string[]
+
+	for (let cssFileName of cssFilesToTry) {
+		let cssPath = basePath + cssFileName
+		let cssFile = zip.file(cssPath)
+		if (cssFile) {
+			try {
+				let rawCss = await cssFile.async("string")
+				cssContent = sanitizeCss(rawCss).sanitized
+				break
+			} catch {
+				// Try next CSS file
+			}
+		}
+	}
+
+	if (!cssContent) {
+		return {
+			ok: false,
+			error: {
+				type: "missing_css",
+				message: "No CSS file found in iA Presenter theme",
+			},
+		}
+	}
+
+	// Read presets.json if available
+	let presets: z.infer<typeof ThemePreset>[] | undefined
+	let presetsFileName = templateJson.presets || "presets.json"
+	let presetsPath = basePath + presetsFileName
+	let presetsFile = zip.file(presetsPath)
+
+	if (presetsFile) {
+		try {
+			let presetsContent = await presetsFile.async("string")
+			let presetsJson = JSON.parse(presetsContent)
+
+			// iA Presenter presets may be in different formats
+			// Try to extract the presets array
+			let presetsArray = Array.isArray(presetsJson)
+				? presetsJson
+				: presetsJson.presets || presetsJson.colors || presetsJson.themes
+
+			if (Array.isArray(presetsArray)) {
+				let validatedPresets: z.infer<typeof ThemePreset>[] = []
+
+				for (let preset of presetsArray) {
+					// Convert iA Presenter preset format to our format
+					let converted = convertIAPresenterPreset(preset)
+					if (converted) {
+						validatedPresets.push(converted)
+					}
+				}
+
+				if (validatedPresets.length > 0) {
+					presets = validatedPresets
+				}
+			}
+		} catch {
+			// Presets are optional, continue without them
+		}
+	}
+
+	// Extract font assets from fonts/ folder or root
+	let assets: ParsedThemeAsset[] = []
+	let fontExtensions = [".woff2", ".woff", ".ttf", ".otf"]
+
+	for (let [path, entry] of Object.entries(zip.files)) {
+		if (entry.dir) continue
+		if (!path.startsWith(basePath)) continue
+
+		let ext = path.toLowerCase().substring(path.lastIndexOf("."))
+		if (fontExtensions.includes(ext)) {
+			try {
+				let blob = await entry.async("blob")
+				let fileName = path.substring(path.lastIndexOf("/") + 1)
+				let mimeType = getFontMimeType(fileName)
+				let file = new File([blob], fileName, { type: mimeType })
+				assets.push({
+					name: fileName,
+					mimeType,
+					file,
+				})
+			} catch {
+				// Font loading failed, skip
+			}
+		}
+	}
+
+	// Look for thumbnail
+	let thumbnail: File | undefined
+	let thumbnailNames = ["thumbnail.png", "thumbnail.jpg", "preview.png", "preview.jpg"]
+	for (let thumbName of thumbnailNames) {
+		let thumbPath = basePath + thumbName
+		let thumbFile = zip.file(thumbPath)
+		if (thumbFile) {
+			try {
+				let blob = await thumbFile.async("blob")
+				let mimeType = getImageMimeType(thumbName)
+				thumbnail = new File([blob], "thumbnail", { type: mimeType })
+				break
+			} catch {
+				// Thumbnail loading failed, skip
+			}
+		}
+	}
+
+	return {
+		ok: true,
+		theme: {
+			name: templateJson.name,
+			author: templateJson.author,
+			description: templateJson.description,
+			type: "slideshow", // iA Presenter themes are always slideshow type
+			css: cssContent,
+			template: undefined,
+			presets,
+			assets,
+			thumbnail,
+		},
+	}
+}
+
+// Convert iA Presenter preset format to our ThemePreset format
+function convertIAPresenterPreset(
+	preset: Record<string, unknown>,
+): z.infer<typeof ThemePreset> | null {
+	// iA Presenter presets may have different structures
+	// Try to extract what we need
+
+	let name = preset.name as string | undefined
+	if (!name || typeof name !== "string") {
+		// Try alternative field names
+		name = (preset.title as string) || (preset.label as string) || "Unnamed"
+	}
+
+	// Determine appearance from preset data
+	let appearance: "light" | "dark" = "light"
+	if (preset.appearance === "dark" || preset.mode === "dark") {
+		appearance = "dark"
+	} else if (preset.appearance === "light" || preset.mode === "light") {
+		appearance = "light"
+	} else {
+		// Try to infer from background color
+		let bg = extractColor(preset, ["background", "backgroundColor", "bg"])
+		if (bg && isColorDark(bg)) {
+			appearance = "dark"
+		}
+	}
+
+	// Extract colors - try various field names
+	let background = extractColor(preset, ["background", "backgroundColor", "bg"])
+	let foreground = extractColor(preset, [
+		"foreground",
+		"color",
+		"text",
+		"textColor",
+		"fg",
+	])
+	let accent = extractColor(preset, ["accent", "accentColor", "primary", "highlight"])
+
+	// If essential colors are missing, try nested colors object
+	let colors = preset.colors as Record<string, unknown> | undefined
+	if (colors && typeof colors === "object") {
+		background = background || extractColor(colors, ["background", "bg"])
+		foreground = foreground || extractColor(colors, ["foreground", "text", "fg"])
+		accent = accent || extractColor(colors, ["accent", "primary"])
+	}
+
+	// Require at least background and foreground
+	if (!background || !foreground) {
+		return null
+	}
+
+	// Default accent to foreground if not specified
+	accent = accent || foreground
+
+	// Extract optional colors
+	let heading = extractColor(preset, ["heading", "headingColor", "h1"])
+	let link = extractColor(preset, ["link", "linkColor", "a"])
+	let codeBackground = extractColor(preset, [
+		"codeBackground",
+		"code",
+		"codeBlock",
+		"codeBg",
+	])
+
+	// Extract additional accent colors
+	let accents: string[] = []
+	let accentFields = ["accent2", "accent3", "accent4", "accent5", "accent6"]
+	for (let field of accentFields) {
+		let color = extractColor(preset, [field])
+		if (color) {
+			accents.push(color)
+		}
+	}
+
+	// Try to extract fonts
+	let fonts: { title?: string; body?: string } | undefined
+	let titleFont = preset.titleFont || preset.headingFont || preset.title_font
+	let bodyFont = preset.bodyFont || preset.textFont || preset.body_font
+
+	if (titleFont || bodyFont) {
+		fonts = {}
+		if (typeof titleFont === "string") fonts.title = titleFont
+		if (typeof bodyFont === "string") fonts.body = bodyFont
+	}
+
+	return {
+		name,
+		appearance,
+		colors: {
+			background,
+			foreground,
+			accent,
+			accents: accents.length > 0 ? accents : undefined,
+			heading,
+			link,
+			codeBackground,
+		},
+		fonts,
+	}
+}
+
+function extractColor(
+	obj: Record<string, unknown>,
+	keys: string[],
+): string | undefined {
+	for (let key of keys) {
+		let value = obj[key]
+		if (typeof value === "string" && value.trim()) {
+			return value.trim()
+		}
+	}
+	return undefined
+}
+
+function isColorDark(color: string): boolean {
+	// Simple heuristic to determine if a color is dark
+	// Works with hex colors and some named colors
+	let hex = color.toLowerCase().replace("#", "")
+
+	if (hex.length === 3) {
+		hex = hex[0] + hex[0] + hex[1] + hex[1] + hex[2] + hex[2]
+	}
+
+	if (hex.length !== 6 || !/^[0-9a-f]+$/.test(hex)) {
+		// Can't parse, assume light
+		return false
+	}
+
+	let r = parseInt(hex.substring(0, 2), 16)
+	let g = parseInt(hex.substring(2, 4), 16)
+	let b = parseInt(hex.substring(4, 6), 16)
+
+	// Calculate relative luminance
+	let luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
+
+	return luminance < 0.5
 }

@@ -773,3 +773,67 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - iA Presenter theme import still not implemented (different structure with template.json and presets)
 - "Theme is included in PDF export" not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: iA Presenter Theme Import Compatibility
+
+### What was done
+- Implemented iA Presenter theme import support in `src/lib/theme-upload.ts`
+- The system now automatically detects and parses iA Presenter themes when uploading a zip file
+
+- Added `findIAPresenterTemplate(zip)` function to detect iA Presenter bundle structure:
+  - Looks for `template.json` at root or one level deep
+  - Only triggers when `theme.json` is NOT present (avoids conflict with standard format)
+
+- Added `IAPresenterTemplateSchema` zod schema for template.json validation:
+  - `name` (required) - theme display name
+  - `author` (optional) - theme creator
+  - `description` (optional) - theme description
+  - `css` (optional) - path to CSS file
+  - `presets` (optional) - path to presets.json
+
+- Added `parseIAPresenterTheme(zip, templateJsonPath)` function:
+  - Reads and validates template.json
+  - Locates CSS file (checks template.json css field, then common names: styles.css, theme.css, style.css)
+  - Reads and converts presets.json if available
+  - Extracts font assets (.woff2, .woff, .ttf, .otf) from theme folder
+  - Looks for thumbnail images (thumbnail.png/jpg, preview.png/jpg)
+  - Sanitizes CSS before returning
+  - Returns ParsedTheme with type: "slideshow" (iA Presenter themes are always slideshow)
+
+- Added `convertIAPresenterPreset(preset)` function:
+  - Converts various iA Presenter preset formats to our ThemePreset format
+  - Handles different field naming conventions (background/backgroundColor/bg, etc.)
+  - Auto-detects appearance (light/dark) from preset data or by analyzing background color luminance
+  - Extracts optional colors: heading, link, codeBackground
+  - Extracts additional accent colors (accent2-accent6)
+  - Extracts font settings (titleFont, bodyFont)
+
+- Added helper functions:
+  - `extractColor(obj, keys)` - tries multiple field names to find a color value
+  - `isColorDark(color)` - determines if a hex color is dark (for appearance inference)
+
+- Updated `parseThemeZip()` to check for iA Presenter format:
+  - Checks after iA Writer format but before standard theme.json format
+  - If template.json is found (without theme.json), routes to iA Presenter parsing
+
+### How iA Presenter theme import works
+1. User uploads a `.iapresentertheme.zip` file in Settings > Themes
+2. System detects `template.json` without `theme.json`
+3. Parses template.json to get name, author, description, css path, presets path
+4. Reads CSS file (tries multiple common names)
+5. Reads presets.json and converts each preset to our format
+6. Extracts font files from theme folder
+7. Looks for thumbnail image
+8. Returns as a slideshow-type theme ready for storage
+
+### Files changed
+- `src/lib/theme-upload.ts` (added iA Presenter compatibility layer)
+- `prd.json` (marked iA Presenter import as passes: true)
+
+### PRD requirements completed
+- [x] compatibility: "iA Presenter theme can be imported" - passes: true
+
+### Notes for next steps
+- "Theme is included in PDF export" not implemented (requires browser print integration)
+- Collaboration features (theme sharing) not implemented
+- "Theme reference in document is portable" not implemented
