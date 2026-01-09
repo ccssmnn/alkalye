@@ -508,7 +508,7 @@
 			"Verify URL contains &edit=234",
 			"Verify URL contains &zoom=100"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "url",

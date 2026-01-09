@@ -880,3 +880,46 @@ When centering is not possible due to boundaries:
 
 ### PRD Status
 - "Create Copy inherits space and assets" - PASSES
+
+## 2026-01-09: Time Machine - URL State Reflection Verification
+
+### Completed
+- Verified "Time Machine state is reflected in URL" feature was already fully implemented
+- All three URL parameters are correctly included and updated during Time Machine navigation
+- URL properly contains `?timemachine=true`, `&edit=N`, and `&zoom=N` parameters
+
+### Technical Analysis
+The implementation in doc.$id.index.tsx handles URL state correctly:
+
+1. **validateSearch (lines 94-121)**: Parses all three URL parameters
+   - `timemachine`: boolean from "true" string or boolean value
+   - `edit`: number from string or number input
+   - `zoom`: "all" | 25 | 100 | 500 from validated input
+
+2. **onEditChange handler (lines 556-567)**: Updates URL when navigating edits
+   - Includes `timemachine: true`, `edit: editIndex`, `zoom: timeMachineZoom`
+   - Uses `replace: true` to avoid browser history pollution
+
+3. **onZoomChange handler (lines 568-579)**: Updates URL when changing zoom
+   - Preserves `timemachine: true` and `edit: currentEditIndex`
+   - Updates `zoom: newZoom`
+
+4. **Keyboard shortcuts (lines 1087-1112)**: Preserve zoom level during navigation
+   - `[` and `]` keys update URL with `zoom` parameter preserved
+
+### URL Format Examples
+- Entry: `?timemachine=true` (then redirected to `?timemachine=true&edit={N-1}`)
+- Navigating: `?timemachine=true&edit=5&zoom=100`
+- Zoom change: `?timemachine=true&edit=5&zoom=25`
+
+### Note on Indexing
+- The PRD describes 1-indexed edit numbers from a user perspective (edit #234 out of 500)
+- The URL uses 0-indexed numbers internally (edit=233 for edit #234)
+- The edit counter displays 1-indexed: "234/500"
+- This is correct and consistent throughout the implementation
+
+### Files Modified
+- prd.json (marked "Time Machine state is reflected in URL" as passing)
+
+### PRD Status
+- "Time Machine state is reflected in URL" - PASSES
