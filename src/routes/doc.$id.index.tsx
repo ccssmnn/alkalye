@@ -578,7 +578,6 @@ function EditorContent({
 										edit: editIndex,
 										zoom: timeMachineZoom,
 									},
-									replace: true,
 								})
 							}}
 							onZoomChange={newZoom => {
@@ -1109,7 +1108,6 @@ function setupKeyboardShortcuts(opts: {
 						to: "/doc/$id",
 						params: { id: opts.docId },
 						search: { timemachine: true, edit: currentEdit - 1, zoom },
-						replace: true,
 					})
 				}
 				return
@@ -1121,7 +1119,6 @@ function setupKeyboardShortcuts(opts: {
 						to: "/doc/$id",
 						params: { id: opts.docId },
 						search: { timemachine: true, edit: currentEdit + 1, zoom },
-						replace: true,
 					})
 				}
 				return
