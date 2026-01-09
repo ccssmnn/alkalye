@@ -542,7 +542,7 @@
 			"Verify Time Machine opens at edit #234",
 			"Verify zoom level is 100 edits centered on #234"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "url",

@@ -985,3 +985,24 @@ The feature was already implemented in doc.$id.index.tsx:
 
 ### PRD Status
 - "Invalid edit param in URL snaps to closest valid edit" - PASSES
+
+## 2026-01-09: Time Machine - URL Zoom Default Implementation
+
+### Completed
+- Fixed "URL without zoom param defaults to centered 100" feature
+- When opening a Time Machine URL without a zoom parameter (e.g., `?timemachine=true&edit=234`), the zoom now defaults to 100 instead of "all"
+- This ensures the slider shows approximately 100 edits centered on the current edit position
+
+### Files Modified
+- src/routes/doc.$id.index.tsx
+  - Changed `zoomLevel={timeMachineZoom ?? "all"}` to `zoomLevel={timeMachineZoom ?? 100}` (line 571)
+- prd.json (marked "URL without zoom param defaults to centered 100" as passing)
+
+### Technical Details
+- The `timeMachineZoom` prop is undefined when no zoom param is in the URL
+- Previously defaulted to "all" which showed all edits
+- Now defaults to 100, which uses `calculateZoomWindow()` to center the view on the current edit
+- This provides a better user experience for documents with many edits, as users see a focused window rather than a compressed view of the entire history
+
+### PRD Status
+- "URL without zoom param defaults to centered 100" - PASSES
