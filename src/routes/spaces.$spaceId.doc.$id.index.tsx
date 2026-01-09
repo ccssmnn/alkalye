@@ -414,7 +414,8 @@ function SpaceEditorContent({
 							/>
 							<SidebarFormatMenu
 								editor={editor}
-								disabled={readOnly}
+								disabled={!canEdit(doc)}
+								readOnly={readOnly}
 								documents={wikiLinkDocs}
 								onCreateDocument={makeCreateDocument(space)}
 							/>

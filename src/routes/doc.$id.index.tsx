@@ -636,7 +636,8 @@ function EditorContent({
 							/>
 							<SidebarFormatMenu
 								editor={editor}
-								disabled={readOnly}
+								disabled={!canEdit(doc) && !timeMachineMode}
+								readOnly={readOnly}
 								documents={wikiLinkDocs}
 								onCreateDocument={makeCreateDocForWikilink(me, doc)}
 							/>

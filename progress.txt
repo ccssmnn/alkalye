@@ -808,3 +808,34 @@ When centering is not possible due to boundaries:
 
 ### PRD Status
 - "Copy works in Time Machine mode" - PASSES
+
+## 2026-01-09: Time Machine - Sidebar Format Menu Read-Only Handling
+
+### Completed
+- Added `readOnly` prop to SidebarFormatMenu component
+- All format menu items (Headings, Lists, Structure, Bold, Italic, etc.) are now disabled when in read-only mode
+- Format menu button remains accessible in Time Machine mode (can open dropdown)
+- Individual menu items show greyed/disabled state when readOnly=true
+- Applied same pattern to spaces route for consistency
+
+### Files Modified
+- src/components/sidebar-format-menu.tsx
+  - Added `readOnly?: boolean` to SidebarFormatMenuProps interface
+  - Added `disabled={readOnly}` to all menu items and sub-menu triggers
+- src/routes/doc.$id.index.tsx
+  - Changed SidebarFormatMenu: `disabled={!canEdit(doc) && !timeMachineMode}` (menu accessible in TM)
+  - Added `readOnly={readOnly}` prop for individual item disabling
+- src/routes/spaces.$spaceId.doc.$id.index.tsx
+  - Same pattern: `disabled={!canEdit(doc)}` and `readOnly={readOnly}` props
+- prd.json (marked "Sidebar shows read-only compatible items with disabled edit actions" as passing)
+
+### Technical Details
+- The pattern separates two concerns:
+  - `disabled` prop on the menu button: controls whether the dropdown can be opened
+  - `readOnly` prop: controls which individual actions inside are available
+- This allows users to open the Format menu in Time Machine mode to see available shortcuts
+- All formatting actions correctly show as disabled/greyed when readOnly=true
+- Read-only operations (like viewing shortcuts) are still visible for reference
+
+### PRD Status
+- "Sidebar shows read-only compatible items with disabled edit actions" - PASSES

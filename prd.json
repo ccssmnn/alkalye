@@ -384,7 +384,7 @@
 			"Verify edit/format actions are visible but disabled/greyed",
 			"Verify read-only actions (like viewing info) still work"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
