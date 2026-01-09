@@ -102,19 +102,25 @@ function findPresetByName(
 
 // Query for loading themes with CSS and assets
 let themesQuery = {
-	root: { themes: { $each: { css: true, assets: { $each: { data: true } } } } },
+	root: {
+		settings: true,
+		themes: { $each: { css: true, assets: { $each: { data: true } } } },
+	},
 } as const
+
+type ThemeMode = "preview" | "slideshow"
 
 // Hook to resolve theme and preset from document content
 // Returns the theme object if found, preset if applicable, and any warnings
-function useDocumentTheme(content: string): ResolvedTheme {
+// mode: 'preview' or 'slideshow' - used to determine which default theme to use
+function useDocumentTheme(content: string, mode: ThemeMode = "preview"): ResolvedTheme {
 	let me = useAccount(UserAccount, { resolve: themesQuery })
 
 	let themeName = getThemeName(content)
 	let presetName = getPresetName(content)
 
-	// No theme specified in frontmatter
-	if (!themeName) {
+	// User not loaded yet
+	if (!me.$isLoaded || !me.root?.themes) {
 		return { theme: null, preset: null, warning: null }
 	}
 
@@ -123,21 +129,38 @@ function useDocumentTheme(content: string): ResolvedTheme {
 		return { theme: null, preset: null, warning: null }
 	}
 
-	// User not loaded yet
-	if (!me.$isLoaded || !me.root?.themes) {
+	// Fall back to default theme if no theme specified in frontmatter
+	let effectiveThemeName = themeName
+	if (!effectiveThemeName) {
+		let settings = me.root.settings
+		if (settings) {
+			effectiveThemeName =
+				mode === "slideshow"
+					? settings.defaultSlideshowTheme ?? null
+					: settings.defaultPreviewTheme ?? null
+		}
+	}
+
+	// No theme specified and no default set
+	if (!effectiveThemeName) {
 		return { theme: null, preset: null, warning: null }
 	}
 
 	let themes = me.root.themes as LoadedThemes
-	let theme = findThemeByName(themes, themeName)
+	let theme = findThemeByName(themes, effectiveThemeName)
 
 	// Theme not found
 	if (!theme) {
-		return {
-			theme: null,
-			preset: null,
-			warning: `Theme "${themeName}" not found. Upload it in Settings > Themes.`,
+		// Only show warning if explicitly specified in frontmatter (not from default)
+		if (themeName) {
+			return {
+				theme: null,
+				preset: null,
+				warning: `Theme "${effectiveThemeName}" not found. Upload it in Settings > Themes.`,
+			}
 		}
+		// Default theme not found - silently fall back (user may have deleted it)
+		return { theme: null, preset: null, warning: null }
 	}
 
 	// Find preset if specified
@@ -151,7 +174,7 @@ function useDocumentTheme(content: string): ResolvedTheme {
 			let presets = getThemePresets(theme)
 			preset = presets[0] ?? null
 			if (preset) {
-				warning = `Preset "${presetName}" not found in theme "${themeName}". Using "${preset.name}" instead.`
+				warning = `Preset "${presetName}" not found in theme "${effectiveThemeName}". Using "${preset.name}" instead.`
 			}
 		}
 	}

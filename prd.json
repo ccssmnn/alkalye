@@ -154,7 +154,7 @@
 				"Click 'Set as default' on a slideshow theme",
 				"Verify separate defaults for preview and slideshow"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "frontmatter",

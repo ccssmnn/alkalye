@@ -32,7 +32,7 @@ interface PreviewProps {
 
 function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
-	let documentTheme = useDocumentTheme(content)
+	let documentTheme = useDocumentTheme(content, "preview")
 
 	let wikilinkResolver: WikilinkTitleResolver = docId => {
 		return wikilinks.get(docId) ?? { title: docId, exists: false }

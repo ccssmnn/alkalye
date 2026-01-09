@@ -51,6 +51,8 @@ let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
 
 let Settings = co.map({
 	editor: EditorSettings,
+	defaultPreviewTheme: z.string().optional(),
+	defaultSlideshowTheme: z.string().optional(),
 })
 
 // Theme types: 'preview' for document preview, 'slideshow' for presentations, 'both' for both

@@ -66,7 +66,7 @@ function Slideshow({
 }: SlideshowProps) {
 	let size = parsePresentationSize(content)
 	let appearanceTheme = parsePresentationTheme(content)
-	let documentTheme = useDocumentTheme(content)
+	let documentTheme = useDocumentTheme(content, "slideshow")
 	let themeStyles = useThemeStyles(documentTheme)
 
 	let currentSlide = slides.find(s => s.slideNumber === currentSlideNumber)

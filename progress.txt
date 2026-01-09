@@ -176,3 +176,40 @@
 - "Slideshow preset respects appearance mode" not yet implemented - requires connecting preset appearance to system theme
 - CSS variables feature ("Theme CSS can use predefined CSS variables") is partially done - preset colors work but need documentation
 - Next priorities could be: appearance mode handling, security sanitization, or default theme settings
+
+## 2026-01-09: Default Theme Settings
+
+### What was done
+- Updated `Settings` schema in `src/schema/index.ts` to include:
+  - `defaultPreviewTheme: z.string().optional()` - name of default preview theme
+  - `defaultSlideshowTheme: z.string().optional()` - name of default slideshow theme
+
+- Updated `useDocumentTheme` hook in `src/lib/document-theme.ts`:
+  - Added `mode` parameter: `'preview' | 'slideshow'` (defaults to 'preview')
+  - Falls back to default theme from settings when no theme specified in frontmatter
+  - Silently falls back if default theme was deleted (no warning shown)
+  - Only shows warning for missing themes explicitly specified in frontmatter
+  - Updated `themesQuery` to also load settings for default theme lookup
+
+- Added `DefaultThemeSettings` component in `src/routes/settings.tsx`:
+  - Shows dropdown selectors for default preview and slideshow themes
+  - Filters themes by type (preview, slideshow, or both)
+  - "None" option clears the default
+  - Only appears when there are themes of the appropriate type
+
+- Updated Preview component to pass `mode: "preview"` to useDocumentTheme
+- Updated Slideshow component to pass `mode: "slideshow"` to useDocumentTheme
+
+### Files changed
+- `src/schema/index.ts` (added defaultPreviewTheme, defaultSlideshowTheme to Settings)
+- `src/lib/document-theme.ts` (added mode parameter and default theme fallback)
+- `src/routes/settings.tsx` (added DefaultThemeSettings component)
+- `src/components/preview.tsx` (pass mode to useDocumentTheme)
+- `src/components/slideshow.tsx` (pass mode to useDocumentTheme)
+
+### PRD requirements completed
+- [x] settings: "Theme can be set as default" - passes: true
+
+### Notes for next steps
+- Default themes work via theme name lookup (not by ID), so renaming a theme will break the default
+- Remaining priority features: custom HTML templates, appearance mode handling, security, performance, UX picker

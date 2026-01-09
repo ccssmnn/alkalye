@@ -37,10 +37,17 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { UserAccount, Theme, ThemeAsset } from "@/schema"
+import { UserAccount, Theme, ThemeAsset, Settings } from "@/schema"
 import { parseThemeZip, type ThemeUploadError } from "@/lib/theme-upload"
 import { createImage } from "jazz-tools/media"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
 import { useTheme, ThemeToggle } from "@/lib/theme"
 import { AuthForm } from "@/components/auth-form"
 import {
@@ -420,40 +427,46 @@ function ThemesSection({ me }: ThemesSectionProps) {
 						</p>
 					</div>
 				) : (
-					<div className="mb-4 space-y-2">
-						{themes.map(theme => {
-							if (!theme) return null
-							return (
-								<div
-									key={theme.$jazz.id}
-									className="bg-background flex items-center gap-3 rounded-md border p-3"
-								>
-									<Palette className="text-muted-foreground size-4 shrink-0" />
-									<div className="min-w-0 flex-1">
-										<div className="truncate font-medium">{theme.name}</div>
-										<div className="text-muted-foreground text-xs">
-											{theme.type === "both"
-												? "Preview & Slideshow"
-												: theme.type === "preview"
-													? "Preview"
-													: "Slideshow"}
-											{theme.author && ` • by ${theme.author}`}
-										</div>
-									</div>
-									<Button
-										variant="ghost"
-										size="icon-sm"
-										onClick={() =>
-											setThemeToDelete(theme as co.loaded<typeof Theme>)
-										}
-										aria-label={`Delete ${theme.name}`}
+					<>
+						<div className="mb-4 space-y-2">
+							{themes.map(theme => {
+								if (!theme) return null
+								return (
+									<div
+										key={theme.$jazz.id}
+										className="bg-background flex items-center gap-3 rounded-md border p-3"
 									>
-										<Trash2 className="size-4" />
-									</Button>
-								</div>
-							)
-						})}
-					</div>
+										<Palette className="text-muted-foreground size-4 shrink-0" />
+										<div className="min-w-0 flex-1">
+											<div className="truncate font-medium">{theme.name}</div>
+											<div className="text-muted-foreground text-xs">
+												{theme.type === "both"
+													? "Preview & Slideshow"
+													: theme.type === "preview"
+														? "Preview"
+														: "Slideshow"}
+												{theme.author && ` • by ${theme.author}`}
+											</div>
+										</div>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={() =>
+												setThemeToDelete(theme as co.loaded<typeof Theme>)
+											}
+											aria-label={`Delete ${theme.name}`}
+										>
+											<Trash2 className="size-4" />
+										</Button>
+									</div>
+								)
+							})}
+						</div>
+						<DefaultThemeSettings
+							settings={me.root.settings}
+							themes={me.root.themes}
+						/>
+					</>
 				)}
 
 				<input
@@ -493,6 +506,101 @@ function ThemesSection({ me }: ThemesSectionProps) {
 				variant="destructive"
 			/>
 		</section>
+	)
+}
+
+interface DefaultThemeSettingsProps {
+	settings: co.loaded<typeof Settings> | null | undefined
+	themes: LoadedAccount["root"]["themes"]
+}
+
+type LoadedTheme = co.loaded<typeof Theme>
+
+function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
+	let themesList = themes ?? []
+
+	function isLoadedTheme(t: unknown): t is LoadedTheme {
+		return !!t && typeof t === "object" && "$isLoaded" in t && t.$isLoaded === true
+	}
+
+	let loadedThemes = Array.from(themesList).filter(isLoadedTheme)
+	let previewThemes = loadedThemes.filter(
+		t => t.type === "preview" || t.type === "both",
+	)
+	let slideshowThemes = loadedThemes.filter(
+		t => t.type === "slideshow" || t.type === "both",
+	)
+
+	function handlePreviewThemeChange(value: string | null) {
+		if (!settings || !value) return
+		if (value === "__none__") {
+			settings.$jazz.set("defaultPreviewTheme", undefined)
+		} else {
+			settings.$jazz.set("defaultPreviewTheme", value)
+		}
+	}
+
+	function handleSlideshowThemeChange(value: string | null) {
+		if (!settings || !value) return
+		if (value === "__none__") {
+			settings.$jazz.set("defaultSlideshowTheme", undefined)
+		} else {
+			settings.$jazz.set("defaultSlideshowTheme", value)
+		}
+	}
+
+	if (previewThemes.length === 0 && slideshowThemes.length === 0) {
+		return null
+	}
+
+	return (
+		<div className="border-border/50 mb-4 space-y-3 border-t pt-4">
+			<div className="text-muted-foreground text-xs font-medium">
+				Default Themes
+			</div>
+			{previewThemes.length > 0 && (
+				<div className="flex items-center justify-between gap-4">
+					<span className="text-sm">Preview</span>
+					<Select
+						value={settings?.defaultPreviewTheme ?? "__none__"}
+						onValueChange={handlePreviewThemeChange}
+					>
+						<SelectTrigger className="w-40">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="__none__">None</SelectItem>
+							{previewThemes.map(theme => (
+								<SelectItem key={theme.$jazz.id} value={theme.name}>
+									{theme.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+			{slideshowThemes.length > 0 && (
+				<div className="flex items-center justify-between gap-4">
+					<span className="text-sm">Slideshow</span>
+					<Select
+						value={settings?.defaultSlideshowTheme ?? "__none__"}
+						onValueChange={handleSlideshowThemeChange}
+					>
+						<SelectTrigger className="w-40">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="__none__">None</SelectItem>
+							{slideshowThemes.map(theme => (
+								<SelectItem key={theme.$jazz.id} value={theme.name}>
+									{theme.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+		</div>
 	)
 }
 
