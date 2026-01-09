@@ -4,7 +4,10 @@ import type { Document, UserAccount } from "@/schema"
 export { getEditHistory, formatEditDate, getAuthorName, accountIdFromSessionId }
 export type { EditHistoryItem }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<
+	typeof Document,
+	{ content: true; assets: true }
+>
 type LoadedAccount = co.loaded<typeof UserAccount, { profile: true }>
 
 interface EditHistoryItem {
@@ -22,8 +25,7 @@ function accountIdFromSessionId(sessionId: string): string {
 function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 	if (!doc.content?.$isLoaded) return []
 
-	let raw = doc.content.$jazz.raw
-	let edits: EditHistoryItem[] = []
+	let contentRaw = doc.content.$jazz.raw
 
 	// Get all sessions and their ops to build timeline
 	let allOps: Array<{
@@ -32,33 +34,45 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 		sessionId: string
 	}> = []
 
-	// Access raw operations through the underlying cojson structure
-	// Each session contains operations with timestamps
-	let knownState = raw.core.knownState()
-	for (let [sessionId, maxOp] of Object.entries(knownState.sessions)) {
-		for (let i = 0; i <= maxOp; i++) {
-			// Get transaction info from valid sorted transactions
-			let tx = raw.core.getValidSortedTransactions().find(t => {
-				return t.txID.sessionID === sessionId && t.txID.txIndex === i
-			})
-			if (tx) {
-				allOps.push({
-					madeAt: tx.madeAt,
-					accountId: accountIdFromSessionId(sessionId),
-					sessionId: sessionId,
+	// Helper to extract operations from a CoJSON raw object's core
+	function extractOpsFromCore(core: typeof contentRaw.core) {
+		let knownState = core.knownState()
+		let transactions = core.getValidSortedTransactions()
+		for (let [sessionId, maxOp] of Object.entries(knownState.sessions)) {
+			for (let i = 0; i <= maxOp; i++) {
+				let tx = transactions.find(t => {
+					return t.txID.sessionID === sessionId && t.txID.txIndex === i
 				})
+				if (tx) {
+					allOps.push({
+						madeAt: tx.madeAt,
+						accountId: accountIdFromSessionId(sessionId),
+						sessionId: sessionId,
+					})
+				}
 			}
 		}
+	}
+
+	// Extract content operations
+	extractOpsFromCore(contentRaw.core)
+
+	// Extract asset list operations (when assets are added/removed)
+	if (doc.assets?.$isLoaded) {
+		let assetsCore = doc.assets.$jazz.raw.core
+		extractOpsFromCore(assetsCore)
 	}
 
 	// Sort by timestamp
 	allOps.sort((a, b) => a.madeAt - b.madeAt)
 
 	// Build snapshots at each point in time
+	// Content is taken at each timestamp (even if the change was an asset change)
 	let uniqueTimes = [...new Set(allOps.map(op => op.madeAt))]
+	let edits: EditHistoryItem[] = []
 	for (let i = 0; i < uniqueTimes.length; i++) {
 		let time = uniqueTimes[i]
-		let contentAtTime = raw.atTime(time).toString()
+		let contentAtTime = contentRaw.atTime(time).toString()
 		let op = allOps.find(o => o.madeAt === time)
 
 		edits.push({

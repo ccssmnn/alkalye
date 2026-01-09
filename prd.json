@@ -565,7 +565,7 @@
 			"Navigate through timeline",
 			"Verify asset changes are represented in the timeline"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "timeline",

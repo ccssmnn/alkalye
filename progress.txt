@@ -1031,3 +1031,39 @@ The feature was already implemented in doc.$id.index.tsx:
 
 ### PRD Status
 - "Navigating edits updates URL" - PASSES
+
+## 2026-01-09: Time Machine - Timeline Includes Both Content and Asset Edits
+
+### Completed
+- Updated `getEditHistory()` function to include both content edits AND asset list edits
+- The edit timeline now merges operations from both the content CoJSON and assets CoJSON structures
+- Asset additions/deletions appear in the timeline alongside content changes
+- All edits are sorted chronologically by `madeAt` timestamp
+
+### Files Modified
+- src/lib/time-machine.ts
+  - Updated `LoadedDocument` type to require `{ content: true; assets: true }`
+  - Renamed `raw` to `contentRaw` for clarity
+  - Added `extractOpsFromCore()` helper function that works with any CoJSON core
+  - Added asset list operations extraction: `doc.assets.$jazz.raw.core`
+  - Operations from both content and assets are merged and sorted together
+  - Content snapshot is taken at each timestamp (showing content state at that moment)
+- prd.json (marked "Timeline includes both content and asset edits" as passing)
+
+### Technical Details
+- CoJSON structures have a `.core` property that provides `knownState()` and `getValidSortedTransactions()`
+- Both `RawCoPlainText` (content) and `RawCoList` (assets) have compatible `.core` interfaces
+- The helper function `extractOpsFromCore(core)` accepts the core directly, avoiding type incompatibility
+- When an asset is added/removed, the asset list CoJSON records a transaction with timestamp
+- The edit timeline now shows this as an edit, even if content didn't change at that moment
+- Content snapshot at an asset-change timestamp shows content as it was at that time
+
+### Algorithm
+1. Extract all operations from `doc.content.$jazz.raw.core`
+2. If `doc.assets?.$isLoaded`, also extract operations from `doc.assets.$jazz.raw.core`
+3. Merge all operations and sort by `madeAt` timestamp
+4. For each unique timestamp, create a snapshot using `contentRaw.atTime(time).toString()`
+5. Return the combined edit history
+
+### PRD Status
+- "Timeline includes both content and asset edits" - PASSES
