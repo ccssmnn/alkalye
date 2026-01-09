@@ -135,3 +135,27 @@
 
 ### PRD Status
 - "Keyboard shortcuts [ and ] navigate edits" - PASSES
+
+## 2026-01-09: Time Machine - Navigation Button Boundary Verification
+
+### Completed
+- Verified button disabling at boundaries is fully implemented
+- Back button (ChevronLeft) is disabled when `currentEdit === 0` (at first edit)
+- Forward button (ChevronRight) is disabled when `currentEdit >= totalEdits - 1` (at last edit)
+- Keyboard shortcuts [ and ] respect boundaries (no navigation when at start/end)
+- Marked both PRD test cases as passing
+
+### Technical Details
+- TimeMachineBottomBar (line 52-53): `isAtStart = currentEdit === 0`, `isAtEnd = currentEdit >= totalEdits - 1`
+- Button disabled prop (line 70, 79): `disabled={disabled || isAtStart || !hasHistory}` / `disabled={disabled || isAtEnd || !hasHistory}`
+- Keyboard handlers (doc.$id.index.tsx lines 782-805):
+  - `[` only navigates when `currentEdit > 0`
+  - `]` only navigates when `currentEdit < totalEdits - 1`
+- Both handlers use `e.preventDefault()` even when at boundary to prevent any default behavior
+
+### Files Modified
+- prd.json (marked "Back button disabled at first edit" and "Forward button disabled at latest edit" as passing)
+
+### PRD Status
+- "Back button disabled at first edit" - PASSES
+- "Forward button disabled at latest edit" - PASSES

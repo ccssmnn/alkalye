@@ -180,7 +180,7 @@
 			"Verify clicking disabled button has no effect",
 			"Verify [ keyboard shortcut has no effect"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "navigation",
@@ -192,7 +192,7 @@
 			"Verify clicking disabled button has no effect",
 			"Verify ] keyboard shortcut has no effect"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "zoom",
