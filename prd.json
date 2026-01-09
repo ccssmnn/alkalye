@@ -294,7 +294,7 @@
 			"Click kebab menu",
 			"Verify dropdown shows: Exit Time Machine, Create Copy, Restore This Version"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",

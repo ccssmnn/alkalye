@@ -193,3 +193,26 @@
 - "Toolbar shows Time Machine header with date and author" - PASSES
 - "Toolbar shows 'by you' for current user's edits" - PASSES
 - "Toolbar shows 'Unknown' for edits without author info" - PASSES
+
+## 2026-01-09: Time Machine - Toolbar Kebab Menu Verification
+
+### Completed
+- Verified toolbar kebab menu for actions is fully implemented
+- Kebab menu icon (⋮) is visible in toolbar via EllipsisVertical icon
+- Dropdown shows all three required menu items:
+  - "Exit Time Machine" (functional - exits Time Machine mode)
+  - "Create Copy" (present but disabled - placeholder for future implementation)
+  - "Restore This Version" (present but disabled - placeholder for future implementation)
+
+### Technical Details
+- TimeMachineToolbar component (time-machine-toolbar.tsx lines 55-70)
+- Uses DropdownMenu from @/components/ui/dropdown-menu
+- EllipsisVertical icon from lucide-react renders the ⋮ kebab menu button
+- Exit handler calls onExit prop which navigates to `/doc/$id` with empty search params
+- Create Copy and Restore This Version are intentionally disabled pending implementation
+
+### Files Modified
+- prd.json (marked "Toolbar has kebab menu for actions" as passing)
+
+### PRD Status
+- "Toolbar has kebab menu for actions" - PASSES
