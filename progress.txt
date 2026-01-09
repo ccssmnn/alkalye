@@ -1,0 +1,32 @@
+## 2026-01-09: Time Machine Entry Implementation
+
+### Completed
+- Added "Time Machine" menu item to File Menu (sidebar-file-menu.tsx)
+- Created Time Machine toolbar component (time-machine-toolbar.tsx)
+- Created Time Machine bottom bar with slider and navigation buttons (time-machine-bottom-bar.tsx)
+- Created time-machine.ts library with edit history functions
+- Updated doc.$id.index.tsx route to handle ?timemachine=true&edit={n} search params
+- Editor switches to read-only mode when in Time Machine
+- URL updates when navigating through Time Machine
+
+### Files Created
+- src/components/time-machine-toolbar.tsx
+- src/components/time-machine-bottom-bar.tsx
+- src/lib/time-machine.ts
+
+### Files Modified
+- src/routes/doc.$id.index.tsx (added validateSearch, Time Machine UI conditional rendering)
+- src/components/sidebar-file-menu.tsx (added Time Machine menu item)
+- prd.json (marked first entry test as passing)
+
+### Notes for Next Person
+- The edit history is extracted from Jazz's raw cojson API using core.knownState() and getValidSortedTransactions()
+- Each unique timestamp creates a snapshot using raw.atTime(timestamp).toString()
+- The slider debounces at 150ms as per PRD requirements
+- Keyboard shortcuts ([ and ]) for navigation are NOT yet implemented
+- The "Create Copy" and "Restore This Version" actions are in the dropdown but disabled
+- Space routes also need Time Machine support (spaces.$spaceId.doc.$id.index.tsx)
+- Exit via browser back button is not yet tested/verified
+
+### PRD Status
+- "User can enter Time Machine from File Menu" - PASSES

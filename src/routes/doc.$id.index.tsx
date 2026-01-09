@@ -73,10 +73,25 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
+import { TimeMachineToolbar } from "@/components/time-machine-toolbar"
+import { TimeMachineBottomBar } from "@/components/time-machine-bottom-bar"
+import { getEditHistory, getAuthorName } from "@/lib/time-machine"
 
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
+	validateSearch: (
+		search: Record<string, unknown>,
+	): { timemachine?: boolean; edit?: number } => ({
+		timemachine:
+			search.timemachine === "true" || search.timemachine === true
+				? true
+				: undefined,
+		edit:
+			typeof search.edit === "string" || typeof search.edit === "number"
+				? Number(search.edit)
+				: undefined,
+	}),
 	loader: async ({ params, context }) => {
 		let doc = await Document.load(params.id, { resolve: loaderResolve })
 		if (!doc.$isLoaded) {
@@ -95,6 +110,7 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
+	let { timemachine, edit } = Route.useSearch()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
@@ -146,12 +162,29 @@ function EditorPage() {
 
 	return (
 		<SidebarProvider>
-			<EditorContent doc={doc} docId={id} />
+			<EditorContent
+				doc={doc}
+				docId={id}
+				timeMachineMode={timemachine}
+				timeMachineEdit={edit}
+			/>
 		</SidebarProvider>
 	)
 }
 
-function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
+interface EditorContentProps {
+	doc: LoadedDocument
+	docId: string
+	timeMachineMode?: boolean
+	timeMachineEdit?: number
+}
+
+function EditorContent({
+	doc,
+	docId,
+	timeMachineMode = false,
+	timeMachineEdit,
+}: EditorContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
@@ -171,7 +204,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			? me.root.settings
 			: data.me?.root?.settings
 
-	let readOnly = !canEdit(doc)
+	let readOnly = !canEdit(doc) || timeMachineMode
 	let canSaveCopy =
 		isAuthenticated &&
 		isDocumentPublic(doc) &&
@@ -201,6 +234,19 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
+
+	// Time Machine state
+	let editHistory = timeMachineMode ? getEditHistory(doc) : []
+	let totalEdits = editHistory.length
+	let currentEditIndex =
+		timeMachineEdit !== undefined
+			? Math.min(Math.max(0, timeMachineEdit), totalEdits - 1)
+			: totalEdits - 1
+	let currentEdit = editHistory[currentEditIndex]
+	let timeMachineContent = timeMachineMode
+		? (currentEdit?.content ?? content)
+		: content
+	let displayContent = timeMachineMode ? timeMachineContent : content
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
@@ -317,10 +363,12 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 			<div className="markdown-editor flex-1" ref={containerRef}>
 				<MarkdownEditor
 					ref={editor}
-					value={content}
+					value={displayContent}
 					onChange={newContent => {
-						handleChange(doc, newContent)
-						syncBacklinks(newContent)
+						if (!timeMachineMode) {
+							handleChange(doc, newContent)
+							syncBacklinks(newContent)
+						}
 					}}
 					onCursorChange={(from, to) =>
 						updateCursor(from, from !== to ? to : undefined)
@@ -329,23 +377,56 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					readOnly={readOnly}
 					assets={assets}
 					documents={documents}
-					remoteCursors={remoteCursors}
+					remoteCursors={timeMachineMode ? [] : remoteCursors}
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
 				/>
-				<EditorToolbar
-					editor={editor}
-					readOnly={readOnly}
-					containerRef={containerRef}
-					onToggleLeftSidebar={toggleLeft}
-					onToggleRightSidebar={toggleRight}
-					onSaveCopy={
-						canSaveCopy
-							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
-							: undefined
-					}
-					saveCopyState={saveCopyState}
-				/>
+				{timeMachineMode ? (
+					<>
+						<TimeMachineToolbar
+							docTitle={docTitle}
+							editDate={currentEdit?.madeAt ?? doc.createdAt}
+							authorName={getAuthorName(
+								currentEdit?.by ?? null,
+								me.$isLoaded ? me.$jazz.id : undefined,
+							)}
+							onExit={() => {
+								navigate({
+									to: "/doc/$id",
+									params: { id: docId },
+									search: {},
+								})
+							}}
+						/>
+						<TimeMachineBottomBar
+							currentEdit={currentEditIndex}
+							totalEdits={totalEdits}
+							disabled={totalEdits <= 1}
+							onEditChange={editIndex => {
+								navigate({
+									to: "/doc/$id",
+									params: { id: docId },
+									search: { timemachine: true, edit: editIndex },
+									replace: true,
+								})
+							}}
+						/>
+					</>
+				) : (
+					<EditorToolbar
+						editor={editor}
+						readOnly={readOnly}
+						containerRef={containerRef}
+						onToggleLeftSidebar={toggleLeft}
+						onToggleRightSidebar={toggleRight}
+						onSaveCopy={
+							canSaveCopy
+								? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
+								: undefined
+						}
+						saveCopyState={saveCopyState}
+					/>
+				)}
 			</div>
 			<DocumentSidebar
 				header={

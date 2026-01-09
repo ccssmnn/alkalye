@@ -18,7 +18,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
-import { FileText } from "lucide-react"
+import { FileText, History } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
 import { canEdit, getDocumentGroup } from "@/lib/documents"
@@ -101,6 +101,12 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						<DropdownMenuItem onClick={makeToggleFocusMode(focusMode)}>
 							{focusMode ? "Exit Focus Mode" : "Focus Mode"}
 							<DropdownMenuShortcut>{modKey}⇧F</DropdownMenuShortcut>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={makeOpenTimeMachine(doc, spaceId, navigate)}
+						>
+							<History className="size-4" />
+							Time Machine
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
@@ -237,6 +243,28 @@ function useFocusMode() {
 function makeToggleFocusMode(focusMode: boolean) {
 	return function handleToggleFocusMode() {
 		document.documentElement.dataset.focusMode = String(!focusMode)
+	}
+}
+
+function makeOpenTimeMachine(
+	doc: LoadedDocument,
+	spaceId: string | undefined,
+	navigate: ReturnType<typeof useNavigate>,
+) {
+	return function handleOpenTimeMachine() {
+		if (spaceId) {
+			navigate({
+				to: "/spaces/$spaceId/doc/$id",
+				params: { spaceId, id: doc.$jazz.id },
+				search: { timemachine: true },
+			})
+		} else {
+			navigate({
+				to: "/doc/$id",
+				params: { id: doc.$jazz.id },
+				search: { timemachine: true },
+			})
+		}
 	}
 }
 
