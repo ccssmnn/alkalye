@@ -4,11 +4,14 @@ import { type ThemesQuery, type ThemePresetType } from "./document-theme"
 
 export {
 	buildThemeStyles,
+	buildThemeStylesAsync,
 	tryBuildThemeStyles,
 	tryCachedThemeStyles,
+	tryCachedThemeStylesAsync,
 	renderTemplateWithContent,
 	tryRenderTemplateWithContent,
 	getCachedThemeStyles,
+	getCachedThemeStylesAsync,
 	cleanupThemeCache,
 	type ThemeStyles,
 	type ThemeRenderResult,
@@ -208,6 +211,165 @@ function tryCachedThemeStyles(
 ): ThemeRenderResult {
 	try {
 		let styles = getCachedThemeStyles(theme, preset)
+		return { ok: true, styles }
+	} catch (error) {
+		let errorMessage =
+			error instanceof Error ? error.message : "Unknown error building theme"
+		console.error(
+			`[Theme Error] Failed to build styles for theme "${theme.name}":`,
+			error,
+		)
+		return { ok: false, error: errorMessage }
+	}
+}
+
+// Async version of getCachedThemeStyles that yields to the main thread
+// This prevents large themes from blocking rendering
+async function getCachedThemeStylesAsync(
+	theme: LoadedTheme,
+	preset: ThemePresetType | null,
+): Promise<ThemeStyles> {
+	let themeId = theme.$jazz.id
+	let presetName = preset?.name ?? null
+	let cacheKey = getCacheKey(themeId, presetName)
+	let themeUpdatedAt = theme.updatedAt?.getTime() ?? 0
+
+	let cached = themeStylesCache.get(cacheKey)
+	if (cached && cached.themeUpdatedAt === themeUpdatedAt) {
+		return cached.styles
+	}
+
+	// Revoke old blob URLs if we're replacing an existing cache entry
+	if (cached) {
+		for (let url of cached.styles.blobUrls) {
+			URL.revokeObjectURL(url)
+		}
+	}
+
+	// Build new styles asynchronously and cache them
+	let styles = await buildThemeStylesAsync(theme, preset)
+	themeStylesCache.set(cacheKey, { styles, themeUpdatedAt })
+
+	return styles
+}
+
+// Async version of buildThemeStyles that yields to the main thread
+// This allows the browser to render content while processing large themes
+async function buildThemeStylesAsync(
+	theme: LoadedTheme,
+	preset: ThemePresetType | null,
+): Promise<ThemeStyles> {
+	let blobUrls: string[] = []
+	let fontFaceRules = ""
+	let presetVariables = ""
+
+	// Build CSS variables first (fast, needed for initial colors)
+	if (preset) {
+		presetVariables = buildPresetVariables(preset)
+	}
+
+	// Yield to main thread before processing fonts
+	await yieldToMain()
+
+	// Build @font-face rules from theme assets
+	if (theme.assets?.$isLoaded) {
+		let assets = [...theme.assets]
+		for (let i = 0; i < assets.length; i++) {
+			let asset = assets[i]
+			if (!asset?.$isLoaded) continue
+			let loaded = asset as LoadedAsset
+			if (!loaded.data?.$isLoaded) continue
+
+			// Only process font files
+			if (!loaded.mimeType.startsWith("font/")) continue
+
+			let blob = loaded.data.toBlob()
+			if (!blob) continue
+
+			let url = URL.createObjectURL(blob)
+			blobUrls.push(url)
+
+			fontFaceRules += `
+@font-face {
+	font-family: "${loaded.name}";
+	src: url("${url}") format("${getFontFormat(loaded.mimeType)}");
+	font-display: swap;
+}
+`
+			// Yield every few fonts to keep UI responsive
+			if (i % 3 === 2) {
+				await yieldToMain()
+			}
+		}
+	}
+
+	// Get the theme CSS
+	let css = theme.css?.toString() ?? ""
+
+	return {
+		css,
+		fontFaceRules,
+		presetVariables,
+		blobUrls,
+	}
+}
+
+// Yield to the main thread to allow rendering/events to process
+function yieldToMain(): Promise<void> {
+	return new Promise(resolve => {
+		// Use setTimeout(0) for broader compatibility
+		// requestIdleCallback would be better but not available everywhere
+		setTimeout(resolve, 0)
+	})
+}
+
+// Extract preset variable building into reusable function
+function buildPresetVariables(preset: ThemePresetType): string {
+	let vars: string[] = []
+	let { colors, fonts } = preset
+
+	// Core colors
+	vars.push(`--preset-background: ${colors.background}`)
+	vars.push(`--preset-foreground: ${colors.foreground}`)
+	vars.push(`--preset-accent: ${colors.accent}`)
+
+	// Accent color palette (accent-1 is the primary accent, accent-2 through accent-6 from accents array)
+	vars.push(`--preset-accent-1: ${colors.accent}`)
+	if (colors.accents) {
+		for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
+			vars.push(`--preset-accent-${i + 2}: ${colors.accents[i]}`)
+		}
+	}
+
+	// Optional colors
+	if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
+	if (colors.link) vars.push(`--preset-link: ${colors.link}`)
+	if (colors.codeBackground)
+		vars.push(`--preset-code-background: ${colors.codeBackground}`)
+
+	// Fonts
+	if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
+	if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
+
+	// Add appearance class
+	vars.push(`--preset-appearance: ${preset.appearance}`)
+
+	// Also expose as --theme-* aliases for theme authors who prefer this naming
+	vars.push(`--theme-background: ${colors.background}`)
+	vars.push(`--theme-foreground: ${colors.foreground}`)
+	vars.push(`--theme-accent: ${colors.accent}`)
+
+	return `:root {\n\t${vars.join(";\n\t")};\n}`
+}
+
+// Async safe wrapper that uses caching for theme styles
+// Returns cached styles if available, otherwise builds and caches them asynchronously
+async function tryCachedThemeStylesAsync(
+	theme: LoadedTheme,
+	preset: ThemePresetType | null,
+): Promise<ThemeRenderResult> {
+	try {
+		let styles = await getCachedThemeStylesAsync(theme, preset)
 		return { ok: true, styles }
 	} catch (error) {
 		let errorMessage =

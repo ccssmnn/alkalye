@@ -13,7 +13,7 @@ import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/lib/theme"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
 import {
-	tryCachedThemeStyles,
+	tryCachedThemeStylesAsync,
 	tryRenderTemplateWithContent,
 	type ThemeStyles,
 } from "@/lib/theme-renderer"
@@ -125,12 +125,23 @@ function PreviewContent({
 		return () => document.removeEventListener("keydown", handleKeyDown)
 	}, [onExit])
 
-	// Combine all theme CSS
+	// Base transition styles to prevent layout shift when theme loads
+	// These provide smooth transitions for common properties theme CSS might change
+	let transitionStyles = documentTheme.theme
+		? `[data-theme] { transition: color 150ms ease-out, background-color 150ms ease-out; }`
+		: ""
+
+	// Combine all theme CSS with transitions first
 	let injectedStyles = themeStyles
-		? [themeStyles.fontFaceRules, themeStyles.presetVariables, themeStyles.css]
+		? [
+				transitionStyles,
+				themeStyles.fontFaceRules,
+				themeStyles.presetVariables,
+				themeStyles.css,
+			]
 				.filter(Boolean)
 				.join("\n")
-		: ""
+		: transitionStyles
 
 	// Get template HTML from theme (if available)
 	let templateHtml = documentTheme.theme?.template?.toString() ?? null
@@ -236,14 +247,17 @@ function PreviewContent({
 type ThemeStylesResult = {
 	styles: ThemeStyles | null
 	error: string | null
+	isLoading: boolean
 }
 
-// Hook to get theme styles using the global cache
+// Hook to get theme styles using the global cache with async loading
+// Styles are loaded asynchronously to prevent blocking rendering of large themes
 // Cache handles blob URL lifecycle, so no cleanup needed here
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [result, setResult] = useState<ThemeStylesResult>({
 		styles: null,
 		error: null,
+		isLoading: false,
 	})
 	let prevThemeRef = useRef<typeof documentTheme.theme>(null)
 	let prevPresetRef = useRef<typeof documentTheme.preset>(null)
@@ -262,19 +276,27 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	useEffect(() => {
 		if (!themeChanged) return
 
-		// Get styles from cache (builds and caches if needed)
+		// Get styles from cache asynchronously (builds and caches if needed)
 		if (documentTheme.theme) {
-			let buildResult = tryCachedThemeStyles(
-				documentTheme.theme,
-				documentTheme.preset,
+			let cancelled = false
+			setResult(prev => ({ ...prev, isLoading: true }))
+
+			tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
+				buildResult => {
+					if (cancelled) return
+					if (buildResult.ok) {
+						setResult({ styles: buildResult.styles, error: null, isLoading: false })
+					} else {
+						setResult({ styles: null, error: buildResult.error, isLoading: false })
+					}
+				},
 			)
-			if (buildResult.ok) {
-				setResult({ styles: buildResult.styles, error: null })
-			} else {
-				setResult({ styles: null, error: buildResult.error })
+
+			return () => {
+				cancelled = true
 			}
 		} else {
-			setResult({ styles: null, error: null })
+			setResult({ styles: null, error: null, isLoading: false })
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [documentTheme.theme, documentTheme.preset])

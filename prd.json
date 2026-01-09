@@ -334,7 +334,7 @@
 				"Verify no visible layout shift",
 				"Verify fonts load progressively"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "ux",

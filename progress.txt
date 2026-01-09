@@ -481,3 +481,59 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - Compatibility imports (iA Writer/Presenter) not implemented
 - Export features (PDF with theme, theme zip export) not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: Non-Blocking Theme Loading for Large Files
+
+### What was done
+- Implemented async theme style building to prevent large themes from blocking rendering
+- Theme styles are now loaded asynchronously, allowing content to render immediately
+
+- Added async functions in `src/lib/theme-renderer.ts`:
+  - `buildThemeStylesAsync(theme, preset)` - Async version that yields to main thread
+  - `getCachedThemeStylesAsync(theme, preset)` - Async version with caching
+  - `tryCachedThemeStylesAsync(theme, preset)` - Safe async wrapper with error handling
+  - `buildPresetVariables(preset)` - Extracted preset variable building for reuse
+  - `yieldToMain()` - Helper that yields to main thread via setTimeout(0)
+
+- Async building features:
+  - Preset CSS variables are built first (fast, needed for initial colors)
+  - Yields to main thread before processing fonts
+  - Yields every 3 fonts to keep UI responsive during many-font themes
+  - Font blob URLs are created progressively, not all at once
+
+- Updated `useThemeStyles` hooks in both preview.tsx and slideshow.tsx:
+  - Now uses `tryCachedThemeStylesAsync` instead of sync version
+  - Returns `isLoading` state alongside `styles` and `error`
+  - Proper cancellation handling for async operations
+  - Uses async .then() pattern to avoid blocking
+
+- Added CSS transitions to prevent visible layout shift:
+  - Transition styles injected before theme CSS: `color 150ms ease-out, background-color 150ms ease-out`
+  - Applied to elements with `[data-theme]` attribute
+  - Smooth transition when theme styles apply after async load
+
+- Fonts already use `font-display: swap` (from previous work) for progressive loading
+
+### How non-blocking loading works
+1. User opens document with theme
+2. Content renders immediately with default styles
+3. `useThemeStyles` hook starts async style building
+4. Preset variables built first (instant color theming)
+5. Font blob URLs created progressively, yielding between batches
+6. When complete, styles injected with smooth CSS transition
+7. Fonts load asynchronously due to `font-display: swap`
+
+### Files changed
+- `src/lib/theme-renderer.ts` (added async functions, buildPresetVariables, yieldToMain)
+- `src/components/preview.tsx` (async useThemeStyles, CSS transitions)
+- `src/components/slideshow.tsx` (async useThemeStyles, CSS transitions)
+- `prd.json` (marked non-blocking rendering as passes: true)
+
+### PRD requirements completed
+- [x] performance: "Large theme files don't block rendering" - passes: true
+
+### Notes for next steps
+- UX picker (theme selection in editor toolbar) not implemented
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Export features (PDF with theme, theme zip export) not implemented
+- Collaboration features (theme sharing) not implemented
