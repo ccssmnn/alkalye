@@ -1326,3 +1326,36 @@ The key insight is that with zoom controls, the slider never needs to handle 500
 
 ### PRD Status
 - "Time Machine handles very old edits" - PASSES
+
+## 2026-01-09: Time Machine - Offline Support Verification
+
+### Completed
+- Verified "Time Machine works offline" feature was already fully implemented
+- Jazz is a local-first database that persists all data to IndexedDB
+- Once a document is loaded while online, all edit history is stored locally
+- All Time Machine operations use only locally cached data - no network calls
+
+### Technical Analysis
+
+**Why Time Machine Works Offline:**
+1. **Jazz is local-first by design** - All CoJSON data is stored in IndexedDB locally
+2. **`getEditHistory()`** uses `core.getValidSortedTransactions()` which reads from the local CRDT transaction log - no network calls required
+3. **`getContentAtEdit()`** uses `raw.atTime(timestamp).toString()` which reconstructs content from locally stored CRDT operations - no network calls required
+4. **All operations are synchronous** - No async/await fetch calls in Time Machine functions
+
+**Implementation Details:**
+- `JazzReactProvider` with `sync.when: "always"` stores all data locally while syncing when possible
+- When offline, the locally cached data remains accessible
+- `getValidSortedTransactions()` returns all locally stored transactions
+- `raw.atTime()` uses only local CRDT operations to reconstruct historical state
+- The entire edit history and content reconstruction chain is network-independent
+
+### Files Modified
+- src/lib/time-machine.test.ts
+  - Added "Time Machine - Offline Support" test suite with 2 tests:
+    1. `getEditHistory uses only locally cached data (no network calls)` - Verifies synchronous local data access
+    2. `edit history reconstruction works from local CRDT operations` - Verifies content reconstruction from local ops
+- prd.json (marked "Time Machine works offline" as passing)
+
+### PRD Status
+- "Time Machine works offline" - PASSES

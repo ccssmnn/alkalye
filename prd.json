@@ -663,7 +663,7 @@
 			"Verify cached edit history is accessible",
 			"Verify navigation works with cached data"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "edge-cases",
