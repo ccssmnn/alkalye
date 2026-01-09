@@ -251,7 +251,7 @@
 			"Navigate to edit #45",
 			"Verify range adjusts to show edits #26-50 (can't center, clamped to end)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",

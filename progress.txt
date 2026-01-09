@@ -673,3 +673,30 @@ When `zoomLevel === "all"`:
 
 ### PRD Status
 - "All zoom option shows entire edit history" - PASSES
+
+## 2026-01-09: Time Machine - Zoom at Boundaries Verification
+
+### Completed
+- Verified "Zoom at boundaries adjusts range appropriately" feature was already fully implemented
+- The `calculateZoomWindow()` function in time-machine-bottom-bar.tsx correctly clamps at start/end boundaries
+- Existing tests already verify the exact PRD scenarios
+
+### Technical Analysis
+The PRD test case states (using 1-based edit numbers for user-facing display):
+1. Document with 50 edits, at edit #5, zoom 25 → range should be edits #1-25 (clamped to start)
+2. At edit #45, zoom 25 → range should be edits #26-50 (clamped to end)
+
+Existing tests verify this (using 0-based indexing):
+- `calculateZoomWindow(5, 50, 25)` → `{ windowStart: 0, windowEnd: 24 }` (edits 1-25 in 1-based terms) ✓
+- `calculateZoomWindow(45, 50, 25)` → `{ windowStart: 25, windowEnd: 49 }` (edits 26-50 in 1-based terms) ✓
+
+### Algorithm Details
+When centering is not possible due to boundaries:
+1. If `windowStart < 0`: clamp to 0, windowEnd = min(windowSize-1, totalEdits-1)
+2. If `windowEnd >= totalEdits`: clamp windowEnd to totalEdits-1, adjust windowStart = max(0, windowEnd-windowSize+1)
+
+### Files Modified
+- prd.json (marked "Zoom at boundaries adjusts range appropriately" as passing)
+
+### PRD Status
+- "Zoom at boundaries adjusts range appropriately" - PASSES
