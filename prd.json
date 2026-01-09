@@ -34,7 +34,7 @@
 			"Verify scroll position is preserved",
 			"Verify the same content is visible as before entering"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "entry",
@@ -96,7 +96,7 @@
 			"Exit Time Machine",
 			"Verify scroll position returns to where it was before entering"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "exit",

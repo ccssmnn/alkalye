@@ -216,3 +216,33 @@
 
 ### PRD Status
 - "Toolbar has kebab menu for actions" - PASSES
+
+## 2026-01-09: Time Machine - Scroll Position Preservation
+
+### Completed
+- Implemented scroll position preservation when entering and exiting Time Machine mode
+- Scroll position is saved when entering Time Machine mode
+- Scroll position is restored when exiting Time Machine mode
+- Added getScrollPosition() and setScrollPosition() methods to MarkdownEditorRef interface
+
+### Files Modified
+- src/editor/editor.tsx
+  - Added getScrollPosition() and setScrollPosition() to MarkdownEditorRef interface
+  - Implemented both methods using CodeMirror's view.scrollDOM
+  - Added stub implementations to internalRef object
+- src/routes/doc.$id.index.tsx
+  - Added savedScrollPositionRef to store scroll position before entering Time Machine
+  - Added wasInTimeMachineRef to track Time Machine mode transitions
+  - Added useEffect to save scroll position on entry and restore on exit
+  - Uses requestAnimationFrame to ensure content renders before restoring scroll
+- prd.json (marked 2 scroll position tests as passing)
+
+### Technical Details
+- CodeMirror's EditorView exposes scrollDOM property with scrollTop/scrollLeft
+- Scroll position is saved immediately when timeMachineMode transitions from false to true
+- Scroll position is restored using requestAnimationFrame when exiting to ensure content is rendered
+- savedScrollPositionRef is cleared after restoring to prevent stale position being used
+
+### PRD Status
+- "Time Machine preserves scroll position on entry" - PASSES
+- "Exiting Time Machine restores scroll position" - PASSES

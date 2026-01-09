@@ -233,6 +233,36 @@ function EditorContent({
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
 	useEditorSettings(editorSettings)
 
+	// Scroll position preservation for Time Machine
+	let savedScrollPositionRef = useRef<{ top: number; left: number } | null>(
+		null,
+	)
+	let wasInTimeMachineRef = useRef(timeMachineMode)
+
+	// Save scroll position when entering Time Machine, restore when exiting
+	useEffect(() => {
+		let wasInTimeMachine = wasInTimeMachineRef.current
+		wasInTimeMachineRef.current = timeMachineMode
+
+		if (timeMachineMode && !wasInTimeMachine) {
+			// Entering Time Machine: save current scroll position
+			let scrollPos = editor.current?.getScrollPosition()
+			if (scrollPos) {
+				savedScrollPositionRef.current = scrollPos
+			}
+		} else if (!timeMachineMode && wasInTimeMachine) {
+			// Exiting Time Machine: restore scroll position after a short delay
+			// to allow the content to render first
+			let savedPos = savedScrollPositionRef.current
+			if (savedPos) {
+				requestAnimationFrame(() => {
+					editor.current?.setScrollPosition(savedPos)
+				})
+				savedScrollPositionRef.current = null
+			}
+		}
+	}, [timeMachineMode, editor])
+
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
 

@@ -119,6 +119,9 @@ interface MarkdownEditorRef {
 	getSelection(): { from: number; to: number } | null
 	restoreSelection(selection: { from: number; to: number }): void
 
+	getScrollPosition(): { top: number; left: number }
+	setScrollPosition(position: { top: number; left: number }): void
+
 	undo(): void
 	redo(): void
 	cut(): void
@@ -544,6 +547,18 @@ function MarkdownEditor(
 				selection: { anchor: selection.from, head: selection.to },
 			})
 		},
+		getScrollPosition: () => {
+			if (!view) return { top: 0, left: 0 }
+			return {
+				top: view.scrollDOM.scrollTop,
+				left: view.scrollDOM.scrollLeft,
+			}
+		},
+		setScrollPosition: (position: { top: number; left: number }) => {
+			if (!view) return
+			view.scrollDOM.scrollTop = position.top
+			view.scrollDOM.scrollLeft = position.left
+		},
 		undo: () => {
 			if (view) {
 				undo(view)
@@ -634,6 +649,8 @@ function MarkdownEditor(
 				return { from, to }
 			},
 			restoreSelection: () => {},
+			getScrollPosition: () => ({ top: 0, left: 0 }),
+			setScrollPosition: () => {},
 			undo: () => {},
 			redo: () => {},
 			cut: () => {},
