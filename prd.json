@@ -238,7 +238,7 @@
 			"Verify slider represents entire edit history",
 			"Verify can navigate from first to last edit"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "zoom",

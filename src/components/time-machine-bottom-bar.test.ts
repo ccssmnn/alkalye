@@ -12,6 +12,42 @@ describe("calculateZoomWindow", () => {
 			let result = calculateZoomWindow(0, 1, "all")
 			expect(result).toEqual({ windowStart: 0, windowEnd: 0 })
 		})
+
+		test("shows entire edit history regardless of current position", () => {
+			// PRD: "All zoom option shows entire edit history"
+			let totalEdits = 1000
+
+			// At first edit
+			let first = calculateZoomWindow(0, totalEdits, "all")
+			expect(first.windowStart).toBe(0)
+			expect(first.windowEnd).toBe(totalEdits - 1)
+
+			// At middle edit
+			let middle = calculateZoomWindow(500, totalEdits, "all")
+			expect(middle.windowStart).toBe(0)
+			expect(middle.windowEnd).toBe(totalEdits - 1)
+
+			// At last edit
+			let last = calculateZoomWindow(999, totalEdits, "all")
+			expect(last.windowStart).toBe(0)
+			expect(last.windowEnd).toBe(totalEdits - 1)
+		})
+
+		test("allows navigation from first to last edit", () => {
+			// PRD: "Verify can navigate from first to last edit"
+			let totalEdits = 500
+			let result = calculateZoomWindow(0, totalEdits, "all")
+
+			// Window size should equal total edits, allowing full navigation
+			let windowSize = result.windowEnd - result.windowStart + 1
+			expect(windowSize).toBe(totalEdits)
+
+			// Any edit from 0 to totalEdits-1 should be within window
+			for (let edit = 0; edit < totalEdits; edit += 100) {
+				expect(edit).toBeGreaterThanOrEqual(result.windowStart)
+				expect(edit).toBeLessThanOrEqual(result.windowEnd)
+			}
+		})
 	})
 
 	describe("with numeric zoom level", () => {
