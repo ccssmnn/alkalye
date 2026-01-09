@@ -6,6 +6,7 @@ import {
 	useState,
 	useLayoutEffect,
 } from "react"
+import { Image as JazzImage } from "jazz-tools/react"
 import { codeToHtml } from "shiki"
 import {
 	parsePresentationSize,
@@ -32,6 +33,12 @@ import { EllipsisIcon } from "lucide-react"
 export { Slideshow }
 export type { Slide }
 
+type Asset = {
+	$jazz: { id: string }
+	$isLoaded?: boolean
+	image?: { $jazz: { id: string } }
+}
+
 type ResolvedWikilink = {
 	title: string
 	exists: boolean
@@ -46,6 +53,7 @@ type Slide = { slideNumber: number; blocks: VisualBlock[] }
 interface SlideshowProps {
 	content: string
 	slides: Slide[]
+	assets?: Asset[]
 	wikilinks: Map<string, ResolvedWikilink>
 	currentSlideNumber: number
 	onSlideChange?: (slideNumber: number) => void
@@ -56,6 +64,7 @@ interface SlideshowProps {
 function Slideshow({
 	content,
 	slides,
+	assets,
 	wikilinks,
 	currentSlideNumber,
 	onSlideChange,
@@ -91,6 +100,7 @@ function Slideshow({
 				>
 					<ScaledSlideContainer
 						blocks={visibleBlocks}
+						assets={assets}
 						size={size}
 						slideNumber={currentSlideNumber}
 						onClick={goToNextSlide}
@@ -230,11 +240,13 @@ let baseSizes: Record<PresentationSize, { h1: number; body: number }> = {
 
 function ScaledSlideContainer({
 	blocks,
+	assets,
 	size,
 	slideNumber,
 	onClick,
 }: {
 	blocks: VisualBlock[]
+	assets?: Asset[]
 	size: PresentationSize
 	slideNumber: number
 	onClick: () => void
@@ -259,6 +271,9 @@ function ScaledSlideContainer({
 
 	let baseSize = baseSizes[size]
 
+	// Reduce font size for multi-column layouts to fit content
+	let columnScale = blockCount >= 3 ? 0.5 : blockCount === 2 ? 0.75 : 1
+
 	// Reset visibility when deps change using adjust-state-during-render pattern
 	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
@@ -276,47 +291,42 @@ function ScaledSlideContainer({
 		let cancelled = false
 
 		async function measure() {
-			// Wait for DOM to update with scale=1
 			await new Promise(r => requestAnimationFrame(r))
 			if (cancelled) return
 
-			let maxW = container!.clientWidth * 0.9
-			let maxH = container!.clientHeight * 0.9
+			let containerW = container!.clientWidth
+			let containerH = container!.clientHeight
+			let maxW = containerW * 0.9
+			let maxH = containerH * 0.9
 
-			// Temporarily remove width constraint for measuring
+			// Temporarily remove width constraint for natural measurement
+			let originalWidth = content!.style.width
 			content!.style.width = "auto"
 
-			function fits(s: number): boolean {
-				content!.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
-				content!.style.setProperty(
-					"--slide-body-size",
-					`${baseSize.body * s}px`,
-				)
-				// Force reflow
-				void content!.offsetHeight
-				let w = content!.scrollWidth
-				let h = content!.scrollHeight
-				return w <= maxW && h <= maxH
-			}
+			// Measure at scale=1 to get natural size
+			content!.style.setProperty(
+				"--slide-h1-size",
+				`${baseSize.h1 * columnScale}px`,
+			)
+			content!.style.setProperty(
+				"--slide-body-size",
+				`${baseSize.body * columnScale}px`,
+			)
+			content!.style.setProperty("--slide-image-size", `${800 * columnScale}px`)
+			void content!.offsetHeight
 
-			// Binary search for optimal scale
-			let low = 10
-			let high = 100
-			while (low <= high) {
-				let mid = Math.floor((low + high) / 2)
-				if (fits(mid / 100)) {
-					low = mid + 1
-				} else {
-					high = mid - 1
-				}
-			}
-
-			let finalScale = Math.max(10, Math.min(high, 100)) / 100
+			let naturalW = content!.scrollWidth
+			let naturalH = content!.scrollHeight
 
 			// Restore width constraint
-			content!.style.width = "90%"
+			content!.style.width = originalWidth
 
 			if (cancelled) return
+
+			// Calculate scale to fit, but don't scale up if already fits
+			let scaleW = naturalW <= maxW ? 1 : maxW / naturalW
+			let scaleH = naturalH <= maxH ? 1 : maxH / naturalH
+			let finalScale = Math.min(scaleW, scaleH, 1)
 
 			// Apply final scale and fade in
 			setScale(finalScale)
@@ -330,7 +340,7 @@ function ScaledSlideContainer({
 		return () => {
 			cancelled = true
 		}
-	}, [slideNumber, blocks, isPortrait, baseSize])
+	}, [slideNumber, blocks, isPortrait, baseSize, columnScale])
 
 	useEffect(() => {
 		function handleResize() {
@@ -354,8 +364,9 @@ function ScaledSlideContainer({
 				className={gridClass}
 				style={
 					{
-						"--slide-h1-size": `${baseSize.h1 * scale}px`,
-						"--slide-body-size": `${baseSize.body * scale}px`,
+						"--slide-h1-size": `${baseSize.h1 * columnScale * scale}px`,
+						"--slide-body-size": `${baseSize.body * columnScale * scale}px`,
+						"--slide-image-size": `${800 * scale}px`,
 						opacity: visible ? 1 : 0,
 						transition: visible ? "opacity 150ms ease-in" : "none",
 						width: "90%",
@@ -369,7 +380,7 @@ function ScaledSlideContainer({
 						className="flex min-h-0 min-w-0 flex-col items-center justify-center text-center"
 					>
 						{block.content.map((item, j) => (
-							<SlideContentItem key={j} item={item} />
+							<SlideContentItem key={j} item={item} assets={assets} />
 						))}
 					</div>
 				))}
@@ -461,7 +472,13 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 	}
 }
 
-function SlideContentItem({ item }: { item: SlideContent }) {
+function SlideContentItem({
+	item,
+	assets,
+}: {
+	item: SlideContent
+	assets?: Asset[]
+}) {
 	if (item.type === "heading") {
 		let scale = headingScales[item.depth] ?? 0.6
 		return (
@@ -483,13 +500,31 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	}
 
 	if (item.type === "image") {
+		let assetMatch = item.src.match(/^asset:([^)]+)$/)
+		let imageId: string | undefined
+		if (assetMatch && assets) {
+			let asset = assets.find(a => a?.$jazz.id === assetMatch[1])
+			if (asset?.$isLoaded && asset.image) {
+				imageId = asset.image.$jazz.id
+			}
+		}
 		return (
 			<div style={{ margin: "0.5em 0" }}>
-				<img
-					src={item.src}
-					alt={item.alt}
-					className="mx-auto max-h-[60vh] rounded-lg"
-				/>
+				{imageId ? (
+					<JazzImage
+						imageId={imageId}
+						alt={item.alt}
+						className="mx-auto rounded-lg"
+						style={{ maxHeight: "var(--slide-image-size)" }}
+					/>
+				) : (
+					<img
+						src={item.src}
+						alt={item.alt}
+						className="mx-auto rounded-lg"
+						style={{ maxHeight: "var(--slide-image-size)" }}
+					/>
+				)}
 			</div>
 		)
 	}
