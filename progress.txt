@@ -36,3 +36,40 @@
 - The schema is now ready for the upload functionality
 - Next priority should be implementing the Settings UI for theme upload and management
 - The `ThemeType` enum and `ThemePreset` zod schema are exported for use in upload validation
+
+## 2026-01-09: Theme Upload and Settings UI
+
+### What was done
+- Created `src/lib/theme-upload.ts` for parsing and validating theme zip files:
+  - `parseThemeZip(file)` - parses a zip file and extracts all theme content
+  - `validateThemeJson(content)` - validates theme.json manifest against schema
+  - `ThemeJsonSchema` - zod schema for theme.json validation
+  - Handles: theme.json manifest, CSS files, HTML templates, presets.json, fonts, thumbnails
+  - Returns typed `ThemeUploadError` for different error conditions
+
+- Added `ThemesSection` component to `src/routes/settings.tsx`:
+  - Upload button with file input for .zip files
+  - Loading state during upload
+  - Error display with detailed validation errors
+  - Empty state when no themes uploaded
+  - List of uploaded themes showing name, type, and author
+  - Delete button with confirmation dialog
+
+- Updated settings query to include themes with CSS and assets loaded
+
+### Files changed
+- `src/lib/theme-upload.ts` (new file)
+- `src/routes/settings.tsx` (added ThemesSection, updated imports and query)
+
+### PRD requirements completed
+- [x] upload: "Users can upload theme zip files in settings" - passes: true
+- [x] upload: "Theme zip validation on upload" - passes: true
+- [x] upload: "Theme assets are extracted and stored" - passes: true
+- [x] settings: "Themes list displayed in settings" - passes: true
+- [x] settings: "Theme can be deleted from settings" - passes: true
+
+### Notes for next steps
+- "Theme can be set as default" not implemented yet - requires adding default theme fields to Settings
+- Thumbnail display in theme list not implemented yet (stored but not shown)
+- Next priority: implement frontmatter parsing to apply themes to documents
+- CSS asset URL rewriting (for fonts in CSS) will be needed when applying themes
