@@ -378,9 +378,18 @@ function EditorContent({
 		resolve: { content: true },
 	})
 
+	// In Time Machine mode, only show assets that existed at the current edit timestamp
+	let currentEditTimestamp = currentEdit?.madeAt
 	let sidebarAssets: SidebarAsset[] =
 		doc.assets
-			?.filter(a => a?.$isLoaded)
+			?.filter(a => {
+				if (!a?.$isLoaded) return false
+				// In Time Machine mode, filter to assets created before/at the current edit
+				if (timeMachineMode && currentEditTimestamp && a.createdAt) {
+					return a.createdAt <= currentEditTimestamp
+				}
+				return true
+			})
 			.map(a => ({
 				id: a.$jazz.id,
 				name: a.name,
