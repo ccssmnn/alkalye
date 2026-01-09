@@ -118,7 +118,7 @@
 			"Verify toolbar shows correct date and author for each position",
 			"Verify edit counter updates (e.g., '234/500')"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "navigation",

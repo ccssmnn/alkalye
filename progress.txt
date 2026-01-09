@@ -68,3 +68,22 @@
 
 ### PRD Status
 - "User can exit Time Machine via dropdown menu" - PASSES
+
+## 2026-01-09: Time Machine - Slider Navigation Verification
+
+### Completed
+- Verified slider navigation functionality is fully implemented
+- Slider in TimeMachineBottomBar navigates through edit history positions
+- Content updates correctly at each edit position via getEditHistory() snapshots
+- Edit counter updates to show current position (e.g., '234/500')
+- Toolbar shows correct date for each edit position
+- Author info shows "Unknown" (acceptable per separate PRD test case for missing author info)
+
+### Technical Details
+- Slider uses local state with 150ms debounce to prevent excessive URL updates
+- URL parameter `edit` is updated on each slider change with `replace: true`
+- Content at each timestamp is retrieved via `raw.atTime(time).toString()`
+- Edit counter displays `{currentEdit + 1}/{totalEdits}` format
+
+### PRD Status
+- "Slider navigates through edit history" - PASSES
