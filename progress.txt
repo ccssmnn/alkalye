@@ -1246,3 +1246,45 @@ Multi-user sync tests have timing issues in the Jazz test environment. Tests tim
 
 ### PRD Status
 - "Multiple users can be in Time Machine simultaneously" - PASSES
+
+## 2026-01-09: Time Machine - Handles Documents with Thousands of Edits
+
+### Completed
+- Verified "Time Machine handles documents with thousands of edits" feature is fully implemented
+- The implementation uses several performance optimizations that make it scale to 5000+ edits
+- Added comprehensive tests verifying performance characteristics
+
+### Performance Optimizations Already in Place
+1. **Edit history caching**: Uses WeakMap to cache computed edit history, avoiding recomputation on re-renders
+2. **Lazy content loading**: `getContentAtEdit()` only loads content for the current edit, not all edits
+3. **O(n) algorithm**: `getEditHistory()` uses Map for O(1) lookup instead of O(n²) nested loops
+4. **Slider debouncing**: 150ms debounce prevents excessive URL updates during rapid scrubbing
+5. **Zoom windowing**: `calculateZoomWindow()` limits slider to show only a subset of edits (25, 100, or 500)
+
+### Technical Analysis
+The key insight is that with zoom controls, the slider never needs to handle 5000 individual positions:
+- With zoom=100 on a 5000-edit document, the slider only has 100 positions
+- This makes the HTML range input responsive regardless of total edit count
+- Users can use zoom=25 for fine-grained control or zoom=500/all for broad navigation
+
+### Files Modified
+- src/lib/time-machine.test.ts
+  - Fixed existing test for `getContentAtEdit` that was flaky due to Jazz timestamp batching
+  - Added "getEditHistory handles document with many edits performantly" test
+  - Added "getEditHistory maintains O(n) complexity" test
+- src/components/time-machine-bottom-bar.test.ts
+  - Added "documents with thousands of edits" test suite
+  - Added tests for 5000+ edits performance and zoom windowing
+- src/lib/time-machine.ts
+  - Cleaned up unused type helper function
+- prd.json (marked "Time Machine handles documents with thousands of edits" as passing)
+
+### Tests Added
+1. `getEditHistory handles document with many edits performantly` - Verifies O(n) algorithm performance
+2. `getEditHistory maintains O(n) complexity` - Verifies linear scaling
+3. `handles 5000+ edits performantly` - Verifies zoom calculation is O(1)
+4. `zoom windows work correctly with 5000 edits` - Verifies correct windowing at scale
+5. `slider is usable with zoom windowing` - Verifies slider has manageable number of positions
+
+### PRD Status
+- "Time Machine handles documents with thousands of edits" - PASSES

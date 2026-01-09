@@ -120,6 +120,65 @@ describe("calculateZoomWindow", () => {
 		})
 	})
 
+	describe("documents with thousands of edits", () => {
+		test("handles 5000+ edits performantly", () => {
+			// PRD: "Time Machine handles documents with thousands of edits"
+			let totalEdits = 5000
+
+			// Measure time for zoom calculations - should be O(1)
+			let start = performance.now()
+			for (let i = 0; i < 100; i++) {
+				calculateZoomWindow(2500, totalEdits, 100)
+				calculateZoomWindow(4999, totalEdits, 500)
+				calculateZoomWindow(0, totalEdits, 25)
+				calculateZoomWindow(2500, totalEdits, "all")
+			}
+			let duration = performance.now() - start
+
+			// 400 calculations should complete in under 10ms (O(1) operations)
+			expect(duration).toBeLessThan(10)
+		})
+
+		test("zoom windows work correctly with 5000 edits", () => {
+			let totalEdits = 5000
+
+			// Zoom 100 at middle
+			let middle = calculateZoomWindow(2500, totalEdits, 100)
+			expect(middle.windowStart).toBe(2450)
+			expect(middle.windowEnd).toBe(2549)
+
+			// Zoom 500 near end
+			let nearEnd = calculateZoomWindow(4800, totalEdits, 500)
+			expect(nearEnd.windowStart).toBe(4500)
+			expect(nearEnd.windowEnd).toBe(4999)
+
+			// Zoom 25 near start
+			let nearStart = calculateZoomWindow(10, totalEdits, 25)
+			expect(nearStart.windowStart).toBe(0)
+			expect(nearStart.windowEnd).toBe(24)
+
+			// All shows entire range
+			let all = calculateZoomWindow(2500, totalEdits, "all")
+			expect(all.windowStart).toBe(0)
+			expect(all.windowEnd).toBe(4999)
+		})
+
+		test("slider is usable with zoom windowing", () => {
+			// With 5000 edits and zoom 100, slider only has 100 positions
+			// This makes the slider usable regardless of total edit count
+			let totalEdits = 5000
+			let result = calculateZoomWindow(2500, totalEdits, 100)
+			let windowSize = result.windowEnd - result.windowStart + 1
+
+			// Window size should be the zoom level (100)
+			expect(windowSize).toBe(100)
+
+			// Slider max would be windowSize - 1 = 99
+			// This is a manageable number of positions for UI interaction
+			expect(windowSize - 1).toBe(99)
+		})
+	})
+
 	describe("zoom level changes preserve current edit", () => {
 		test("changing from 'all' to numeric zoom keeps edit in window", () => {
 			let currentEdit = 300

@@ -639,7 +639,7 @@
 			"Verify zoom controls work correctly",
 			"Verify navigation is smooth"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "edge-cases",

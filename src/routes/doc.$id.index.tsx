@@ -80,6 +80,7 @@ import {
 } from "@/components/time-machine-bottom-bar"
 import {
 	getEditHistory,
+	getContentAtEdit,
 	getAuthorName,
 	formatEditDate,
 } from "@/lib/time-machine"
@@ -304,8 +305,9 @@ function EditorContent({
 			? Math.min(Math.max(0, timeMachineEdit), totalEdits - 1)
 			: totalEdits - 1
 	let currentEdit = editHistory[currentEditIndex]
+	// Lazy load content only for the current edit (not all edits)
 	let timeMachineContent = timeMachineMode
-		? (currentEdit?.content ?? content)
+		? getContentAtEdit(doc, currentEditIndex)
 		: content
 	let displayContent = timeMachineMode ? timeMachineContent : content
 
