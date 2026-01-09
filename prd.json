@@ -420,7 +420,7 @@
 			"Verify new document is in same space as original",
 			"Verify user is navigated to the new document"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",
@@ -444,7 +444,7 @@
 			"Open the new document",
 			"Verify frontmatter includes 'timemachine: restored from {Original Title} at Jan 9, 2026, 3:42 PM'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",

@@ -439,3 +439,42 @@ User at /doc/abc                  (history entry 1)
 
 ### PRD Status
 - "User can exit Time Machine via browser back button" - PASSES
+
+## 2026-01-09: Time Machine - Create Copy Action Implementation
+
+### Completed
+- Implemented "Create Copy" action in Time Machine dropdown menu
+- Clicking "Create Copy" creates a new document with the historical content from the current edit
+- New document includes frontmatter noting the source: `timemachine: restored from {Original Title} at {date}`
+- New document title is set to "{Original Title} (restored)"
+- User is automatically navigated to the new document after creation
+- New document inherits spaceId from original document
+
+### Files Modified
+- src/components/time-machine-toolbar.tsx
+  - Added `onCreateCopy` prop to TimeMachineToolbarProps interface
+  - Enabled "Create Copy" dropdown menu item with onClick handler
+- src/routes/doc.$id.index.tsx
+  - Added `formatEditDate` to imports from time-machine library
+  - Added `TimeMachineCopyParams` type for handler parameters
+  - Added `makeTimeMachineCreateCopy()` handler factory function
+  - Wired up `onCreateCopy` prop to TimeMachineToolbar component
+- prd.json (marked two features as passing)
+
+### Technical Details
+- Handler factory pattern used: `makeTimeMachineCreateCopy(params)` returns handler function
+- Frontmatter is prepended to content with YAML format
+- Title replacement handles both cases: existing heading and no heading
+- Creates new Group for document ownership (personal documents)
+- Document added to user's root.documents list
+- Navigation uses TanStack Router navigate function
+
+### Notes for Next Person
+- "Create Copy inherits space and assets" is NOT fully implemented - assets are not copied
+- Asset copying would require similar logic to duplicate-doc-dialog.tsx
+- Space documents may need special handling for group creation with space permissions
+- "Restore This Version" action is still disabled and needs implementation
+
+### PRD Status
+- "Create Copy creates new document with historical content" - PASSES
+- "Create Copy adds frontmatter noting source" - PASSES

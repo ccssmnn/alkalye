@@ -16,6 +16,7 @@ interface TimeMachineToolbarProps {
 	editDate: Date
 	authorName: string
 	onExit: () => void
+	onCreateCopy: () => void
 }
 
 function TimeMachineToolbar({
@@ -23,6 +24,7 @@ function TimeMachineToolbar({
 	editDate,
 	authorName,
 	onExit,
+	onCreateCopy,
 }: TimeMachineToolbarProps) {
 	return (
 		<div
@@ -64,7 +66,9 @@ function TimeMachineToolbar({
 					<DropdownMenuItem onClick={onExit}>
 						Exit Time Machine
 					</DropdownMenuItem>
-					<DropdownMenuItem disabled>Create Copy</DropdownMenuItem>
+					<DropdownMenuItem onClick={onCreateCopy}>
+						Create Copy
+					</DropdownMenuItem>
 					<DropdownMenuItem disabled>Restore This Version</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

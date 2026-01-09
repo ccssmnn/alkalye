@@ -75,7 +75,11 @@ import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { TimeMachineToolbar } from "@/components/time-machine-toolbar"
 import { TimeMachineBottomBar } from "@/components/time-machine-bottom-bar"
-import { getEditHistory, getAuthorName } from "@/lib/time-machine"
+import {
+	getEditHistory,
+	getAuthorName,
+	formatEditDate,
+} from "@/lib/time-machine"
 import type { ID } from "jazz-tools"
 
 export { Route }
@@ -462,6 +466,14 @@ function EditorContent({
 									search: {},
 								})
 							}}
+							onCreateCopy={makeTimeMachineCreateCopy({
+								doc,
+								historicalContent: timeMachineContent,
+								originalTitle: docTitle,
+								editDate: currentEdit?.madeAt ?? doc.createdAt,
+								me,
+								navigate,
+							})}
 						/>
 						<TimeMachineBottomBar
 							currentEdit={currentEditIndex}
@@ -748,6 +760,60 @@ function makeDeleteAsset(
 			doc.assets.$jazz.splice(idx, 1)
 			doc.$jazz.set("updatedAt", new Date())
 		}
+	}
+}
+
+type TimeMachineCopyParams = {
+	doc: LoadedDocument
+	historicalContent: string
+	originalTitle: string
+	editDate: Date
+	me: LoadedMe
+	navigate: ReturnType<typeof useNavigate>
+}
+
+function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
+	return function handleTimeMachineCreateCopy() {
+		let { doc, historicalContent, originalTitle, editDate, me, navigate } =
+			params
+		if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
+
+		// Add frontmatter noting the source
+		let formattedDate = formatEditDate(editDate)
+		let frontmatter = `---\ntimemachine: restored from ${originalTitle} at ${formattedDate}\n---\n\n`
+
+		// Add frontmatter to content, update title to indicate it's a copy
+		let contentWithTitle = historicalContent
+		let lines = contentWithTitle.split("\n")
+		let newTitle = `${originalTitle} (restored)`
+
+		// Replace or add title
+		if (lines[0]?.startsWith("#")) {
+			lines[0] = `# ${newTitle}`
+		} else {
+			lines.unshift(`# ${newTitle}`)
+		}
+
+		let finalContent = frontmatter + lines.join("\n")
+
+		// Create the new document in same space as original (or personal if no space)
+		let now = new Date()
+		let group = Group.create()
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(finalContent, group),
+				createdAt: now,
+				updatedAt: now,
+				spaceId: doc.spaceId,
+			},
+			group,
+		)
+
+		me.root.documents.$jazz.push(newDoc)
+
+		// Navigate to the new document
+		navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
 	}
 }
 
