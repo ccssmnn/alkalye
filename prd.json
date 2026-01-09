@@ -406,7 +406,7 @@
 			"Verify content updates immediately without loading state",
 			"Verify no skeleton or shimmer is shown"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",

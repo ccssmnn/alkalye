@@ -359,3 +359,25 @@
 - "Bottom bar has solid background and spans full width" - PASSES
 - "Bottom bar shows edit counter" - PASSES
 - "Bottom bar layout is single row on desktop" - PASSES
+
+## 2026-01-09: Time Machine - Verified Content Updates Immediately Feature
+
+### Completed
+- Verified "Content updates immediately when navigating edits" was already fully implemented
+- Confirmed no loading state, skeleton, or shimmer appears during navigation
+- Content updates synchronously when using back/forward buttons or keyboard shortcuts
+
+### Technical Details
+- Edit history is computed synchronously via `getEditHistory(doc)` in doc.$id.index.tsx (line 270)
+- `currentEdit?.content` is immediately available from the pre-computed `editHistory` array
+- Navigation triggers URL update via `navigate()` with `replace: true`
+- React re-renders with new `timeMachineEdit` → new `currentEditIndex` → new `displayContent`
+- No async operations in the content update path - all data is already loaded
+- The `MarkdownEditor` receives new `displayContent` prop and re-renders immediately
+- TimeMachineToolbar and TimeMachineBottomBar have no loading/shimmer states
+
+### Files Modified
+- prd.json (marked "Content updates immediately when navigating edits" as passing)
+
+### PRD Status
+- "Content updates immediately when navigating edits" - PASSES
