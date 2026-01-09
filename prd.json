@@ -106,7 +106,7 @@
 			"Exit Time Machine",
 			"Verify content switches immediately without animation or fade"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "navigation",

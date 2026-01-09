@@ -301,3 +301,25 @@
 ### PRD Status
 - "Time Machine accessible for documents with single edit shows disabled UI" - PASSES
 - "Slider scrubbing is debounced at 150ms" - PASSES
+
+## 2026-01-09: Time Machine - Verified Exit Transition is Instant
+
+### Completed
+- Verified "Exit transition is instant" feature was already fully implemented
+- Analyzed TimeMachineToolbar and TimeMachineBottomBar components
+- Confirmed no CSS transitions or animations are applied to Time Machine UI
+- Components simply render/unmount based on `timeMachineMode` state change
+
+### Technical Details
+- Exit handler in doc.$id.index.tsx calls `navigate()` with empty search params
+- Navigation triggers synchronous state change: `timeMachineMode` goes from `true` to `false`
+- React unmounts TimeMachineToolbar and TimeMachineBottomBar immediately
+- Editor's readOnly state updates via `StateEffect.reconfigure` in same render cycle
+- Scroll restoration uses `requestAnimationFrame()` - executes in next frame (sub-millisecond)
+- No fade, slide, or opacity transitions anywhere in the Time Machine UI
+
+### Files Modified
+- prd.json (marked "Exit transition is instant" as passing)
+
+### PRD Status
+- "Exit transition is instant" - PASSES
