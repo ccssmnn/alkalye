@@ -76,6 +76,7 @@ import { HelpMenu } from "@/components/help-menu"
 import { TimeMachineToolbar } from "@/components/time-machine-toolbar"
 import { TimeMachineBottomBar } from "@/components/time-machine-bottom-bar"
 import { getEditHistory, getAuthorName } from "@/lib/time-machine"
+import type { ID } from "jazz-tools"
 
 export { Route }
 
@@ -248,6 +249,13 @@ function EditorContent({
 		: content
 	let displayContent = timeMachineMode ? timeMachineContent : content
 
+	// Load the author account for the current Time Machine edit
+	let currentEditAuthor = useCoState(
+		UserAccount,
+		currentEdit?.accountId as ID<typeof UserAccount> | undefined,
+		{ resolve: { profile: true } },
+	)
+
 	// Redirect to include edit param in URL when entering Time Machine without one
 	useEffect(() => {
 		if (timeMachineMode && timeMachineEdit === undefined && totalEdits > 0) {
@@ -414,7 +422,7 @@ function EditorContent({
 							docTitle={docTitle}
 							editDate={currentEdit?.madeAt ?? doc.createdAt}
 							authorName={getAuthorName(
-								currentEdit?.by ?? null,
+								currentEditAuthor?.$isLoaded ? currentEditAuthor : null,
 								me.$isLoaded ? me.$jazz.id : undefined,
 							)}
 							onExit={() => {

@@ -1,7 +1,7 @@
 import type { co } from "jazz-tools"
 import type { Document, UserAccount } from "@/schema"
 
-export { getEditHistory, formatEditDate, getAuthorName }
+export { getEditHistory, formatEditDate, getAuthorName, accountIdFromSessionId }
 export type { EditHistoryItem }
 
 type LoadedDocument = co.loaded<typeof Document, { content: true }>
@@ -10,8 +10,13 @@ type LoadedAccount = co.loaded<typeof UserAccount, { profile: true }>
 interface EditHistoryItem {
 	index: number
 	madeAt: Date
-	by: LoadedAccount | null
+	accountId: string | null
 	content: string
+}
+
+function accountIdFromSessionId(sessionId: string): string {
+	let until = sessionId.indexOf("_session")
+	return sessionId.slice(0, until)
 }
 
 function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
@@ -23,7 +28,7 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 	// Get all sessions and their ops to build timeline
 	let allOps: Array<{
 		madeAt: number
-		by: LoadedAccount | null
+		accountId: string | null
 		sessionId: string
 	}> = []
 
@@ -39,7 +44,7 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 			if (tx) {
 				allOps.push({
 					madeAt: tx.madeAt,
-					by: null,
+					accountId: accountIdFromSessionId(sessionId),
 					sessionId: sessionId,
 				})
 			}
@@ -59,7 +64,7 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 		edits.push({
 			index: i,
 			madeAt: new Date(time),
-			by: op?.by ?? null,
+			accountId: op?.accountId ?? null,
 			content: contentAtTime,
 		})
 	}
@@ -69,7 +74,7 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 		edits.push({
 			index: 0,
 			madeAt: doc.createdAt,
-			by: null,
+			accountId: null,
 			content: doc.content.toString(),
 		})
 	}

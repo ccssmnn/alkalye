@@ -263,7 +263,7 @@
 			"Verify date is shown in absolute format (e.g., 'Jan 9, 2026, 3:42 PM')",
 			"Verify author name is shown (e.g., 'by Alice')"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
@@ -273,7 +273,7 @@
 			"Navigate to an edit made by the current user",
 			"Verify toolbar shows 'by you' instead of user's name"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
@@ -283,7 +283,7 @@
 			"Navigate to an edit where author account is not loaded or has no profile",
 			"Verify toolbar shows 'by Unknown'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",

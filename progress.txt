@@ -159,3 +159,37 @@
 ### PRD Status
 - "Back button disabled at first edit" - PASSES
 - "Forward button disabled at latest edit" - PASSES
+
+## 2026-01-09: Time Machine - Toolbar Author Display Implementation
+
+### Completed
+- Implemented proper author display in Time Machine toolbar
+- Author name now shows correctly based on the account that made the edit
+- Shows "by you" when current user made the edit
+- Shows author's profile name when another user made the edit
+- Shows "Unknown" when author account is not loaded or has no profile
+
+### Files Modified
+- src/lib/time-machine.ts
+  - Changed EditHistoryItem.by (LoadedAccount) to EditHistoryItem.accountId (string)
+  - Added accountIdFromSessionId() function to extract account ID from Jazz session ID
+  - getEditHistory() now extracts accountId from transaction sessionID
+- src/routes/doc.$id.index.tsx
+  - Added useCoState hook to load author account for current edit
+  - Updated TimeMachineToolbar usage to pass loaded author account to getAuthorName()
+  - Imported ID type from jazz-tools
+- prd.json (marked 3 display tests as passing)
+
+### Technical Details
+- Jazz session IDs follow format: `{accountID}_session_z{random}`
+- accountIdFromSessionId() extracts the account ID by finding `_session` substring
+- The route uses useCoState(UserAccount, accountId, { resolve: { profile: true } }) to load the author
+- getAuthorName() handles three cases:
+  1. account.$jazz.id === currentUserId → returns "you"
+  2. account.profile?.name exists → returns the profile name
+  3. No account or no profile → returns "Unknown"
+
+### PRD Status
+- "Toolbar shows Time Machine header with date and author" - PASSES
+- "Toolbar shows 'by you' for current user's edits" - PASSES
+- "Toolbar shows 'Unknown' for edits without author info" - PASSES
