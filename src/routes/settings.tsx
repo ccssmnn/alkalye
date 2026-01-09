@@ -19,6 +19,7 @@ import {
 	RefreshCw,
 	WifiOff,
 	Upload,
+	Download,
 	Trash2,
 	Palette,
 	Loader2,
@@ -39,6 +40,7 @@ import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
 import { UserAccount, Theme, ThemeAsset, Settings } from "@/schema"
 import { parseThemeZip, type ThemeUploadError } from "@/lib/theme-upload"
+import { exportTheme, type ThemeExportQuery } from "@/lib/theme-export"
 import { createImage } from "jazz-tools/media"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
@@ -69,7 +71,17 @@ export { Route }
 
 let settingsQuery = {
 	profile: true,
-	root: { settings: true, themes: { $each: { css: true, assets: true } } },
+	root: {
+		settings: true,
+		themes: {
+			$each: {
+				css: true,
+				template: true,
+				thumbnail: { original: true },
+				assets: { $each: { data: true } },
+			},
+		},
+	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
 type LoadedAccount = co.loaded<typeof UserAccount, typeof settingsQuery>
@@ -290,6 +302,7 @@ function ThemesSection({ me }: ThemesSectionProps) {
 	let [themeToDelete, setThemeToDelete] = useState<co.loaded<
 		typeof Theme
 	> | null>(null)
+	let [exportingThemeId, setExportingThemeId] = useState<string | null>(null)
 
 	if (!me?.root) return null
 
@@ -448,6 +461,22 @@ function ThemesSection({ me }: ThemesSectionProps) {
 												{theme.author && ` • by ${theme.author}`}
 											</div>
 										</div>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={makeExportTheme(
+												theme as co.loaded<typeof Theme, ThemeExportQuery>,
+												setExportingThemeId,
+											)}
+											disabled={exportingThemeId === theme.$jazz.id}
+											aria-label={`Export ${theme.name}`}
+										>
+											{exportingThemeId === theme.$jazz.id ? (
+												<Loader2 className="size-4 animate-spin" />
+											) : (
+												<Download className="size-4" />
+											)}
+										</Button>
 										<Button
 											variant="ghost"
 											size="icon-sm"
@@ -1078,4 +1107,20 @@ function AppSection() {
 			</div>
 		</section>
 	)
+}
+
+// Handler factories
+
+function makeExportTheme(
+	theme: co.loaded<typeof Theme, ThemeExportQuery>,
+	setExporting: (id: string | null) => void,
+) {
+	return async function handleExport() {
+		setExporting(theme.$jazz.id)
+		try {
+			await exportTheme(theme)
+		} finally {
+			setExporting(null)
+		}
+	}
 }

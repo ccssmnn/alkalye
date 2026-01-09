@@ -442,7 +442,7 @@
 				"Verify zip contains theme.json",
 				"Verify zip can be re-imported"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "collaboration",

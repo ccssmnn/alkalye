@@ -672,3 +672,43 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - Compatibility imports (iA Writer/Presenter) not implemented
 - Export features (PDF with theme, theme zip export) not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: Theme Export as Zip (TypeScript fixes)
+
+### What was done
+- Fixed TypeScript errors in `src/lib/theme-export.ts` that were preventing compilation
+- Updated type imports and query structure to match Jazz-tools patterns
+
+- Fixed issues:
+  1. Changed `co.fileStream.Loaded` to `FileStream` (correct type import from jazz-tools)
+  2. Changed `for (let asset of theme.assets)` to `for (let asset of [...theme.assets])` (spread to array for iteration)
+  3. Changed `thumbnail: true` to `thumbnail: { original: true }` in query (need to load original FileStream)
+  4. Changed `await theme.thumbnail.toBlob()` to `theme.thumbnail.original.toBlob()` (images have .original property)
+  5. Removed unnecessary `await` from `fileStream.toBlob()` (returns Blob | undefined, not Promise)
+  6. Added proper `$isLoaded` checks before accessing loaded properties
+
+- Updated `src/routes/settings.tsx` settings query to include `thumbnail: { original: true }` to match export query
+
+### How theme export works
+1. User clicks the Download button on a theme in Settings > Themes
+2. `exportTheme()` function creates a JSZip archive containing:
+   - `theme.json` - manifest file with metadata (name, type, author, css path, etc.)
+   - `styles.css` - the theme's CSS content
+   - `template.html` - custom HTML template (if present)
+   - `presets.json` - color presets wrapped as `{ presets: [...] }` (if present)
+   - `fonts/` - folder with font files (woff2, ttf, etc.) with proper extensions
+   - `thumbnail.png` (or other format) - theme preview image (if present)
+3. Zip is downloaded with sanitized filename (theme name + .zip)
+
+### Files changed
+- `src/lib/theme-export.ts` (fixed TypeScript errors, updated query and types)
+- `src/routes/settings.tsx` (updated settingsQuery to include thumbnail.original)
+- `prd.json` (marked theme export as passes: true)
+
+### PRD requirements completed
+- [x] export: "Theme can be exported as zip" - passes: true
+
+### Notes for next steps
+- "Theme is included in PDF export" not implemented (requires browser print integration)
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Collaboration features (theme sharing) not implemented
