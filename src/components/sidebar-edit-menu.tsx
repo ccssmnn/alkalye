@@ -13,7 +13,7 @@ import {
 	DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu"
 import { Undo2 } from "lucide-react"
-import { isMac, modKey } from "@/lib/platform"
+import { isMac, modKey, altModKey } from "@/lib/platform"
 import type { MarkdownEditorRef } from "@/editor/editor"
 
 export { SidebarEditMenu }
@@ -89,6 +89,21 @@ function SidebarEditMenu({ editor, disabled }: SidebarEditMenuProps) {
 					>
 						Paste
 						<DropdownMenuShortcut>{modKey}V</DropdownMenuShortcut>
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<DropdownMenuItem
+						onClick={() =>
+							runAction(() => editor?.current?.toggleTaskComplete())
+						}
+					>
+						Toggle Complete
+						<DropdownMenuShortcut>{altModKey}X</DropdownMenuShortcut>
+					</DropdownMenuItem>
+					<DropdownMenuItem
+						onClick={() => runAction(() => editor?.current?.sortTasks())}
+					>
+						Sort Tasks
+						<DropdownMenuShortcut>{altModKey}⇧X</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>

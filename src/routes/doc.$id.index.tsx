@@ -332,6 +332,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					remoteCursors={remoteCursors}
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
+					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 				/>
 				<EditorToolbar
 					editor={editor}
