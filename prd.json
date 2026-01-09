@@ -250,7 +250,7 @@
 				"Verify theme: light/dark frontmatter overrides system",
 				"Verify smooth transition between modes"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "slideshow",
@@ -322,7 +322,7 @@
 				"Verify subsequent loads are faster",
 				"Verify cache invalidates on theme update"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "performance",

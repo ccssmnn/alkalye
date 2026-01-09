@@ -388,3 +388,96 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - The error handling logs to console.error for debugging
 - Error messages are user-friendly and explain that default styles are being used
 - Remaining priorities: appearance mode handling, performance caching, UX picker, compatibility imports
+
+## 2026-01-09: Slideshow Preset Respects Appearance Mode
+
+### What was done
+- Implemented automatic preset selection based on appearance mode (light/dark)
+- Presets with matching `appearance` field are automatically selected when no preset is explicitly specified in frontmatter
+
+- Added `findPresetByAppearance(theme, appearance)` function in `src/lib/document-theme.ts`:
+  - Finds the first preset in a theme that matches the given appearance ("light" or "dark")
+  - Returns null if no matching preset is found
+
+- Updated `useDocumentTheme` hook in `src/lib/document-theme.ts`:
+  - Added optional `appearance` parameter (type: "light" | "dark" | null)
+  - When no preset is specified in frontmatter but appearance is provided, auto-selects a matching preset
+  - Falls back to first preset if no appearance-matching preset exists
+  - When preset IS specified in frontmatter, that explicit selection takes priority
+
+- Updated `Slideshow` component in `src/components/slideshow.tsx`:
+  - Computes effective appearance from frontmatter override (`theme: light/dark`) or system theme
+  - Passes effective appearance to `useDocumentTheme` for auto-selection
+  - System theme changes trigger re-render with new preset selection
+
+### How it works
+1. User creates presentation with theme that has light and dark presets
+2. If no preset specified in frontmatter:
+   - System is in light mode → light preset automatically selected
+   - System is in dark mode → dark preset automatically selected
+3. Frontmatter `theme: light` or `theme: dark` overrides system preference
+4. When system theme changes, preset automatically switches (smooth transition via React re-render)
+5. Explicit `preset: MyPreset` in frontmatter always takes priority
+
+### Files changed
+- `src/lib/document-theme.ts` (added findPresetByAppearance, updated useDocumentTheme signature and logic)
+- `src/components/slideshow.tsx` (compute effective appearance, pass to useDocumentTheme)
+- `prd.json` (marked slideshow appearance mode as passes: true)
+
+### PRD requirements completed
+- [x] slideshow: "Slideshow preset respects appearance mode" - passes: true
+
+### Notes for next steps
+- Performance caching not implemented yet (themes load fresh on each navigation)
+- UX picker (theme selection in editor toolbar) not implemented
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Export features (PDF with theme, theme zip export) not implemented
+- Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: Theme Performance Caching
+
+### What was done
+- Implemented a global in-memory cache for theme styles in `src/lib/theme-renderer.ts`:
+  - Cache keys are `themeId:presetName` for unique theme+preset combinations
+  - Cache entries store built styles and theme's `updatedAt` timestamp for invalidation
+  - When a theme is updated (new `updatedAt` timestamp), cache is automatically invalidated
+  - Old blob URLs are revoked when cache entries are replaced (prevents memory leaks)
+
+- Added new functions to theme-renderer.ts:
+  - `getCachedThemeStyles(theme, preset)` - Returns cached styles or builds and caches new ones
+  - `tryCachedThemeStyles(theme, preset)` - Safe wrapper with error handling (returns ThemeRenderResult)
+  - `cleanupThemeCache(themeId)` - Removes all cache entries for a theme (for theme deletion)
+
+- Updated `useThemeStyles` hook in both preview.tsx and slideshow.tsx:
+  - Now uses `tryCachedThemeStyles` instead of `tryBuildThemeStyles`
+  - Removed manual blob URL cleanup (cache handles this now)
+  - Simplified hook logic since cache manages lifecycle
+
+### How caching works
+1. First load: Theme styles are built and cached with key `themeId:presetName`
+2. Subsequent loads: Cache returns existing styles immediately (no blob URL recreation)
+3. Theme update: `updatedAt` timestamp mismatch triggers rebuild and cache update
+4. Old cache entries: Blob URLs are revoked before replacement to prevent memory leaks
+5. Cache is global: Same theme styles are shared across all documents using that theme
+
+### Performance benefits
+- Navigating between documents with the same theme reuses cached blob URLs
+- Switching between light/dark presets of the same theme is instant
+- No redundant blob URL creation for repeated theme loads
+- Memory-efficient: old blob URLs are properly cleaned up
+
+### Files changed
+- `src/lib/theme-renderer.ts` (added cache, getCachedThemeStyles, tryCachedThemeStyles, cleanupThemeCache)
+- `src/components/preview.tsx` (updated useThemeStyles to use cache)
+- `src/components/slideshow.tsx` (updated useThemeStyles to use cache)
+- `prd.json` (marked performance caching as passes: true)
+
+### PRD requirements completed
+- [x] performance: "Themes are cached after first load" - passes: true
+
+### Notes for next steps
+- "Large theme files don't block rendering" could be next performance improvement (async loading)
+- UX picker (theme selection in editor toolbar) not implemented
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Export features (PDF with theme, theme zip export) not implemented
+- Collaboration features (theme sharing) not implemented

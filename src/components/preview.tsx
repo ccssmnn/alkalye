@@ -13,7 +13,7 @@ import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/lib/theme"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
 import {
-	tryBuildThemeStyles,
+	tryCachedThemeStyles,
 	tryRenderTemplateWithContent,
 	type ThemeStyles,
 } from "@/lib/theme-renderer"
@@ -145,7 +145,11 @@ function PreviewContent({
 	let templatedContent: string | null = null
 	let templateError: string | null = null
 	if (templateHtml && combinedHtml) {
-		let result = tryRenderTemplateWithContent(templateHtml, combinedHtml, themeName)
+		let result = tryRenderTemplateWithContent(
+			templateHtml,
+			combinedHtml,
+			themeName,
+		)
 		if (result.ok) {
 			templatedContent = result.html
 		} else {
@@ -154,10 +158,7 @@ function PreviewContent({
 	}
 
 	// Combine all error messages for display
-	let errorMessage =
-		themeStylesResult.error ||
-		templateError ||
-		null
+	let errorMessage = themeStylesResult.error || templateError || null
 
 	return (
 		<div
@@ -237,8 +238,8 @@ type ThemeStylesResult = {
 	error: string | null
 }
 
-// Hook to build and manage theme styles with proper blob URL cleanup
-// Returns styles and any error that occurred during building
+// Hook to get theme styles using the global cache
+// Cache handles blob URL lifecycle, so no cleanup needed here
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [result, setResult] = useState<ThemeStylesResult>({
 		styles: null,
@@ -261,16 +262,9 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	useEffect(() => {
 		if (!themeChanged) return
 
-		// Cleanup old blob URLs
-		if (result.styles) {
-			for (let url of result.styles.blobUrls) {
-				URL.revokeObjectURL(url)
-			}
-		}
-
-		// Build new styles
+		// Get styles from cache (builds and caches if needed)
 		if (documentTheme.theme) {
-			let buildResult = tryBuildThemeStyles(
+			let buildResult = tryCachedThemeStyles(
 				documentTheme.theme,
 				documentTheme.preset,
 			)
@@ -284,18 +278,6 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [documentTheme.theme, documentTheme.preset])
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			if (result.styles) {
-				for (let url of result.styles.blobUrls) {
-					URL.revokeObjectURL(url)
-				}
-			}
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
 
 	return result
 }

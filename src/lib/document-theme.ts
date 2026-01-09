@@ -12,6 +12,7 @@ export {
 	findThemeByName,
 	getThemePresets,
 	findPresetByName,
+	findPresetByAppearance,
 	useDocumentTheme,
 }
 
@@ -113,13 +114,30 @@ let themesQuery = {
 } as const
 
 type ThemeMode = "preview" | "slideshow"
+type Appearance = "light" | "dark"
+
+// Find preset by appearance (light/dark)
+function findPresetByAppearance(
+	theme: { presets?: string | null },
+	appearance: Appearance,
+): ThemePresetType | null {
+	let presets = getThemePresets(theme)
+	for (let preset of presets) {
+		if (preset.appearance === appearance) {
+			return preset
+		}
+	}
+	return null
+}
 
 // Hook to resolve theme and preset from document content
 // Returns the theme object if found, preset if applicable, and any warnings
 // mode: 'preview' or 'slideshow' - used to determine which default theme to use
+// appearance: optional appearance mode to auto-select preset by light/dark
 function useDocumentTheme(
 	content: string,
 	mode: ThemeMode = "preview",
+	appearance?: Appearance | null,
 ): ResolvedTheme {
 	let me = useAccount(UserAccount, { resolve: themesQuery })
 
@@ -170,19 +188,31 @@ function useDocumentTheme(
 		return { theme: null, preset: null, warning: null }
 	}
 
-	// Find preset if specified
+	// Find preset if specified, or auto-select by appearance
 	let preset: ThemePresetType | null = null
 	let warning: string | null = null
 
 	if (presetName) {
+		// Explicit preset requested in frontmatter
 		preset = findPresetByName(theme, presetName)
 		if (!preset) {
-			// Fall back to first preset
+			// Fall back to appearance-matching preset, then first preset
 			let presets = getThemePresets(theme)
-			preset = presets[0] ?? null
+			if (appearance) {
+				preset = findPresetByAppearance(theme, appearance)
+			}
+			preset = preset ?? presets[0] ?? null
 			if (preset) {
 				warning = `Preset "${presetName}" not found in theme "${effectiveThemeName}". Using "${preset.name}" instead.`
 			}
+		}
+	} else if (appearance) {
+		// No preset specified - auto-select by appearance mode
+		preset = findPresetByAppearance(theme, appearance)
+		// Fall back to first preset if no appearance match
+		if (!preset) {
+			let presets = getThemePresets(theme)
+			preset = presets[0] ?? null
 		}
 	}
 

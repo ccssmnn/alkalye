@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils"
 import { useResolvedTheme } from "@/lib/theme"
 import { EllipsisIcon, TriangleAlert } from "lucide-react"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
-import { tryBuildThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
+import { tryCachedThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
 
 export { Slideshow }
 export type { Slide }
@@ -66,7 +66,17 @@ function Slideshow({
 }: SlideshowProps) {
 	let size = parsePresentationSize(content)
 	let appearanceTheme = parsePresentationTheme(content)
-	let documentTheme = useDocumentTheme(content, "slideshow")
+	let systemTheme = useResolvedTheme()
+
+	// Effective appearance: frontmatter override takes precedence, then system theme
+	let effectiveAppearance = appearanceTheme ?? systemTheme
+
+	// Pass appearance to useDocumentTheme for auto-selecting light/dark presets
+	let documentTheme = useDocumentTheme(
+		content,
+		"slideshow",
+		effectiveAppearance,
+	)
 	let themeStylesResult = useThemeStyles(documentTheme)
 	let themeStyles = themeStylesResult.styles
 
@@ -138,7 +148,9 @@ function Slideshow({
 						<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
 							<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
 								<TriangleAlert className="size-4 shrink-0" />
-								<span>Theme error: {themeStylesResult.error}. Using default styles.</span>
+								<span>
+									Theme error: {themeStylesResult.error}. Using default styles.
+								</span>
 							</div>
 						</div>
 					)}
@@ -714,8 +726,8 @@ type ThemeStylesResult = {
 	error: string | null
 }
 
-// Hook to build and manage theme styles with proper blob URL cleanup
-// Returns styles and any error that occurred during building
+// Hook to get theme styles using the global cache
+// Cache handles blob URL lifecycle, so no cleanup needed here
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [result, setResult] = useState<ThemeStylesResult>({
 		styles: null,
@@ -738,16 +750,9 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	useEffect(() => {
 		if (!themeChanged) return
 
-		// Cleanup old blob URLs
-		if (result.styles) {
-			for (let url of result.styles.blobUrls) {
-				URL.revokeObjectURL(url)
-			}
-		}
-
-		// Build new styles
+		// Get styles from cache (builds and caches if needed)
 		if (documentTheme.theme) {
-			let buildResult = tryBuildThemeStyles(
+			let buildResult = tryCachedThemeStyles(
 				documentTheme.theme,
 				documentTheme.preset,
 			)
@@ -761,18 +766,6 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [documentTheme.theme, documentTheme.preset])
-
-	// Cleanup on unmount
-	useEffect(() => {
-		return () => {
-			if (result.styles) {
-				for (let url of result.styles.blobUrls) {
-					URL.revokeObjectURL(url)
-				}
-			}
-		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
 
 	return result
 }

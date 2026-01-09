@@ -5,8 +5,11 @@ import { type ThemesQuery, type ThemePresetType } from "./document-theme"
 export {
 	buildThemeStyles,
 	tryBuildThemeStyles,
+	tryCachedThemeStyles,
 	renderTemplateWithContent,
 	tryRenderTemplateWithContent,
+	getCachedThemeStyles,
+	cleanupThemeCache,
 	type ThemeStyles,
 	type ThemeRenderResult,
 }
@@ -19,6 +22,60 @@ type ThemeStyles = {
 	fontFaceRules: string
 	presetVariables: string
 	blobUrls: string[]
+}
+
+// Cache for built theme styles, keyed by theme ID + preset name
+type CacheEntry = {
+	styles: ThemeStyles
+	themeUpdatedAt: number
+}
+
+let themeStylesCache = new Map<string, CacheEntry>()
+
+function getCacheKey(themeId: string, presetName: string | null): string {
+	return `${themeId}:${presetName ?? "__default__"}`
+}
+
+// Get cached theme styles or build and cache them
+// Returns cached styles if theme hasn't been updated since caching
+function getCachedThemeStyles(
+	theme: LoadedTheme,
+	preset: ThemePresetType | null,
+): ThemeStyles {
+	let themeId = theme.$jazz.id
+	let presetName = preset?.name ?? null
+	let cacheKey = getCacheKey(themeId, presetName)
+	let themeUpdatedAt = theme.updatedAt?.getTime() ?? 0
+
+	let cached = themeStylesCache.get(cacheKey)
+	if (cached && cached.themeUpdatedAt === themeUpdatedAt) {
+		return cached.styles
+	}
+
+	// Revoke old blob URLs if we're replacing an existing cache entry
+	if (cached) {
+		for (let url of cached.styles.blobUrls) {
+			URL.revokeObjectURL(url)
+		}
+	}
+
+	// Build new styles and cache them
+	let styles = buildThemeStyles(theme, preset)
+	themeStylesCache.set(cacheKey, { styles, themeUpdatedAt })
+
+	return styles
+}
+
+// Cleanup cache entry for a specific theme (call when theme is deleted)
+function cleanupThemeCache(themeId: string): void {
+	for (let [key, entry] of themeStylesCache) {
+		if (key.startsWith(`${themeId}:`)) {
+			for (let url of entry.styles.blobUrls) {
+				URL.revokeObjectURL(url)
+			}
+			themeStylesCache.delete(key)
+		}
+	}
 }
 
 type ThemeRenderResult =
@@ -142,6 +199,27 @@ function tryBuildThemeStyles(
 	}
 }
 
+// Safe wrapper that uses caching for theme styles
+// Returns cached styles if available, otherwise builds and caches them
+// Logs errors to console for debugging
+function tryCachedThemeStyles(
+	theme: LoadedTheme,
+	preset: ThemePresetType | null,
+): ThemeRenderResult {
+	try {
+		let styles = getCachedThemeStyles(theme, preset)
+		return { ok: true, styles }
+	} catch (error) {
+		let errorMessage =
+			error instanceof Error ? error.message : "Unknown error building theme"
+		console.error(
+			`[Theme Error] Failed to build styles for theme "${theme.name}":`,
+			error,
+		)
+		return { ok: false, error: errorMessage }
+	}
+}
+
 type TemplateRenderResult =
 	| { ok: true; html: string }
 	| { ok: false; error: string }
@@ -191,7 +269,9 @@ function tryRenderTemplateWithContent(
 		return { ok: true, html }
 	} catch (error) {
 		let errorMessage =
-			error instanceof Error ? error.message : "Unknown error rendering template"
+			error instanceof Error
+				? error.message
+				: "Unknown error rendering template"
 		console.error(
 			`[Theme Error] Failed to render template for theme "${themeName}":`,
 			error,
