@@ -395,7 +395,7 @@
 			"Verify floating actions are not visible",
 			"Verify Time Machine bottom bar is shown instead"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",

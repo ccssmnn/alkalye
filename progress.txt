@@ -381,3 +381,25 @@
 
 ### PRD Status
 - "Content updates immediately when navigating edits" - PASSES
+
+## 2026-01-09: Time Machine - Verified Floating Actions Hidden Feature
+
+### Completed
+- Verified "Floating actions are hidden in Time Machine mode" was already fully implemented
+- FloatingActions component returns null when readOnly prop is true
+- Time Machine mode sets readOnly=true, which automatically hides floating actions
+- Time Machine bottom bar shows instead (separate component)
+
+### Technical Details
+- FloatingActions component (floating-actions.tsx line 337): `if (readOnly || !shouldShow) return null`
+- doc.$id.index.tsx line 208: `let readOnly = !canEdit(doc) || timeMachineMode`
+- When timeMachineMode is true, readOnly becomes true
+- editor.tsx line 705 passes readOnly to FloatingActions: `readOnly={readOnly}`
+- FloatingActions component checks readOnly first and returns null, hiding all floating action buttons
+- TimeMachineBottomBar is rendered separately (doc.$id.index.tsx lines 466-478) when in Time Machine mode
+
+### Files Modified
+- prd.json (marked "Floating actions are hidden in Time Machine mode" as passing)
+
+### PRD Status
+- "Floating actions are hidden in Time Machine mode" - PASSES
