@@ -1,5 +1,6 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
+import { ImageOff } from "lucide-react"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
 import {
@@ -743,10 +744,17 @@ function MarkdownEditor(
 					</DialogHeader>
 					{imagePreview &&
 						(imagePreview.imageId ? (
-							<JazzImage
-								imageId={imagePreview.imageId}
-								className="max-h-[70vh] w-full object-contain"
-							/>
+							assets?.find(a => a.id === imagePreview.imageId) ? (
+								<JazzImage
+									imageId={imagePreview.imageId}
+									className="max-h-[70vh] w-full object-contain"
+								/>
+							) : (
+								<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
+									<ImageOff className="size-12 opacity-50" />
+									<p className="text-sm">Image not available</p>
+								</div>
+							)
 						) : (
 							<img
 								src={imagePreview.url}

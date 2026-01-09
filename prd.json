@@ -685,6 +685,6 @@
 			"Verify document content shows image reference",
 			"Verify deleted asset either shows placeholder or is handled gracefully"
 		],
-		"passes": false
+		"passes": true
 	}
 ]
