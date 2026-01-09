@@ -629,7 +629,11 @@ function EditorContent({
 								editor={editor}
 								me={me.$isLoaded ? me : undefined}
 							/>
-							<SidebarEditMenu editor={editor} disabled={readOnly} />
+							<SidebarEditMenu
+								editor={editor}
+								disabled={!canEdit(doc) && !timeMachineMode}
+								readOnly={readOnly}
+							/>
 							<SidebarFormatMenu
 								editor={editor}
 								disabled={readOnly}

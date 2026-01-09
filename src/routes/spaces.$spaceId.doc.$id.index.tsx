@@ -407,7 +407,11 @@ function SpaceEditorContent({
 								me={me.$isLoaded ? me : undefined}
 								spaceId={spaceId}
 							/>
-							<SidebarEditMenu editor={editor} disabled={readOnly} />
+							<SidebarEditMenu
+								editor={editor}
+								disabled={!canEdit(doc)}
+								readOnly={readOnly}
+							/>
 							<SidebarFormatMenu
 								editor={editor}
 								disabled={readOnly}
