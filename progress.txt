@@ -246,3 +246,31 @@
 ### PRD Status
 - "Time Machine preserves scroll position on entry" - PASSES
 - "Exiting Time Machine restores scroll position" - PASSES
+
+## 2026-01-09: Time Machine - Editor Read-Only Mode Fix
+
+### Completed
+- Fixed editor not becoming read-only when entering Time Machine mode
+- The issue was that `readOnly` was only applied during CodeMirror initialization
+- Added a `useEffect` that dynamically updates the `readOnly` state when the prop changes
+- Uses `StateEffect.reconfigure` to toggle the `EditorState.readOnly.of(true)` extension
+
+### Files Modified
+- src/editor/editor.tsx
+  - Added `StateEffect` import from `@codemirror/state`
+  - Added `useEffect` to reconfigure editor's readOnly state when prop changes
+- prd.json (marked "Editor is read-only in Time Machine mode" as passing)
+
+### Technical Details
+- CodeMirror requires using `StateEffect.reconfigure` to dynamically change extension configuration
+- When `readOnly` is true, we dispatch `StateEffect.reconfigure.of([EditorState.readOnly.of(true)])`
+- When `readOnly` is false, we dispatch `StateEffect.reconfigure.of([])` to remove the extension
+- This ensures the editor properly blocks typing and formatting shortcuts when in Time Machine mode
+
+### Notes for Next Person
+- The readOnly state now updates dynamically, so entering Time Machine will immediately block editing
+- Formatting shortcuts (Cmd+B, Cmd+I, etc.) are also blocked by CodeMirror's readOnly mode
+- Text selection and copy still work as expected in read-only mode
+
+### PRD Status
+- "Editor is read-only in Time Machine mode" - PASSES

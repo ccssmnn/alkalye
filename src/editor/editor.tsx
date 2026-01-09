@@ -2,7 +2,7 @@ import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
-import { EditorState, type Extension, Prec } from "@codemirror/state"
+import { EditorState, StateEffect, type Extension, Prec } from "@codemirror/state"
 import {
 	EditorView,
 	keymap,
@@ -447,6 +447,16 @@ function MarkdownEditor(
 			view.dispatch({ selection: view.state.selection })
 		}
 	}, [view, documents, externalDocs])
+
+	// Update readOnly state when prop changes
+	useEffect(() => {
+		if (!view) return
+		view.dispatch({
+			effects: StateEffect.reconfigure.of(
+				readOnly ? [EditorState.readOnly.of(true)] : [],
+			),
+		})
+	}, [view, readOnly])
 
 	function getContent() {
 		return view?.state.doc.toString() ?? ""

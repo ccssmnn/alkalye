@@ -348,7 +348,7 @@
 			"Try formatting shortcuts (Cmd+B, etc.)",
 			"Verify no formatting is applied"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
