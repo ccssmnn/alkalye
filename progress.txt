@@ -1288,3 +1288,41 @@ The key insight is that with zoom controls, the slider never needs to handle 500
 
 ### PRD Status
 - "Time Machine handles documents with thousands of edits" - PASSES
+
+## 2026-01-09: Time Machine - Handles Very Old Edits
+
+### Completed
+- Verified "Time Machine handles very old edits" feature is fully implemented
+- Added comprehensive tests for date formatting with old dates
+- The implementation correctly handles documents with edits from months/years ago
+
+### Technical Analysis
+
+**Content Reconstruction for Old Edits:**
+- Jazz's `raw.atTime(timestamp).toString()` works for any timestamp regardless of age
+- The CRDT structure maintains full history, so old content can always be reconstructed
+- `getContentAtEdit()` in time-machine.ts uses this API to retrieve historical content
+
+**Date Display for Old Edits:**
+- `formatEditDate()` uses `toLocaleString()` with explicit options:
+  - `month: "short"` - Always shows abbreviated month name (Jan, Feb, etc.)
+  - `day: "numeric"` - Always shows day number
+  - `year: "numeric"` - Always shows 4-digit year
+  - `hour: "numeric"` and `minute: "2-digit"` - Always shows time
+- This format works correctly for dates from any time period:
+  - Recent: "Jan 9, 2026, 3:42 PM"
+  - 6 months ago: "Jul 9, 2025, 3:42 PM"
+  - 2 years ago: "Jan 9, 2024, 3:42 PM"
+  - Very old: "Jan 1, 2000, 12:30 PM"
+
+### Files Modified
+- src/lib/time-machine.test.ts
+  - Added import for `formatEditDate` function
+  - Added "Time Machine - Very Old Edits" test suite with 3 tests:
+    1. `formatEditDate displays old dates correctly` - Tests 1 year, 6 months, and 2 years ago
+    2. `formatEditDate handles dates at Unix epoch boundaries` - Tests Y2K date
+    3. `formatEditDate displays all date components correctly` - Tests fixed date output
+- prd.json (marked "Time Machine handles very old edits" as passing)
+
+### PRD Status
+- "Time Machine handles very old edits" - PASSES

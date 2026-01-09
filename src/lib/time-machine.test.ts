@@ -10,6 +10,7 @@ import {
 	getEditHistory,
 	getContentAtEdit,
 	accountIdFromSessionId,
+	formatEditDate,
 } from "./time-machine"
 import type { co } from "jazz-tools"
 
@@ -506,5 +507,60 @@ describe("Time Machine - Edit History", () => {
 		// With linear scaling, 2x edits should take roughly 2x time (with some margin for variance)
 		// Allow up to 5x to account for test environment variance
 		expect(duration100).toBeLessThan(duration50 * 5 + 10) // +10ms buffer for noise
+	})
+})
+
+describe("Time Machine - Very Old Edits", () => {
+	test("formatEditDate displays old dates correctly", () => {
+		// Test date from 1 year ago
+		let oneYearAgo = new Date()
+		oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1)
+		let formatted = formatEditDate(oneYearAgo)
+
+		// Should include the year for dates from previous years
+		expect(formatted).toMatch(/\d{4}/) // Contains year
+		expect(formatted).toMatch(/\d{1,2}:\d{2}/) // Contains time
+
+		// Test date from 6 months ago
+		let sixMonthsAgo = new Date()
+		sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+		let formattedSixMonths = formatEditDate(sixMonthsAgo)
+
+		// Should show month name and time
+		expect(formattedSixMonths).toMatch(
+			/Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec/,
+		)
+		expect(formattedSixMonths).toMatch(/\d{1,2}:\d{2}/)
+
+		// Test very old date (2 years ago)
+		let twoYearsAgo = new Date()
+		twoYearsAgo.setFullYear(twoYearsAgo.getFullYear() - 2)
+		let formattedTwoYears = formatEditDate(twoYearsAgo)
+
+		// Should include the year
+		expect(formattedTwoYears).toMatch(/\d{4}/)
+	})
+
+	test("formatEditDate handles dates at Unix epoch boundaries", () => {
+		// Test a very old date (Jan 1, 2000)
+		let y2k = new Date(2000, 0, 1, 12, 30)
+		let formatted = formatEditDate(y2k)
+
+		expect(formatted).toContain("2000")
+		expect(formatted).toContain("Jan")
+	})
+
+	test("formatEditDate displays all date components correctly", () => {
+		// Fixed date for predictable output
+		let testDate = new Date(2023, 5, 15, 14, 30) // June 15, 2023, 2:30 PM
+
+		let formatted = formatEditDate(testDate)
+
+		// Should contain month, day, year, and time
+		expect(formatted).toContain("Jun")
+		expect(formatted).toContain("15")
+		expect(formatted).toContain("2023")
+		// Time format varies by locale, but should have hour and minute
+		expect(formatted).toMatch(/\d{1,2}:\d{2}/)
 	})
 })

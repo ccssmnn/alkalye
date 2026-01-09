@@ -651,7 +651,7 @@
 			"Verify content is reconstructed correctly",
 			"Verify date displays correctly"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "edge-cases",
