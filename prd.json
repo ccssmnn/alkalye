@@ -358,7 +358,7 @@
 				"Verify theme description is visible",
 				"Verify current theme is indicated"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "ux",

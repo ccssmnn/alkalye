@@ -637,3 +637,38 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - Compatibility imports (iA Writer/Presenter) not implemented
 - Export features (PDF with theme, theme zip export) not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: Theme Preview Before Applying
+
+### What was done
+- Added hover preview functionality to the theme picker in the editor toolbar
+- When hovering over a theme option, a tooltip appears showing:
+  - Theme thumbnail image (if uploaded)
+  - Theme name
+  - Theme author (if provided)
+  - Theme description (if provided)
+- Current theme is indicated with a checkmark in the dropdown
+
+- Updated `themesResolve` query in `src/components/theme-picker.tsx`:
+  - Changed from `{ root: { themes: true } }` to `{ root: { themes: { $each: { thumbnail: true } } } }`
+  - This ensures thumbnail images are loaded alongside theme data
+
+- Updated `ThemeMenuItem` component:
+  - Added hover state tracking via `useState`
+  - Wrapped dropdown item in a `Tooltip` component with controlled `open` state
+  - Tooltip appears on the left side of the dropdown with 8px offset
+  - Shows thumbnail in aspect-video container with bg-muted background
+  - Shows theme name, author, and description in a formatted card below thumbnail
+  - Tooltip only appears when theme has preview content (thumbnail or description)
+
+### Files changed
+- `src/components/theme-picker.tsx` (added hover preview functionality)
+- `prd.json` (marked theme preview as passes: true)
+
+### PRD requirements completed
+- [x] ux: "Theme preview before applying" - passes: true
+
+### Notes for next steps
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Export features (PDF with theme, theme zip export) not implemented
+- Collaboration features (theme sharing) not implemented

@@ -1,4 +1,5 @@
-import { useAccount } from "jazz-tools/react"
+import { useState } from "react"
+import { useAccount, Image } from "jazz-tools/react"
 import { co } from "jazz-tools"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,7 +21,7 @@ import { parseFrontmatter, setTheme } from "@/editor/frontmatter"
 
 export { ThemePicker }
 
-type LoadedTheme = co.loaded<typeof Theme>
+type LoadedTheme = co.loaded<typeof Theme, typeof themesResolve.root.themes.$each>
 
 interface ThemePickerProps {
 	content: string
@@ -146,14 +147,57 @@ function ThemeMenuItem({
 	isSelected: boolean
 	onSelect: () => void
 }) {
+	let [isHovered, setIsHovered] = useState(false)
+	let thumbnailId = theme.thumbnail?.$jazz.id
+	let hasPreviewContent = thumbnailId || theme.description
+
 	return (
-		<DropdownMenuItem onClick={onSelect}>
-			{theme.name}
-			{isSelected && <Check className="ml-auto size-4" />}
-		</DropdownMenuItem>
+		<Tooltip open={hasPreviewContent ? isHovered : false}>
+			<TooltipTrigger
+				render={
+					<DropdownMenuItem
+						onClick={onSelect}
+						onMouseEnter={() => setIsHovered(true)}
+						onMouseLeave={() => setIsHovered(false)}
+					>
+						{theme.name}
+						{isSelected && <Check className="ml-auto size-4" />}
+					</DropdownMenuItem>
+				}
+			/>
+			{hasPreviewContent && (
+				<TooltipContent
+					side="left"
+					sideOffset={8}
+					className="bg-popover text-popover-foreground w-56 p-0 ring-1 ring-foreground/10"
+				>
+					{thumbnailId && (
+						<div className="bg-muted aspect-video w-full overflow-hidden">
+							<Image
+								imageId={thumbnailId}
+								className="size-full object-cover"
+							/>
+						</div>
+					)}
+					<div className="p-3">
+						<div className="font-medium">{theme.name}</div>
+						{theme.author && (
+							<div className="text-muted-foreground text-xs">
+								by {theme.author}
+							</div>
+						)}
+						{theme.description && (
+							<p className="text-muted-foreground mt-1.5 text-xs leading-relaxed">
+								{theme.description}
+							</p>
+						)}
+					</div>
+				</TooltipContent>
+			)}
+		</Tooltip>
 	)
 }
 
 let themesResolve = {
-	root: { themes: true },
+	root: { themes: { $each: { thumbnail: true } } },
 } as const
