@@ -9,7 +9,7 @@ import {
 	DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
 
-export { TimeMachineBottomBar }
+export { TimeMachineBottomBar, calculateZoomWindow }
 export type { ZoomLevel }
 
 type ZoomLevel = 25 | 100 | 500 | "all"
@@ -23,6 +23,36 @@ interface TimeMachineBottomBarProps {
 	onZoomChange: (zoom: ZoomLevel) => void
 }
 
+// Calculate the visible window of edits based on zoom level, centered on current edit
+function calculateZoomWindow(
+	currentEdit: number,
+	totalEdits: number,
+	zoomLevel: ZoomLevel,
+): { windowStart: number; windowEnd: number } {
+	if (zoomLevel === "all" || totalEdits <= 1) {
+		return { windowStart: 0, windowEnd: totalEdits - 1 }
+	}
+
+	let windowSize = zoomLevel
+	let halfWindow = Math.floor(windowSize / 2)
+
+	// Try to center on current edit
+	let windowStart = currentEdit - halfWindow
+	let windowEnd = windowStart + windowSize - 1
+
+	// Clamp to valid range
+	if (windowStart < 0) {
+		windowStart = 0
+		windowEnd = Math.min(windowSize - 1, totalEdits - 1)
+	}
+	if (windowEnd >= totalEdits) {
+		windowEnd = totalEdits - 1
+		windowStart = Math.max(0, windowEnd - windowSize + 1)
+	}
+
+	return { windowStart, windowEnd }
+}
+
 function TimeMachineBottomBar({
 	currentEdit,
 	totalEdits,
@@ -31,23 +61,37 @@ function TimeMachineBottomBar({
 	zoomLevel,
 	onZoomChange,
 }: TimeMachineBottomBarProps) {
-	let [localValue, setLocalValue] = useState(currentEdit)
+	// Calculate the zoom window (visible range of edits)
+	let { windowStart, windowEnd } = calculateZoomWindow(
+		currentEdit,
+		totalEdits,
+		zoomLevel,
+	)
+	let windowSize = windowEnd - windowStart + 1
+
+	// Local slider value is relative to the window (0 to windowSize-1)
+	// Convert currentEdit (absolute) to slider position (window-relative)
+	let sliderPosition = currentEdit - windowStart
+	let [localValue, setLocalValue] = useState(sliderPosition)
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	// Sync local value when currentEdit changes from outside
+	// Sync local value when currentEdit or window changes from outside
 	useEffect(() => {
-		setLocalValue(currentEdit)
-	}, [currentEdit])
+		setLocalValue(currentEdit - windowStart)
+	}, [currentEdit, windowStart])
 
 	function handleSliderChange(value: number) {
 		setLocalValue(value)
+
+		// Convert window-relative position to absolute edit index
+		let absoluteEdit = windowStart + value
 
 		// Debounce the actual update
 		if (debounceRef.current) {
 			clearTimeout(debounceRef.current)
 		}
 		debounceRef.current = setTimeout(() => {
-			onEditChange(value)
+			onEditChange(absoluteEdit)
 		}, 150)
 	}
 
@@ -126,7 +170,7 @@ function TimeMachineBottomBar({
 				<input
 					type="range"
 					min={0}
-					max={Math.max(0, totalEdits - 1)}
+					max={Math.max(0, windowSize - 1)}
 					value={localValue}
 					onChange={e => handleSliderChange(Number(e.target.value))}
 					disabled={disabled || !hasHistory}
