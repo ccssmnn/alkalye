@@ -675,7 +675,7 @@
 			"Exit Time Machine",
 			"Verify presentation mode can be resumed"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "edge-cases",

@@ -1359,3 +1359,44 @@ The key insight is that with zoom controls, the slider never needs to handle 500
 
 ### PRD Status
 - "Time Machine works offline" - PASSES
+## 2026-01-09: Time Machine - Presentation Mode Independence
+
+### Completed
+- Implemented "Presentation mode and Time Machine are independent" feature
+- Added History icon button to teleprompter TopBar for accessing Time Machine
+- Added `returnTo` URL parameter to Time Machine (supports "teleprompter" or "slideshow")
+- When exiting Time Machine, navigates back to original mode if `returnTo` param is set
+
+### Files Modified
+- src/routes/doc.$id.index.tsx
+  - Added `ReturnTo` type definition ("teleprompter" | "slideshow")
+  - Extended `validateSearch` to parse `returnTo` parameter from URL
+  - Updated `EditorContentProps` interface to include `timeMachineReturnTo`
+  - Modified Time Machine `onExit` handler to respect `returnTo` parameter:
+    - If returnTo="teleprompter", navigates to `/doc/$id/teleprompter`
+    - If returnTo="slideshow", navigates to `/doc/$id/slideshow`
+    - Otherwise, navigates to `/doc/$id` (normal editor)
+- src/routes/doc.$id.teleprompter.tsx
+  - Added `History` icon import from lucide-react
+  - Added History icon button next to Editor button in TopBar
+  - Button links to `/doc/$id?timemachine=true&returnTo=teleprompter`
+- prd.json (marked "Presentation mode and Time Machine are independent" as passing)
+
+### Technical Details
+- Time Machine is accessed via URL search params: `?timemachine=true&returnTo=teleprompter`
+- The `returnTo` param tells Time Machine where to navigate on exit
+- Time Machine still shows raw markdown content history (not presentation view)
+- Exiting Time Machine returns user to teleprompter where they can resume presenting
+- The feature works symmetrically - could also support slideshow mode
+
+### User Flow
+1. User is in teleprompter mode at `/doc/abc/teleprompter`
+2. User clicks History button in top bar
+3. Browser navigates to `/doc/abc?timemachine=true&returnTo=teleprompter`
+4. User browses edit history, sees raw markdown content
+5. User clicks "Exit Time Machine" in kebab menu
+6. Browser navigates back to `/doc/abc/teleprompter`
+7. User can resume presentation from where they left off
+
+### PRD Status
+- "Presentation mode and Time Machine are independent" - PASSES
