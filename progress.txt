@@ -87,3 +87,24 @@
 
 ### PRD Status
 - "Slider navigates through edit history" - PASSES
+
+## 2026-01-09: Time Machine - Forward/Back Button Navigation Verification
+
+### Completed
+- Verified forward and back button navigation is fully implemented in TimeMachineBottomBar
+- Forward button (ChevronRight) advances one edit position via handleNext()
+- Back button (ChevronLeft) goes to previous edit position via handlePrevious()
+- Both buttons correctly update the URL which triggers content and UI updates
+- Edit counter correctly increments/decrements by 1 when using buttons
+- Slider position updates in sync with button navigation
+
+### Technical Details
+- handlePrevious() calls onEditChange(currentEdit - 1) when currentEdit > 0
+- handleNext() calls onEditChange(currentEdit + 1) when currentEdit < totalEdits - 1
+- Buttons are disabled at boundaries (back disabled at first edit, forward disabled at last edit)
+- Both buttons are also disabled when totalEdits <= 1 (no previous versions)
+- onEditChange triggers URL navigation with replace: true to avoid browser history pollution
+
+### PRD Status
+- "Forward button advances one edit" - PASSES
+- "Back button goes to previous edit" - PASSES
