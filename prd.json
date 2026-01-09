@@ -166,7 +166,7 @@
 				"Verify missing theme shows warning",
 				"Verify theme field works alongside other frontmatter"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "frontmatter",
@@ -178,7 +178,7 @@
 				"Verify missing preset falls back to first preset",
 				"Verify preset is ignored for preview-only themes"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "preview",

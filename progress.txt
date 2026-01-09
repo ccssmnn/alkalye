@@ -73,3 +73,35 @@
 - Thumbnail display in theme list not implemented yet (stored but not shown)
 - Next priority: implement frontmatter parsing to apply themes to documents
 - CSS asset URL rewriting (for fonts in CSS) will be needed when applying themes
+
+## 2026-01-09: Frontmatter Theme Parsing
+
+### What was done
+- Created `src/lib/document-theme.ts` with utilities for parsing and resolving themes from frontmatter:
+  - `getThemeName(content)` - extracts theme name from frontmatter `theme:` field
+  - `getPresetName(content)` - extracts preset name from frontmatter `preset:` field
+  - `findThemeByName(themes, name)` - case-insensitive theme lookup in user's themes list
+  - `getThemePresets(theme)` - parses presets JSON from theme
+  - `findPresetByName(theme, name)` - case-insensitive preset lookup within a theme
+  - `useDocumentTheme(content)` - React hook that resolves theme and preset from document content
+
+- The `useDocumentTheme` hook:
+  - Returns `{ theme, preset, warning }` based on frontmatter
+  - Handles case-insensitive theme name matching
+  - Shows warning when theme is not found in user's themes list
+  - Falls back to first preset when specified preset is not found
+  - Skips `light`/`dark` values (handled by appearance system)
+  - Loads themes with CSS and assets for rendering
+
+### Files changed
+- `src/lib/document-theme.ts` (new file)
+
+### PRD requirements completed
+- [x] frontmatter: "Theme can be specified in document frontmatter" - passes: true
+- [x] frontmatter: "Preset can be specified for slideshow themes" - passes: true
+
+### Notes for next steps
+- The hook is ready to use in Preview and Slideshow components
+- Next priority: integrate `useDocumentTheme` into Preview component to inject CSS
+- Warning UI for missing themes should be added to preview/slideshow views
+- CSS asset URL rewriting still needed for fonts/images referenced in theme CSS
