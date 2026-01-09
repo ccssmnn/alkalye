@@ -84,7 +84,7 @@
 			"Verify Time Machine exits",
 			"Verify normal document view is restored"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "exit",

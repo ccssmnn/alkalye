@@ -403,3 +403,39 @@
 
 ### PRD Status
 - "Floating actions are hidden in Time Machine mode" - PASSES
+
+## 2026-01-09: Time Machine - Verified Browser Back Button Exit Feature
+
+### Completed
+- Verified "User can exit Time Machine via browser back button" was already fully implemented
+- Browser back button correctly exits Time Machine mode due to proper navigation architecture
+
+### Technical Details
+- Entering Time Machine from File Menu uses `navigate()` WITHOUT `replace: true` (sidebar-file-menu.tsx lines 262-266)
+- This creates a new browser history entry: `/doc/id` → `/doc/id?timemachine=true`
+- The useEffect redirect to add edit param uses `replace: true` (doc.$id.index.tsx lines 290-299)
+- Within-Time Machine navigation (slider, keyboard) always uses `replace: true`
+- This means browser history has exactly 2 entries: normal view and Time Machine view
+- Pressing browser back goes from Time Machine URL to normal URL
+- TanStack Router detects URL change via `Route.useSearch()` and `timemachine` becomes undefined
+- Time Machine UI components (`TimeMachineToolbar`, `TimeMachineBottomBar`) unmount when `timeMachineMode` is falsy
+- Normal editor mode is restored automatically
+
+### Navigation Architecture Summary
+```
+User at /doc/abc                  (history entry 1)
+  ↓ clicks "Time Machine"
+/doc/abc?timemachine=true         (history entry 2, push)
+  ↓ useEffect redirect
+/doc/abc?timemachine=true&edit=N  (replaces entry 2)
+  ↓ user navigates with slider/keyboard
+/doc/abc?timemachine=true&edit=M  (replaces entry 2)
+  ↓ browser back button
+/doc/abc                          (returns to entry 1)
+```
+
+### Files Modified
+- prd.json (marked "User can exit Time Machine via browser back button" as passing)
+
+### PRD Status
+- "User can exit Time Machine via browser back button" - PASSES
