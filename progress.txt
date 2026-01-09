@@ -700,3 +700,47 @@ When centering is not possible due to boundaries:
 
 ### PRD Status
 - "Zoom at boundaries adjusts range appropriately" - PASSES
+
+## 2026-01-09: Time Machine - Mobile Bottom Bar Layout Implementation
+
+### Completed
+- Implemented responsive two-row layout for Time Machine bottom bar on mobile devices
+- Row 1 (mobile): Slider + edit counter
+- Row 2 (mobile): Navigation buttons (back/forward) + zoom dropdown
+- Desktop: Single row layout preserved with hidden/visible breakpoint classes
+- Touch-friendly button sizing on mobile (size-10 / 40px vs size-8 / 32px on desktop)
+
+### Files Modified
+- src/components/time-machine-bottom-bar.tsx
+  - Changed container from single-row flex to responsive `flex-col md:flex-row`
+  - Added mobile-only sections with `md:hidden` class
+  - Added desktop-only sections with `hidden md:flex` and `hidden md:block` classes
+  - Mobile buttons use `size-10` (40px) and `size-5` icons for better touch targets
+  - Desktop buttons remain at default icon size with `size-4` icons
+- prd.json (marked "Bottom bar layout adapts to mobile" as passing)
+
+### Technical Details
+- Mobile breakpoint: below 768px (Tailwind's `md:` breakpoint)
+- Container classes: `flex flex-col gap-3 md:flex-row md:items-center md:gap-4`
+- Mobile layout pattern follows same approach as teleprompter.tsx component
+- Safe area insets preserved for notched devices via `env(safe-area-inset-*)` CSS values
+
+### Layout Structure
+**Mobile (<768px):**
+```
+┌─────────────────────────────────────┐
+│ [========slider========] 234/500    │  Row 1
+├─────────────────────────────────────┤
+│     [◀] [▶] [100 ▼]                 │  Row 2 (centered)
+└─────────────────────────────────────┘
+```
+
+**Desktop (≥768px):**
+```
+┌───────────────────────────────────────────────────┐
+│ [◀][▶] [100▼] [=========slider=========] 234/500 │
+└───────────────────────────────────────────────────┘
+```
+
+### PRD Status
+- "Bottom bar layout adapts to mobile" - PASSES

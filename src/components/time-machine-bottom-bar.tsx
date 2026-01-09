@@ -113,14 +113,85 @@ function TimeMachineBottomBar({
 
 	return (
 		<div
-			className="border-border bg-background fixed right-0 bottom-0 left-0 z-20 flex items-center gap-4 border-t px-4 py-3"
+			className="border-border bg-background fixed right-0 bottom-0 left-0 z-20 flex flex-col gap-3 border-t px-4 py-3 md:flex-row md:items-center md:gap-4"
 			style={{
 				paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
 				paddingLeft: "max(1rem, env(safe-area-inset-left))",
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			<div className="flex items-center gap-2">
+			{/* Mobile: Row 1 - Slider + edit counter */}
+			<div className="flex items-center gap-3 md:hidden">
+				<input
+					type="range"
+					min={0}
+					max={Math.max(0, windowSize - 1)}
+					value={localValue}
+					onChange={e => handleSliderChange(Number(e.target.value))}
+					disabled={disabled || !hasHistory}
+					className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-gray-200 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:accent-gray-100"
+				/>
+				<div className="text-muted-foreground shrink-0 text-sm tabular-nums">
+					{hasHistory ? (
+						<>
+							{currentEdit + 1}/{totalEdits}
+						</>
+					) : (
+						"No previous versions"
+					)}
+				</div>
+			</div>
+
+			{/* Mobile: Row 2 - Navigation buttons + zoom dropdown */}
+			<div className="flex items-center justify-center gap-3 md:hidden">
+				<Button
+					variant="outline"
+					size="icon"
+					onClick={handlePrevious}
+					disabled={disabled || isAtStart || !hasHistory}
+					aria-label="Previous edit"
+					className="size-10"
+				>
+					<ChevronLeft className="size-5" />
+				</Button>
+				<Button
+					variant="outline"
+					size="icon"
+					onClick={handleNext}
+					disabled={disabled || isAtEnd || !hasHistory}
+					aria-label="Next edit"
+					className="size-10"
+				>
+					<ChevronRight className="size-5" />
+				</Button>
+				<DropdownMenu>
+					<DropdownMenuTrigger
+						disabled={disabled || !hasHistory}
+						className="border-input bg-background hover:bg-accent hover:text-accent-foreground flex h-10 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+					>
+						<span>{zoomLevel === "all" ? "All" : zoomLevel}</span>
+						<ChevronDown className="size-4 opacity-50" />
+					</DropdownMenuTrigger>
+					<DropdownMenuContent side="top" align="center">
+						<DropdownMenuRadioGroup
+							value={String(zoomLevel)}
+							onValueChange={value => {
+								let zoom: ZoomLevel =
+									value === "all" ? "all" : (Number(value) as 25 | 100 | 500)
+								onZoomChange(zoom)
+							}}
+						>
+							<DropdownMenuRadioItem value="25">25</DropdownMenuRadioItem>
+							<DropdownMenuRadioItem value="100">100</DropdownMenuRadioItem>
+							<DropdownMenuRadioItem value="500">500</DropdownMenuRadioItem>
+							<DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
+						</DropdownMenuRadioGroup>
+					</DropdownMenuContent>
+				</DropdownMenu>
+			</div>
+
+			{/* Desktop: Single row layout */}
+			<div className="hidden items-center gap-2 md:flex">
 				<Button
 					variant="outline"
 					size="icon"
@@ -144,7 +215,7 @@ function TimeMachineBottomBar({
 			<DropdownMenu>
 				<DropdownMenuTrigger
 					disabled={disabled || !hasHistory}
-					className="border-input bg-background hover:bg-accent hover:text-accent-foreground flex h-9 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+					className="border-input bg-background hover:bg-accent hover:text-accent-foreground hidden h-9 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:flex"
 				>
 					<span>{zoomLevel === "all" ? "All" : zoomLevel}</span>
 					<ChevronDown className="size-4 opacity-50" />
@@ -166,7 +237,7 @@ function TimeMachineBottomBar({
 				</DropdownMenuContent>
 			</DropdownMenu>
 
-			<div className="flex flex-1 items-center gap-4">
+			<div className="hidden flex-1 items-center gap-4 md:flex">
 				<input
 					type="range"
 					min={0}
@@ -178,7 +249,7 @@ function TimeMachineBottomBar({
 				/>
 			</div>
 
-			<div className="text-muted-foreground shrink-0 text-sm tabular-nums">
+			<div className="text-muted-foreground hidden shrink-0 text-sm tabular-nums md:block">
 				{hasHistory ? (
 					<>
 						{currentEdit + 1}/{totalEdits}

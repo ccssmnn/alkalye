@@ -326,7 +326,7 @@
 			"Verify controls are arranged in two rows",
 			"Verify all controls are accessible and usable on touch"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
