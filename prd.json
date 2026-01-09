@@ -215,7 +215,7 @@
 			"Verify slider shows approximately edits #250-350 (centered on #300)",
 			"Verify current edit #300 remains selected"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "zoom",

@@ -583,3 +583,40 @@ Jazz is designed as a local-first database. When a user makes an edit:
 
 ### PRD Status
 - "Zoom dropdown shows preset options" - PASSES
+
+## 2026-01-09: Time Machine - Zoom Centering Implementation
+
+### Completed
+- Implemented zoom centering on current edit position
+- When a numeric zoom level (25, 100, 500) is selected, the slider shows only that many edits
+- The window is centered on the current edit position when possible
+- At boundaries (start/end of history), the window clamps appropriately
+- Current edit always remains selected within the visible window
+
+### Files Modified
+- src/components/time-machine-bottom-bar.tsx
+  - Added `calculateZoomWindow()` function to compute visible window range
+  - Exported `calculateZoomWindow` for testing
+  - Updated component to use window-relative slider values
+  - Slider min/max now use windowSize instead of totalEdits
+  - handleSliderChange converts between window-relative and absolute edit indices
+- src/components/time-machine-bottom-bar.test.ts (NEW)
+  - Added comprehensive tests for calculateZoomWindow function
+  - Tests centering behavior, boundary clamping, and edge cases
+- prd.json (marked "Zoom centers on current edit position" as passing)
+
+### Technical Details
+- `calculateZoomWindow(currentEdit, totalEdits, zoomLevel)` returns `{ windowStart, windowEnd }`
+- For zoomLevel="all", returns full range (0 to totalEdits-1)
+- For numeric zoom, centers on currentEdit with windowSize = zoomLevel
+- Clamping: if windowStart < 0, clamp to 0 and adjust windowEnd; if windowEnd >= totalEdits, clamp to end and adjust windowStart
+- Slider value is window-relative (0 to windowSize-1), converted to absolute on change
+- useEffect syncs localValue when currentEdit or windowStart changes
+
+### Algorithm Example (PRD test case)
+- Document with 500 edits, currentEdit=300, zoom=100
+- halfWindow = 50, windowStart = 300-50 = 250, windowEnd = 250+100-1 = 349
+- Slider shows edits 250-349, current edit 300 is at position 50 in the window
+
+### PRD Status
+- "Zoom centers on current edit position" - PASSES
