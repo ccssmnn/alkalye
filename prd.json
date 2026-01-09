@@ -1,0 +1,472 @@
+{
+  "feature": "Theme Support for Preview and Slideshow",
+  "version": "1.0",
+  "overview": {
+    "description": "Allow users to upload custom themes (inspired by iA Writer Templates and iA Presenter Themes) and apply them to document preview and slideshow modes via frontmatter",
+    "goals": [
+      "Unified 'themes' terminology for both preview and slideshow",
+      "Users can upload theme zip files to their settings",
+      "Themes are referenced in document frontmatter",
+      "Support HTML+CSS themes for preview (writer-style)",
+      "Support CSS+presets themes for slideshow (presenter-style)"
+    ]
+  },
+  "theme_format": {
+    "file_structure": {
+      "description": "A theme is a zip file containing configuration and assets",
+      "required_files": [
+        "theme.json - Configuration manifest",
+        "styles.css - Main stylesheet"
+      ],
+      "optional_files": [
+        "document.html - Custom HTML template for preview",
+        "presets.json - Color presets for slideshow",
+        "fonts/ - Custom font files (woff2)",
+        "assets/ - Images and other assets"
+      ]
+    },
+    "theme_json_schema": {
+      "version": "number (1)",
+      "name": "string - Display name",
+      "author": "string - Creator name",
+      "description": "string - Brief description",
+      "type": "string - 'preview' | 'slideshow' | 'both'",
+      "css": "string - Path to main CSS file",
+      "template": "string? - Path to HTML template (preview only)",
+      "presets": "string? - Path to presets.json (slideshow only)",
+      "fonts": "array? - Font definitions with name and path",
+      "thumbnail": "string? - Path to preview image"
+    },
+    "presets_json_schema": {
+      "presets": [
+        {
+          "name": "string - Preset display name",
+          "appearance": "string - 'light' | 'dark'",
+          "colors": {
+            "background": "string - CSS color",
+            "foreground": "string - CSS color",
+            "accent": "string - CSS color",
+            "heading": "string? - CSS color",
+            "link": "string? - CSS color",
+            "code_background": "string? - CSS color"
+          },
+          "fonts": {
+            "title": "string? - Font family for titles",
+            "body": "string? - Font family for body"
+          }
+        }
+      ]
+    }
+  },
+  "requirements": [
+    {
+      "category": "schema",
+      "description": "Theme schema stores uploaded theme data",
+      "steps": [
+        "Create Theme schema with name, type, css, template, presets fields",
+        "Create ThemeAsset schema for fonts and images",
+        "Add themes list to UserRoot schema",
+        "Verify themes persist across sessions",
+        "Verify themes sync across devices via Jazz"
+      ],
+      "passes": false
+    },
+    {
+      "category": "schema",
+      "description": "Theme references stored as co.plainText for CSS content",
+      "steps": [
+        "Store CSS content as co.plainText in Theme",
+        "Store HTML template as co.plainText if present",
+        "Store presets as JSON string in Theme",
+        "Verify large CSS files are handled correctly",
+        "Verify content is editable after upload"
+      ],
+      "passes": false
+    },
+    {
+      "category": "upload",
+      "description": "Users can upload theme zip files in settings",
+      "steps": [
+        "Navigate to Settings page",
+        "Find Themes section",
+        "Click 'Upload Theme' button",
+        "Select a valid theme.zip file",
+        "Verify upload progress indicator shows",
+        "Verify theme appears in themes list after upload"
+      ],
+      "passes": false
+    },
+    {
+      "category": "upload",
+      "description": "Theme zip validation on upload",
+      "steps": [
+        "Upload zip without theme.json - expect error",
+        "Upload zip without styles.css - expect error",
+        "Upload zip with invalid theme.json - expect error",
+        "Upload zip with unsupported version - expect error",
+        "Verify helpful error messages are shown"
+      ],
+      "passes": false
+    },
+    {
+      "category": "upload",
+      "description": "Theme assets are extracted and stored",
+      "steps": [
+        "Upload theme with custom fonts",
+        "Verify fonts are stored as ThemeAsset",
+        "Upload theme with images",
+        "Verify images are stored as ThemeAsset",
+        "Verify asset references in CSS are rewritten to Jazz URLs"
+      ],
+      "passes": false
+    },
+    {
+      "category": "settings",
+      "description": "Themes list displayed in settings",
+      "steps": [
+        "Navigate to Settings > Themes",
+        "Verify list shows all uploaded themes",
+        "Verify theme name and type are displayed",
+        "Verify theme thumbnail is shown if available",
+        "Verify empty state shown when no themes"
+      ],
+      "passes": false
+    },
+    {
+      "category": "settings",
+      "description": "Theme can be deleted from settings",
+      "steps": [
+        "Navigate to Settings > Themes",
+        "Click delete button on a theme",
+        "Confirm deletion in dialog",
+        "Verify theme is removed from list",
+        "Verify documents using deleted theme fall back to default"
+      ],
+      "passes": false
+    },
+    {
+      "category": "settings",
+      "description": "Theme can be set as default",
+      "steps": [
+        "Navigate to Settings > Themes",
+        "Click 'Set as default' on a preview theme",
+        "Verify default indicator appears",
+        "Click 'Set as default' on a slideshow theme",
+        "Verify separate defaults for preview and slideshow"
+      ],
+      "passes": false
+    },
+    {
+      "category": "frontmatter",
+      "description": "Theme can be specified in document frontmatter",
+      "steps": [
+        "Create document with frontmatter: theme: MyTheme",
+        "Verify theme field is parsed from frontmatter",
+        "Verify theme name is case-insensitive",
+        "Verify missing theme shows warning",
+        "Verify theme field works alongside other frontmatter"
+      ],
+      "passes": false
+    },
+    {
+      "category": "frontmatter",
+      "description": "Preset can be specified for slideshow themes",
+      "steps": [
+        "Create presentation with: theme: MyTheme, preset: Dark",
+        "Verify preset field is parsed",
+        "Verify preset colors are applied",
+        "Verify missing preset falls back to first preset",
+        "Verify preset is ignored for preview-only themes"
+      ],
+      "passes": false
+    },
+    {
+      "category": "preview",
+      "description": "Preview component applies theme CSS",
+      "steps": [
+        "Open document with theme in frontmatter",
+        "Navigate to preview mode",
+        "Verify theme CSS is injected into preview",
+        "Verify theme styles override defaults",
+        "Verify theme respects light/dark mode"
+      ],
+      "passes": false
+    },
+    {
+      "category": "preview",
+      "description": "Preview uses custom HTML template when provided",
+      "steps": [
+        "Upload theme with document.html template",
+        "Open document using this theme in preview",
+        "Verify custom HTML structure is rendered",
+        "Verify data-document placeholder receives content",
+        "Verify template styles are applied"
+      ],
+      "passes": false
+    },
+    {
+      "category": "preview",
+      "description": "Preview loads theme fonts",
+      "steps": [
+        "Upload theme with custom woff2 fonts",
+        "Open document using this theme",
+        "Verify @font-face rules are injected",
+        "Verify fonts load and render correctly",
+        "Verify fallback fonts work if load fails"
+      ],
+      "passes": false
+    },
+    {
+      "category": "slideshow",
+      "description": "Slideshow component applies theme CSS",
+      "steps": [
+        "Create presentation with theme in frontmatter",
+        "Enter slideshow mode",
+        "Verify theme CSS is applied to slides",
+        "Verify theme overrides default slide styles",
+        "Verify theme works with all slide layouts"
+      ],
+      "passes": false
+    },
+    {
+      "category": "slideshow",
+      "description": "Slideshow applies preset colors",
+      "steps": [
+        "Create presentation with theme and preset",
+        "Enter slideshow mode",
+        "Verify preset background color is applied",
+        "Verify preset text colors are applied",
+        "Verify preset accent colors are available"
+      ],
+      "passes": false
+    },
+    {
+      "category": "slideshow",
+      "description": "Slideshow preset respects appearance mode",
+      "steps": [
+        "Create presentation with theme having light/dark presets",
+        "View in light mode - verify light preset colors",
+        "View in dark mode - verify dark preset colors",
+        "Verify theme: light/dark frontmatter overrides system",
+        "Verify smooth transition between modes"
+      ],
+      "passes": false
+    },
+    {
+      "category": "slideshow",
+      "description": "Slideshow loads theme fonts",
+      "steps": [
+        "Upload theme with TitleFont and BodyFont",
+        "Create presentation using this theme",
+        "Enter slideshow mode",
+        "Verify title headings use TitleFont",
+        "Verify body text uses BodyFont"
+      ],
+      "passes": false
+    },
+    {
+      "category": "css-variables",
+      "description": "Theme CSS can use predefined CSS variables",
+      "steps": [
+        "Document available CSS variables for theme authors",
+        "Verify --theme-background variable works",
+        "Verify --theme-foreground variable works",
+        "Verify --theme-accent variable works",
+        "Verify preset colors are exposed as variables"
+      ],
+      "passes": false
+    },
+    {
+      "category": "css-variables",
+      "description": "Preset colors are injected as CSS variables",
+      "steps": [
+        "Upload theme with presets.json",
+        "Select a preset in frontmatter",
+        "Verify --preset-background is set",
+        "Verify --preset-foreground is set",
+        "Verify --preset-accent-1 through accent-6 are set"
+      ],
+      "passes": false
+    },
+    {
+      "category": "security",
+      "description": "Theme CSS is sanitized",
+      "steps": [
+        "Upload theme with javascript: URLs - verify stripped",
+        "Upload theme with expression() - verify stripped",
+        "Upload theme with @import external URL - verify stripped",
+        "Upload theme with behavior: - verify stripped",
+        "Verify legitimate CSS properties work"
+      ],
+      "passes": false
+    },
+    {
+      "category": "security",
+      "description": "Theme HTML template is sanitized",
+      "steps": [
+        "Upload theme with <script> tags - verify stripped",
+        "Upload theme with onclick handlers - verify stripped",
+        "Upload theme with javascript: hrefs - verify stripped",
+        "Upload theme with iframe - verify stripped",
+        "Verify data-* attributes are preserved"
+      ],
+      "passes": false
+    },
+    {
+      "category": "performance",
+      "description": "Themes are cached after first load",
+      "steps": [
+        "Open document with theme",
+        "Note initial load time",
+        "Navigate away and back",
+        "Verify subsequent loads are faster",
+        "Verify cache invalidates on theme update"
+      ],
+      "passes": false
+    },
+    {
+      "category": "performance",
+      "description": "Large theme files don't block rendering",
+      "steps": [
+        "Upload theme with large CSS file (>100KB)",
+        "Open document using this theme",
+        "Verify content renders before styles fully load",
+        "Verify no visible layout shift",
+        "Verify fonts load progressively"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ux",
+      "description": "Theme picker in editor toolbar",
+      "steps": [
+        "Open document in editor",
+        "Find theme picker in toolbar or menu",
+        "Click to see available themes",
+        "Select a theme",
+        "Verify theme field added to frontmatter"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ux",
+      "description": "Theme preview before applying",
+      "steps": [
+        "Open theme picker",
+        "Hover over a theme option",
+        "Verify preview thumbnail is shown",
+        "Verify theme description is visible",
+        "Verify current theme is indicated"
+      ],
+      "passes": false
+    },
+    {
+      "category": "ux",
+      "description": "Preset picker for slideshow themes",
+      "steps": [
+        "Open presentation document",
+        "Open theme/style picker",
+        "Verify presets are shown for current theme",
+        "Select a preset",
+        "Verify preset field added to frontmatter"
+      ],
+      "passes": false
+    },
+    {
+      "category": "fallback",
+      "description": "Missing theme falls back gracefully",
+      "steps": [
+        "Create document with theme: NonExistent",
+        "Open in preview mode",
+        "Verify default styles are applied",
+        "Verify warning message is shown",
+        "Verify document is still usable"
+      ],
+      "passes": false
+    },
+    {
+      "category": "fallback",
+      "description": "Corrupted theme data handled gracefully",
+      "steps": [
+        "Simulate corrupted theme CSS in database",
+        "Open document using corrupted theme",
+        "Verify fallback to default styles",
+        "Verify error is logged",
+        "Verify user can still edit document"
+      ],
+      "passes": false
+    },
+    {
+      "category": "compatibility",
+      "description": "iA Writer template zip can be imported",
+      "steps": [
+        "Upload an iA Writer .iatemplate.zip file",
+        "Verify Info.plist is parsed correctly",
+        "Verify document.html is extracted",
+        "Verify styles are extracted",
+        "Verify theme appears as preview type"
+      ],
+      "passes": false
+    },
+    {
+      "category": "compatibility",
+      "description": "iA Presenter theme can be imported",
+      "steps": [
+        "Upload an iA Presenter theme zip",
+        "Verify template.json is parsed",
+        "Verify presets.json is extracted",
+        "Verify CSS is extracted",
+        "Verify theme appears as slideshow type"
+      ],
+      "passes": false
+    },
+    {
+      "category": "export",
+      "description": "Theme is included in PDF export",
+      "steps": [
+        "Open document with custom theme",
+        "Export to PDF",
+        "Verify PDF uses theme styles",
+        "Verify fonts are embedded",
+        "Verify colors match preview"
+      ],
+      "passes": false
+    },
+    {
+      "category": "export",
+      "description": "Theme can be exported as zip",
+      "steps": [
+        "Navigate to Settings > Themes",
+        "Click export on a theme",
+        "Verify zip file is downloaded",
+        "Verify zip contains theme.json",
+        "Verify zip can be re-imported"
+      ],
+      "passes": false
+    },
+    {
+      "category": "collaboration",
+      "description": "Themes are user-scoped not document-scoped",
+      "steps": [
+        "User A uploads a theme",
+        "User A shares document using that theme with User B",
+        "User B opens document",
+        "Verify User B sees fallback if they don't have theme",
+        "Verify User B can upload same theme to see it"
+      ],
+      "passes": false
+    },
+    {
+      "category": "collaboration",
+      "description": "Theme reference in document is portable",
+      "steps": [
+        "Create document with theme: SharedTheme",
+        "Export document as markdown",
+        "Verify frontmatter includes theme field",
+        "Import on different account with same theme",
+        "Verify theme is applied correctly"
+      ],
+      "passes": false
+    }
+  ]
+}
