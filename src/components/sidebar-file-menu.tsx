@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { co, Group } from "jazz-tools"
-import { useCoState } from "jazz-tools/react"
+import { useCoState, useAccount } from "jazz-tools/react"
 import {
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -34,6 +34,18 @@ import { getPresentationMode } from "@/lib/presentation"
 import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
 import type { MarkdownEditorRef } from "@/editor/editor"
+import { useResolvedTheme } from "@/lib/theme"
+import {
+	findThemeByName,
+	getThemeName,
+	getPresetName,
+	findPresetByName,
+	getThemePresets,
+	findPresetByAppearance,
+	type LoadedThemes,
+} from "@/lib/document-theme"
+import { buildPrintableHtml, openPrintWindow } from "@/lib/pdf-export"
+import { Marked } from "marked"
 
 export { SidebarFileMenu }
 
@@ -61,6 +73,14 @@ interface SidebarFileMenuProps {
 
 // --- Component ---
 
+let themesResolve = {
+	root: {
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
+	},
+} as const
+
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
 	let { isMobile, setRightOpenMobile } = useSidebar()
@@ -74,6 +94,10 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let docWithContent = useCoState(Document, doc.$jazz.id, {
 		resolve: { content: true },
 	})
+
+	// Load user's themes for PDF export
+	let meWithThemes = useAccount(UserAccount, { resolve: themesResolve })
+	let resolvedTheme = useResolvedTheme()
 
 	let content = doc.content?.toString() ?? ""
 	let readOnly = !canEdit(doc)
@@ -149,6 +173,16 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						<DropdownMenuItem onClick={makeSaveAs(content)}>
 							Save as...
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={makePrintPdf(
+								content,
+								meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
+								resolvedTheme,
+							)}
+						>
+							Print to PDF
+							<DropdownMenuShortcut>{modKey}P</DropdownMenuShortcut>
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeDuplicate(doc, me, spaceId, navigate)}
@@ -436,6 +470,51 @@ function makeSaveAs(content: string) {
 	return async function handleSaveAs() {
 		let title = getDocumentTitle(content)
 		await saveDocumentAs(content, title)
+	}
+}
+
+function makePrintPdf(
+	content: string,
+	themes: LoadedThemes | undefined,
+	appearance: "light" | "dark",
+) {
+	return async function handlePrintPdf() {
+		let { body } = parseFrontmatter(content)
+		let title = getDocumentTitle(content)
+
+		// Resolve theme and preset from frontmatter
+		let themeName = getThemeName(content)
+		let presetName = getPresetName(content)
+		let theme = themeName ? findThemeByName(themes ?? null, themeName) : null
+		let preset = null
+
+		if (theme && presetName) {
+			preset = findPresetByName(theme, presetName)
+		} else if (theme) {
+			// Auto-select preset by appearance
+			preset = findPresetByAppearance(theme, appearance)
+			if (!preset) {
+				let presets = getThemePresets(theme)
+				preset = presets[0] ?? null
+			}
+		}
+
+		// Render markdown to HTML
+		let marked = new Marked()
+		marked.setOptions({ gfm: true, breaks: true })
+		let htmlContent = await marked.parse(body)
+
+		// Build printable HTML with theme styles
+		let printableHtml = await buildPrintableHtml({
+			title,
+			htmlContent,
+			theme,
+			preset,
+			appearance,
+		})
+
+		// Open print window
+		openPrintWindow(printableHtml)
 	}
 }
 

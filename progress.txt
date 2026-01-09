@@ -873,3 +873,59 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - PDF export would require integrating theme CSS into browser print functionality
 - This is a complex feature requiring print stylesheets and font embedding considerations
 
+## 2026-01-09: Theme Support in PDF Export
+
+### What was done
+- Implemented "Print to PDF" functionality that includes theme styles
+- Users can now export documents with their custom themes applied in the PDF output
+
+- Created `src/lib/pdf-export.ts` with two main functions:
+  - `buildPrintableHtml(params)` - Builds a complete HTML document ready for printing with:
+    - Theme CSS injected inline
+    - Fonts embedded as base64 data URIs (so they work without external references)
+    - Preset CSS variables for theme colors
+    - Print-optimized styles with proper @page rules and page-break handling
+    - Support for light/dark appearance modes
+  - `openPrintWindow(html)` - Opens a new browser window with the HTML and triggers the print dialog
+
+- Added "Print to PDF" menu item to `src/components/sidebar-file-menu.tsx`:
+  - New menu item with keyboard shortcut ⌘P (or Ctrl+P on Windows)
+  - Resolves theme and preset from document frontmatter
+  - Renders markdown to HTML and builds printable document with theme styles
+  - Opens browser print dialog for PDF export
+
+- Font embedding approach:
+  - Theme fonts are converted to base64 data URIs using FileReader
+  - This ensures fonts are embedded directly in the HTML/PDF rather than requiring external URLs
+  - Font format detection based on MIME type (woff2, woff, ttf, otf)
+
+### How it works
+1. User opens document with theme specified in frontmatter (`theme: MyTheme`)
+2. User clicks File > Print to PDF (or presses ⌘P/Ctrl+P)
+3. System parses document frontmatter to get theme name and preset
+4. Theme is loaded with CSS and font assets
+5. Markdown is rendered to HTML
+6. Complete HTML document is built with:
+   - Base styles optimized for print
+   - Theme CSS injected
+   - Fonts embedded as base64 data URIs
+   - Preset CSS variables for colors
+7. New browser window opens with the HTML
+8. Browser's native print dialog is triggered
+9. User can save as PDF or print to physical printer
+
+### Files changed
+- `src/lib/pdf-export.ts` (new file)
+- `src/components/sidebar-file-menu.tsx` (added Print to PDF menu item)
+- `prd.json` (marked PDF export as passes: true)
+
+### PRD requirements completed
+- [x] export: "Theme is included in PDF export" - passes: true
+
+### Notes
+- All PRD requirements are now complete!
+- The PDF export uses the browser's native print functionality
+- Fonts are embedded as base64 to ensure they work in the PDF
+- Print styles include proper page break handling for better PDF layout
+- Light/dark appearance is respected in the PDF output
+
