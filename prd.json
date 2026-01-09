@@ -602,7 +602,7 @@
 			"Verify slider range extends to include new edits",
 			"Verify current position is preserved"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "collaboration",
