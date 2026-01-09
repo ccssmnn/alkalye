@@ -532,7 +532,7 @@
 			"Verify slider is at edit #100 (closest valid)",
 			"Verify toast or indicator explains the adjustment"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "url",

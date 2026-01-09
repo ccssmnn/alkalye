@@ -950,3 +950,38 @@ The implementation in doc.$id.index.tsx handles URL state correctly:
 
 ### PRD Status
 - "Time Machine URL is shareable" - PASSES
+
+## 2026-01-09: Time Machine - Invalid Edit Param Snaps to Valid Range Verification
+
+### Completed
+- Verified "Invalid edit param in URL snaps to closest valid edit" feature was already fully implemented
+- Clamping logic correctly snaps invalid edit indices to nearest valid value
+- Toast notification explains the adjustment to the user
+- URL is updated to reflect the clamped value
+
+### Technical Analysis
+The feature was already implemented in doc.$id.index.tsx:
+
+1. **Clamping logic (lines 302-305)**:
+   - `currentEditIndex = Math.min(Math.max(0, timeMachineEdit), totalEdits - 1)`
+   - For document with 100 edits and URL `?edit=999`:
+     - `totalEdits = 100`
+     - `currentEditIndex = Math.min(Math.max(0, 999), 99) = 99`
+     - Slider shows position 99 (displayed as "100/100")
+
+2. **Toast notification (lines 343-375)**:
+   - Detects when `wasClamped = timeMachineEdit !== currentEditIndex`
+   - Shows toast: "Showing edit {N} of {total}"
+   - Description: "Edit {requested} doesn't exist. Showing closest available version."
+   - Uses `shownClampToastRef` to show toast only once per session
+
+3. **URL update (lines 356-365)**:
+   - After showing toast, navigates with `replace: true` to update URL
+   - URL changes from `?edit=999` to `?edit=99` (clamped value)
+   - Preserves zoom parameter
+
+### Files Modified
+- prd.json (marked "Invalid edit param in URL snaps to closest valid edit" as passing)
+
+### PRD Status
+- "Invalid edit param in URL snaps to closest valid edit" - PASSES
