@@ -1006,3 +1006,28 @@ The feature was already implemented in doc.$id.index.tsx:
 
 ### PRD Status
 - "URL without zoom param defaults to centered 100" - PASSES
+
+## 2026-01-09: Time Machine - Navigating Edits Updates Browser History
+
+### Completed
+- Fixed "Navigating edits updates URL" feature to also update browser history
+- Removed `replace: true` from navigation calls when navigating edits via slider, buttons, or keyboard
+- Each edit navigation now creates a new browser history entry
+- Browser back/forward buttons now work for navigating between Time Machine edits
+
+### Files Modified
+- src/routes/doc.$id.index.tsx
+  - Removed `replace: true` from `onEditChange` handler (line 581)
+  - Removed `replace: true` from keyboard shortcut `[` handler (line 1110)
+  - Removed `replace: true` from keyboard shortcut `]` handler (line 1121)
+- prd.json (marked "Navigating edits updates URL" as passing)
+
+### Technical Details
+- Previous implementation used `replace: true` to avoid "polluting" browser history
+- The PRD test case explicitly requires browser history to be updated so back/forward work
+- Now each navigation (slider, back/forward buttons, [ and ] keys) creates a history entry
+- Users can use browser back/forward to revisit previously viewed edits in Time Machine
+- Initial entry and redirects (clamping, adding edit param) still use `replace: true` to avoid duplicate entries
+
+### PRD Status
+- "Navigating edits updates URL" - PASSES

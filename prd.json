@@ -553,7 +553,7 @@
 			"Verify URL updates to reflect new edit position",
 			"Verify browser history is updated (can use back/forward)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "timeline",
