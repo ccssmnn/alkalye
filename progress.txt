@@ -586,3 +586,54 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - Compatibility imports (iA Writer/Presenter) not implemented
 - Export features (PDF with theme, theme zip export) not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: Preset Picker for Slideshow Themes
+
+### What was done
+- Added `setPreset(content, presetName)` function to `src/editor/frontmatter.ts`:
+  - Sets or updates the `preset:` field in frontmatter
+  - Pass `null` or empty string to remove the preset field
+  - Creates frontmatter if it doesn't exist
+  - Removes empty frontmatter when preset is the only field being removed
+
+- Created `PresetPicker` component in `src/components/preset-picker.tsx`:
+  - Dropdown button with Paintbrush icon in the editor toolbar
+  - Only visible when a slideshow theme with presets is selected
+  - Groups presets by appearance (Light/Dark with sun/moon icons)
+  - Shows color swatch for each preset's background color
+  - Shows checkmark on currently selected preset
+  - "Remove preset (use auto)" option when a preset is already set
+  - Auto-hides when no presets are available or when theme is preview-only
+
+- Integrated PresetPicker into `src/components/editor-toolbar.tsx`:
+  - Appears next to ThemePicker in edit mode (desktop only)
+  - Uses same `onThemeChange` callback since it modifies frontmatter content
+
+- Added comprehensive tests in `src/editor/frontmatter.test.ts`:
+  - 8 new test cases covering add, update, remove, and edge cases for setPreset
+
+### How it works
+1. User opens a presentation document
+2. User selects a slideshow theme via ThemePicker
+3. If theme has presets, PresetPicker button appears next to ThemePicker
+4. User clicks PresetPicker to see available presets grouped by light/dark
+5. User selects a preset
+6. `preset: PresetName` is added to document frontmatter
+7. Slideshow renders with selected preset's colors and fonts
+8. User can remove preset to return to automatic appearance-based selection
+
+### Files changed
+- `src/editor/frontmatter.ts` (added setPreset function)
+- `src/editor/frontmatter.test.ts` (added setPreset tests)
+- `src/components/preset-picker.tsx` (new file)
+- `src/components/editor-toolbar.tsx` (added PresetPicker integration)
+- `prd.json` (marked preset picker as passes: true)
+
+### PRD requirements completed
+- [x] ux: "Preset picker for slideshow themes" - passes: true
+
+### Notes for next steps
+- "Theme preview before applying" (hover preview) not implemented - would require live preview on hover
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Export features (PDF with theme, theme zip export) not implemented
+- Collaboration features (theme sharing) not implemented

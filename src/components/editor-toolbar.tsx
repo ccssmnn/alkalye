@@ -31,6 +31,7 @@ import {
 import { Kbd } from "@/components/ui/kbd"
 import { isMac, altModKey } from "@/lib/platform"
 import { ThemePicker } from "@/components/theme-picker"
+import { PresetPicker } from "@/components/preset-picker"
 
 export { EditorToolbar }
 
@@ -223,11 +224,18 @@ function EditorToolbar({
 						/>
 						<span className="hidden md:contents">
 							{content !== undefined && onThemeChange && (
-								<ThemePicker
-									content={content}
-									onThemeChange={onThemeChange}
-									disabled={readOnly}
-								/>
+								<>
+									<ThemePicker
+										content={content}
+										onThemeChange={onThemeChange}
+										disabled={readOnly}
+									/>
+									<PresetPicker
+										content={content}
+										onPresetChange={onThemeChange}
+										disabled={readOnly}
+									/>
+								</>
 							)}
 						</span>
 					</>

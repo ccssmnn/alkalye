@@ -370,7 +370,7 @@
 				"Select a preset",
 				"Verify preset field added to frontmatter"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "fallback",
