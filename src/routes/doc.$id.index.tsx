@@ -248,6 +248,18 @@ function EditorContent({
 		: content
 	let displayContent = timeMachineMode ? timeMachineContent : content
 
+	// Redirect to include edit param in URL when entering Time Machine without one
+	useEffect(() => {
+		if (timeMachineMode && timeMachineEdit === undefined && totalEdits > 0) {
+			navigate({
+				to: "/doc/$id",
+				params: { id: docId },
+				search: { timemachine: true, edit: totalEdits - 1 },
+				replace: true,
+			})
+		}
+	}, [timeMachineMode, timeMachineEdit, totalEdits, docId, navigate])
+
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
 	})

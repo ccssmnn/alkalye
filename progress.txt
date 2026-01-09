@@ -30,3 +30,21 @@
 
 ### PRD Status
 - "User can enter Time Machine from File Menu" - PASSES
+- "Time Machine starts at latest edit" - PASSES
+
+## 2026-01-09: Time Machine - Start at Latest Edit Fix
+
+### Completed
+- Added useEffect to redirect URL when entering Time Machine without edit parameter
+- URL now automatically updates to include ?timemachine=true&edit={latestEditIndex} on entry
+- This ensures URL always reflects the current state (slider at latest edit = N-1 in URL)
+
+### Files Modified
+- src/routes/doc.$id.index.tsx (added useEffect to redirect with edit param on Time Machine entry)
+- prd.json (marked "Time Machine starts at latest edit" as passing)
+
+### Technical Details
+- When user clicks "Time Machine" in File Menu, URL is ?timemachine=true (no edit param)
+- A useEffect detects this state (timeMachineMode=true, timeMachineEdit=undefined, totalEdits>0)
+- It performs a `replace: true` navigation to add the edit param (totalEdits - 1)
+- This ensures URL is shareable and accurately reflects the slider position

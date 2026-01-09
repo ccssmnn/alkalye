@@ -22,7 +22,7 @@
 			"Verify content shown matches current document state",
 			"Verify edit counter shows 'N/N' where N is total edit count"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "entry",
