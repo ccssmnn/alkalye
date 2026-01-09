@@ -1,0 +1,38 @@
+# Progress Log
+
+## 2026-01-09: Theme Schema Implementation
+
+### What was done
+- Implemented `Theme` schema in `src/schema/index.ts` with fields:
+  - `version` (literal 1)
+  - `name`, `author`, `description` (strings)
+  - `type` (ThemeType enum: 'preview' | 'slideshow' | 'both')
+  - `css` (co.plainText for large CSS content)
+  - `template` (optional co.plainText for HTML templates)
+  - `presets` (optional JSON string for slideshow presets)
+  - `assets` (optional list of ThemeAsset)
+  - `thumbnail` (optional co.image)
+  - `createdAt`, `updatedAt` (dates)
+
+- Implemented `ThemeAsset` schema for storing theme assets (fonts, images):
+  - `name`, `mimeType` (strings)
+  - `data` (co.fileStream for binary data)
+  - `createdAt` (date)
+
+- Implemented `ThemePreset` zod schema for slideshow color presets:
+  - `name`, `appearance` (light/dark)
+  - `colors` object with background, foreground, accent, and optional heading, link, codeBackground
+  - Optional `fonts` object with title and body font families
+
+- Added `themes: co.optional(co.list(Theme))` to `UserRoot` schema
+
+- Added migration in `UserAccount.withMigration()` to initialize empty themes list for new and existing users
+
+### PRD requirements completed
+- [x] schema: "Theme schema stores uploaded theme data" - passes: true
+- [x] schema: "Theme references stored as co.plainText for CSS content" - passes: true
+
+### Notes for next steps
+- The schema is now ready for the upload functionality
+- Next priority should be implementing the Settings UI for theme upload and management
+- The `ThemeType` enum and `ThemePreset` zod schema are exported for use in upload validation
