@@ -744,3 +744,35 @@ When centering is not possible due to boundaries:
 
 ### PRD Status
 - "Bottom bar layout adapts to mobile" - PASSES
+
+## 2026-01-09: Time Machine - Text Selection Fix
+
+### Completed
+- Fixed CodeMirror readOnly state management to use proper `Compartment` pattern
+- This ensures text selection works correctly in Time Machine read-only mode
+- Fixed both desktop click-drag selection and mobile touch selection with handles
+
+### Files Modified
+- src/editor/editor.tsx
+  - Added `Compartment` import from @codemirror/state
+  - Removed unused `StateEffect` import
+  - Created `readOnlyCompartment` ref to manage dynamic readOnly state
+  - Updated editor initialization to use compartment for readOnly extension
+  - Updated readOnly useEffect to use `compartment.reconfigure()` instead of `StateEffect.reconfigure`
+- prd.json (marked "Text selection works in Time Machine mode" as passing)
+
+### Technical Details
+- Previous implementation used `StateEffect.reconfigure` incorrectly to toggle readOnly
+- The correct CodeMirror pattern is to use a `Compartment` that wraps the extension
+- When `readOnly` prop changes, the compartment's `reconfigure()` method is called
+- This properly updates the editor state while preserving selection capabilities
+- `EditorState.readOnly` only prevents editing, not text selection
+- Selection styling via `.cm-selectionBackground` CSS was already in place
+
+### Why This Was Broken
+- `StateEffect.reconfigure` is meant for reconfiguring entire extension arrays, not individual facets
+- Using it without a compartment could lead to inconsistent state management
+- The fix ensures proper dynamic state transitions while maintaining CodeMirror's selection behavior
+
+### PRD Status
+- "Text selection works in Time Machine mode" - PASSES

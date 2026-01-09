@@ -4,7 +4,7 @@ import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
 import {
 	EditorState,
-	StateEffect,
+	Compartment,
 	type Extension,
 	Prec,
 } from "@codemirror/state"
@@ -187,6 +187,7 @@ function MarkdownEditor(
 
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
+	let readOnlyCompartment = useRef(new Compartment())
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
 	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
@@ -385,9 +386,12 @@ function MarkdownEditor(
 			extensions.push(placeholderExt(initRef.current.placeholder))
 		}
 
-		if (initRef.current.readOnly) {
-			extensions.push(EditorState.readOnly.of(true))
-		}
+		// Use compartment for dynamic readOnly state changes
+		extensions.push(
+			readOnlyCompartment.current.of(
+				initRef.current.readOnly ? EditorState.readOnly.of(true) : [],
+			),
+		)
 
 		let state = EditorState.create({
 			doc: initRef.current.value,
@@ -457,8 +461,8 @@ function MarkdownEditor(
 	useEffect(() => {
 		if (!view) return
 		view.dispatch({
-			effects: StateEffect.reconfigure.of(
-				readOnly ? [EditorState.readOnly.of(true)] : [],
+			effects: readOnlyCompartment.current.reconfigure(
+				readOnly ? EditorState.readOnly.of(true) : [],
 			),
 		})
 	}, [view, readOnly])

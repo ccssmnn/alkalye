@@ -359,7 +359,7 @@
 			"Verify text selection highlights correctly",
 			"Verify selection handles work on mobile"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",
