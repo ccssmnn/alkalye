@@ -382,7 +382,7 @@
 				"Verify warning message is shown",
 				"Verify document is still usable"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "fallback",
@@ -394,7 +394,7 @@
 				"Verify error is logged",
 				"Verify user can still edit document"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "compatibility",

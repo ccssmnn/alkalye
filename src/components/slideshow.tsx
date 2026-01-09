@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils"
 import { useResolvedTheme } from "@/lib/theme"
 import { EllipsisIcon, TriangleAlert } from "lucide-react"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
-import { buildThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
+import { tryBuildThemeStyles, type ThemeStyles } from "@/lib/theme-renderer"
 
 export { Slideshow }
 export type { Slide }
@@ -67,7 +67,8 @@ function Slideshow({
 	let size = parsePresentationSize(content)
 	let appearanceTheme = parsePresentationTheme(content)
 	let documentTheme = useDocumentTheme(content, "slideshow")
-	let themeStyles = useThemeStyles(documentTheme)
+	let themeStylesResult = useThemeStyles(documentTheme)
+	let themeStyles = themeStylesResult.styles
 
 	let currentSlide = slides.find(s => s.slideNumber === currentSlideNumber)
 	let currentSlideIdx = slides.findIndex(
@@ -128,6 +129,16 @@ function Slideshow({
 							<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
 								<TriangleAlert className="size-4 shrink-0" />
 								<span>{documentTheme.warning}</span>
+							</div>
+						</div>
+					)}
+
+					{/* Theme error banner (corrupted theme data) */}
+					{themeStylesResult.error && (
+						<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+							<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+								<TriangleAlert className="size-4 shrink-0" />
+								<span>Theme error: {themeStylesResult.error}. Using default styles.</span>
 							</div>
 						</div>
 					)}
@@ -698,9 +709,18 @@ function HighlightedCode({
 	)
 }
 
+type ThemeStylesResult = {
+	styles: ThemeStyles | null
+	error: string | null
+}
+
 // Hook to build and manage theme styles with proper blob URL cleanup
-function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
-	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+// Returns styles and any error that occurred during building
+function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
+	let [result, setResult] = useState<ThemeStylesResult>({
+		styles: null,
+		error: null,
+	})
 	let prevThemeRef = useRef<typeof documentTheme.theme>(null)
 	let prevPresetRef = useRef<typeof documentTheme.preset>(null)
 
@@ -719,21 +739,25 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
 		if (!themeChanged) return
 
 		// Cleanup old blob URLs
-		if (styles) {
-			for (let url of styles.blobUrls) {
+		if (result.styles) {
+			for (let url of result.styles.blobUrls) {
 				URL.revokeObjectURL(url)
 			}
 		}
 
 		// Build new styles
 		if (documentTheme.theme) {
-			let newStyles = buildThemeStyles(
+			let buildResult = tryBuildThemeStyles(
 				documentTheme.theme,
 				documentTheme.preset,
 			)
-			setStyles(newStyles)
+			if (buildResult.ok) {
+				setResult({ styles: buildResult.styles, error: null })
+			} else {
+				setResult({ styles: null, error: buildResult.error })
+			}
 		} else {
-			setStyles(null)
+			setResult({ styles: null, error: null })
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [documentTheme.theme, documentTheme.preset])
@@ -741,8 +765,8 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
-			if (styles) {
-				for (let url of styles.blobUrls) {
+			if (result.styles) {
+				for (let url of result.styles.blobUrls) {
 					URL.revokeObjectURL(url)
 				}
 			}
@@ -750,5 +774,5 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
-	return styles
+	return result
 }

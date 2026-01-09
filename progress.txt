@@ -346,3 +346,45 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - Theme authors can now use `var(--theme-background)` etc. in their CSS
 - Accent palette allows for richer color schemes (up to 6 accent colors)
 - Remaining priorities: appearance mode handling, performance caching, UX picker, fallback handling
+
+## 2026-01-09: Graceful Fallback for Missing and Corrupted Themes
+
+### What was done
+- Verified and marked "Missing theme falls back gracefully" as complete:
+  - `useDocumentTheme` hook already returns warning when theme not found
+  - Preview and Slideshow components already display warning banners
+  - Documents render with default styles when theme is missing
+  - Warning message: "Theme '{name}' not found. Upload it in Settings > Themes."
+
+- Implemented corrupted theme data handling:
+  - Added `tryBuildThemeStyles()` wrapper in `src/lib/theme-renderer.ts`:
+    - Catches any errors during theme style building
+    - Logs errors to console for debugging: `[Theme Error] Failed to build styles for theme "{name}": ...`
+    - Returns result object with `{ ok: true, styles }` or `{ ok: false, error }`
+  - Added `tryRenderTemplateWithContent()` wrapper for template rendering:
+    - Catches errors during HTML template parsing and injection
+    - Handles missing `[data-document]` placeholder gracefully
+    - Logs errors to console for debugging
+  - Updated `useThemeStyles` hooks in both preview.tsx and slideshow.tsx:
+    - Now returns `{ styles, error }` instead of just `styles`
+    - Falls back to null styles on error (uses default styling)
+  - Added error banners in both Preview and Slideshow components:
+    - Red destructive-colored banner distinct from warning banner
+    - Shows error message with "Using default styles" notice
+    - Users can still edit and view documents normally
+
+### Files changed
+- `src/lib/theme-renderer.ts` (added tryBuildThemeStyles, tryRenderTemplateWithContent, ThemeRenderResult type)
+- `src/components/preview.tsx` (updated useThemeStyles, added error banner)
+- `src/components/slideshow.tsx` (updated useThemeStyles, added error banner)
+- `prd.json` (marked both fallback requirements as passes: true)
+
+### PRD requirements completed
+- [x] fallback: "Missing theme falls back gracefully" - passes: true
+- [x] fallback: "Corrupted theme data handled gracefully" - passes: true
+
+### Notes for next steps
+- Both fallback features are now complete
+- The error handling logs to console.error for debugging
+- Error messages are user-friendly and explain that default styles are being used
+- Remaining priorities: appearance mode handling, performance caching, UX picker, compatibility imports

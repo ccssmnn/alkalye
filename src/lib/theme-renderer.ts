@@ -2,7 +2,14 @@ import { type co } from "jazz-tools"
 import { type Theme, type ThemeAsset } from "@/schema"
 import { type ThemesQuery, type ThemePresetType } from "./document-theme"
 
-export { buildThemeStyles, renderTemplateWithContent, type ThemeStyles }
+export {
+	buildThemeStyles,
+	tryBuildThemeStyles,
+	renderTemplateWithContent,
+	tryRenderTemplateWithContent,
+	type ThemeStyles,
+	type ThemeRenderResult,
+}
 
 type LoadedTheme = co.loaded<typeof Theme, ThemesQuery["$each"]>
 type LoadedAsset = co.loaded<typeof ThemeAsset, { data: true }>
@@ -13,6 +20,10 @@ type ThemeStyles = {
 	presetVariables: string
 	blobUrls: string[]
 }
+
+type ThemeRenderResult =
+	| { ok: true; styles: ThemeStyles }
+	| { ok: false; error: string }
 
 // Build complete CSS styles for a theme including fonts and preset variables
 // Returns blob URLs that should be revoked when component unmounts
@@ -110,6 +121,31 @@ function getFontFormat(mimeType: string): string {
 	return formats[mimeType] ?? "woff2"
 }
 
+// Safe wrapper that catches errors during theme style building
+// Returns a result object indicating success or failure with error message
+// Logs errors to console for debugging
+function tryBuildThemeStyles(
+	theme: LoadedTheme,
+	preset: ThemePresetType | null,
+): ThemeRenderResult {
+	try {
+		let styles = buildThemeStyles(theme, preset)
+		return { ok: true, styles }
+	} catch (error) {
+		let errorMessage =
+			error instanceof Error ? error.message : "Unknown error building theme"
+		console.error(
+			`[Theme Error] Failed to build styles for theme "${theme.name}":`,
+			error,
+		)
+		return { ok: false, error: errorMessage }
+	}
+}
+
+type TemplateRenderResult =
+	| { ok: true; html: string }
+	| { ok: false; error: string }
+
 // Render document content into an HTML template
 // Template should have an element with [data-document] attribute
 // Returns null if template is invalid (no data-document placeholder)
@@ -131,4 +167,35 @@ function renderTemplateWithContent(
 	// Return the body's inner HTML (not the full document)
 	// This allows the preview component to wrap it appropriately
 	return doc.body.innerHTML
+}
+
+// Safe wrapper that catches errors during template rendering
+// Returns a result object indicating success or failure with error message
+// Logs errors to console for debugging
+function tryRenderTemplateWithContent(
+	template: string,
+	content: string,
+	themeName: string,
+): TemplateRenderResult {
+	try {
+		let html = renderTemplateWithContent(template, content)
+		if (html === null) {
+			console.error(
+				`[Theme Error] Template for theme "${themeName}" is missing [data-document] placeholder`,
+			)
+			return {
+				ok: false,
+				error: "Template is missing [data-document] placeholder",
+			}
+		}
+		return { ok: true, html }
+	} catch (error) {
+		let errorMessage =
+			error instanceof Error ? error.message : "Unknown error rendering template"
+		console.error(
+			`[Theme Error] Failed to render template for theme "${themeName}":`,
+			error,
+		)
+		return { ok: false, error: errorMessage }
+	}
 }

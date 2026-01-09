@@ -13,8 +13,8 @@ import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/lib/theme"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
 import {
-	buildThemeStyles,
-	renderTemplateWithContent,
+	tryBuildThemeStyles,
+	tryRenderTemplateWithContent,
 	type ThemeStyles,
 } from "@/lib/theme-renderer"
 import { TriangleAlert } from "lucide-react"
@@ -79,7 +79,8 @@ function PreviewContent({
 }) {
 	let [segments, setSegments] = useState<Segment[]>([])
 	let [prevContent, setPrevContent] = useState(content)
-	let themeStyles = useThemeStyles(documentTheme)
+	let themeStylesResult = useThemeStyles(documentTheme)
+	let themeStyles = themeStylesResult.styles
 
 	// Reset segments when content becomes empty (adjust state during render pattern)
 	if (content !== prevContent) {
@@ -133,6 +134,7 @@ function PreviewContent({
 
 	// Get template HTML from theme (if available)
 	let templateHtml = documentTheme.theme?.template?.toString() ?? null
+	let themeName = documentTheme.theme?.name ?? "unknown"
 
 	// For template rendering, combine all segment HTML
 	let combinedHtml = segments
@@ -140,10 +142,22 @@ function PreviewContent({
 		.join("")
 
 	// Try to render with template if available
-	let templatedContent =
-		templateHtml && combinedHtml
-			? renderTemplateWithContent(templateHtml, combinedHtml)
-			: null
+	let templatedContent: string | null = null
+	let templateError: string | null = null
+	if (templateHtml && combinedHtml) {
+		let result = tryRenderTemplateWithContent(templateHtml, combinedHtml, themeName)
+		if (result.ok) {
+			templatedContent = result.html
+		} else {
+			templateError = result.error
+		}
+	}
+
+	// Combine all error messages for display
+	let errorMessage =
+		themeStylesResult.error ||
+		templateError ||
+		null
 
 	return (
 		<div
@@ -162,6 +176,14 @@ function PreviewContent({
 				<div className="bg-warning/10 text-warning-foreground border-warning/20 mx-auto mt-4 flex max-w-[65ch] items-center gap-2 rounded-lg border px-4 py-2 text-sm">
 					<TriangleAlert className="size-4 shrink-0" />
 					<span>{documentTheme.warning}</span>
+				</div>
+			)}
+
+			{/* Theme error banner (corrupted theme data) */}
+			{errorMessage && (
+				<div className="bg-destructive/10 text-destructive border-destructive/20 mx-auto mt-4 flex max-w-[65ch] items-center gap-2 rounded-lg border px-4 py-2 text-sm">
+					<TriangleAlert className="size-4 shrink-0" />
+					<span>Theme error: {errorMessage}. Using default styles.</span>
 				</div>
 			)}
 
@@ -210,9 +232,18 @@ function PreviewContent({
 	)
 }
 
+type ThemeStylesResult = {
+	styles: ThemeStyles | null
+	error: string | null
+}
+
 // Hook to build and manage theme styles with proper blob URL cleanup
-function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
-	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+// Returns styles and any error that occurred during building
+function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
+	let [result, setResult] = useState<ThemeStylesResult>({
+		styles: null,
+		error: null,
+	})
 	let prevThemeRef = useRef<typeof documentTheme.theme>(null)
 	let prevPresetRef = useRef<typeof documentTheme.preset>(null)
 
@@ -231,21 +262,25 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
 		if (!themeChanged) return
 
 		// Cleanup old blob URLs
-		if (styles) {
-			for (let url of styles.blobUrls) {
+		if (result.styles) {
+			for (let url of result.styles.blobUrls) {
 				URL.revokeObjectURL(url)
 			}
 		}
 
 		// Build new styles
 		if (documentTheme.theme) {
-			let newStyles = buildThemeStyles(
+			let buildResult = tryBuildThemeStyles(
 				documentTheme.theme,
 				documentTheme.preset,
 			)
-			setStyles(newStyles)
+			if (buildResult.ok) {
+				setResult({ styles: buildResult.styles, error: null })
+			} else {
+				setResult({ styles: null, error: buildResult.error })
+			}
 		} else {
-			setStyles(null)
+			setResult({ styles: null, error: null })
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [documentTheme.theme, documentTheme.preset])
@@ -253,8 +288,8 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
 	// Cleanup on unmount
 	useEffect(() => {
 		return () => {
-			if (styles) {
-				for (let url of styles.blobUrls) {
+			if (result.styles) {
+				for (let url of result.styles.blobUrls) {
 					URL.revokeObjectURL(url)
 				}
 			}
@@ -262,7 +297,7 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStyles | null {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
-	return styles
+	return result
 }
 
 let highlighterPromise: Promise<Highlighter> | null = null
