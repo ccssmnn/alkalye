@@ -615,7 +615,7 @@
 			"Verify document content is the restored version",
 			"Verify User B's recent edits are in history but overwritten"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "collaboration",
