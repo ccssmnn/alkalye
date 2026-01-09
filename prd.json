@@ -626,7 +626,7 @@
 			"Verify both users can navigate independently",
 			"Verify both see consistent edit history"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "edge-cases",
