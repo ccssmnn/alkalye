@@ -91,10 +91,17 @@ import { getSpaceGroup } from "@/lib/spaces"
 
 export { Route }
 
+type ReturnTo = "teleprompter" | "slideshow"
+
 let Route = createFileRoute("/doc/$id/")({
 	validateSearch: (
 		search: Record<string, unknown>,
-	): { timemachine?: boolean; edit?: number; zoom?: ZoomLevel } => {
+	): {
+		timemachine?: boolean
+		edit?: number
+		zoom?: ZoomLevel
+		returnTo?: ReturnTo
+	} => {
 		let zoom: ZoomLevel | undefined
 		if (search.zoom === "all") {
 			zoom = "all"
@@ -108,6 +115,10 @@ let Route = createFileRoute("/doc/$id/")({
 		) {
 			zoom = Number(search.zoom) as 25 | 100 | 500
 		}
+		let returnTo: ReturnTo | undefined
+		if (search.returnTo === "teleprompter" || search.returnTo === "slideshow") {
+			returnTo = search.returnTo
+		}
 		return {
 			timemachine:
 				search.timemachine === "true" || search.timemachine === true
@@ -118,6 +129,7 @@ let Route = createFileRoute("/doc/$id/")({
 					? Number(search.edit)
 					: undefined,
 			zoom,
+			returnTo,
 		}
 	},
 	loader: async ({ params, context }) => {
@@ -138,7 +150,7 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
-	let { timemachine, edit, zoom } = Route.useSearch()
+	let { timemachine, edit, zoom, returnTo } = Route.useSearch()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
@@ -196,6 +208,7 @@ function EditorPage() {
 				timeMachineMode={timemachine}
 				timeMachineEdit={edit}
 				timeMachineZoom={zoom}
+				timeMachineReturnTo={returnTo}
 			/>
 		</SidebarProvider>
 	)
@@ -207,6 +220,7 @@ interface EditorContentProps {
 	timeMachineMode?: boolean
 	timeMachineEdit?: number
 	timeMachineZoom?: ZoomLevel
+	timeMachineReturnTo?: ReturnTo
 }
 
 function EditorContent({
@@ -215,6 +229,7 @@ function EditorContent({
 	timeMachineMode = false,
 	timeMachineEdit,
 	timeMachineZoom,
+	timeMachineReturnTo,
 }: EditorContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
@@ -545,11 +560,23 @@ function EditorContent({
 								me.$isLoaded ? me.$jazz.id : undefined,
 							)}
 							onExit={() => {
-								navigate({
-									to: "/doc/$id",
-									params: { id: docId },
-									search: {},
-								})
+								if (timeMachineReturnTo === "teleprompter") {
+									navigate({
+										to: "/doc/$id/teleprompter",
+										params: { id: docId },
+									})
+								} else if (timeMachineReturnTo === "slideshow") {
+									navigate({
+										to: "/doc/$id/slideshow",
+										params: { id: docId },
+									})
+								} else {
+									navigate({
+										to: "/doc/$id",
+										params: { id: docId },
+										search: {},
+									})
+								}
 							}}
 							onCreateCopy={makeTimeMachineCreateCopy({
 								doc,

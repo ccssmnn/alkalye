@@ -22,7 +22,7 @@ import {
 	useDocTitles,
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
-import { Loader2, FileText } from "lucide-react"
+import { Loader2, FileText, History } from "lucide-react"
 
 export { Route }
 
@@ -154,14 +154,32 @@ function TopBar({
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			<Button
-				variant="ghost"
-				size="sm"
-				nativeButton={false}
-				render={<Link to="/doc/$id" params={{ id }} />}
-			>
-				Editor
-			</Button>
+			<div className="flex items-center gap-1">
+				<Button
+					variant="ghost"
+					size="sm"
+					nativeButton={false}
+					render={<Link to="/doc/$id" params={{ id }} />}
+				>
+					Editor
+				</Button>
+				<Button
+					variant="ghost"
+					size="icon"
+					className="size-8"
+					nativeButton={false}
+					render={
+						<Link
+							to="/doc/$id"
+							params={{ id }}
+							search={{ timemachine: true, returnTo: "teleprompter" }}
+						/>
+					}
+				>
+					<History className="size-4" />
+					<span className="sr-only">Time Machine</span>
+				</Button>
+			</div>
 			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 text-sm">
 				Slide {currentSlideIdx + 1} / {totalSlides}
 			</span>
