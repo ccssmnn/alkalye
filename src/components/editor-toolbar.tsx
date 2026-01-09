@@ -30,6 +30,7 @@ import {
 } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 import { isMac, altModKey } from "@/lib/platform"
+import { ThemePicker } from "@/components/theme-picker"
 
 export { EditorToolbar }
 
@@ -41,6 +42,8 @@ interface EditorToolbarProps {
 	onToggleRightSidebar: () => void
 	onSaveCopy?: () => Promise<void>
 	saveCopyState?: "idle" | "saving" | "saved"
+	content?: string
+	onThemeChange?: (newContent: string) => void
 }
 
 function EditorToolbar({
@@ -51,6 +54,8 @@ function EditorToolbar({
 	onToggleRightSidebar,
 	onSaveCopy,
 	saveCopyState = "idle",
+	content,
+	onThemeChange,
 }: EditorToolbarProps) {
 	useEffect(() => {
 		let viewport = window.visualViewport
@@ -216,6 +221,15 @@ function EditorToolbar({
 							shortcut="K"
 							onClick={() => editor.current?.insertLink()}
 						/>
+						<span className="hidden md:contents">
+							{content !== undefined && onThemeChange && (
+								<ThemePicker
+									content={content}
+									onThemeChange={onThemeChange}
+									disabled={readOnly}
+								/>
+							)}
+						</span>
 					</>
 				)}
 			</div>

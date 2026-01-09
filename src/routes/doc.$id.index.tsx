@@ -345,6 +345,8 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 							: undefined
 					}
 					saveCopyState={saveCopyState}
+					content={content}
+					onThemeChange={newContent => handleChange(doc, newContent)}
 				/>
 			</div>
 			<DocumentSidebar

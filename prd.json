@@ -346,7 +346,7 @@
 				"Select a theme",
 				"Verify theme field added to frontmatter"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "ux",

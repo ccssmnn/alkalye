@@ -285,9 +285,17 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 				buildResult => {
 					if (cancelled) return
 					if (buildResult.ok) {
-						setResult({ styles: buildResult.styles, error: null, isLoading: false })
+						setResult({
+							styles: buildResult.styles,
+							error: null,
+							isLoading: false,
+						})
 					} else {
-						setResult({ styles: null, error: buildResult.error, isLoading: false })
+						setResult({
+							styles: null,
+							error: buildResult.error,
+							isLoading: false,
+						})
 					}
 				},
 			)

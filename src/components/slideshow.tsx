@@ -29,7 +29,10 @@ import { cn } from "@/lib/utils"
 import { useResolvedTheme } from "@/lib/theme"
 import { EllipsisIcon, TriangleAlert } from "lucide-react"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
-import { tryCachedThemeStylesAsync, type ThemeStyles } from "@/lib/theme-renderer"
+import {
+	tryCachedThemeStylesAsync,
+	type ThemeStyles,
+} from "@/lib/theme-renderer"
 
 export { Slideshow }
 export type { Slide }
@@ -773,9 +776,17 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 				buildResult => {
 					if (cancelled) return
 					if (buildResult.ok) {
-						setResult({ styles: buildResult.styles, error: null, isLoading: false })
+						setResult({
+							styles: buildResult.styles,
+							error: null,
+							isLoading: false,
+						})
 					} else {
-						setResult({ styles: null, error: buildResult.error, isLoading: false })
+						setResult({
+							styles: null,
+							error: buildResult.error,
+							isLoading: false,
+						})
 					}
 				},
 			)

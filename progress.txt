@@ -537,3 +537,52 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - Compatibility imports (iA Writer/Presenter) not implemented
 - Export features (PDF with theme, theme zip export) not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: Theme Picker in Editor Toolbar
+
+### What was done
+- Added `setTheme(content, themeName)` function to `src/editor/frontmatter.ts`:
+  - Sets or updates the `theme:` field in frontmatter
+  - Pass `null` or empty string to remove the theme field
+  - Creates frontmatter if it doesn't exist
+  - Removes empty frontmatter when theme is the only field being removed
+
+- Created `ThemePicker` component in `src/components/theme-picker.tsx`:
+  - Dropdown button with Palette icon in the editor toolbar
+  - Loads user's themes via useAccount hook
+  - Groups themes by type (Preview Themes / Slideshow Themes)
+  - Shows checkmark on currently selected theme
+  - "Remove theme" option when a theme is already set
+  - Disabled state when no themes available (tooltip explains to upload in Settings)
+  - Only visible on desktop (hidden on mobile via `hidden md:contents`)
+
+- Integrated ThemePicker into `src/components/editor-toolbar.tsx`:
+  - Added `content` and `onThemeChange` props to EditorToolbarProps
+  - ThemePicker appears after the Link button in edit mode
+  - Calls onThemeChange with new content when theme is selected
+
+- Updated document routes to pass theme-related props:
+  - `src/routes/doc.$id.index.tsx`: passes content and onThemeChange
+  - `src/routes/spaces.$spaceId.doc.$id.index.tsx`: passes content and onThemeChange
+
+- Added comprehensive tests for `setTheme` in `src/editor/frontmatter.test.ts`:
+  - 8 new test cases covering add, update, remove, and edge cases
+
+### Files changed
+- `src/editor/frontmatter.ts` (added setTheme function)
+- `src/editor/frontmatter.test.ts` (added setTheme tests)
+- `src/components/theme-picker.tsx` (new file)
+- `src/components/editor-toolbar.tsx` (added ThemePicker integration)
+- `src/routes/doc.$id.index.tsx` (pass content/onThemeChange to toolbar)
+- `src/routes/spaces.$spaceId.doc.$id.index.tsx` (pass content/onThemeChange to toolbar)
+- `prd.json` (marked theme picker as passes: true)
+
+### PRD requirements completed
+- [x] ux: "Theme picker in editor toolbar" - passes: true
+
+### Notes for next steps
+- "Theme preview before applying" (hover preview) not implemented - would require live preview on hover
+- "Preset picker for slideshow themes" not implemented - would allow selecting presets from toolbar
+- Compatibility imports (iA Writer/Presenter) not implemented
+- Export features (PDF with theme, theme zip export) not implemented
+- Collaboration features (theme sharing) not implemented

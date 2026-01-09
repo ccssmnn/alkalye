@@ -27,6 +27,7 @@ export {
 	setBacklinks,
 	addBacklink,
 	removeBacklink,
+	setTheme,
 }
 
 export type { Frontmatter }
@@ -224,6 +225,39 @@ function removeBacklink(content: string, id: string): string {
 	return setBacklinks(
 		content,
 		existing.filter(x => x !== id),
+	)
+}
+
+// Set or update the theme field in frontmatter
+// Pass null or empty string to remove the theme field
+function setTheme(content: string, themeName: string | null): string {
+	let { frontmatter } = parseFrontmatter(content)
+
+	// Remove theme if null or empty
+	if (!themeName) {
+		if (!frontmatter?.theme) return content
+		// Remove the theme line
+		let result = content.replace(
+			/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*\r?\n/,
+			"$1",
+		)
+		return removeEmptyFrontmatter(result)
+	}
+
+	// No frontmatter - create new with theme
+	if (!frontmatter) {
+		return `---\ntheme: ${themeName}\n---\n\n${content}`
+	}
+
+	// Frontmatter exists but no theme field - add it
+	if (!frontmatter.theme) {
+		return content.replace(/^(---\r?\n)/, `$1theme: ${themeName}\n`)
+	}
+
+	// Update existing theme field
+	return content.replace(
+		/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*/,
+		`$1theme: ${themeName}`,
 	)
 }
 
