@@ -83,4 +83,43 @@ describe("calculateZoomWindow", () => {
 			}
 		})
 	})
+
+	describe("zoom level changes preserve current edit", () => {
+		test("changing from 'all' to numeric zoom keeps edit in window", () => {
+			let currentEdit = 300
+			let totalEdits = 500
+
+			// Start with 'all' zoom
+			let allResult = calculateZoomWindow(currentEdit, totalEdits, "all")
+			expect(allResult.windowStart).toBe(0)
+			expect(allResult.windowEnd).toBe(499)
+
+			// Change to zoom 100
+			let zoom100Result = calculateZoomWindow(currentEdit, totalEdits, 100)
+			// Current edit (300) should be within the new window
+			expect(zoom100Result.windowStart).toBeLessThanOrEqual(currentEdit)
+			expect(zoom100Result.windowEnd).toBeGreaterThanOrEqual(currentEdit)
+			// Window should be approximately centered on 300
+			expect(zoom100Result.windowStart).toBe(250)
+			expect(zoom100Result.windowEnd).toBe(349)
+		})
+
+		test("changing between numeric zoom levels keeps edit in window", () => {
+			let currentEdit = 300
+			let totalEdits = 500
+
+			// Start with zoom 500
+			let zoom500Result = calculateZoomWindow(currentEdit, totalEdits, 500)
+			expect(zoom500Result.windowStart).toBeLessThanOrEqual(currentEdit)
+			expect(zoom500Result.windowEnd).toBeGreaterThanOrEqual(currentEdit)
+
+			// Change to zoom 25
+			let zoom25Result = calculateZoomWindow(currentEdit, totalEdits, 25)
+			expect(zoom25Result.windowStart).toBeLessThanOrEqual(currentEdit)
+			expect(zoom25Result.windowEnd).toBeGreaterThanOrEqual(currentEdit)
+			// Should be centered on 300: 288-312
+			expect(zoom25Result.windowStart).toBe(288)
+			expect(zoom25Result.windowEnd).toBe(312)
+		})
+	})
 })

@@ -620,3 +620,32 @@ Jazz is designed as a local-first database. When a user makes an edit:
 
 ### PRD Status
 - "Zoom centers on current edit position" - PASSES
+
+## 2026-01-09: Time Machine - Zoom Level Preserves Current Edit Verification
+
+### Completed
+- Verified "Zoom level preserves current edit when changed" feature was already fully implemented
+- Added additional test cases to confirm behavior when zoom level changes
+
+### Technical Analysis
+The feature works because:
+1. `onZoomChange` handler in doc.$id.index.tsx (lines 567-578) preserves `currentEditIndex` when changing zoom
+2. `calculateZoomWindow` in time-machine-bottom-bar.tsx correctly re-centers on current edit for new zoom level
+3. The `useEffect` at line 79-81 syncs slider `localValue` when `windowStart` changes
+
+When user changes zoom level:
+1. URL is updated with same `currentEditIndex` but new `zoomLevel`
+2. React re-renders with new zoom level
+3. `calculateZoomWindow(currentEdit, totalEdits, newZoom)` computes new window centered on `currentEdit`
+4. Slider range adjusts (max becomes windowSize-1 instead of totalEdits-1)
+5. Slider position adjusts to `currentEdit - windowStart` (position within new window)
+
+### Files Modified
+- src/components/time-machine-bottom-bar.test.ts
+  - Added "zoom level changes preserve current edit" test suite
+  - Tests changing from 'all' to numeric zoom
+  - Tests changing between numeric zoom levels
+- prd.json (marked "Zoom level preserves current edit when changed" as passing)
+
+### PRD Status
+- "Zoom level preserves current edit when changed" - PASSES

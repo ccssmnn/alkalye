@@ -227,7 +227,7 @@
 			"Verify the same edit remains selected",
 			"Verify slider position adjusts to show edit within new zoom window"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "zoom",
