@@ -577,7 +577,7 @@
 			"Verify edits are ordered chronologically by madeAt",
 			"Verify interleaved edits from different users appear in correct order"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "timeline",

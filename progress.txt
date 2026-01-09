@@ -1067,3 +1067,38 @@ The feature was already implemented in doc.$id.index.tsx:
 
 ### PRD Status
 - "Timeline includes both content and asset edits" - PASSES
+
+## 2026-01-09: Time Machine - Timeline Ordered by madeAt Timestamp Verification
+
+### Completed
+- Verified "Timeline ordered by madeAt timestamp" feature was already fully implemented
+- The `getEditHistory()` function correctly sorts all operations by `madeAt` timestamp
+- Interleaved edits from multiple collaborators appear in correct chronological order
+- Added comprehensive test suite to verify timeline ordering behavior
+
+### Files Created
+- src/lib/time-machine.test.ts (NEW)
+  - Added test for `accountIdFromSessionId` helper function
+  - Added test for edits ordered by madeAt timestamp
+  - Added test for interleaved edits from multiple users in chronological order
+  - Added test for single edit document handling
+  - Added test for accountId inclusion in each edit
+
+### Files Modified
+- prd.json (marked "Timeline ordered by madeAt timestamp" as passing)
+
+### Technical Analysis
+The timeline ordering was already correctly implemented in `getEditHistory()`:
+1. Operations from all sessions (different users) are collected in `allOps` array (lines 41-54)
+2. Operations are sorted by `madeAt` timestamp: `allOps.sort((a, b) => a.madeAt - b.madeAt)` (line 67)
+3. Unique timestamps are processed in sorted order (line 71)
+4. This ensures interleaved edits from different users appear in correct chronological order
+
+### Test Coverage Added
+The new test file verifies:
+- Single-user edits are in chronological order
+- Multi-user interleaved edits are sorted by `madeAt`, not grouped by user
+- Each edit has proper `index`, `madeAt`, `accountId`, and `content` fields
+
+### PRD Status
+- "Timeline ordered by madeAt timestamp" - PASSES
