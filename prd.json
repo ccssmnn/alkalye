@@ -372,7 +372,7 @@
 			"Paste in editor",
 			"Verify copied text is pasted correctly as plain text/markdown"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "display",

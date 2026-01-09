@@ -776,3 +776,35 @@ When centering is not possible due to boundaries:
 
 ### PRD Status
 - "Text selection works in Time Machine mode" - PASSES
+
+## 2026-01-09: Time Machine - Copy Works in Read-Only Mode
+
+### Completed
+- Fixed Copy functionality in Edit menu during Time Machine mode
+- Edit menu is now accessible in Time Machine mode (was completely disabled)
+- Copy action works while Undo, Redo, Cut, and Paste are disabled
+- Updated both doc.$id.index.tsx and spaces.$spaceId.doc.$id.index.tsx routes
+
+### Files Modified
+- src/components/sidebar-edit-menu.tsx
+  - Added `readOnly` prop to SidebarEditMenuProps interface
+  - Added `disabled={readOnly}` to Undo, Redo, Cut, Paste menu items
+  - Copy menu item remains always enabled (it's a read-only operation)
+- src/routes/doc.$id.index.tsx
+  - Changed SidebarEditMenu usage: `disabled` is now `!canEdit(doc) && !timeMachineMode`
+  - Added `readOnly={readOnly}` prop for individual action disabling
+- src/routes/spaces.$spaceId.doc.$id.index.tsx
+  - Same pattern: `disabled={!canEdit(doc)}` and `readOnly={readOnly}` props
+- prd.json (marked "Copy works in Time Machine mode" as passing)
+
+### Technical Details
+- The previous implementation passed `disabled={readOnly}` to the entire Edit menu
+- This prevented the dropdown from opening at all in Time Machine mode
+- The fix separates concerns:
+  - `disabled` prop: controls whether the menu can be opened
+  - `readOnly` prop: controls which individual actions are available
+- Copy is a read-only operation (uses navigator.clipboard.writeText) and doesn't modify content
+- This matches user expectations that copy should always work when text is selectable
+
+### PRD Status
+- "Copy works in Time Machine mode" - PASSES
