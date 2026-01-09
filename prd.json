@@ -72,7 +72,7 @@
 			"Verify URL removes timemachine params",
 			"Verify current document state is shown"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "exit",

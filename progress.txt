@@ -48,3 +48,23 @@
 - A useEffect detects this state (timeMachineMode=true, timeMachineEdit=undefined, totalEdits>0)
 - It performs a `replace: true` navigation to add the edit param (totalEdits - 1)
 - This ensures URL is shareable and accurately reflects the slider position
+
+## 2026-01-09: Time Machine - Exit via Dropdown Menu Verification
+
+### Completed
+- Verified "Exit Time Machine" dropdown menu functionality was already implemented
+- The kebab menu (⋮) in TimeMachineToolbar contains "Exit Time Machine" option
+- Clicking it navigates to `/doc/$id` with empty search params, exiting Time Machine mode
+- Marked PRD test case as passing
+
+### Files Modified
+- prd.json (marked "User can exit Time Machine via dropdown menu" as passing)
+
+### Technical Details
+- Exit handler in doc.$id.index.tsx calls navigate({ to: "/doc/$id", params: { id: docId }, search: {} })
+- Empty search object removes both timemachine and edit URL parameters
+- Route re-renders with timeMachineMode=false, restoring normal editor mode
+- Editor readOnly state becomes false, bottom bar disappears, current document content is shown
+
+### PRD Status
+- "User can exit Time Machine via dropdown menu" - PASSES
