@@ -1102,3 +1102,38 @@ The new test file verifies:
 
 ### PRD Status
 - "Timeline ordered by madeAt timestamp" - PASSES
+
+## 2026-01-09: Time Machine - Assets Filtered by Edit Timestamp
+
+### Completed
+- Implemented asset filtering in Time Machine mode based on edit timestamp
+- Asset panel now only shows assets that existed at the current edit's timestamp
+- Assets are filtered by comparing `asset.createdAt <= currentEdit.madeAt`
+
+### Files Modified
+- src/routes/doc.$id.index.tsx
+  - Added `currentEditTimestamp` variable to get current edit's `madeAt` date
+  - Updated `sidebarAssets` filtering to check `asset.createdAt` against timestamp
+  - In Time Machine mode, only assets created before/at the current edit are shown
+  - In normal mode, all assets continue to be shown
+- prd.json (marked "Assets shown are those that existed at edit timestamp" as passing)
+
+### Technical Details
+- Each `Asset` in the schema has a `createdAt: z.date()` field (schema/index.ts line 56)
+- Each `EditHistoryItem` has a `madeAt: Date` field representing when the edit was made
+- The filter compares: `a.createdAt <= currentEditTimestamp`
+- This ensures that when navigating to an older edit, assets added later are hidden
+- When navigating to a newer edit, those assets become visible
+
+### Algorithm
+1. Get `currentEditTimestamp` from `currentEdit?.madeAt`
+2. In the filter function for `sidebarAssets`:
+   - If not in Time Machine mode or no timestamp: show all loaded assets
+   - If in Time Machine mode with timestamp: only show assets where `createdAt <= timestamp`
+
+### Notes for Next Person
+- The spaces route (spaces.$spaceId.doc.$id.index.tsx) doesn't have Time Machine support yet
+- When Time Machine is added to spaces, the same asset filtering logic should be applied
+
+### PRD Status
+- "Assets shown are those that existed at edit timestamp" - PASSES

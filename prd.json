@@ -590,7 +590,7 @@
 			"Navigate to edit after asset was added",
 			"Verify asset panel shows the asset"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "timeline",
