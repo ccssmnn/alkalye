@@ -478,3 +478,39 @@ User at /doc/abc                  (history entry 1)
 ### PRD Status
 - "Create Copy creates new document with historical content" - PASSES
 - "Create Copy adds frontmatter noting source" - PASSES
+
+## 2026-01-09: Time Machine - Restore This Version Implementation
+
+### Completed
+- Implemented "Restore This Version" action in Time Machine dropdown menu
+- Added confirmation modal before restoring to prevent accidental overwrites
+- Modal shows the date/time of the version being restored
+- Clicking "Restore" overwrites the current document content with the historical version
+- Clicking "Cancel" returns to Time Machine without changes
+- After restore, Time Machine exits and shows the restored content
+- Restore creates a new edit in history (via applyDiff), so the previous state is still accessible
+
+### Files Modified
+- src/components/time-machine-toolbar.tsx
+  - Added `onRestore` prop to TimeMachineToolbarProps interface
+  - Enabled "Restore This Version" dropdown menu item with onClick handler
+- src/routes/doc.$id.index.tsx
+  - Added ConfirmDialog import
+  - Added `restoreDialog` state using `useConfirmDialog()` hook
+  - Added `TimeMachineRestoreParams` type for handler parameters
+  - Added `makeTimeMachineRestore()` handler factory function
+  - Wired up `onRestore` prop and ConfirmDialog component
+
+### Technical Details
+- Uses existing ConfirmDialog component from ui/confirm-dialog.tsx
+- Modal title: "Restore this version?"
+- Modal description: "Restore document to {date} version? This will overwrite the current content."
+- Restore handler uses `doc.content.$jazz.applyDiff(historicalContent)` to overwrite content
+- This creates a new edit in Jazz's history, making the restore operation reversible
+- After restore, navigates to normal document view (exits Time Machine)
+
+### PRD Status
+- "Restore This Version shows confirmation modal" - PASSES
+- "Restore This Version overwrites current content" - PASSES
+- "Restore can be undone via Time Machine" - PASSES
+- "Cancel in restore modal returns to Time Machine" - PASSES

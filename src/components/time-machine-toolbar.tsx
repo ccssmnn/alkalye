@@ -17,6 +17,7 @@ interface TimeMachineToolbarProps {
 	authorName: string
 	onExit: () => void
 	onCreateCopy: () => void
+	onRestore: () => void
 }
 
 function TimeMachineToolbar({
@@ -25,6 +26,7 @@ function TimeMachineToolbar({
 	authorName,
 	onExit,
 	onCreateCopy,
+	onRestore,
 }: TimeMachineToolbarProps) {
 	return (
 		<div
@@ -69,7 +71,9 @@ function TimeMachineToolbar({
 					<DropdownMenuItem onClick={onCreateCopy}>
 						Create Copy
 					</DropdownMenuItem>
-					<DropdownMenuItem disabled>Restore This Version</DropdownMenuItem>
+					<DropdownMenuItem onClick={onRestore}>
+						Restore This Version
+					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 		</div>

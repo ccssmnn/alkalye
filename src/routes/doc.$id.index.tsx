@@ -80,6 +80,7 @@ import {
 	getAuthorName,
 	formatEditDate,
 } from "@/lib/time-machine"
+import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import type { ID } from "jazz-tools"
 
 export { Route }
@@ -197,6 +198,7 @@ function EditorContent({
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let restoreDialog = useConfirmDialog()
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
@@ -473,6 +475,21 @@ function EditorContent({
 								editDate: currentEdit?.madeAt ?? doc.createdAt,
 								me,
 								navigate,
+							})}
+							onRestore={() => restoreDialog.setOpen(true)}
+						/>
+						<ConfirmDialog
+							open={restoreDialog.open}
+							onOpenChange={restoreDialog.onOpenChange}
+							title="Restore this version?"
+							description={`Restore document to ${formatEditDate(currentEdit?.madeAt ?? doc.createdAt)} version? This will overwrite the current content.`}
+							confirmLabel="Restore"
+							cancelLabel="Cancel"
+							onConfirm={makeTimeMachineRestore({
+								doc,
+								historicalContent: timeMachineContent,
+								navigate,
+								docId,
 							})}
 						/>
 						<TimeMachineBottomBar
@@ -814,6 +831,31 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 
 		// Navigate to the new document
 		navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
+	}
+}
+
+type TimeMachineRestoreParams = {
+	doc: LoadedDocument
+	historicalContent: string
+	navigate: ReturnType<typeof useNavigate>
+	docId: string
+}
+
+function makeTimeMachineRestore(params: TimeMachineRestoreParams) {
+	return function handleTimeMachineRestore() {
+		let { doc, historicalContent, navigate, docId } = params
+		if (!doc.content) return
+
+		// Overwrite the current document content with the historical version
+		doc.content.$jazz.applyDiff(historicalContent)
+		doc.$jazz.set("updatedAt", new Date())
+
+		// Exit Time Machine mode
+		navigate({
+			to: "/doc/$id",
+			params: { id: docId },
+			search: {},
+		})
 	}
 }
 

@@ -457,7 +457,7 @@
 			"Verify modal shows 'Restore document to Jan 9, 3:42 PM version?'",
 			"Verify modal has Restore and Cancel buttons"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",
@@ -470,7 +470,7 @@
 			"Verify document content is now the historical version",
 			"Verify this created a new edit in history (can re-enter Time Machine to verify)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",
@@ -483,7 +483,7 @@
 			"Navigate back one edit",
 			"Restore again to get back to pre-restore state"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",
@@ -495,7 +495,7 @@
 			"Verify modal closes",
 			"Verify still in Time Machine at same edit position"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "url",
