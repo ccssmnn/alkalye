@@ -1,0 +1,690 @@
+[
+  {
+    "category": "entry",
+    "description": "User can enter Time Machine from File Menu",
+    "steps": [
+      "Open a document with edit history",
+      "Open the File Menu in the sidebar",
+      "Click 'Time Machine' menu item",
+      "Verify editor switches to read-only mode",
+      "Verify Time Machine toolbar appears at top",
+      "Verify Time Machine bottom bar appears with slider and controls",
+      "Verify URL updates to include ?timemachine=true&edit={latestEditIndex}"
+    ],
+    "passes": false
+  },
+  {
+    "category": "entry",
+    "description": "Time Machine starts at latest edit",
+    "steps": [
+      "Enter Time Machine mode",
+      "Verify slider is positioned at the rightmost position (latest edit)",
+      "Verify content shown matches current document state",
+      "Verify edit counter shows 'N/N' where N is total edit count"
+    ],
+    "passes": false
+  },
+  {
+    "category": "entry",
+    "description": "Time Machine preserves scroll position on entry",
+    "steps": [
+      "Open a long document",
+      "Scroll to middle of document",
+      "Enter Time Machine mode",
+      "Verify scroll position is preserved",
+      "Verify the same content is visible as before entering"
+    ],
+    "passes": false
+  },
+  {
+    "category": "entry",
+    "description": "Time Machine accessible for documents with single edit shows disabled UI",
+    "steps": [
+      "Create a new document (only has initial edit)",
+      "Enter Time Machine mode",
+      "Verify Time Machine UI appears",
+      "Verify slider is disabled",
+      "Verify back/forward buttons are disabled",
+      "Verify message indicates 'No previous versions' or similar"
+    ],
+    "passes": false
+  },
+  {
+    "category": "entry",
+    "description": "Time Machine allows entry with unsynced local changes",
+    "steps": [
+      "Make edits to a document",
+      "Before sync completes, click Time Machine",
+      "Verify Time Machine opens without blocking",
+      "Verify pending changes will appear in timeline once synced"
+    ],
+    "passes": false
+  },
+  {
+    "category": "exit",
+    "description": "User can exit Time Machine via dropdown menu",
+    "steps": [
+      "Enter Time Machine mode",
+      "Click the kebab menu icon in the toolbar",
+      "Click 'Exit Time Machine'",
+      "Verify editor returns to normal editable mode",
+      "Verify Time Machine bottom bar disappears",
+      "Verify URL removes timemachine params",
+      "Verify current document state is shown"
+    ],
+    "passes": false
+  },
+  {
+    "category": "exit",
+    "description": "User can exit Time Machine via browser back button",
+    "steps": [
+      "Navigate to a document",
+      "Enter Time Machine mode",
+      "Click browser back button",
+      "Verify Time Machine exits",
+      "Verify normal document view is restored"
+    ],
+    "passes": false
+  },
+  {
+    "category": "exit",
+    "description": "Exiting Time Machine restores scroll position",
+    "steps": [
+      "Scroll to specific position in document",
+      "Enter Time Machine mode",
+      "Navigate through different edits (scroll may change)",
+      "Exit Time Machine",
+      "Verify scroll position returns to where it was before entering"
+    ],
+    "passes": false
+  },
+  {
+    "category": "exit",
+    "description": "Exit transition is instant",
+    "steps": [
+      "Enter Time Machine mode",
+      "Exit Time Machine",
+      "Verify content switches immediately without animation or fade"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Slider navigates through edit history",
+    "steps": [
+      "Enter Time Machine mode on document with multiple edits",
+      "Drag slider to different positions",
+      "Verify content updates to show document state at each edit",
+      "Verify toolbar shows correct date and author for each position",
+      "Verify edit counter updates (e.g., '234/500')"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Slider scrubbing is debounced at 150ms",
+    "steps": [
+      "Enter Time Machine mode",
+      "Rapidly drag slider back and forth",
+      "Verify content doesn't update on every pixel movement",
+      "Verify content updates approximately 150ms after stopping movement",
+      "Verify no performance issues during rapid scrubbing"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Forward button advances one edit",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to an edit that is not the latest",
+      "Click forward button",
+      "Verify slider moves one position forward",
+      "Verify content updates to next edit state",
+      "Verify edit counter increments by 1"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Back button goes to previous edit",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to an edit that is not the first",
+      "Click back button",
+      "Verify slider moves one position backward",
+      "Verify content updates to previous edit state",
+      "Verify edit counter decrements by 1"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Keyboard shortcuts [ and ] navigate edits",
+    "steps": [
+      "Enter Time Machine mode",
+      "Press ] key",
+      "Verify slider advances one edit forward",
+      "Press [ key",
+      "Verify slider moves one edit backward"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Back button disabled at first edit",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to the first (oldest) edit",
+      "Verify back button is visible but disabled/dimmed",
+      "Verify clicking disabled button has no effect",
+      "Verify [ keyboard shortcut has no effect"
+    ],
+    "passes": false
+  },
+  {
+    "category": "navigation",
+    "description": "Forward button disabled at latest edit",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to the latest edit",
+      "Verify forward button is visible but disabled/dimmed",
+      "Verify clicking disabled button has no effect",
+      "Verify ] keyboard shortcut has no effect"
+    ],
+    "passes": false
+  },
+  {
+    "category": "zoom",
+    "description": "Zoom dropdown shows preset options",
+    "steps": [
+      "Enter Time Machine mode",
+      "Click zoom dropdown",
+      "Verify options include: 25, 100, 500, All",
+      "Verify current zoom level is indicated"
+    ],
+    "passes": false
+  },
+  {
+    "category": "zoom",
+    "description": "Zoom centers on current edit position",
+    "steps": [
+      "Enter Time Machine mode on document with 500+ edits",
+      "Navigate to edit #300",
+      "Select '100' from zoom dropdown",
+      "Verify slider shows approximately edits #250-350 (centered on #300)",
+      "Verify current edit #300 remains selected"
+    ],
+    "passes": false
+  },
+  {
+    "category": "zoom",
+    "description": "Zoom level preserves current edit when changed",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to specific edit",
+      "Change zoom level via dropdown",
+      "Verify the same edit remains selected",
+      "Verify slider position adjusts to show edit within new zoom window"
+    ],
+    "passes": false
+  },
+  {
+    "category": "zoom",
+    "description": "All zoom option shows entire edit history",
+    "steps": [
+      "Enter Time Machine mode on document with many edits",
+      "Select 'All' from zoom dropdown",
+      "Verify slider represents entire edit history",
+      "Verify can navigate from first to last edit"
+    ],
+    "passes": false
+  },
+  {
+    "category": "zoom",
+    "description": "Zoom at boundaries adjusts range appropriately",
+    "steps": [
+      "Enter Time Machine on document with 50 edits",
+      "Navigate to edit #5",
+      "Select '25' from zoom dropdown",
+      "Verify range adjusts to show edits #1-25 (can't center, clamped to start)",
+      "Navigate to edit #45",
+      "Verify range adjusts to show edits #26-50 (can't center, clamped to end)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Toolbar shows Time Machine header with date and author",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to an edit",
+      "Verify toolbar shows 'Time Machine: {current document title}'",
+      "Verify date is shown in absolute format (e.g., 'Jan 9, 2026, 3:42 PM')",
+      "Verify author name is shown (e.g., 'by Alice')"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Toolbar shows 'by you' for current user's edits",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to an edit made by the current user",
+      "Verify toolbar shows 'by you' instead of user's name"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Toolbar shows 'Unknown' for edits without author info",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to an edit where author account is not loaded or has no profile",
+      "Verify toolbar shows 'by Unknown'"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Toolbar has kebab menu for actions",
+    "steps": [
+      "Enter Time Machine mode",
+      "Verify kebab menu icon (⋮) is visible in toolbar",
+      "Click kebab menu",
+      "Verify dropdown shows: Exit Time Machine, Create Copy, Restore This Version"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Bottom bar has solid background and spans full width",
+    "steps": [
+      "Enter Time Machine mode",
+      "Verify bottom bar appears at bottom of viewport",
+      "Verify bar has solid background matching app theme",
+      "Verify bar spans full width of content area"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Bottom bar shows edit counter",
+    "steps": [
+      "Enter Time Machine mode on document with 500 edits",
+      "Verify edit counter is always visible (e.g., '234/500')",
+      "Navigate to different edits",
+      "Verify counter updates to reflect current position"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Bottom bar layout adapts to mobile",
+    "steps": [
+      "Enter Time Machine mode on mobile device",
+      "Verify controls are arranged in two rows",
+      "Verify all controls are accessible and usable on touch"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Bottom bar layout is single row on desktop",
+    "steps": [
+      "Enter Time Machine mode on desktop",
+      "Verify back button, forward button, zoom dropdown, and slider are in single row",
+      "Verify edit counter is visible"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Editor is read-only in Time Machine mode",
+    "steps": [
+      "Enter Time Machine mode",
+      "Try to type in the editor",
+      "Verify no text is inserted",
+      "Try formatting shortcuts (Cmd+B, etc.)",
+      "Verify no formatting is applied"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Text selection works in Time Machine mode",
+    "steps": [
+      "Enter Time Machine mode",
+      "Click and drag to select text",
+      "Verify text selection highlights correctly",
+      "Verify selection handles work on mobile"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Copy works in Time Machine mode",
+    "steps": [
+      "Enter Time Machine mode",
+      "Select some text",
+      "Press Cmd+C or use context menu to copy",
+      "Exit Time Machine",
+      "Paste in editor",
+      "Verify copied text is pasted correctly as plain text/markdown"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Sidebar shows read-only compatible items with disabled edit actions",
+    "steps": [
+      "Enter Time Machine mode",
+      "Open sidebar",
+      "Verify sidebar is accessible",
+      "Verify edit/format actions are visible but disabled/greyed",
+      "Verify read-only actions (like viewing info) still work"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Floating actions are hidden in Time Machine mode",
+    "steps": [
+      "Open document with floating action buttons visible",
+      "Enter Time Machine mode",
+      "Verify floating actions are not visible",
+      "Verify Time Machine bottom bar is shown instead"
+    ],
+    "passes": false
+  },
+  {
+    "category": "display",
+    "description": "Content updates immediately when navigating edits",
+    "steps": [
+      "Enter Time Machine mode",
+      "Click back or forward button",
+      "Verify content updates immediately without loading state",
+      "Verify no skeleton or shimmer is shown"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Create Copy creates new document with historical content",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to a historical edit",
+      "Open kebab menu and click 'Create Copy'",
+      "Verify new document is created",
+      "Verify new document contains content from that historical edit",
+      "Verify new document is in same space as original",
+      "Verify user is navigated to the new document"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Create Copy inherits space and assets",
+    "steps": [
+      "Enter Time Machine on document in a specific space with assets",
+      "Navigate to historical edit",
+      "Create a copy",
+      "Verify new document is in same space",
+      "Verify assets that existed at that edit are included"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Create Copy adds frontmatter noting source",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to edit from 'Jan 9, 2026, 3:42 PM'",
+      "Create a copy",
+      "Open the new document",
+      "Verify frontmatter includes 'timemachine: restored from {Original Title} at Jan 9, 2026, 3:42 PM'"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Restore This Version shows confirmation modal",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to historical edit",
+      "Open kebab menu and click 'Restore This Version'",
+      "Verify confirmation modal appears",
+      "Verify modal shows 'Restore document to Jan 9, 3:42 PM version?'",
+      "Verify modal has Restore and Cancel buttons"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Restore This Version overwrites current content",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to historical edit with different content than current",
+      "Click 'Restore This Version' and confirm",
+      "Verify Time Machine exits",
+      "Verify document content is now the historical version",
+      "Verify this created a new edit in history (can re-enter Time Machine to verify)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Restore can be undone via Time Machine",
+    "steps": [
+      "Restore a historical version",
+      "Re-enter Time Machine",
+      "Verify the restore appears as latest edit",
+      "Verify previous 'current' state is still accessible one edit back",
+      "Navigate back one edit",
+      "Restore again to get back to pre-restore state"
+    ],
+    "passes": false
+  },
+  {
+    "category": "actions",
+    "description": "Cancel in restore modal returns to Time Machine",
+    "steps": [
+      "Enter Time Machine mode",
+      "Click 'Restore This Version'",
+      "Click Cancel in confirmation modal",
+      "Verify modal closes",
+      "Verify still in Time Machine at same edit position"
+    ],
+    "passes": false
+  },
+  {
+    "category": "url",
+    "description": "Time Machine state is reflected in URL",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate to edit #234",
+      "Select zoom level 100",
+      "Verify URL contains ?timemachine=true",
+      "Verify URL contains &edit=234",
+      "Verify URL contains &zoom=100"
+    ],
+    "passes": false
+  },
+  {
+    "category": "url",
+    "description": "Time Machine URL is shareable",
+    "steps": [
+      "Enter Time Machine and navigate to specific edit",
+      "Copy the URL",
+      "Open URL in new browser tab/window",
+      "Verify Time Machine opens at the same edit position",
+      "Verify zoom level is preserved"
+    ],
+    "passes": false
+  },
+  {
+    "category": "url",
+    "description": "Invalid edit param in URL snaps to closest valid edit",
+    "steps": [
+      "Open document with 100 edits",
+      "Manually set URL to ?timemachine=true&edit=999",
+      "Verify Time Machine opens",
+      "Verify slider is at edit #100 (closest valid)",
+      "Verify toast or indicator explains the adjustment"
+    ],
+    "passes": false
+  },
+  {
+    "category": "url",
+    "description": "URL without zoom param defaults to centered 100",
+    "steps": [
+      "Open URL with ?timemachine=true&edit=234 (no zoom param)",
+      "Verify Time Machine opens at edit #234",
+      "Verify zoom level is 100 edits centered on #234"
+    ],
+    "passes": false
+  },
+  {
+    "category": "url",
+    "description": "Navigating edits updates URL",
+    "steps": [
+      "Enter Time Machine mode",
+      "Navigate using slider or buttons",
+      "Verify URL updates to reflect new edit position",
+      "Verify browser history is updated (can use back/forward)"
+    ],
+    "passes": false
+  },
+  {
+    "category": "timeline",
+    "description": "Timeline includes both content and asset edits",
+    "steps": [
+      "Open document that has both content edits and asset additions",
+      "Enter Time Machine mode",
+      "Verify total edit count includes both content and asset changes",
+      "Navigate through timeline",
+      "Verify asset changes are represented in the timeline"
+    ],
+    "passes": false
+  },
+  {
+    "category": "timeline",
+    "description": "Timeline ordered by madeAt timestamp",
+    "steps": [
+      "Open document with edits from multiple collaborators",
+      "Enter Time Machine mode",
+      "Navigate through edits",
+      "Verify edits are ordered chronologically by madeAt",
+      "Verify interleaved edits from different users appear in correct order"
+    ],
+    "passes": false
+  },
+  {
+    "category": "timeline",
+    "description": "Assets shown are those that existed at edit timestamp",
+    "steps": [
+      "Open document where an asset was added after some content edits",
+      "Enter Time Machine mode",
+      "Navigate to edit before asset was added",
+      "Verify asset panel does not show the later-added asset",
+      "Navigate to edit after asset was added",
+      "Verify asset panel shows the asset"
+    ],
+    "passes": false
+  },
+  {
+    "category": "timeline",
+    "description": "Timeline silently updates when collaborators make edits",
+    "steps": [
+      "Enter Time Machine mode",
+      "Have a collaborator make new edits to the document",
+      "Verify new edits appear at end of timeline",
+      "Verify slider range extends to include new edits",
+      "Verify current position is preserved"
+    ],
+    "passes": false
+  },
+  {
+    "category": "collaboration",
+    "description": "Restore overwrites regardless of concurrent edits",
+    "steps": [
+      "User A enters Time Machine mode",
+      "User B makes edits to the document",
+      "User A clicks 'Restore This Version'",
+      "Verify restore completes successfully",
+      "Verify document content is the restored version",
+      "Verify User B's recent edits are in history but overwritten"
+    ],
+    "passes": false
+  },
+  {
+    "category": "collaboration",
+    "description": "Multiple users can be in Time Machine simultaneously",
+    "steps": [
+      "User A enters Time Machine mode",
+      "User B enters Time Machine mode",
+      "Verify both users can navigate independently",
+      "Verify both see consistent edit history"
+    ],
+    "passes": false
+  },
+  {
+    "category": "edge-cases",
+    "description": "Time Machine handles documents with thousands of edits",
+    "steps": [
+      "Open document with 5000+ edits",
+      "Enter Time Machine mode",
+      "Verify UI remains responsive",
+      "Verify slider is usable",
+      "Verify zoom controls work correctly",
+      "Verify navigation is smooth"
+    ],
+    "passes": false
+  },
+  {
+    "category": "edge-cases",
+    "description": "Time Machine handles very old edits",
+    "steps": [
+      "Open document with edits from months/years ago",
+      "Enter Time Machine mode",
+      "Navigate to oldest edit",
+      "Verify content is reconstructed correctly",
+      "Verify date displays correctly"
+    ],
+    "passes": false
+  },
+  {
+    "category": "edge-cases",
+    "description": "Time Machine works offline",
+    "steps": [
+      "Load a document while online",
+      "Go offline",
+      "Enter Time Machine mode",
+      "Verify cached edit history is accessible",
+      "Verify navigation works with cached data"
+    ],
+    "passes": false
+  },
+  {
+    "category": "edge-cases",
+    "description": "Presentation mode and Time Machine are independent",
+    "steps": [
+      "Open document in presentation/teleprompter mode",
+      "Attempt to enter Time Machine",
+      "Verify Time Machine shows content history (not presentation view)",
+      "Exit Time Machine",
+      "Verify presentation mode can be resumed"
+    ],
+    "passes": false
+  },
+  {
+    "category": "edge-cases",
+    "description": "Time Machine handles deleted assets gracefully",
+    "steps": [
+      "Navigate to edit that references an asset that was later deleted",
+      "Verify document content shows image reference",
+      "Verify deleted asset either shows placeholder or is handled gracefully"
+    ],
+    "passes": false
+  }
+]

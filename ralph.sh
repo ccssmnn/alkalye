@@ -6,7 +6,7 @@ MAX_ITERATIONS=50
 PRD_FILE="prd.json"
 PROGRESS_FILE="progress.txt"
 COMPLETE_TOKEN="<promise>COMPLETE</promise>"
-MODEL="anthropic/claude-opus-4-5-20251101"
+MODEL="claude-opus-4-5-20251101"
 
 # Initialize progress file if it doesn't exist
 touch "$PROGRESS_FILE"
@@ -48,8 +48,8 @@ CRITICAL:
 - All commits MUST pass typecheck and tests
 - Always append to progress.txt, never overwrite"
 
-  # Run opencode with the prompt using 'run' subcommand
-  OUTPUT=$(opencode run --model "$MODEL" "$PROMPT" 2>&1) || true
+  # Run claude code with the prompt in print mode, allowing all permissions
+  OUTPUT=$(claude -p "$PROMPT" --model "$MODEL" --dangerously-skip-permissions 2>&1) || true
 
   echo "$OUTPUT"
   
