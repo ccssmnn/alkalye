@@ -58,7 +58,7 @@
 			"Verify Time Machine opens without blocking",
 			"Verify pending changes will appear in timeline once synced"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "exit",
