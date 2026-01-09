@@ -306,8 +306,23 @@ function EditorContent({
 				document.documentElement.dataset.focusMode = String(!current)
 			},
 			docWithContent,
+			timeMachine: timeMachineMode
+				? {
+						currentEdit: currentEditIndex,
+						totalEdits,
+					}
+				: undefined,
 		})
-	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
+	}, [
+		navigate,
+		docId,
+		toggleLeft,
+		toggleRight,
+		docWithContent,
+		timeMachineMode,
+		currentEditIndex,
+		totalEdits,
+	])
 
 	let allDocs = getPersonalDocs(me)
 
@@ -758,8 +773,38 @@ function setupKeyboardShortcuts(opts: {
 	toggleRight: () => void
 	toggleFocusMode: () => void
 	docWithContent: MaybeDocWithContent
+	timeMachine?: { currentEdit: number; totalEdits: number }
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
+		// Time Machine navigation: [ for previous, ] for next
+		if (opts.timeMachine && !e.metaKey && !e.ctrlKey && !e.altKey) {
+			let { currentEdit, totalEdits } = opts.timeMachine
+			if (e.key === "[") {
+				e.preventDefault()
+				if (currentEdit > 0) {
+					opts.navigate({
+						to: "/doc/$id",
+						params: { id: opts.docId },
+						search: { timemachine: true, edit: currentEdit - 1 },
+						replace: true,
+					})
+				}
+				return
+			}
+			if (e.key === "]") {
+				e.preventDefault()
+				if (currentEdit < totalEdits - 1) {
+					opts.navigate({
+						to: "/doc/$id",
+						params: { id: opts.docId },
+						search: { timemachine: true, edit: currentEdit + 1 },
+						replace: true,
+					})
+				}
+				return
+			}
+		}
+
 		// Cmd+Alt+R: Preview
 		if (
 			(e.metaKey || e.ctrlKey) &&

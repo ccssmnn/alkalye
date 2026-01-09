@@ -168,7 +168,7 @@
 			"Press [ key",
 			"Verify slider moves one edit backward"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "navigation",

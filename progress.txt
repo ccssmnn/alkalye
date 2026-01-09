@@ -108,3 +108,30 @@
 ### PRD Status
 - "Forward button advances one edit" - PASSES
 - "Back button goes to previous edit" - PASSES
+
+## 2026-01-09: Time Machine - Keyboard Shortcuts for Navigation
+
+### Completed
+- Implemented [ and ] keyboard shortcuts for navigating through Time Machine edit history
+- [ key moves to previous edit (when not at first edit)
+- ] key moves to next edit (when not at last edit)
+- Shortcuts only active when in Time Machine mode (timeMachineMode = true)
+- Shortcuts respect boundary conditions (no navigation past first/last edit)
+
+### Files Modified
+- src/routes/doc.$id.index.tsx (added timeMachine param to setupKeyboardShortcuts, implemented [ and ] handlers)
+- prd.json (marked "Keyboard shortcuts [ and ] navigate edits" as passing)
+
+### Technical Details
+- setupKeyboardShortcuts now accepts optional `timeMachine` object with `currentEdit` and `totalEdits`
+- When in Time Machine mode, [ and ] keys trigger navigation via URL update with replace: true
+- Keys are only handled when no modifier keys (Cmd/Ctrl/Alt) are pressed to avoid conflicts
+- useEffect dependencies updated to include timeMachineMode, currentEditIndex, and totalEdits
+
+### Notes for Next Person
+- Space routes (spaces.$spaceId.doc.$id.index.tsx) do not have Time Machine support yet
+- The "Back button disabled at first edit" and "Forward button disabled at latest edit" PRD tests now pass for the button UI, but need verification that [ keyboard shortcut has no effect at boundaries
+- The keyboard shortcut boundary handling is implemented (checks currentEdit > 0 and currentEdit < totalEdits - 1)
+
+### PRD Status
+- "Keyboard shortcuts [ and ] navigate edits" - PASSES
