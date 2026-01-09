@@ -432,7 +432,7 @@
 			"Verify new document is in same space",
 			"Verify assets that existed at that edit are included"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "actions",

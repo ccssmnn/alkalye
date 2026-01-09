@@ -839,3 +839,44 @@ When centering is not possible due to boundaries:
 
 ### PRD Status
 - "Sidebar shows read-only compatible items with disabled edit actions" - PASSES
+
+## 2026-01-09: Time Machine - Create Copy Inherits Space and Assets
+
+### Completed
+- Updated `makeTimeMachineCreateCopy` to properly inherit space group hierarchy and copy all assets
+- When document is in a space, new document gets a group with space group as parent for proper permission inheritance
+- All assets are deep-copied with new image blobs and new asset IDs
+- Asset references in content are updated to use new asset IDs
+- New document is added to space.documents if in a space, otherwise to me.root.documents
+
+### Files Modified
+- src/routes/doc.$id.index.tsx
+  - Added `getSpaceGroup` import from `@/lib/spaces`
+  - Added `LoadedSpace` type definition
+  - Updated `makeTimeMachineCreateCopy` to:
+    - Determine owner group based on whether document is in a space
+    - If in space: create group with space group as parent for permission inheritance
+    - Copy all assets by iterating through doc.assets, extracting blobs, creating new images
+    - Build assetIdMap to track old→new asset ID mappings
+    - Replace asset references in content using regex replacement
+    - Create document with assets property
+    - Add to appropriate list (space.documents or me.root.documents)
+- prd.json (marked "Create Copy inherits space and assets" as passing)
+
+### Technical Details
+- Uses same asset copying pattern as `duplicateDocument` in duplicate-doc-dialog.tsx
+- Group hierarchy: For space docs, creates `Group.create()` then `owner.addMember(spaceGroup)`
+  - This makes the space group a parent, so document inherits space permissions
+- Asset copying: `createImage(blob, { owner, maxSize: 2048 })` creates new image owned by new group
+- Content replacement: `content.replace(new RegExp(\`\\(asset:${oldId}\\)\`, "g"), \`(asset:${newId})\`)`
+- Function is now async to handle `createImage()` promise
+
+### Algorithm Summary
+1. Determine owner group (personal or with space parent)
+2. For each asset: extract blob → create new image → create new Asset → map old→new ID
+3. Replace all `(asset:oldId)` references with `(asset:newId)` in content
+4. Create document with copied assets and updated content
+5. Add to correct list (space.documents or me.root.documents)
+
+### PRD Status
+- "Create Copy inherits space and assets" - PASSES

@@ -86,6 +86,7 @@ import {
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { toast } from "sonner"
 import type { ID } from "jazz-tools"
+import { getSpaceGroup } from "@/lib/spaces"
 
 export { Route }
 
@@ -866,19 +867,97 @@ type TimeMachineCopyParams = {
 	navigate: ReturnType<typeof useNavigate>
 }
 
+type LoadedSpace = co.loaded<typeof Space, { documents: true }>
+
 function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
-	return function handleTimeMachineCreateCopy() {
+	return async function handleTimeMachineCreateCopy() {
 		let { doc, historicalContent, originalTitle, editDate, me, navigate } =
 			params
 		if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
+
+		// Determine the owner group for the new document
+		let owner: Group
+		let targetSpace: LoadedSpace | undefined
+
+		if (doc.spaceId) {
+			// Find the target space for proper group hierarchy
+			let space = me.root.spaces?.find(s => s?.$jazz.id === doc.spaceId)
+			if (space?.$isLoaded) {
+				targetSpace = space as LoadedSpace
+				// Create document-specific group with space group as parent
+				let spaceGroup = getSpaceGroup(space as LoadedSpace)
+				if (spaceGroup) {
+					owner = Group.create()
+					owner.addMember(spaceGroup)
+				} else {
+					// Fallback to personal group if space group not found
+					owner = Group.create()
+				}
+			} else {
+				// Fallback to personal group if space not loaded
+				owner = Group.create()
+			}
+		} else {
+			// Personal document - create new group
+			owner = Group.create()
+		}
+
+		// Build a map of old asset ID -> new asset ID for content replacement
+		let assetIdMap = new Map<string, string>()
+		let newAssets = co.list(Asset).create([], owner)
+		let assets = doc.assets ?? []
+
+		// Deep copy each asset
+		for (let asset of [...assets]) {
+			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
+
+			let original = asset.image.original
+			if (!original?.$isLoaded) continue
+
+			let blob = original.toBlob()
+			if (!blob) continue
+
+			try {
+				// Create a new image from the blob
+				let newImage = await createImage(blob, {
+					owner,
+					maxSize: 2048,
+				})
+
+				// Create a new asset with the copied image
+				let newAsset = Asset.create(
+					{
+						type: "image",
+						name: asset.name,
+						image: newImage,
+						createdAt: new Date(),
+					},
+					owner,
+				)
+
+				newAssets.$jazz.push(newAsset)
+				assetIdMap.set(asset.$jazz.id, newAsset.$jazz.id)
+			} catch (err) {
+				console.error("Failed to copy asset:", err)
+				toast.error(`Failed to copy asset: ${asset.name}`)
+			}
+		}
+
+		// Replace asset references in content with new asset IDs
+		let content = historicalContent
+		for (let [oldId, newId] of assetIdMap) {
+			content = content.replace(
+				new RegExp(`\\(asset:${oldId}\\)`, "g"),
+				`(asset:${newId})`,
+			)
+		}
 
 		// Add frontmatter noting the source
 		let formattedDate = formatEditDate(editDate)
 		let frontmatter = `---\ntimemachine: restored from ${originalTitle} at ${formattedDate}\n---\n\n`
 
 		// Add frontmatter to content, update title to indicate it's a copy
-		let contentWithTitle = historicalContent
-		let lines = contentWithTitle.split("\n")
+		let lines = content.split("\n")
 		let newTitle = `${originalTitle} (restored)`
 
 		// Replace or add title
@@ -890,21 +969,26 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 
 		let finalContent = frontmatter + lines.join("\n")
 
-		// Create the new document in same space as original (or personal if no space)
+		// Create the new document
 		let now = new Date()
-		let group = Group.create()
 		let newDoc = Document.create(
 			{
 				version: 1,
-				content: co.plainText().create(finalContent, group),
+				content: co.plainText().create(finalContent, owner),
+				assets: newAssets,
 				createdAt: now,
 				updatedAt: now,
 				spaceId: doc.spaceId,
 			},
-			group,
+			owner,
 		)
 
-		me.root.documents.$jazz.push(newDoc)
+		// Add to the appropriate list
+		if (targetSpace?.documents?.$isLoaded) {
+			targetSpace.documents.$jazz.push(newDoc)
+		} else {
+			me.root.documents.$jazz.push(newDoc)
+		}
 
 		// Navigate to the new document
 		navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
