@@ -568,7 +568,7 @@ function EditorContent({
 							currentEdit={currentEditIndex}
 							totalEdits={totalEdits}
 							disabled={totalEdits <= 1}
-							zoomLevel={timeMachineZoom ?? "all"}
+							zoomLevel={timeMachineZoom ?? 100}
 							onEditChange={editIndex => {
 								navigate({
 									to: "/doc/$id",
