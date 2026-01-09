@@ -406,7 +406,7 @@
 				"Verify styles are extracted",
 				"Verify theme appears as preview type"
 			],
-			"passes": false
+			"passes": true
 		},
 		{
 			"category": "compatibility",

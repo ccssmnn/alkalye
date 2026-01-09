@@ -21,7 +21,10 @@ import { parseFrontmatter, setTheme } from "@/editor/frontmatter"
 
 export { ThemePicker }
 
-type LoadedTheme = co.loaded<typeof Theme, typeof themesResolve.root.themes.$each>
+type LoadedTheme = co.loaded<
+	typeof Theme,
+	typeof themesResolve.root.themes.$each
+>
 
 interface ThemePickerProps {
 	content: string
@@ -169,14 +172,11 @@ function ThemeMenuItem({
 				<TooltipContent
 					side="left"
 					sideOffset={8}
-					className="bg-popover text-popover-foreground w-56 p-0 ring-1 ring-foreground/10"
+					className="bg-popover text-popover-foreground ring-foreground/10 w-56 p-0 ring-1"
 				>
 					{thumbnailId && (
 						<div className="bg-muted aspect-video w-full overflow-hidden">
-							<Image
-								imageId={thumbnailId}
-								className="size-full object-cover"
-							/>
+							<Image imageId={thumbnailId} className="size-full object-cover" />
 						</div>
 					)}
 					<div className="p-3">

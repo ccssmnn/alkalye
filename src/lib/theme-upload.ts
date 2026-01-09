@@ -12,6 +12,12 @@ export {
 	type ThemeUploadError,
 }
 
+// iA Writer template detection and conversion
+// iA Writer templates are bundles with structure:
+// TemplateName.iatemplate/Contents/Info.plist
+// TemplateName.iatemplate/Contents/Resources/document.html
+// TemplateName.iatemplate/Contents/Resources/style.css
+
 // Schema for theme.json manifest file
 let ThemeJsonSchema = z.object({
 	version: z.literal(1),
@@ -77,6 +83,13 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 				message: "Failed to read zip file. Make sure it's a valid zip archive.",
 			},
 		}
+	}
+
+	// Check for iA Writer template format first
+	// iA Writer templates have Contents/Info.plist structure
+	let plistPath = findIAWriterPlist(zip)
+	if (plistPath) {
+		return parseIAWriterTemplate(zip, plistPath)
 	}
 
 	// Find theme.json - could be at root or in a single top-level folder
@@ -366,4 +379,305 @@ function getImageMimeType(path: string): string {
 		svg: "image/svg+xml",
 	}
 	return mimeTypes[ext || ""] || "image/png"
+}
+
+// iA Writer template support
+
+interface IAWriterPlist {
+	CFBundleName?: string
+	IATemplateDocumentFile?: string
+	IATemplateDescription?: string
+	IATemplateAuthor?: string
+}
+
+function findIAWriterPlist(zip: JSZip): string | null {
+	let found: string | null = null
+	zip.forEach((path, entry) => {
+		if (entry.dir) return
+		// Match patterns like:
+		// Contents/Info.plist (at root)
+		// Something.iatemplate/Contents/Info.plist (one folder deep)
+		// Something/Contents/Info.plist (one folder deep)
+		if (
+			path.endsWith("/Contents/Info.plist") ||
+			path === "Contents/Info.plist"
+		) {
+			found = path
+		}
+	})
+	return found
+}
+
+function parsePlist(content: string): IAWriterPlist {
+	// Simple XML plist parser for the fields we need
+	// Handles the standard Apple plist format
+	let result: IAWriterPlist = {}
+
+	// Extract key-value pairs from dict
+	let keyRegex = /<key>([^<]+)<\/key>\s*<string>([^<]*)<\/string>/g
+	let match: RegExpExecArray | null
+
+	while ((match = keyRegex.exec(content)) !== null) {
+		let key = match[1]
+		let value = match[2]
+
+		if (key === "CFBundleName") {
+			result.CFBundleName = value
+		} else if (key === "IATemplateDocumentFile") {
+			result.IATemplateDocumentFile = value
+		} else if (key === "IATemplateDescription") {
+			result.IATemplateDescription = value
+		} else if (key === "IATemplateAuthor") {
+			result.IATemplateAuthor = value
+		}
+	}
+
+	return result
+}
+
+function extractCssPathsFromHtml(html: string): string[] {
+	// Extract CSS file paths from <link rel="stylesheet" href="...">
+	let paths: string[] = []
+	let linkRegex = /<link[^>]+href=["']([^"']+)["'][^>]*>/gi
+	let match: RegExpExecArray | null
+
+	while ((match = linkRegex.exec(html)) !== null) {
+		let href = match[1]
+		// Only include relative paths (not http/https URLs)
+		if (
+			!href.startsWith("http://") &&
+			!href.startsWith("https://") &&
+			!href.startsWith("//")
+		) {
+			paths.push(href)
+		}
+	}
+
+	return paths
+}
+
+function extractImportsFromCss(
+	css: string,
+	basePath: string,
+	zip: JSZip,
+): string[] {
+	// Extract @import paths from CSS
+	let paths: string[] = []
+	let importRegex = /@import\s+['"]([^'"]+)['"]/g
+	let match: RegExpExecArray | null
+
+	while ((match = importRegex.exec(css)) !== null) {
+		let importPath = match[1]
+		// Only include relative paths
+		if (
+			!importPath.startsWith("http://") &&
+			!importPath.startsWith("https://") &&
+			!importPath.startsWith("//")
+		) {
+			// Resolve relative path
+			let fullPath = basePath + importPath
+			if (zip.file(fullPath)) {
+				paths.push(importPath)
+			}
+		}
+	}
+
+	return paths
+}
+
+async function parseIAWriterTemplate(
+	zip: JSZip,
+	plistPath: string,
+): Promise<ParseResult> {
+	// Determine base paths
+	// plistPath is like "Something.iatemplate/Contents/Info.plist" or "Contents/Info.plist"
+	let contentsPath = plistPath.substring(0, plistPath.lastIndexOf("/") + 1) // "Something.iatemplate/Contents/"
+	let resourcesPath = contentsPath + "Resources/"
+
+	// Read and parse Info.plist
+	let plistContent: string
+	try {
+		plistContent = await zip.file(plistPath)!.async("string")
+	} catch {
+		return {
+			ok: false,
+			error: {
+				type: "invalid_manifest",
+				message: "Failed to read Info.plist",
+				errors: ["Could not read file contents"],
+			},
+		}
+	}
+
+	let plist = parsePlist(plistContent)
+
+	// Validate required fields
+	if (!plist.CFBundleName) {
+		return {
+			ok: false,
+			error: {
+				type: "invalid_manifest",
+				message:
+					"Invalid iA Writer template: missing CFBundleName in Info.plist",
+				errors: ["CFBundleName is required"],
+			},
+		}
+	}
+
+	if (!plist.IATemplateDocumentFile) {
+		return {
+			ok: false,
+			error: {
+				type: "invalid_manifest",
+				message:
+					"Invalid iA Writer template: missing IATemplateDocumentFile in Info.plist",
+				errors: ["IATemplateDocumentFile is required"],
+			},
+		}
+	}
+
+	// Read document.html (main template)
+	let templateFileName = plist.IATemplateDocumentFile + ".html"
+	let templatePath = resourcesPath + templateFileName
+	let templateFile = zip.file(templatePath)
+
+	if (!templateFile) {
+		return {
+			ok: false,
+			error: {
+				type: "missing_file",
+				message: `Template file not found: ${templateFileName}`,
+				path: templatePath,
+			},
+		}
+	}
+
+	let rawTemplate: string
+	try {
+		rawTemplate = await templateFile.async("string")
+	} catch {
+		return {
+			ok: false,
+			error: {
+				type: "missing_file",
+				message: `Failed to read template file: ${templateFileName}`,
+				path: templatePath,
+			},
+		}
+	}
+
+	// Extract CSS file paths from HTML
+	let cssFilePaths = extractCssPathsFromHtml(rawTemplate)
+
+	// Read and concatenate all CSS files
+	let cssContents: string[] = []
+	let processedCssFiles = new Set<string>()
+
+	async function processCssFile(cssFileName: string): Promise<void> {
+		if (processedCssFiles.has(cssFileName)) return
+		processedCssFiles.add(cssFileName)
+
+		let cssPath = resourcesPath + cssFileName
+		let cssFile = zip.file(cssPath)
+		if (!cssFile) return
+
+		try {
+			let cssContent = await cssFile.async("string")
+
+			// Find @import statements and process those files first
+			let imports = extractImportsFromCss(cssContent, resourcesPath, zip)
+			for (let importPath of imports) {
+				await processCssFile(importPath)
+			}
+
+			// Remove @import statements from the CSS since we're inlining them
+			let cleanedCss = cssContent.replace(
+				/@import\s+['"][^'"]+['"]\s*[^;]*;?/g,
+				"",
+			)
+			if (cleanedCss.trim()) {
+				cssContents.push(`/* Source: ${cssFileName} */\n${cleanedCss}`)
+			}
+		} catch {
+			// CSS file failed to load, skip it
+		}
+	}
+
+	for (let cssFilePath of cssFilePaths) {
+		await processCssFile(cssFilePath)
+	}
+
+	// Also try style.css if not already included
+	if (!processedCssFiles.has("style.css")) {
+		await processCssFile("style.css")
+	}
+
+	// Combine all CSS
+	let combinedCss = cssContents.join("\n\n")
+
+	if (!combinedCss.trim()) {
+		return {
+			ok: false,
+			error: {
+				type: "missing_css",
+				message: "No CSS files found in iA Writer template",
+			},
+		}
+	}
+
+	// Sanitize CSS and HTML
+	let sanitizedCss = sanitizeCss(combinedCss).sanitized
+	let sanitizedTemplate = sanitizeHtml(rawTemplate).sanitized
+
+	// Extract font files from Resources folder
+	let assets: ParsedThemeAsset[] = []
+	let fontExtensions = [".woff2", ".woff", ".ttf", ".otf"]
+
+	zip.forEach((path, entry) => {
+		if (entry.dir) return
+		if (!path.startsWith(resourcesPath)) return
+
+		let ext = path.toLowerCase().substring(path.lastIndexOf("."))
+		if (fontExtensions.includes(ext)) {
+			// Will be loaded async below
+		}
+	})
+
+	// Load font files
+	for (let [path, entry] of Object.entries(zip.files)) {
+		if (entry.dir) continue
+		if (!path.startsWith(resourcesPath)) continue
+
+		let ext = path.toLowerCase().substring(path.lastIndexOf("."))
+		if (fontExtensions.includes(ext)) {
+			try {
+				let blob = await entry.async("blob")
+				let fileName = path.substring(path.lastIndexOf("/") + 1)
+				let mimeType = getFontMimeType(fileName)
+				let file = new File([blob], fileName, { type: mimeType })
+				assets.push({
+					name: fileName,
+					mimeType,
+					file,
+				})
+			} catch {
+				// Font loading failed, skip
+			}
+		}
+	}
+
+	return {
+		ok: true,
+		theme: {
+			name: plist.CFBundleName,
+			author: plist.IATemplateAuthor,
+			description: plist.IATemplateDescription,
+			type: "preview", // iA Writer templates are always preview type
+			css: sanitizedCss,
+			template: sanitizedTemplate,
+			presets: undefined,
+			assets,
+			thumbnail: undefined,
+		},
+	}
 }

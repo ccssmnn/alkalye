@@ -712,3 +712,64 @@ When a theme preset is active, the following CSS variables are injected into `:r
 - "Theme is included in PDF export" not implemented (requires browser print integration)
 - Compatibility imports (iA Writer/Presenter) not implemented
 - Collaboration features (theme sharing) not implemented
+
+## 2026-01-09: iA Writer Template Import Compatibility
+
+### What was done
+- Implemented iA Writer template (.iatemplate) import support in `src/lib/theme-upload.ts`
+- The system now automatically detects and parses iA Writer templates when uploading a zip file
+
+- Added `findIAWriterPlist(zip)` function to detect iA Writer bundle structure:
+  - Looks for `Contents/Info.plist` at root or one level deep
+  - Recognizes standard iA Writer bundle structure: `TemplateName.iatemplate/Contents/Info.plist`
+
+- Added `parsePlist(content)` function for XML plist parsing:
+  - Extracts `CFBundleName` (theme display name)
+  - Extracts `IATemplateDocumentFile` (main template filename without .html extension)
+  - Extracts `IATemplateDescription` (optional description)
+  - Extracts `IATemplateAuthor` (optional author name)
+  - Simple regex-based parser handles standard Apple plist format
+
+- Added `extractCssPathsFromHtml(html)` function:
+  - Extracts CSS file paths from `<link rel="stylesheet" href="...">` tags
+  - Filters out external URLs (http/https/protocol-relative)
+
+- Added `extractImportsFromCss(css, basePath, zip)` function:
+  - Extracts `@import` paths from CSS files
+  - Resolves relative paths within the Resources folder
+  - Only includes imports that exist in the zip
+
+- Added `parseIAWriterTemplate(zip, plistPath)` function:
+  - Reads Info.plist and validates required fields
+  - Locates and reads document.html template from Resources folder
+  - Collects all CSS files (from HTML links and @import statements)
+  - Inlines @import statements to create a single combined CSS file
+  - Extracts font assets (.woff2, .woff, .ttf, .otf) from Resources folder
+  - Sanitizes both HTML and CSS before returning
+  - Returns ParsedTheme with type: "preview" (iA Writer templates are always preview-only)
+
+- Updated `parseThemeZip()` to check for iA Writer format before standard theme.json format:
+  - If `Contents/Info.plist` is found, routes to `parseIAWriterTemplate()`
+  - Otherwise continues with standard theme.json parsing
+
+### How iA Writer template import works
+1. User uploads a `.iatemplate.zip` file in Settings > Themes
+2. System detects `Contents/Info.plist` in the bundle structure
+3. Parses Info.plist to get name, author, description, and document file
+4. Reads document.html template (uses `data-document` attribute for content - already compatible!)
+5. Extracts all CSS from linked stylesheets and @import statements
+6. Combines CSS into single file with source comments
+7. Extracts any font files from Resources folder
+8. Returns as a preview-type theme ready for storage
+
+### Files changed
+- `src/lib/theme-upload.ts` (added iA Writer compatibility layer)
+- `prd.json` (marked iA Writer import as passes: true)
+
+### PRD requirements completed
+- [x] compatibility: "iA Writer template zip can be imported" - passes: true
+
+### Notes for next steps
+- iA Presenter theme import still not implemented (different structure with template.json and presets)
+- "Theme is included in PDF export" not implemented
+- Collaboration features (theme sharing) not implemented
