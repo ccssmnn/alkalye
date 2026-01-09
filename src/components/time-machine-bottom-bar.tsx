@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from "react"
+import { useRef } from "react"
 import { Button } from "@/components/ui/button"
+import { Slider } from "@/components/ui/slider"
 import { ChevronLeft, ChevronRight, ChevronDown } from "lucide-react"
 import {
 	DropdownMenu,
@@ -8,108 +9,165 @@ import {
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
 } from "@/components/ui/dropdown-menu"
+import type { DayGroup } from "@/lib/time-machine"
 
-export { TimeMachineBottomBar, calculateZoomWindow }
-export type { ZoomLevel }
+export { TimeMachineBottomBar }
+export type { ViewMode }
 
-type ZoomLevel = 25 | 100 | 500 | "all"
+type ViewMode = "days" | "edits"
 
 interface TimeMachineBottomBarProps {
-	currentEdit: number
-	totalEdits: number
+	currentEditIndex: number
+	dayGroups: DayGroup[]
+	selectedDayIndex: number | null // null = viewing all days, number = viewing edits within that day
+	viewMode: ViewMode
 	onEditChange: (editIndex: number) => void
+	onViewModeChange: (mode: ViewMode, dayIndex?: number) => void
 	disabled?: boolean
-	zoomLevel: ZoomLevel
-	onZoomChange: (zoom: ZoomLevel) => void
-}
-
-// Calculate the visible window of edits based on zoom level, centered on current edit
-function calculateZoomWindow(
-	currentEdit: number,
-	totalEdits: number,
-	zoomLevel: ZoomLevel,
-): { windowStart: number; windowEnd: number } {
-	if (zoomLevel === "all" || totalEdits <= 1) {
-		return { windowStart: 0, windowEnd: totalEdits - 1 }
-	}
-
-	let windowSize = zoomLevel
-	let halfWindow = Math.floor(windowSize / 2)
-
-	// Try to center on current edit
-	let windowStart = currentEdit - halfWindow
-	let windowEnd = windowStart + windowSize - 1
-
-	// Clamp to valid range
-	if (windowStart < 0) {
-		windowStart = 0
-		windowEnd = Math.min(windowSize - 1, totalEdits - 1)
-	}
-	if (windowEnd >= totalEdits) {
-		windowEnd = totalEdits - 1
-		windowStart = Math.max(0, windowEnd - windowSize + 1)
-	}
-
-	return { windowStart, windowEnd }
 }
 
 function TimeMachineBottomBar({
-	currentEdit,
-	totalEdits,
+	currentEditIndex,
+	dayGroups,
+	selectedDayIndex,
+	viewMode,
 	onEditChange,
+	onViewModeChange,
 	disabled = false,
-	zoomLevel,
-	onZoomChange,
 }: TimeMachineBottomBarProps) {
-	// Calculate the zoom window (visible range of edits)
-	let { windowStart, windowEnd } = calculateZoomWindow(
-		currentEdit,
-		totalEdits,
-		zoomLevel,
-	)
-	let windowSize = windowEnd - windowStart + 1
-
-	// Local slider value is relative to the window (0 to windowSize-1)
-	// Convert currentEdit (absolute) to slider position (window-relative)
-	let sliderPosition = currentEdit - windowStart
-	let [localValue, setLocalValue] = useState(sliderPosition)
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
-	// Sync local value when currentEdit or window changes from outside
-	useEffect(() => {
-		setLocalValue(currentEdit - windowStart)
-	}, [currentEdit, windowStart])
+	let totalDays = dayGroups.length
+	let hasHistory = totalDays > 0
+
+	// When viewing days: slider position is day index, value is last edit of that day
+	// When viewing edits within a day: slider position is edit index within that day
+	let isViewingDay = viewMode === "edits" && selectedDayIndex !== null
+	let selectedDay =
+		selectedDayIndex !== null ? dayGroups[selectedDayIndex] : null
+
+	// Find which day the current edit belongs to
+	let currentDayIndex = dayGroups.findIndex(day =>
+		day.edits.some(e => e.index === currentEditIndex),
+	)
+	if (currentDayIndex === -1 && dayGroups.length > 0) {
+		// Fallback to last day if not found
+		currentDayIndex = dayGroups.length - 1
+	}
+
+	// For day view: slider position is the day index
+	// For edit view: slider position is the edit index within the selected day
+	let sliderMax: number
+	let sliderValue: number
+
+	if (isViewingDay && selectedDay) {
+		// Viewing edits within a specific day
+		sliderMax = selectedDay.edits.length - 1
+		let editIndexInDay = selectedDay.edits.findIndex(
+			e => e.index === currentEditIndex,
+		)
+		sliderValue = editIndexInDay >= 0 ? editIndexInDay : 0
+	} else {
+		// Viewing days
+		sliderMax = totalDays - 1
+		sliderValue = currentDayIndex
+	}
 
 	function handleSliderChange(value: number) {
-		setLocalValue(value)
-
-		// Convert window-relative position to absolute edit index
-		let absoluteEdit = windowStart + value
-
-		// Debounce the actual update
 		if (debounceRef.current) {
 			clearTimeout(debounceRef.current)
 		}
 		debounceRef.current = setTimeout(() => {
-			onEditChange(absoluteEdit)
-		}, 150)
+			debounceRef.current = null
+
+			if (isViewingDay && selectedDay) {
+				// Navigate to specific edit within the day
+				let edit = selectedDay.edits[value]
+				if (edit) {
+					onEditChange(edit.index)
+				}
+			} else {
+				// Navigate to last edit of the selected day
+				let day = dayGroups[value]
+				if (day) {
+					onEditChange(day.lastEditIndex)
+				}
+			}
+		}, 50)
 	}
 
 	function handlePrevious() {
-		if (currentEdit > 0) {
-			onEditChange(currentEdit - 1)
+		if (isViewingDay && selectedDay) {
+			// Previous edit within day
+			let editIndexInDay = selectedDay.edits.findIndex(
+				e => e.index === currentEditIndex,
+			)
+			if (editIndexInDay > 0) {
+				onEditChange(selectedDay.edits[editIndexInDay - 1].index)
+			}
+		} else {
+			// Previous day
+			if (currentDayIndex > 0) {
+				onEditChange(dayGroups[currentDayIndex - 1].lastEditIndex)
+			}
 		}
 	}
 
 	function handleNext() {
-		if (currentEdit < totalEdits - 1) {
-			onEditChange(currentEdit + 1)
+		if (isViewingDay && selectedDay) {
+			// Next edit within day
+			let editIndexInDay = selectedDay.edits.findIndex(
+				e => e.index === currentEditIndex,
+			)
+			if (editIndexInDay < selectedDay.edits.length - 1) {
+				onEditChange(selectedDay.edits[editIndexInDay + 1].index)
+			}
+		} else {
+			// Next day
+			if (currentDayIndex < dayGroups.length - 1) {
+				onEditChange(dayGroups[currentDayIndex + 1].lastEditIndex)
+			}
 		}
 	}
 
-	let isAtStart = currentEdit === 0
-	let isAtEnd = currentEdit >= totalEdits - 1
-	let hasHistory = totalEdits > 1
+	let isAtStart =
+		isViewingDay && selectedDay
+			? selectedDay.edits[0]?.index === currentEditIndex
+			: currentDayIndex === 0
+
+	let isAtEnd =
+		isViewingDay && selectedDay
+			? selectedDay.edits[selectedDay.edits.length - 1]?.index ===
+				currentEditIndex
+			: currentDayIndex >= dayGroups.length - 1
+
+	// Format date for display
+	let currentDay = dayGroups[currentDayIndex]
+	let dateDisplay = currentDay
+		? currentDay.date.toLocaleDateString(undefined, {
+				month: "short",
+				day: "numeric",
+				year:
+					currentDay.date.getFullYear() !== new Date().getFullYear()
+						? "numeric"
+						: undefined,
+			})
+		: ""
+
+	// Status text
+	let statusText: string
+	if (!hasHistory) {
+		statusText = "No previous versions"
+	} else if (isViewingDay && selectedDay) {
+		let editIndexInDay =
+			selectedDay.edits.findIndex(e => e.index === currentEditIndex) + 1
+		statusText = `Edit ${editIndexInDay}/${selectedDay.edits.length} on ${dateDisplay}`
+	} else {
+		statusText = `${dateDisplay} (${totalDays} ${totalDays === 1 ? "day" : "days"})`
+	}
+
+	// Dropdown label
+	let modeLabel = isViewingDay ? `${dateDisplay}` : "Days"
 
 	return (
 		<div
@@ -120,74 +178,56 @@ function TimeMachineBottomBar({
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			{/* Mobile: Row 1 - Slider + edit counter */}
+			{/* Mobile: Row 1 - Slider + status */}
 			<div className="flex items-center gap-3 md:hidden">
-				<input
-					type="range"
+				<Slider
 					min={0}
-					max={Math.max(0, windowSize - 1)}
-					value={localValue}
-					onChange={e => handleSliderChange(Number(e.target.value))}
-					disabled={disabled || !hasHistory}
-					className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-gray-200 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:accent-gray-100"
+					max={Math.max(0, sliderMax)}
+					value={[sliderValue]}
+					onValueChange={value =>
+						handleSliderChange(Array.isArray(value) ? value[0] : value)
+					}
+					disabled={disabled || !hasHistory || sliderMax === 0}
+					className="flex-1"
 				/>
-				<div className="text-muted-foreground shrink-0 text-sm tabular-nums">
-					{hasHistory ? (
-						<>
-							{currentEdit + 1}/{totalEdits}
-						</>
-					) : (
-						"No previous versions"
-					)}
-				</div>
 			</div>
 
-			{/* Mobile: Row 2 - Navigation buttons + zoom dropdown */}
-			<div className="flex items-center justify-center gap-3 md:hidden">
-				<Button
-					variant="outline"
-					size="icon"
-					onClick={handlePrevious}
-					disabled={disabled || isAtStart || !hasHistory}
-					aria-label="Previous edit"
-					className="size-10"
-				>
-					<ChevronLeft className="size-5" />
-				</Button>
-				<Button
-					variant="outline"
-					size="icon"
-					onClick={handleNext}
-					disabled={disabled || isAtEnd || !hasHistory}
-					aria-label="Next edit"
-					className="size-10"
-				>
-					<ChevronRight className="size-5" />
-				</Button>
-				<DropdownMenu>
-					<DropdownMenuTrigger
-						disabled={disabled || !hasHistory}
-						className="border-input bg-background hover:bg-accent hover:text-accent-foreground flex h-10 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50"
+			{/* Mobile: Row 2 - Navigation buttons + mode dropdown + status */}
+			<div className="flex items-center justify-between gap-3 md:hidden">
+				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="icon"
+						onClick={handlePrevious}
+						disabled={disabled || isAtStart || !hasHistory}
+						aria-label={isViewingDay ? "Previous edit" : "Previous day"}
+						className="size-10"
 					>
-						<span>{zoomLevel === "all" ? "All" : zoomLevel}</span>
-						<ChevronDown className="size-4 opacity-50" />
-					</DropdownMenuTrigger>
-					<DropdownMenuContent side="top" align="center">
-						<DropdownMenuRadioGroup
-							value={String(zoomLevel)}
-							onValueChange={value => {
-								let zoom: ZoomLevel =
-									value === "all" ? "all" : (Number(value) as 25 | 100 | 500)
-								onZoomChange(zoom)
-							}}
-						>
-							<DropdownMenuRadioItem value="25">25</DropdownMenuRadioItem>
-							<DropdownMenuRadioItem value="100">100</DropdownMenuRadioItem>
-							<DropdownMenuRadioItem value="500">500</DropdownMenuRadioItem>
-							<DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-						</DropdownMenuRadioGroup>
-					</DropdownMenuContent>
-				</DropdownMenu>
+						<ChevronLeft className="size-5" />
+					</Button>
+					<Button
+						variant="outline"
+						size="icon"
+						onClick={handleNext}
+						disabled={disabled || isAtEnd || !hasHistory}
+						aria-label={isViewingDay ? "Next edit" : "Next day"}
+						className="size-10"
+					>
+						<ChevronRight className="size-5" />
+					</Button>
+				</div>
+				<ModeDropdown
+					dayGroups={dayGroups}
+					currentDayIndex={currentDayIndex}
+					isViewingDay={isViewingDay}
+					modeLabel={modeLabel}
+					disabled={disabled}
+					hasHistory={hasHistory}
+					onViewModeChange={onViewModeChange}
+				/>
+				<div className="text-muted-foreground shrink-0 text-sm">
+					{statusText}
+				</div>
 			</div>
 
 			{/* Desktop: Single row layout */}
@@ -197,7 +237,7 @@ function TimeMachineBottomBar({
 					size="icon"
 					onClick={handlePrevious}
 					disabled={disabled || isAtStart || !hasHistory}
-					aria-label="Previous edit"
+					aria-label={isViewingDay ? "Previous edit" : "Previous day"}
 				>
 					<ChevronLeft className="size-4" />
 				</Button>
@@ -206,58 +246,103 @@ function TimeMachineBottomBar({
 					size="icon"
 					onClick={handleNext}
 					disabled={disabled || isAtEnd || !hasHistory}
-					aria-label="Next edit"
+					aria-label={isViewingDay ? "Next edit" : "Next day"}
 				>
 					<ChevronRight className="size-4" />
 				</Button>
 			</div>
 
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					disabled={disabled || !hasHistory}
-					className="border-input bg-background hover:bg-accent hover:text-accent-foreground hidden h-9 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:flex"
-				>
-					<span>{zoomLevel === "all" ? "All" : zoomLevel}</span>
-					<ChevronDown className="size-4 opacity-50" />
-				</DropdownMenuTrigger>
-				<DropdownMenuContent side="top" align="start">
-					<DropdownMenuRadioGroup
-						value={String(zoomLevel)}
-						onValueChange={value => {
-							let zoom: ZoomLevel =
-								value === "all" ? "all" : (Number(value) as 25 | 100 | 500)
-							onZoomChange(zoom)
-						}}
-					>
-						<DropdownMenuRadioItem value="25">25</DropdownMenuRadioItem>
-						<DropdownMenuRadioItem value="100">100</DropdownMenuRadioItem>
-						<DropdownMenuRadioItem value="500">500</DropdownMenuRadioItem>
-						<DropdownMenuRadioItem value="all">All</DropdownMenuRadioItem>
-					</DropdownMenuRadioGroup>
-				</DropdownMenuContent>
-			</DropdownMenu>
+			<ModeDropdown
+				dayGroups={dayGroups}
+				currentDayIndex={currentDayIndex}
+				isViewingDay={isViewingDay}
+				modeLabel={modeLabel}
+				disabled={disabled}
+				hasHistory={hasHistory}
+				onViewModeChange={onViewModeChange}
+				className="hidden md:flex"
+			/>
 
 			<div className="hidden flex-1 items-center gap-4 md:flex">
-				<input
-					type="range"
+				<Slider
 					min={0}
-					max={Math.max(0, windowSize - 1)}
-					value={localValue}
-					onChange={e => handleSliderChange(Number(e.target.value))}
-					disabled={disabled || !hasHistory}
-					className="h-2 flex-1 cursor-pointer appearance-none rounded-lg bg-gray-200 accent-gray-900 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-gray-700 dark:accent-gray-100"
+					max={Math.max(0, sliderMax)}
+					value={[sliderValue]}
+					onValueChange={value =>
+						handleSliderChange(Array.isArray(value) ? value[0] : value)
+					}
+					disabled={disabled || !hasHistory || sliderMax === 0}
+					className="flex-1"
 				/>
 			</div>
 
-			<div className="text-muted-foreground hidden shrink-0 text-sm tabular-nums md:block">
-				{hasHistory ? (
-					<>
-						{currentEdit + 1}/{totalEdits}
-					</>
-				) : (
-					"No previous versions"
-				)}
+			<div className="text-muted-foreground hidden shrink-0 text-sm md:block">
+				{statusText}
 			</div>
 		</div>
+	)
+}
+
+// --- Mode Dropdown ---
+
+interface ModeDropdownProps {
+	dayGroups: DayGroup[]
+	currentDayIndex: number
+	isViewingDay: boolean
+	modeLabel: string
+	disabled: boolean
+	hasHistory: boolean
+	onViewModeChange: (mode: ViewMode, dayIndex?: number) => void
+	className?: string
+}
+
+function ModeDropdown({
+	dayGroups,
+	currentDayIndex,
+	isViewingDay,
+	modeLabel,
+	disabled,
+	hasHistory,
+	onViewModeChange,
+	className = "",
+}: ModeDropdownProps) {
+	let currentDay = dayGroups[currentDayIndex]
+	let hasMultipleEditsToday = currentDay && currentDay.edits.length > 1
+
+	return (
+		<DropdownMenu>
+			<DropdownMenuTrigger
+				disabled={disabled || !hasHistory}
+				className={`border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${className || "flex"}`}
+			>
+				<span>{modeLabel}</span>
+				<ChevronDown className="size-4 opacity-50" />
+			</DropdownMenuTrigger>
+			<DropdownMenuContent side="top" align="start">
+				<DropdownMenuRadioGroup
+					value={isViewingDay ? "edits" : "days"}
+					onValueChange={value => {
+						if (value === "days") {
+							onViewModeChange("days")
+						} else {
+							onViewModeChange("edits", currentDayIndex)
+						}
+					}}
+				>
+					<DropdownMenuRadioItem value="days">All days</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem
+						value="edits"
+						disabled={!hasMultipleEditsToday}
+					>
+						Edits on{" "}
+						{currentDay?.date.toLocaleDateString(undefined, {
+							month: "short",
+							day: "numeric",
+						})}{" "}
+						({currentDay?.edits.length ?? 0})
+					</DropdownMenuRadioItem>
+				</DropdownMenuRadioGroup>
+			</DropdownMenuContent>
+		</DropdownMenu>
 	)
 }

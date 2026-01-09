@@ -73,25 +73,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
-import { TimeMachineToolbar } from "@/components/time-machine-toolbar"
-import {
-	TimeMachineBottomBar,
-	type ZoomLevel,
-} from "@/components/time-machine-bottom-bar"
-import {
-	getEditHistory,
-	getContentAtEdit,
-	getAuthorName,
-	formatEditDate,
-} from "@/lib/time-machine"
-import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
-import { toast } from "sonner"
-import type { ID } from "jazz-tools"
-import { getSpaceGroup } from "@/lib/spaces"
-
 export { Route }
-
-type ReturnTo = "teleprompter" | "slideshow"
 
 let Route = createFileRoute("/doc/$id/")({
 	validateSearch: (
@@ -99,26 +81,7 @@ let Route = createFileRoute("/doc/$id/")({
 	): {
 		timemachine?: boolean
 		edit?: number
-		zoom?: ZoomLevel
-		returnTo?: ReturnTo
 	} => {
-		let zoom: ZoomLevel | undefined
-		if (search.zoom === "all") {
-			zoom = "all"
-		} else if (
-			search.zoom === "25" ||
-			search.zoom === "100" ||
-			search.zoom === "500" ||
-			search.zoom === 25 ||
-			search.zoom === 100 ||
-			search.zoom === 500
-		) {
-			zoom = Number(search.zoom) as 25 | 100 | 500
-		}
-		let returnTo: ReturnTo | undefined
-		if (search.returnTo === "teleprompter" || search.returnTo === "slideshow") {
-			returnTo = search.returnTo
-		}
 		return {
 			timemachine:
 				search.timemachine === "true" || search.timemachine === true
@@ -128,8 +91,6 @@ let Route = createFileRoute("/doc/$id/")({
 				typeof search.edit === "string" || typeof search.edit === "number"
 					? Number(search.edit)
 					: undefined,
-			zoom,
-			returnTo,
 		}
 	},
 	loader: async ({ params, context }) => {
@@ -150,10 +111,22 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
-	let { timemachine, edit, zoom, returnTo } = Route.useSearch()
+	let { timemachine, edit } = Route.useSearch()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
+
+	// Redirect old Time Machine URLs to the new route
+	useEffect(() => {
+		if (timemachine) {
+			navigate({
+				to: "/doc/$id/timemachine",
+				params: { id },
+				search: { edit },
+				replace: true,
+			})
+		}
+	}, [timemachine, id, edit, navigate])
 
 	// Redirect to space route if doc belongs to a space
 	useEffect(() => {
@@ -202,14 +175,7 @@ function EditorPage() {
 
 	return (
 		<SidebarProvider>
-			<EditorContent
-				doc={doc}
-				docId={id}
-				timeMachineMode={timemachine}
-				timeMachineEdit={edit}
-				timeMachineZoom={zoom}
-				timeMachineReturnTo={returnTo}
-			/>
+			<EditorContent doc={doc} docId={id} />
 		</SidebarProvider>
 	)
 }
@@ -217,20 +183,9 @@ function EditorPage() {
 interface EditorContentProps {
 	doc: LoadedDocument
 	docId: string
-	timeMachineMode?: boolean
-	timeMachineEdit?: number
-	timeMachineZoom?: ZoomLevel
-	timeMachineReturnTo?: ReturnTo
 }
 
-function EditorContent({
-	doc,
-	docId,
-	timeMachineMode = false,
-	timeMachineEdit,
-	timeMachineZoom,
-	timeMachineReturnTo,
-}: EditorContentProps) {
+function EditorContent({ doc, docId }: EditorContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
@@ -238,7 +193,6 @@ function EditorContent({
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
-	let restoreDialog = useConfirmDialog()
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
@@ -251,7 +205,7 @@ function EditorContent({
 			? me.root.settings
 			: data.me?.root?.settings
 
-	let readOnly = !canEdit(doc) || timeMachineMode
+	let readOnly = !canEdit(doc)
 	let canSaveCopy =
 		isAuthenticated &&
 		isDocumentPublic(doc) &&
@@ -279,134 +233,16 @@ function EditorContent({
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
 	useEditorSettings(editorSettings)
 
-	// Scroll position preservation for Time Machine
-	let savedScrollPositionRef = useRef<{ top: number; left: number } | null>(
-		null,
-	)
-	let wasInTimeMachineRef = useRef(timeMachineMode)
-
-	// Save scroll position when entering Time Machine, restore when exiting
-	useEffect(() => {
-		let wasInTimeMachine = wasInTimeMachineRef.current
-		wasInTimeMachineRef.current = timeMachineMode
-
-		if (timeMachineMode && !wasInTimeMachine) {
-			// Entering Time Machine: save current scroll position
-			let scrollPos = editor.current?.getScrollPosition()
-			if (scrollPos) {
-				savedScrollPositionRef.current = scrollPos
-			}
-		} else if (!timeMachineMode && wasInTimeMachine) {
-			// Exiting Time Machine: restore scroll position after a short delay
-			// to allow the content to render first
-			let savedPos = savedScrollPositionRef.current
-			if (savedPos) {
-				requestAnimationFrame(() => {
-					editor.current?.setScrollPosition(savedPos)
-				})
-				savedScrollPositionRef.current = null
-			}
-		}
-	}, [timeMachineMode, editor])
-
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
-
-	// Time Machine state
-	let editHistory = timeMachineMode ? getEditHistory(doc) : []
-	let totalEdits = editHistory.length
-	let currentEditIndex =
-		timeMachineEdit !== undefined
-			? Math.min(Math.max(0, timeMachineEdit), totalEdits - 1)
-			: totalEdits - 1
-	let currentEdit = editHistory[currentEditIndex]
-	// Lazy load content only for the current edit (not all edits)
-	let timeMachineContent = timeMachineMode
-		? getContentAtEdit(doc, currentEditIndex)
-		: content
-	let displayContent = timeMachineMode ? timeMachineContent : content
-
-	// Load the author account for the current Time Machine edit
-	let currentEditAuthor = useCoState(
-		UserAccount,
-		currentEdit?.accountId as ID<typeof UserAccount> | undefined,
-		{ resolve: { profile: true } },
-	)
-
-	// Redirect to include edit param in URL when entering Time Machine without one
-	useEffect(() => {
-		if (timeMachineMode && timeMachineEdit === undefined && totalEdits > 0) {
-			navigate({
-				to: "/doc/$id",
-				params: { id: docId },
-				search: {
-					timemachine: true,
-					edit: totalEdits - 1,
-					zoom: timeMachineZoom,
-				},
-				replace: true,
-			})
-		}
-	}, [
-		timeMachineMode,
-		timeMachineEdit,
-		totalEdits,
-		docId,
-		navigate,
-		timeMachineZoom,
-	])
-
-	// Show toast when edit param is clamped to valid range
-	let shownClampToastRef = useRef(false)
-	useEffect(() => {
-		if (!timeMachineMode || timeMachineEdit === undefined || totalEdits === 0)
-			return
-
-		let wasClamped = timeMachineEdit !== currentEditIndex
-		if (wasClamped && !shownClampToastRef.current) {
-			shownClampToastRef.current = true
-			toast(`Showing edit ${currentEditIndex + 1} of ${totalEdits}`, {
-				description: `Edit ${timeMachineEdit + 1} doesn't exist. Showing closest available version.`,
-				duration: 4000,
-			})
-			// Update URL to show the clamped value
-			navigate({
-				to: "/doc/$id",
-				params: { id: docId },
-				search: {
-					timemachine: true,
-					edit: currentEditIndex,
-					zoom: timeMachineZoom,
-				},
-				replace: true,
-			})
-		}
-	}, [
-		timeMachineMode,
-		timeMachineEdit,
-		currentEditIndex,
-		totalEdits,
-		docId,
-		navigate,
-		timeMachineZoom,
-	])
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
 	})
 
-	// In Time Machine mode, only show assets that existed at the current edit timestamp
-	let currentEditTimestamp = currentEdit?.madeAt
 	let sidebarAssets: SidebarAsset[] =
 		doc.assets
-			?.filter(a => {
-				if (!a?.$isLoaded) return false
-				// In Time Machine mode, filter to assets created before/at the current edit
-				if (timeMachineMode && currentEditTimestamp && a.createdAt) {
-					return a.createdAt <= currentEditTimestamp
-				}
-				return true
-			})
+			?.filter(a => a?.$isLoaded)
 			.map(a => ({
 				id: a.$jazz.id,
 				name: a.name,
@@ -446,25 +282,8 @@ function EditorContent({
 				document.documentElement.dataset.focusMode = String(!current)
 			},
 			docWithContent,
-			timeMachine: timeMachineMode
-				? {
-						currentEdit: currentEditIndex,
-						totalEdits,
-						zoom: timeMachineZoom,
-					}
-				: undefined,
 		})
-	}, [
-		navigate,
-		docId,
-		toggleLeft,
-		toggleRight,
-		docWithContent,
-		timeMachineMode,
-		currentEditIndex,
-		totalEdits,
-		timeMachineZoom,
-	])
+	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
 
 	let allDocs = getPersonalDocs(me)
 
@@ -532,12 +351,10 @@ function EditorContent({
 			<div className="markdown-editor flex-1" ref={containerRef}>
 				<MarkdownEditor
 					ref={editor}
-					value={displayContent}
+					value={content}
 					onChange={newContent => {
-						if (!timeMachineMode) {
-							handleChange(doc, newContent)
-							syncBacklinks(newContent)
-						}
+						handleChange(doc, newContent)
+						syncBacklinks(newContent)
 					}}
 					onCursorChange={(from, to) =>
 						updateCursor(from, from !== to ? to : undefined)
@@ -546,107 +363,23 @@ function EditorContent({
 					readOnly={readOnly}
 					assets={assets}
 					documents={documents}
-					remoteCursors={timeMachineMode ? [] : remoteCursors}
+					remoteCursors={remoteCursors}
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
 				/>
-				{timeMachineMode ? (
-					<>
-						<TimeMachineToolbar
-							docTitle={docTitle}
-							editDate={currentEdit?.madeAt ?? doc.createdAt}
-							authorName={getAuthorName(
-								currentEditAuthor?.$isLoaded ? currentEditAuthor : null,
-								me.$isLoaded ? me.$jazz.id : undefined,
-							)}
-							onExit={() => {
-								if (timeMachineReturnTo === "teleprompter") {
-									navigate({
-										to: "/doc/$id/teleprompter",
-										params: { id: docId },
-									})
-								} else if (timeMachineReturnTo === "slideshow") {
-									navigate({
-										to: "/doc/$id/slideshow",
-										params: { id: docId },
-									})
-								} else {
-									navigate({
-										to: "/doc/$id",
-										params: { id: docId },
-										search: {},
-									})
-								}
-							}}
-							onCreateCopy={makeTimeMachineCreateCopy({
-								doc,
-								historicalContent: timeMachineContent,
-								originalTitle: docTitle,
-								editDate: currentEdit?.madeAt ?? doc.createdAt,
-								me,
-								navigate,
-							})}
-							onRestore={() => restoreDialog.setOpen(true)}
-						/>
-						<ConfirmDialog
-							open={restoreDialog.open}
-							onOpenChange={restoreDialog.onOpenChange}
-							title="Restore this version?"
-							description={`Restore document to ${formatEditDate(currentEdit?.madeAt ?? doc.createdAt)} version? This will overwrite the current content.`}
-							confirmLabel="Restore"
-							cancelLabel="Cancel"
-							onConfirm={makeTimeMachineRestore({
-								doc,
-								historicalContent: timeMachineContent,
-								navigate,
-								docId,
-							})}
-						/>
-						<TimeMachineBottomBar
-							currentEdit={currentEditIndex}
-							totalEdits={totalEdits}
-							disabled={totalEdits <= 1}
-							zoomLevel={timeMachineZoom ?? 100}
-							onEditChange={editIndex => {
-								navigate({
-									to: "/doc/$id",
-									params: { id: docId },
-									search: {
-										timemachine: true,
-										edit: editIndex,
-										zoom: timeMachineZoom,
-									},
-								})
-							}}
-							onZoomChange={newZoom => {
-								navigate({
-									to: "/doc/$id",
-									params: { id: docId },
-									search: {
-										timemachine: true,
-										edit: currentEditIndex,
-										zoom: newZoom,
-									},
-									replace: true,
-								})
-							}}
-						/>
-					</>
-				) : (
-					<EditorToolbar
-						editor={editor}
-						readOnly={readOnly}
-						containerRef={containerRef}
-						onToggleLeftSidebar={toggleLeft}
-						onToggleRightSidebar={toggleRight}
-						onSaveCopy={
-							canSaveCopy
-								? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
-								: undefined
-						}
-						saveCopyState={saveCopyState}
-					/>
-				)}
+				<EditorToolbar
+					editor={editor}
+					readOnly={readOnly}
+					containerRef={containerRef}
+					onToggleLeftSidebar={toggleLeft}
+					onToggleRightSidebar={toggleRight}
+					onSaveCopy={
+						canSaveCopy
+							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
+							: undefined
+					}
+					saveCopyState={saveCopyState}
+				/>
 			</div>
 			<DocumentSidebar
 				header={
@@ -685,12 +418,12 @@ function EditorContent({
 							/>
 							<SidebarEditMenu
 								editor={editor}
-								disabled={!canEdit(doc) && !timeMachineMode}
+								disabled={!canEdit(doc)}
 								readOnly={readOnly}
 							/>
 							<SidebarFormatMenu
 								editor={editor}
-								disabled={!canEdit(doc) && !timeMachineMode}
+								disabled={!canEdit(doc)}
 								readOnly={readOnly}
 								documents={wikiLinkDocs}
 								onCreateDocument={makeCreateDocForWikilink(me, doc)}
@@ -911,168 +644,6 @@ function makeDeleteAsset(
 	}
 }
 
-type TimeMachineCopyParams = {
-	doc: LoadedDocument
-	historicalContent: string
-	originalTitle: string
-	editDate: Date
-	me: LoadedMe
-	navigate: ReturnType<typeof useNavigate>
-}
-
-type LoadedSpace = co.loaded<typeof Space, { documents: true }>
-
-function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
-	return async function handleTimeMachineCreateCopy() {
-		let { doc, historicalContent, originalTitle, editDate, me, navigate } =
-			params
-		if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
-
-		// Determine the owner group for the new document
-		let owner: Group
-		let targetSpace: LoadedSpace | undefined
-
-		if (doc.spaceId) {
-			// Find the target space for proper group hierarchy
-			let space = me.root.spaces?.find(s => s?.$jazz.id === doc.spaceId)
-			if (space?.$isLoaded) {
-				targetSpace = space as LoadedSpace
-				// Create document-specific group with space group as parent
-				let spaceGroup = getSpaceGroup(space as LoadedSpace)
-				if (spaceGroup) {
-					owner = Group.create()
-					owner.addMember(spaceGroup)
-				} else {
-					// Fallback to personal group if space group not found
-					owner = Group.create()
-				}
-			} else {
-				// Fallback to personal group if space not loaded
-				owner = Group.create()
-			}
-		} else {
-			// Personal document - create new group
-			owner = Group.create()
-		}
-
-		// Build a map of old asset ID -> new asset ID for content replacement
-		let assetIdMap = new Map<string, string>()
-		let newAssets = co.list(Asset).create([], owner)
-		let assets = doc.assets ?? []
-
-		// Deep copy each asset
-		for (let asset of [...assets]) {
-			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
-
-			let original = asset.image.original
-			if (!original?.$isLoaded) continue
-
-			let blob = original.toBlob()
-			if (!blob) continue
-
-			try {
-				// Create a new image from the blob
-				let newImage = await createImage(blob, {
-					owner,
-					maxSize: 2048,
-				})
-
-				// Create a new asset with the copied image
-				let newAsset = Asset.create(
-					{
-						type: "image",
-						name: asset.name,
-						image: newImage,
-						createdAt: new Date(),
-					},
-					owner,
-				)
-
-				newAssets.$jazz.push(newAsset)
-				assetIdMap.set(asset.$jazz.id, newAsset.$jazz.id)
-			} catch (err) {
-				console.error("Failed to copy asset:", err)
-				toast.error(`Failed to copy asset: ${asset.name}`)
-			}
-		}
-
-		// Replace asset references in content with new asset IDs
-		let content = historicalContent
-		for (let [oldId, newId] of assetIdMap) {
-			content = content.replace(
-				new RegExp(`\\(asset:${oldId}\\)`, "g"),
-				`(asset:${newId})`,
-			)
-		}
-
-		// Add frontmatter noting the source
-		let formattedDate = formatEditDate(editDate)
-		let frontmatter = `---\ntimemachine: restored from ${originalTitle} at ${formattedDate}\n---\n\n`
-
-		// Add frontmatter to content, update title to indicate it's a copy
-		let lines = content.split("\n")
-		let newTitle = `${originalTitle} (restored)`
-
-		// Replace or add title
-		if (lines[0]?.startsWith("#")) {
-			lines[0] = `# ${newTitle}`
-		} else {
-			lines.unshift(`# ${newTitle}`)
-		}
-
-		let finalContent = frontmatter + lines.join("\n")
-
-		// Create the new document
-		let now = new Date()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(finalContent, owner),
-				assets: newAssets,
-				createdAt: now,
-				updatedAt: now,
-				spaceId: doc.spaceId,
-			},
-			owner,
-		)
-
-		// Add to the appropriate list
-		if (targetSpace?.documents?.$isLoaded) {
-			targetSpace.documents.$jazz.push(newDoc)
-		} else {
-			me.root.documents.$jazz.push(newDoc)
-		}
-
-		// Navigate to the new document
-		navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
-	}
-}
-
-type TimeMachineRestoreParams = {
-	doc: LoadedDocument
-	historicalContent: string
-	navigate: ReturnType<typeof useNavigate>
-	docId: string
-}
-
-function makeTimeMachineRestore(params: TimeMachineRestoreParams) {
-	return function handleTimeMachineRestore() {
-		let { doc, historicalContent, navigate, docId } = params
-		if (!doc.content) return
-
-		// Overwrite the current document content with the historical version
-		doc.content.$jazz.applyDiff(historicalContent)
-		doc.$jazz.set("updatedAt", new Date())
-
-		// Exit Time Machine mode
-		navigate({
-			to: "/doc/$id",
-			params: { id: docId },
-			search: {},
-		})
-	}
-}
-
 function handleChange(doc: LoadedDocument, newContent: string) {
 	if (!doc.content) return
 	doc.content.$jazz.applyDiff(newContent)
@@ -1133,36 +704,8 @@ function setupKeyboardShortcuts(opts: {
 	toggleRight: () => void
 	toggleFocusMode: () => void
 	docWithContent: MaybeDocWithContent
-	timeMachine?: { currentEdit: number; totalEdits: number; zoom?: ZoomLevel }
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
-		// Time Machine navigation: [ for previous, ] for next
-		if (opts.timeMachine && !e.metaKey && !e.ctrlKey && !e.altKey) {
-			let { currentEdit, totalEdits, zoom } = opts.timeMachine
-			if (e.key === "[") {
-				e.preventDefault()
-				if (currentEdit > 0) {
-					opts.navigate({
-						to: "/doc/$id",
-						params: { id: opts.docId },
-						search: { timemachine: true, edit: currentEdit - 1, zoom },
-					})
-				}
-				return
-			}
-			if (e.key === "]") {
-				e.preventDefault()
-				if (currentEdit < totalEdits - 1) {
-					opts.navigate({
-						to: "/doc/$id",
-						params: { id: opts.docId },
-						search: { timemachine: true, edit: currentEdit + 1, zoom },
-					})
-				}
-				return
-			}
-		}
-
 		// Cmd+Alt+R: Preview
 		if (
 			(e.metaKey || e.ctrlKey) &&

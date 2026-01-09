@@ -1,4 +1,3 @@
-import { Link } from "@tanstack/react-router"
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -6,13 +5,12 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { History, EllipsisVertical } from "lucide-react"
+import { X, EllipsisVertical } from "lucide-react"
 import { formatEditDate } from "@/lib/time-machine"
 
 export { TimeMachineToolbar }
 
 interface TimeMachineToolbarProps {
-	docTitle: string
 	editDate: Date
 	authorName: string
 	onExit: () => void
@@ -21,7 +19,6 @@ interface TimeMachineToolbarProps {
 }
 
 function TimeMachineToolbar({
-	docTitle,
 	editDate,
 	authorName,
 	onExit,
@@ -37,19 +34,14 @@ function TimeMachineToolbar({
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			<Button
-				variant="ghost"
-				size="sm"
-				nativeButton={false}
-				render={<Link to="/" />}
-			>
-				Alkalye
+			<Button variant="ghost" size="sm" onClick={onExit} className="gap-1.5">
+				<X className="size-4" />
+				<span className="hidden sm:inline">Exit</span>
 			</Button>
 
 			<div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center">
-				<span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-					<History className="size-3" />
-					Time Machine: {docTitle}
+				<span className="text-foreground text-sm font-medium">
+					Time Machine
 				</span>
 				<span className="text-muted-foreground text-xs">
 					{formatEditDate(editDate)} by {authorName}
@@ -65,9 +57,6 @@ function TimeMachineToolbar({
 					}
 				/>
 				<DropdownMenuContent align="end">
-					<DropdownMenuItem onClick={onExit}>
-						Exit Time Machine
-					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onCreateCopy}>
 						Create Copy
 					</DropdownMenuItem>

@@ -1400,3 +1400,36 @@ The key insight is that with zoom controls, the slider never needs to handle 500
 
 ### PRD Status
 - "Presentation mode and Time Machine are independent" - PASSES
+
+## 2026-01-09: Time Machine - Deleted Assets Graceful Handling
+
+### Completed
+- Implemented graceful handling for deleted assets in Time Machine mode
+- When viewing historical content that references a deleted asset, clicking the image reference now shows a placeholder
+- Image preview dialog displays "Image not available" with an ImageOff icon instead of a broken/loading state
+- Content still shows the image reference link (clickable) which is the expected behavior per PRD
+
+### Files Modified
+- src/editor/editor.tsx
+  - Added `ImageOff` import from lucide-react
+  - Updated image preview dialog to check if the asset exists in the assets array
+  - When asset is not found, renders a placeholder div with icon and message
+  - When asset exists, renders JazzImage as before
+- prd.json (marked "Time Machine handles deleted assets gracefully" as passing)
+
+### Technical Details
+- When an asset is deleted, it's physically removed from `doc.assets` using `splice()`
+- Historical content in Time Machine may still reference deleted assets via `![alt](asset:id)`
+- The image decoration in the editor continues to render the clickable link (this was already working)
+- The fix ensures that clicking the link shows a user-friendly placeholder instead of trying to load a non-existent image
+- The preview.tsx component already handled this case by falling back to raw markdown syntax
+
+### Algorithm
+1. User clicks on image reference in historical content
+2. handleImagePreview extracts the asset ID from the URL
+3. Dialog opens and checks if `assets?.find(a => a.id === imagePreview.imageId)` exists
+4. If asset found: render JazzImage with the imageId
+5. If asset NOT found: render placeholder with ImageOff icon and "Image not available" message
+
+### PRD Status
+- "Time Machine handles deleted assets gracefully" - PASSES

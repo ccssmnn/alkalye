@@ -7,8 +7,10 @@ export {
 	formatEditDate,
 	getAuthorName,
 	accountIdFromSessionId,
+	groupEditsByDay,
+	getDateKey,
 }
-export type { EditHistoryItem }
+export type { EditHistoryItem, DayGroup }
 
 type LoadedDocument = co.loaded<
 	typeof Document,
@@ -27,20 +29,11 @@ function accountIdFromSessionId(sessionId: string): string {
 	return sessionId.slice(0, until)
 }
 
-// Type for the raw content reference
-type ContentRaw =
-	NonNullable<LoadedDocument["content"]> extends {
-		$isLoaded: true
-		$jazz: { raw: infer R }
-	}
-		? R
-		: never
-
-// Internal structure containing all edit metadata plus the raw reference for lazy content loading
+// Internal structure containing all edit metadata
 interface EditHistoryResult {
 	edits: EditHistoryItem[]
-	// Store the raw content reference for lazy content loading
-	contentRaw: ContentRaw | null
+	// Store the transaction count to invalidate cache when new edits arrive
+	transactionCount: number
 }
 
 // Cache to avoid recomputing edit history on every render
@@ -51,10 +44,13 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 	if (!doc.content?.$isLoaded) return []
 
 	// Check cache first - use the content's raw object as cache key
-	// This will invalidate when content changes (new raw object)
 	let contentRaw = doc.content.$jazz.raw
+	let currentTransactionCount =
+		contentRaw.core.getValidSortedTransactions().length
 	let cached = editHistoryCache.get(contentRaw)
-	if (cached) {
+
+	// Invalidate cache if transaction count has changed (new edits arrived)
+	if (cached && cached.transactionCount === currentTransactionCount) {
 		return cached.edits
 	}
 
@@ -113,8 +109,11 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 		]
 	}
 
-	// Cache the result
-	let result: EditHistoryResult = { edits, contentRaw }
+	// Cache the result with transaction count for invalidation
+	let result: EditHistoryResult = {
+		edits,
+		transactionCount: currentTransactionCount,
+	}
 	editHistoryCache.set(contentRaw, result)
 
 	return edits
@@ -158,4 +157,51 @@ function getAuthorName(
 	if (!account) return "Unknown"
 	if (account.$jazz.id === currentUserId) return "you"
 	return account.profile?.name ?? "Unknown"
+}
+
+// --- Day-based grouping ---
+
+interface DayGroup {
+	dateKey: string // YYYY-MM-DD format for sorting/comparison
+	date: Date // Representative date (start of day)
+	edits: EditHistoryItem[] // All edits on this day
+	lastEditIndex: number // Index of the last edit of the day (for day-level scrubbing)
+}
+
+// Get a consistent date key for grouping (YYYY-MM-DD in local timezone)
+function getDateKey(date: Date): string {
+	let year = date.getFullYear()
+	let month = String(date.getMonth() + 1).padStart(2, "0")
+	let day = String(date.getDate()).padStart(2, "0")
+	return `${year}-${month}-${day}`
+}
+
+// Group edits by day, returning an array sorted chronologically
+function groupEditsByDay(edits: EditHistoryItem[]): DayGroup[] {
+	let dayMap = new Map<string, DayGroup>()
+
+	for (let edit of edits) {
+		let dateKey = getDateKey(edit.madeAt)
+
+		if (!dayMap.has(dateKey)) {
+			// Create a date at start of day for display
+			let startOfDay = new Date(edit.madeAt)
+			startOfDay.setHours(0, 0, 0, 0)
+
+			dayMap.set(dateKey, {
+				dateKey,
+				date: startOfDay,
+				edits: [],
+				lastEditIndex: edit.index,
+			})
+		}
+
+		let group = dayMap.get(dateKey)!
+		group.edits.push(edit)
+		// Keep track of the last edit index (edits are already sorted chronologically)
+		group.lastEditIndex = edit.index
+	}
+
+	// Sort by dateKey (chronological order)
+	return [...dayMap.values()].sort((a, b) => a.dateKey.localeCompare(b.dateKey))
 }
