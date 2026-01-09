@@ -1,0 +1,100 @@
+{
+	"presets": [
+		{
+			"name": "Sunny",
+			"appearance": "light",
+			"colors": {
+				"background": "#fffbeb",
+				"foreground": "#451a03",
+				"accent": "#f59e0b",
+				"heading": "#78350f",
+				"link": "#f59e0b",
+				"codeBackground": "#fef3c7",
+				"accents": [
+					"#f59e0b",
+					"#fbbf24",
+					"#fcd34d",
+					"#fde68a",
+					"#fed7aa",
+					"#fecaca"
+				]
+			},
+			"fonts": {
+				"title": "Fredoka",
+				"body": "Quicksand"
+			}
+		},
+		{
+			"name": "Berry",
+			"appearance": "light",
+			"colors": {
+				"background": "#fdf2f8",
+				"foreground": "#831843",
+				"accent": "#ec4899",
+				"heading": "#9d174d",
+				"link": "#ec4899",
+				"codeBackground": "#fce7f3",
+				"accents": [
+					"#ec4899",
+					"#f472b6",
+					"#fb7185",
+					"#f87171",
+					"#c084fc",
+					"#a78bfa"
+				]
+			},
+			"fonts": {
+				"title": "Fredoka",
+				"body": "Quicksand"
+			}
+		},
+		{
+			"name": "Ocean",
+			"appearance": "dark",
+			"colors": {
+				"background": "#0c4a6e",
+				"foreground": "#f0f9ff",
+				"accent": "#0ea5e9",
+				"heading": "#e0f2fe",
+				"link": "#38bdf8",
+				"codeBackground": "#075985",
+				"accents": [
+					"#0ea5e9",
+					"#38bdf8",
+					"#7dd3fc",
+					"#bae6fd",
+					"#c026d3",
+					"#f472b6"
+				]
+			},
+			"fonts": {
+				"title": "Fredoka",
+				"body": "Quicksand"
+			}
+		},
+		{
+			"name": "Night",
+			"appearance": "dark",
+			"colors": {
+				"background": "#1e1b4b",
+				"foreground": "#e0e7ff",
+				"accent": "#818cf8",
+				"heading": "#c7d2fe",
+				"link": "#a5b4fc",
+				"codeBackground": "#312e81",
+				"accents": [
+					"#818cf8",
+					"#a5b4fc",
+					"#c4b5fd",
+					"#e9d5ff",
+					"#f0abfc",
+					"#f9a8d4"
+				]
+			},
+			"fonts": {
+				"title": "Fredoka",
+				"body": "Quicksand"
+			}
+		}
+	]
+}

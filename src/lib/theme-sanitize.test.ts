@@ -100,15 +100,39 @@ a {
 		expect(result.sanitized).not.toMatch(/url\s*\(\s*vbscript\s*:/i)
 	})
 
-	it("removes @import with external http URLs", () => {
+	it("removes @import with untrusted external URLs", () => {
 		let css = `
 @import url("https://evil.com/malicious.css");
 @import 'http://evil.com/bad.css';
 `
 		let result = sanitizeCss(css)
-		expect(result.removedPatterns).toContain("@import external URL")
+		expect(result.removedPatterns).toContain("@import untrusted external URL")
 		expect(result.sanitized).not.toContain("https://evil.com")
 		expect(result.sanitized).not.toContain("http://evil.com")
+	})
+
+	it("allows @import from Google Fonts", () => {
+		let css = `
+@import url("https://fonts.googleapis.com/css2?family=Roboto&display=swap");
+@import url('https://fonts.gstatic.com/s/roboto/v30/roboto.woff2');
+`
+		let result = sanitizeCss(css)
+		expect(result.removedCount).toBe(0)
+		expect(result.sanitized).toContain("fonts.googleapis.com")
+		expect(result.sanitized).toContain("fonts.gstatic.com")
+	})
+
+	it("allows @import from other trusted font CDNs", () => {
+		let css = `
+@import url("https://use.typekit.net/abc123.css");
+@import url("https://fonts.bunny.net/css?family=Inter");
+@import url("https://rsms.me/inter/inter.css");
+`
+		let result = sanitizeCss(css)
+		expect(result.removedCount).toBe(0)
+		expect(result.sanitized).toContain("use.typekit.net")
+		expect(result.sanitized).toContain("fonts.bunny.net")
+		expect(result.sanitized).toContain("rsms.me")
 	})
 
 	it("removes @import with protocol-relative URLs", () => {
@@ -178,7 +202,9 @@ div {
 `
 		let result = sanitizeCss(css)
 		expect(result.removedCount).toBe(3)
-		expect(result.removedPatterns).toHaveLength(3)
+		expect(result.removedPatterns).toContain("@import untrusted external URL")
+		expect(result.removedPatterns).toContain("behavior:")
+		expect(result.removedPatterns).toContain("javascript:")
 	})
 
 	it("preserves CSS structure while removing dangerous content", () => {

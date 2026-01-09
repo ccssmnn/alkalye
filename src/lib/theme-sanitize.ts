@@ -8,6 +8,35 @@ type SanitizeResult = {
 	removedPatterns: string[]
 }
 
+// Trusted font CDN domains that are allowed in @import statements
+let trustedFontDomains = [
+	"fonts.googleapis.com",
+	"fonts.gstatic.com",
+	"use.typekit.net",
+	"fast.fonts.net",
+	"cloud.typography.com",
+	"fonts.bunny.net",
+	"rsms.me", // Inter font
+	"api.fontshare.com",
+]
+
+// Build regex pattern that matches @import with untrusted external URLs
+// This pattern matches @import with http(s):// that is NOT from a trusted domain
+function buildUntrustedImportPattern(): RegExp {
+	// Match @import url("https://...") or @import "https://..."
+	// But exclude trusted font domains
+	let trustedPattern = trustedFontDomains
+		.map(domain => domain.replace(/\./g, "\\."))
+		.join("|")
+
+	// We need to match @import with external URLs that are NOT trusted
+	// Using negative lookahead: (?!trustedDomains)
+	return new RegExp(
+		`@import\\s+(?:url\\s*\\()?['"]?https?:\\/\\/(?!(?:${trustedPattern}))`,
+		"gi",
+	)
+}
+
 // Dangerous CSS patterns that could be used for XSS or data exfiltration
 let dangerousPatterns: { pattern: RegExp; name: string }[] = [
 	// JavaScript execution
@@ -19,10 +48,11 @@ let dangerousPatterns: { pattern: RegExp; name: string }[] = [
 	{ pattern: /behavior\s*:/gi, name: "behavior:" },
 	{ pattern: /vbscript\s*:/gi, name: "vbscript:" },
 
-	// External resource loading (data exfiltration risk)
+	// External resource loading from untrusted sources (data exfiltration risk)
+	// Trusted font CDNs are allowed (see trustedFontDomains)
 	{
-		pattern: /@import\s+(?:url\s*\()?['"]?https?:\/\//gi,
-		name: "@import external URL",
+		pattern: buildUntrustedImportPattern(),
+		name: "@import untrusted external URL",
 	},
 	{
 		pattern: /@import\s+(?:url\s*\()?['"]?\/\//gi,

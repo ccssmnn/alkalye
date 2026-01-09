@@ -73,15 +73,28 @@ function findThemeByName(
 }
 
 // Parse presets from theme's presets JSON string
+// Handles both formats: direct array or { presets: [...] } wrapper
 function getThemePresets(theme: {
 	presets?: string | null
 }): ThemePresetType[] {
-	if (!theme.presets) return []
+	if (!theme.presets) {
+		console.log("[getThemePresets] No presets in theme")
+		return []
+	}
 
 	try {
-		let parsed = JSON.parse(theme.presets) as { presets: ThemePresetType[] }
-		return parsed.presets ?? []
-	} catch {
+		let parsed = JSON.parse(theme.presets) as
+			| ThemePresetType[]
+			| { presets: ThemePresetType[] }
+		// Handle both array directly or { presets: [...] } wrapper
+		let presets = Array.isArray(parsed) ? parsed : (parsed.presets ?? [])
+		console.log(
+			"[getThemePresets] Parsed presets:",
+			presets.map(p => ({ name: p.name, appearance: p.appearance })),
+		)
+		return presets
+	} catch (error) {
+		console.error("[getThemePresets] Error parsing presets:", error)
 		return []
 	}
 }
@@ -122,11 +135,30 @@ function findPresetByAppearance(
 	appearance: Appearance,
 ): ThemePresetType | null {
 	let presets = getThemePresets(theme)
+	console.log(
+		"[findPresetByAppearance] Looking for appearance:",
+		appearance,
+		"in presets:",
+		presets.map(p => p.name),
+	)
 	for (let preset of presets) {
+		console.log(
+			"[findPresetByAppearance] Checking preset:",
+			preset.name,
+			"appearance:",
+			preset.appearance,
+			"match:",
+			preset.appearance === appearance,
+		)
 		if (preset.appearance === appearance) {
+			console.log(
+				"[findPresetByAppearance] Found matching preset:",
+				preset.name,
+			)
 			return preset
 		}
 	}
+	console.log("[findPresetByAppearance] No matching preset found")
 	return null
 }
 
@@ -163,8 +195,20 @@ function useDocumentTheme(
 				mode === "slideshow"
 					? (settings.defaultSlideshowTheme ?? null)
 					: (settings.defaultPreviewTheme ?? null)
+			console.log(
+				`[useDocumentTheme] Using default ${mode} theme:`,
+				effectiveThemeName,
+			)
 		}
 	}
+
+	console.log("[useDocumentTheme] Effective theme name:", effectiveThemeName)
+	console.log(
+		"[useDocumentTheme] Theme from frontmatter:",
+		themeName,
+		"Mode:",
+		mode,
+	)
 
 	// No theme specified and no default set
 	if (!effectiveThemeName) {
@@ -172,7 +216,22 @@ function useDocumentTheme(
 	}
 
 	let themes = me.root.themes as LoadedThemes
+	console.log(
+		"[useDocumentTheme] Available themes:",
+		themes.map(t => t?.name),
+	)
+
 	let theme = findThemeByName(themes, effectiveThemeName)
+	console.log("[useDocumentTheme] Found theme:", theme?.name)
+	if (theme) {
+		console.log("[useDocumentTheme] Theme data:", {
+			hasCss: !!theme.css,
+			cssLength: theme.css?.toString().length,
+			hasTemplate: !!theme.template,
+			hasPresets: !!theme.presets,
+			presetsLength: theme.presets?.length,
+		})
+	}
 
 	// Theme not found
 	if (!theme) {
@@ -192,6 +251,14 @@ function useDocumentTheme(
 	let preset: ThemePresetType | null = null
 	let warning: string | null = null
 
+	console.log("[useDocumentTheme] Starting preset selection:", {
+		hasPresetName: !!presetName,
+		presetName,
+		hasAppearance: !!appearance,
+		appearance,
+		themePresetsCount: getThemePresets(theme).length,
+	})
+
 	if (presetName) {
 		// Explicit preset requested in frontmatter
 		preset = findPresetByName(theme, presetName)
@@ -209,12 +276,15 @@ function useDocumentTheme(
 	} else if (appearance) {
 		// No preset specified - auto-select by appearance mode
 		preset = findPresetByAppearance(theme, appearance)
+		console.log("[useDocumentTheme] Preset from appearance:", preset?.name)
 		// Fall back to first preset if no appearance match
 		if (!preset) {
 			let presets = getThemePresets(theme)
 			preset = presets[0] ?? null
+			console.log("[useDocumentTheme] Fallback to first preset:", preset?.name)
 		}
 	}
 
+	console.log("[useDocumentTheme] Final preset:", preset?.name)
 	return { theme, preset, warning }
 }

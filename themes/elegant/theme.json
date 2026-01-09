@@ -1,0 +1,10 @@
+{
+	"version": 1,
+	"name": "Elegant",
+	"author": "Alkalye",
+	"description": "Sophisticated and refined with luxurious typography",
+	"type": "both",
+	"css": "styles.css",
+	"presets": "presets.json",
+	"template": "document.html"
+}

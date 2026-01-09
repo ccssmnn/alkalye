@@ -1,0 +1,75 @@
+<div class="tech-wrapper">
+	<div class="tech-header">
+		<div class="tech-status">
+			<span class="tech-dot"></span>
+			<span class="tech-label">RENDER_MODE: ACTIVE</span>
+		</div>
+	</div>
+	<div class="tech-content" data-document></div>
+	<div class="tech-footer">
+		<span class="tech-prompt">$</span>
+	</div>
+</div>
+
+<style>
+	[data-theme] .tech-wrapper {
+		max-width: 65ch;
+		margin: 0 auto;
+		padding: 0;
+		background: var(--preset-code-background);
+		border: 2px solid var(--preset-accent);
+		border-radius: 4px;
+	}
+
+	[data-theme] .tech-header {
+		padding: 0.6em 1em;
+		background: var(--preset-accent);
+		border-bottom: 2px solid var(--preset-accent);
+	}
+
+	[data-theme] .tech-status {
+		display: flex;
+		align-items: center;
+		gap: 0.5em;
+		font-family: var(--font-display);
+		font-size: 0.8em;
+		font-weight: 700;
+		letter-spacing: 0.05em;
+		color: var(--preset-background);
+	}
+
+	[data-theme] .tech-dot {
+		width: 8px;
+		height: 8px;
+		background: var(--preset-background);
+		border-radius: 50%;
+		animation: blink 2s ease-in-out infinite;
+	}
+
+	@keyframes blink {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.3;
+		}
+	}
+
+	[data-theme] .tech-content {
+		padding: 1.5em;
+		min-height: 200px;
+	}
+
+	[data-theme] .tech-footer {
+		padding: 0.6em 1em;
+		border-top: 1px solid var(--preset-accent);
+		font-family: var(--font-mono);
+		font-size: 0.9em;
+	}
+
+	[data-theme] .tech-prompt {
+		color: var(--preset-accent);
+		font-weight: 600;
+	}
+</style>

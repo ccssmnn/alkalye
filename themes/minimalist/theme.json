@@ -1,0 +1,10 @@
+{
+	"version": 1,
+	"name": "Minimalist",
+	"author": "Alkalye",
+	"description": "Clean, modern, and breathable with lots of white space",
+	"type": "both",
+	"css": "styles.css",
+	"presets": "presets.json",
+	"template": "document.html"
+}

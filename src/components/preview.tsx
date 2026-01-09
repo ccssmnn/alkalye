@@ -37,6 +37,11 @@ interface PreviewProps {
 function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
 	let documentTheme = useDocumentTheme(content, "preview")
+	console.log("[Preview] Document theme:", {
+		themeName: documentTheme.theme?.name,
+		presetName: documentTheme.preset?.name,
+		warning: documentTheme.warning,
+	})
 
 	let wikilinkResolver: WikilinkTitleResolver = docId => {
 		return wikilinks.get(docId) ?? { title: docId, exists: false }
@@ -254,49 +259,27 @@ type ThemeStylesResult = {
 // Styles are loaded asynchronously to prevent blocking rendering of large themes
 // Cache handles blob URL lifecycle, so no cleanup needed here
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
-	let [result, setResult] = useState<ThemeStylesResult>({
-		styles: null,
-		error: null,
-		isLoading: false,
-	})
-	let prevThemeRef = useRef<typeof documentTheme.theme>(null)
-	let prevPresetRef = useRef<typeof documentTheme.preset>(null)
-
-	// Track if theme or preset changed
-	let themeChanged =
-		documentTheme.theme !== prevThemeRef.current ||
-		documentTheme.preset !== prevPresetRef.current
-
-	// Update refs during render (adjust state pattern)
-	if (themeChanged) {
-		prevThemeRef.current = documentTheme.theme
-		prevPresetRef.current = documentTheme.preset
-	}
+	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+	let [error, setError] = useState<string | null>(null)
+	let [isLoading, setIsLoading] = useState(!!documentTheme.theme)
 
 	useEffect(() => {
-		if (!themeChanged) return
-
 		// Get styles from cache asynchronously (builds and caches if needed)
 		if (documentTheme.theme) {
 			let cancelled = false
-			setResult(prev => ({ ...prev, isLoading: true }))
+			setIsLoading(true)
 
 			tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
 				buildResult => {
 					if (cancelled) return
 					if (buildResult.ok) {
-						setResult({
-							styles: buildResult.styles,
-							error: null,
-							isLoading: false,
-						})
+						setStyles(buildResult.styles)
+						setError(null)
 					} else {
-						setResult({
-							styles: null,
-							error: buildResult.error,
-							isLoading: false,
-						})
+						setStyles(null)
+						setError(buildResult.error)
 					}
+					setIsLoading(false)
 				},
 			)
 
@@ -304,12 +287,13 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 				cancelled = true
 			}
 		} else {
-			setResult({ styles: null, error: null, isLoading: false })
+			setStyles(null)
+			setError(null)
+			setIsLoading(false)
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [documentTheme.theme, documentTheme.preset])
 
-	return result
+	return { styles, error, isLoading }
 }
 
 let highlighterPromise: Promise<Highlighter> | null = null
