@@ -1,0 +1,158 @@
+[
+	{
+		"category": "functional",
+		"description": "Basic sorting - unchecked tasks before checked tasks",
+		"steps": [
+			"Input: '- [x] Done\\n- [ ] Todo'",
+			"Call sortTaskLists()",
+			"Output: '- [ ] Todo\\n- [x] Done'"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Preserve relative order within unchecked group",
+		"steps": [
+			"Input: '- [ ] B\\n- [ ] A\\n- [ ] C'",
+			"Call sortTaskLists()",
+			"Output unchanged (all unchecked, order preserved)"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Preserve relative order within checked group",
+		"steps": [
+			"Input: '- [x] First done\\n- [x] Second done'",
+			"Call sortTaskLists()",
+			"Output unchanged (all checked, order preserved)"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Multiple separate task lists sorted independently",
+		"steps": [
+			"Input: '- [x] A\\n- [ ] B\\n\\nParagraph\\n\\n- [x] C\\n- [ ] D'",
+			"Call sortTaskLists()",
+			"Output: '- [ ] B\\n- [x] A\\n\\nParagraph\\n\\n- [ ] D\\n- [x] C'"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Non-task bullets ignored and sorted around",
+		"steps": [
+			"Input: '- [x] Done\\n- Regular bullet\\n- [ ] Todo'",
+			"Call sortTaskLists()",
+			"Output: '- [ ] Todo\\n- Regular bullet\\n- [x] Done'"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Nested children move with parent task",
+		"steps": [
+			"Input: '- [x] Parent done\\n  - Child item\\n- [ ] Other task'",
+			"Call sortTaskLists()",
+			"Output: '- [ ] Other task\\n- [x] Parent done\\n  - Child item'"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Recursive sorting in nested task lists",
+		"steps": [
+			"Input: '- [ ] Parent\\n  - [x] Nested done\\n  - [ ] Nested todo'",
+			"Call sortTaskLists()",
+			"Output: '- [ ] Parent\\n  - [ ] Nested todo\\n  - [x] Nested done'"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Code fences not treated as lists",
+		"steps": [
+			"Input: '```\\n- [ ] Not a task\\n- [x] Also not\\n```'",
+			"Call sortTaskLists()",
+			"Output unchanged (inside code fence)"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Already sorted list produces no change",
+		"steps": [
+			"Input: '- [ ] A\\n- [ ] B\\n- [x] C'",
+			"Call sortTaskLists()",
+			"Output identical to input"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Empty document returns empty",
+		"steps": ["Input: ''", "Call sortTaskLists()", "Output: ''"],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Document with no task lists unchanged",
+		"steps": [
+			"Input: '# Heading\\n\\nSome paragraph text.'",
+			"Call sortTaskLists()",
+			"Output identical to input"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Preserves exact whitespace and formatting",
+		"steps": [
+			"Input: '-  [ ] Extra space\\n- [x] Done'",
+			"Call sortTaskLists()",
+			"Verify output preserves the extra space in first item"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Handles ordered lists (preserves original numbering)",
+		"steps": [
+			"Input: '1. [x] Ordered done\\n2. [ ] Ordered todo'",
+			"Call sortTaskLists()",
+			"Output: '2. [ ] Ordered todo\\n1. [x] Ordered done' (preserves original line numbers)"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Deep nesting with multiple levels",
+		"steps": [
+			"Input: '- [ ] L1\\n  - [x] L2 done\\n    - [ ] L3 todo\\n  - [ ] L2 todo'",
+			"Call sortTaskLists()",
+			"Verify L2 items sorted, L3 stays with parent"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Asterisk bullet syntax supported",
+		"steps": [
+			"Input: '* [x] Done\\n* [ ] Todo'",
+			"Call sortTaskLists()",
+			"Output: '* [ ] Todo\\n* [x] Done'"
+		],
+		"passes": true
+	},
+	{
+		"category": "functional",
+		"description": "Plus bullet syntax supported",
+		"steps": [
+			"Input: '+ [x] Done\\n+ [ ] Todo'",
+			"Call sortTaskLists()",
+			"Output: '+ [ ] Todo\\n+ [x] Done'"
+		],
+		"passes": true
+	}
+]

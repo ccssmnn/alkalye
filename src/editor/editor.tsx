@@ -39,6 +39,7 @@ import {
 	moveLineUp,
 	setBody,
 	setHeadingLevel,
+	sortTasks,
 	toggleBlockquote,
 	toggleBold,
 	toggleBulletList,
@@ -46,7 +47,7 @@ import {
 	toggleItalic,
 	toggleOrderedList,
 	toggleStrikethrough,
-	toggleTaskComplete,
+	toggleTaskCompleteWithSort,
 	toggleTaskList,
 } from "./commands"
 import { createBracketsExtension } from "./autocomplete-brackets"
@@ -114,6 +115,7 @@ interface MarkdownEditorProps {
 	placeholder?: string
 	readOnly?: boolean
 	className?: string
+	autoSortTasks?: boolean
 }
 
 interface MarkdownEditorRef {
@@ -154,6 +156,8 @@ interface MarkdownEditorRef {
 	moveLineUp(): void
 	moveLineDown(): void
 
+	sortTasks(): void
+
 	getLinkAtCursor(): string | null
 	getEditor(): EditorView | null
 	refreshDecorations(): void
@@ -180,6 +184,7 @@ function MarkdownEditor(
 		placeholder,
 		readOnly,
 		className,
+		autoSortTasks,
 		ref,
 	} = props
 
@@ -201,10 +206,15 @@ function MarkdownEditor(
 	// Refs for callbacks and data - CodeMirror extensions capture these at init time
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
 	let dataRef = useRef({ assets, documents })
+	let autoSortRef = useRef(autoSortTasks ?? false)
 
 	useEffect(() => {
 		callbacksRef.current = { onChange, onCursorChange, onFocus, onBlur }
 	})
+
+	useEffect(() => {
+		autoSortRef.current = autoSortTasks ?? false
+	}, [autoSortTasks])
 
 	useEffect(() => {
 		dataRef.current = { assets, documents }
@@ -312,7 +322,12 @@ function MarkdownEditor(
 						run: toggleTaskList,
 						preventDefault: true,
 					},
-					{ key: "Alt-Mod-x", run: toggleTaskComplete, preventDefault: true },
+					{
+						key: "Alt-Mod-x",
+						run: view => toggleTaskCompleteWithSort(autoSortRef.current)(view),
+						preventDefault: true,
+					},
+					{ key: "Alt-Mod-Shift-x", run: sortTasks, preventDefault: true },
 					{ key: "Alt-Mod-q", run: toggleBlockquote, preventDefault: true },
 					{ key: "Alt-Mod-c", run: insertCodeBlock, preventDefault: true },
 					{ key: "Alt-Mod-ArrowUp", run: moveLineUp, preventDefault: true },
@@ -630,7 +645,8 @@ function MarkdownEditor(
 		toggleBulletList: () => runCommand(toggleBulletList),
 		toggleOrderedList: () => runCommand(toggleOrderedList),
 		toggleTaskList: () => runCommand(toggleTaskList),
-		toggleTaskComplete: () => runCommand(toggleTaskComplete),
+		toggleTaskComplete: () =>
+			runCommand(toggleTaskCompleteWithSort(autoSortRef.current)),
 		toggleBlockquote: () => runCommand(toggleBlockquote),
 		setBody: () => runCommand(setBody),
 		insertLink: () => runCommand(insertLink),
@@ -650,6 +666,7 @@ function MarkdownEditor(
 		},
 		moveLineUp: () => runCommand(moveLineUp),
 		moveLineDown: () => runCommand(moveLineDown),
+		sortTasks: () => runCommand(sortTasks),
 		getLinkAtCursor,
 		getEditor: () => view,
 		refreshDecorations,
@@ -684,7 +701,12 @@ function MarkdownEditor(
 			toggleBulletList: () => {},
 			toggleOrderedList: () => {},
 			toggleTaskList: () => {},
-			toggleTaskComplete: () => {},
+			toggleTaskComplete: () => {
+				if (view) {
+					toggleTaskCompleteWithSort(autoSortRef.current)(view)
+					view.focus()
+				}
+			},
 			toggleBlockquote: () => {},
 			setBody: () => {},
 			insertLink: () => {},
@@ -694,6 +716,7 @@ function MarkdownEditor(
 			outdent: () => {},
 			moveLineUp: () => {},
 			moveLineDown: () => {},
+			sortTasks: () => {},
 			getLinkAtCursor,
 			getEditor: () => view,
 			refreshDecorations,

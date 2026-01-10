@@ -398,30 +398,11 @@ interface TaskActionProps {
 	taskRange: Range | null
 }
 
-function TaskAction({
-	editor,
-	isTask,
-	taskChecked,
-	taskRange,
-}: TaskActionProps) {
+function TaskAction({ editor, isTask, taskChecked }: TaskActionProps) {
 	if (!isTask) return null
 
 	function toggleTask() {
-		let view = editor.current?.getEditor()
-		if (!view || !taskRange) return
-
-		let { from, to } = taskRange
-		let text = view.state.sliceDoc(from, to)
-
-		let newText = taskChecked
-			? text.replace(/\[x\]/i, "[ ]")
-			: text.replace(/\[ \]/, "[x]")
-
-		view.dispatch({
-			changes: { from, to, insert: newText },
-			selection: view.state.selection,
-		})
-		view.focus()
+		editor.current?.toggleTaskComplete()
 	}
 
 	return (

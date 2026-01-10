@@ -4,6 +4,7 @@ import {
 	useNavigate,
 	useBlocker,
 	Link,
+	useLocation,
 } from "@tanstack/react-router"
 import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
@@ -356,6 +357,7 @@ function SpaceEditorContent({
 					remoteCursors={remoteCursors}
 					onCreateDocument={makeCreateDocument(space)}
 					onUploadImage={makeUploadImage(doc)}
+					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 				/>
 				<EditorToolbar
 					editor={editor}
@@ -375,7 +377,7 @@ function SpaceEditorContent({
 				header={
 					<>
 						<ThemeToggle theme={theme} setTheme={setTheme} />
-						<SettingsButton pathname={location.pathname} />
+						<SettingsButton />
 					</>
 				}
 				footer={
@@ -452,8 +454,9 @@ function SpaceEditorContent({
 	)
 }
 
-function SettingsButton({ pathname }: { pathname: string }) {
+function SettingsButton() {
 	let { needRefresh } = usePWA()
+	let location = useLocation()
 	return (
 		<Tooltip>
 			<TooltipTrigger
@@ -462,7 +465,9 @@ function SettingsButton({ pathname }: { pathname: string }) {
 						variant="ghost"
 						size="icon"
 						nativeButton={false}
-						render={<Link to="/settings" search={{ from: pathname }} />}
+						render={
+							<Link to="/settings" search={{ from: location.pathname }} />
+						}
 						className="relative"
 					>
 						<Settings />
