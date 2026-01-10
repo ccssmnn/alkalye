@@ -42,8 +42,8 @@ CRITICAL:
 - All commits MUST pass typecheck and tests
 - Always append to progress.txt, never overwrite"
 
-  # Run claude code with the prompt in print mode, allowing all permissions
-  OUTPUT=$(claude -p "$PROMPT" --model "$MODEL" --dangerously-skip-permissions 2>&1) || true
+  # Run opencode with the prompt, using Opus via Anthropic provider
+  OUTPUT=$(opencode -p "$PROMPT" --provider anthropic --model "$MODEL" --auto 2>&1) || true
 
   echo "$OUTPUT"
   

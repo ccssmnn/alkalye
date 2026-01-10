@@ -1,0 +1,713 @@
+[
+	{
+		"category": "slideshow-scaling",
+		"description": "Slideshow text wraps instead of scaling to tiny size",
+		"steps": [
+			"Create presentation with long paragraph text (50+ words)",
+			"Open slideshow view",
+			"Verify text wraps to multiple lines at readable size",
+			"Verify content scales down only if wrapped height exceeds viewport",
+			"Check that words are never broken mid-word"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-scaling",
+		"description": "Slideshow headings wrap when too long",
+		"steps": [
+			"Create presentation with very long heading (15+ words)",
+			"Open slideshow view",
+			"Verify heading wraps to multiple lines",
+			"Verify heading remains readable (not tiny)",
+			"Check font size scales proportionally if needed"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-scaling",
+		"description": "Slideshow blockquotes wrap properly",
+		"steps": [
+			"Create presentation with long blockquote",
+			"Open slideshow view",
+			"Verify blockquote text wraps",
+			"Verify blockquote styling is preserved",
+			"Check border and padding scale correctly"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-semantic-html",
+		"description": "Slideshow renders headings as semantic h1-h6 elements",
+		"steps": [
+			"Create presentation with h1, h2, h3 headings",
+			"Open slideshow view",
+			"Inspect DOM - verify <h1>, <h2>, <h3> elements exist",
+			"Verify headings are inside <article> element",
+			"Check data-theme attribute is on article or parent"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-semantic-html",
+		"description": "Slideshow renders paragraphs as semantic p elements",
+		"steps": [
+			"Create presentation with indented text paragraphs",
+			"Open slideshow view",
+			"Inspect DOM - verify <p> elements exist for text",
+			"Verify paragraphs are inside <article> element"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-semantic-html",
+		"description": "Slideshow wraps content in article element",
+		"steps": [
+			"Create any presentation",
+			"Open slideshow view",
+			"Inspect DOM - verify <article> wrapper exists",
+			"Verify article has data-theme attribute with theme name"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Custom theme CSS applies to slideshow headings",
+		"steps": [
+			"Upload theme with h1 styling (color, font-family)",
+			"Create presentation with theme: ThemeName frontmatter",
+			"Open slideshow view",
+			"Verify h1 has custom color from theme CSS",
+			"Verify h1 has custom font-family from theme CSS"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Custom theme CSS applies to slideshow paragraphs",
+		"steps": [
+			"Upload theme with p styling (line-height, font-size)",
+			"Create presentation with theme frontmatter",
+			"Open slideshow view",
+			"Verify paragraph text uses theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Custom theme CSS applies to slideshow lists",
+		"steps": [
+			"Upload theme with ul/ol/li styling",
+			"Create presentation with indented bullet list",
+			"Open slideshow view",
+			"Verify list styling matches theme CSS"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Custom theme CSS applies to slideshow blockquotes",
+		"steps": [
+			"Upload theme with blockquote styling",
+			"Create presentation with indented blockquote",
+			"Open slideshow view",
+			"Verify blockquote styling matches theme CSS"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Custom theme CSS applies to slideshow tables",
+		"steps": [
+			"Upload theme with table/th/td styling",
+			"Create presentation with table",
+			"Open slideshow view",
+			"Verify table styling matches theme CSS"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Preset colors apply to slideshow background",
+		"steps": [
+			"Upload theme with light/dark presets",
+			"Create presentation with theme frontmatter",
+			"Open slideshow view in light mode",
+			"Verify background matches light preset background color",
+			"Switch to dark mode",
+			"Verify background matches dark preset background color"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Preset colors apply to slideshow text",
+		"steps": [
+			"Upload theme with light/dark presets",
+			"Create presentation with theme frontmatter",
+			"Open slideshow view",
+			"Verify text color matches preset foreground color",
+			"Verify heading color matches preset heading color (if set)"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-theming",
+		"description": "Preset accent color applies to slideshow elements",
+		"steps": [
+			"Upload theme with accent color in presets",
+			"Create presentation with links and blockquotes",
+			"Open slideshow view",
+			"Verify links use accent color",
+			"Verify blockquote border uses accent color"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-presets",
+		"description": "Light preset auto-selected when system is light mode",
+		"steps": [
+			"Set system to light mode",
+			"Upload theme with light and dark presets",
+			"Create presentation with theme frontmatter (no preset specified)",
+			"Open slideshow view",
+			"Verify light preset colors are applied"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-presets",
+		"description": "Dark preset auto-selected when system is dark mode",
+		"steps": [
+			"Set system to dark mode",
+			"Upload theme with light and dark presets",
+			"Create presentation with theme frontmatter (no preset specified)",
+			"Open slideshow view",
+			"Verify dark preset colors are applied"
+		],
+		"passes": false
+	},
+	{
+		"category": "slideshow-presets",
+		"description": "Theme appearance override selects correct preset",
+		"steps": [
+			"Set system to light mode",
+			"Create presentation with theme: dark frontmatter",
+			"Upload theme with light and dark presets, set as default",
+			"Open slideshow view",
+			"Verify dark preset colors are applied despite system light mode"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-css-loading",
+		"description": "Preview theme CSS loads and applies",
+		"steps": [
+			"Upload theme with custom h1 styling",
+			"Create document with theme: ThemeName frontmatter",
+			"Open preview view",
+			"Verify h1 has custom styling from theme CSS",
+			"Check browser console for no CSS loading errors"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-css-loading",
+		"description": "Preview theme CSS loads fonts",
+		"steps": [
+			"Upload theme with bundled font files",
+			"Create document with theme frontmatter",
+			"Open preview view",
+			"Verify custom font renders correctly",
+			"Check Network tab - font files loaded"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-css-loading",
+		"description": "Preview handles theme with no CSS gracefully",
+		"steps": [
+			"Simulate theme where CSS is not yet loaded (slow sync)",
+			"Open preview view",
+			"Verify no crash or error",
+			"Verify default styling applies",
+			"Verify theme styling applies once CSS loads"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview theme applies heading styles",
+		"steps": [
+			"Upload theme with h1, h2, h3 styling",
+			"Create document with all heading levels",
+			"Open preview view",
+			"Verify each heading level has theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview theme applies paragraph styles",
+		"steps": [
+			"Upload theme with p styling (line-height, margin)",
+			"Create document with multiple paragraphs",
+			"Open preview view",
+			"Verify paragraphs have theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview theme applies link styles",
+		"steps": [
+			"Upload theme with a styling (color, decoration)",
+			"Create document with links",
+			"Open preview view",
+			"Verify links have theme styling",
+			"Hover over link - verify hover state styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview theme applies code block styles",
+		"steps": [
+			"Upload theme with pre/code styling",
+			"Create document with code blocks",
+			"Open preview view",
+			"Verify code blocks have theme background",
+			"Verify inline code has theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview theme applies blockquote styles",
+		"steps": [
+			"Upload theme with blockquote styling",
+			"Create document with blockquotes",
+			"Open preview view",
+			"Verify blockquotes have theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview theme applies table styles",
+		"steps": [
+			"Upload theme with table styling",
+			"Create document with table",
+			"Open preview view",
+			"Verify table has theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "preview-theming",
+		"description": "Preview template wraps content correctly",
+		"steps": [
+			"Upload theme with custom HTML template",
+			"Create document with theme frontmatter",
+			"Open preview view",
+			"Verify content is inside template structure",
+			"Verify template styling applies"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-presets",
+		"description": "Theme with only light/dark presets works correctly",
+		"steps": [
+			"Create theme with exactly 2 presets: one light, one dark",
+			"Upload theme",
+			"Apply to document",
+			"Verify light preset in light mode",
+			"Verify dark preset in dark mode"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-presets",
+		"description": "Preset CSS variables are injected",
+		"steps": [
+			"Upload theme with presets",
+			"Apply to document",
+			"Inspect :root in browser",
+			"Verify --preset-background is set",
+			"Verify --preset-foreground is set",
+			"Verify --preset-accent is set"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-presets",
+		"description": "Preset font variables are injected",
+		"steps": [
+			"Upload theme with presets containing fonts",
+			"Apply to document",
+			"Inspect :root in browser",
+			"Verify --preset-font-title is set",
+			"Verify --preset-font-body is set"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-upload",
+		"description": "Theme zip with theme.json uploads successfully",
+		"steps": [
+			"Create valid theme.json with required fields",
+			"Create CSS file referenced in theme.json",
+			"Zip files together",
+			"Upload in Settings > Themes",
+			"Verify theme appears in list"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-upload",
+		"description": "Theme with presets.json uploads successfully",
+		"steps": [
+			"Create theme.json referencing presets.json",
+			"Create valid presets.json with light/dark presets",
+			"Zip and upload",
+			"Verify presets are stored with theme"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-upload",
+		"description": "Theme with fonts uploads successfully",
+		"steps": [
+			"Create theme.json with fonts array",
+			"Include .woff2 font files in zip",
+			"Upload theme",
+			"Verify fonts are stored as theme assets"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-upload",
+		"description": "Invalid theme.json shows helpful error",
+		"steps": [
+			"Create theme.json missing required 'name' field",
+			"Zip and attempt upload",
+			"Verify upload fails",
+			"Verify error message mentions missing 'name'"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-upload",
+		"description": "Missing CSS file shows helpful error",
+		"steps": [
+			"Create theme.json referencing nonexistent CSS file",
+			"Zip and attempt upload",
+			"Verify upload fails",
+			"Verify error message mentions missing CSS"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-defaults",
+		"description": "Default preview theme applies when no frontmatter",
+		"steps": [
+			"Upload theme and set as default preview theme in Settings",
+			"Create new document without theme frontmatter",
+			"Open preview view",
+			"Verify default theme styling applies"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-defaults",
+		"description": "Default slideshow theme applies when no frontmatter",
+		"steps": [
+			"Upload theme and set as default slideshow theme in Settings",
+			"Create presentation without theme frontmatter",
+			"Open slideshow view",
+			"Verify default theme styling applies"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-defaults",
+		"description": "Frontmatter theme overrides default theme",
+		"steps": [
+			"Set ThemeA as default",
+			"Upload ThemeB",
+			"Create document with theme: ThemeB frontmatter",
+			"Open preview view",
+			"Verify ThemeB styling applies, not ThemeA"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-css-selectors",
+		"description": "Preview CSS uses [data-theme] article selector pattern",
+		"steps": [
+			"Create theme with [data-theme=\"Name\"] article h1 selector",
+			"Apply to preview document",
+			"Verify h1 styling applies",
+			"Inspect DOM - confirm article element has data-theme"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-css-selectors",
+		"description": "Slideshow CSS uses [data-theme] selector pattern (no article required)",
+		"steps": [
+			"Create theme with [data-theme=\"Name\"] h1 selector",
+			"Apply to slideshow",
+			"Verify h1 styling applies",
+			"Confirm styling works without article in selector"
+		],
+		"passes": false
+	},
+	{
+		"category": "theme-css-selectors",
+		"description": "Theme can support both preview and slideshow with different selectors",
+		"steps": [
+			"Create theme with type: both",
+			"Include [data-theme] article rules for preview",
+			"Include [data-theme] h1 rules for slideshow",
+			"Apply to preview - verify preview rules apply",
+			"Apply to slideshow - verify slideshow rules apply"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-preview",
+		"description": "Kitchen sink preview renders all heading levels",
+		"steps": [
+			"Open kitchen-sink-preview.md in preview",
+			"Verify h1 through h6 all render",
+			"Verify each level has distinct styling",
+			"Apply custom theme - verify theme affects all headings"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-preview",
+		"description": "Kitchen sink preview renders text formatting",
+		"steps": [
+			"Open kitchen-sink-preview.md in preview",
+			"Verify bold text renders",
+			"Verify italic text renders",
+			"Verify strikethrough renders",
+			"Verify inline code renders"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-preview",
+		"description": "Kitchen sink preview renders lists",
+		"steps": [
+			"Open kitchen-sink-preview.md in preview",
+			"Verify unordered lists render with bullets",
+			"Verify ordered lists render with numbers",
+			"Verify nested lists render correctly",
+			"Verify task lists render with checkboxes"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-preview",
+		"description": "Kitchen sink preview renders code blocks",
+		"steps": [
+			"Open kitchen-sink-preview.md in preview",
+			"Verify code blocks render with syntax highlighting",
+			"Verify multiple languages highlight correctly",
+			"Verify code block background is styled"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-preview",
+		"description": "Kitchen sink preview renders tables",
+		"steps": [
+			"Open kitchen-sink-preview.md in preview",
+			"Verify simple table renders",
+			"Verify table with alignment renders",
+			"Verify table headers are styled differently"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-slideshow",
+		"description": "Kitchen sink slideshow renders all slides",
+		"steps": [
+			"Open kitchen-sink-presentation.md in slideshow",
+			"Navigate through all slides",
+			"Verify no slides are blank or broken",
+			"Verify navigation works (arrows, click)"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-slideshow",
+		"description": "Kitchen sink slideshow text wraps correctly",
+		"steps": [
+			"Open kitchen-sink-presentation.md in slideshow",
+			"Navigate to slide with long paragraph",
+			"Verify text wraps to multiple lines",
+			"Verify text is readable size (not tiny)"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-slideshow",
+		"description": "Kitchen sink slideshow code blocks render",
+		"steps": [
+			"Open kitchen-sink-presentation.md in slideshow",
+			"Navigate to code block slides",
+			"Verify syntax highlighting works",
+			"Verify code is readable size"
+		],
+		"passes": false
+	},
+	{
+		"category": "kitchen-sink-slideshow",
+		"description": "Kitchen sink slideshow multi-column layouts work",
+		"steps": [
+			"Open kitchen-sink-presentation.md in slideshow",
+			"Navigate to two-column slide",
+			"Verify columns display side by side",
+			"Navigate to three-column slide",
+			"Verify three columns display correctly"
+		],
+		"passes": false
+	},
+	{
+		"category": "example-themes",
+		"description": "Elegant theme applies to preview",
+		"steps": [
+			"Upload elegant.zip theme",
+			"Create document with theme: Elegant",
+			"Open preview view",
+			"Verify Cormorant Garamond font loads",
+			"Verify elegant styling applies (centered h1, etc.)"
+		],
+		"passes": false
+	},
+	{
+		"category": "example-themes",
+		"description": "Elegant theme applies to slideshow",
+		"steps": [
+			"Upload elegant.zip theme",
+			"Create presentation with theme: Elegant",
+			"Open slideshow view",
+			"Verify preset colors apply (background, text)",
+			"Verify headings use theme styling"
+		],
+		"passes": false
+	},
+	{
+		"category": "example-themes",
+		"description": "Elegant theme light/dark presets work",
+		"steps": [
+			"Upload elegant.zip theme",
+			"Apply to presentation",
+			"View in light system mode - verify light preset",
+			"Switch to dark system mode - verify dark preset"
+		],
+		"passes": false
+	},
+	{
+		"category": "example-themes",
+		"description": "All example themes have exactly 2 presets",
+		"steps": [
+			"Check elegant.zip presets.json - verify 2 presets",
+			"Check minimalist.zip presets.json - verify 2 presets",
+			"Check technical.zip presets.json - verify 2 presets",
+			"Check classic.zip presets.json - verify 2 presets",
+			"Check playful.zip presets.json - verify 2 presets"
+		],
+		"passes": false
+	},
+	{
+		"category": "example-themes",
+		"description": "Example themes have light and dark appearance presets",
+		"steps": [
+			"Check each theme's presets.json",
+			"Verify one preset has appearance: light",
+			"Verify one preset has appearance: dark"
+		],
+		"passes": false
+	},
+	{
+		"category": "theming-guide",
+		"description": "Theming guide documents preview CSS selectors",
+		"steps": [
+			"Read theming-guide.md",
+			"Verify it shows [data-theme] article pattern for preview",
+			"Verify it includes examples for h1, p, a, etc."
+		],
+		"passes": false
+	},
+	{
+		"category": "theming-guide",
+		"description": "Theming guide documents slideshow CSS selectors",
+		"steps": [
+			"Read theming-guide.md",
+			"Verify it shows [data-theme] pattern for slideshow (no article)",
+			"Verify it explains slideshow uses semantic HTML"
+		],
+		"passes": false
+	},
+	{
+		"category": "theming-guide",
+		"description": "Theming guide documents preset format",
+		"steps": [
+			"Read theming-guide.md",
+			"Verify it shows presets.json format",
+			"Verify it states only light/dark appearances are used",
+			"Verify it lists all --preset-* CSS variables"
+		],
+		"passes": false
+	},
+	{
+		"category": "theming-guide",
+		"description": "Theming guide documents theme.json schema",
+		"steps": [
+			"Read theming-guide.md",
+			"Verify all theme.json fields are documented",
+			"Verify required vs optional fields are marked"
+		],
+		"passes": false
+	},
+	{
+		"category": "error-handling",
+		"description": "Missing theme shows warning banner",
+		"steps": [
+			"Create document with theme: NonExistentTheme",
+			"Open preview view",
+			"Verify warning banner appears",
+			"Verify message mentions theme not found"
+		],
+		"passes": false
+	},
+	{
+		"category": "error-handling",
+		"description": "Corrupted theme CSS shows error banner",
+		"steps": [
+			"Upload theme with intentionally broken CSS",
+			"Apply to document",
+			"Open preview view",
+			"Verify error handling doesn't crash app",
+			"Verify fallback styling applies"
+		],
+		"passes": false
+	},
+	{
+		"category": "error-handling",
+		"description": "Template without data-document shows error",
+		"steps": [
+			"Upload theme with template missing [data-document]",
+			"Apply to document",
+			"Open preview view",
+			"Verify error message appears",
+			"Verify content still renders (fallback)"
+		],
+		"passes": false
+	}
+]
