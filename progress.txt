@@ -331,3 +331,32 @@
 **Notes for next dev:**
 - Next priority: theming-guide (4 stories) or error-handling (3 stories)
 - Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync issues)
+
+---
+
+## 2026-01-10: Theming Guide + Error Handling Verification
+
+**Feature:** theming-guide (4 user stories) + error-handling (3 user stories)
+
+**Changes:**
+- Updated theming-guide.md to clarify CSS selector patterns:
+  - Preview: `[data-theme] article h1` pattern with DOM structure diagram
+  - Slideshow: `[data-theme] h1` pattern (no article wrapper)
+  - Added "Supporting Both Modes" section for `type: "both"` themes
+- Verified error-handling already implemented:
+  - Missing theme warning: preview.tsx:192-197, slideshow.tsx:177-184
+  - Corrupted CSS error: preview.tsx:199-205, slideshow.tsx:186-197
+  - Template missing data-document: theme-renderer.ts:465-472
+
+**Files modified:**
+- public/docs/theming-guide.md
+
+**Implementation locations (error handling - pre-existing):**
+- `src/lib/document-theme.ts:236-247` - returns warning when theme not found
+- `src/components/preview.tsx:177` - combines CSS/template errors for display
+- `src/lib/theme-renderer.ts:458-486` - `tryRenderTemplateWithContent` returns error for missing placeholder
+- `src/lib/theme-renderer.ts:404-426` - `tryCachedThemeStylesAsync` catches CSS build errors
+
+**Notes for next dev:**
+- PRD is now COMPLETE - all 71 user stories pass
+- Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync issues, unrelated)

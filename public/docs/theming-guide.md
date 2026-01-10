@@ -121,56 +121,69 @@ The theme name must match exactly (case-sensitive).
 
 ### Preview Mode Selectors
 
-Preview mode renders inside an `<article>` with prose classes:
+Preview mode uses this DOM structure:
+
+```html
+<div data-theme="Theme Name">
+	<article class="prose">
+		<h1>...</h1>
+		<p>...</p>
+	</article>
+</div>
+```
+
+Use `[data-theme] article` to target the content container:
 
 ```css
-/* Target the prose container */
-[data-theme="My Theme"] {
-	/* Affects the article element */
-}
-
-/* Target specific elements */
-[data-theme="My Theme"] h1,
-[data-theme="My Theme"] h2,
-[data-theme="My Theme"] h3 {
-	font-family: var(--preset-font-title, inherit);
-}
-
-[data-theme="My Theme"] p {
+/* Target the article container */
+[data-theme="My Theme"] article {
+	font-family: var(--preset-font-body, system-ui);
 	line-height: 1.8;
 }
 
-[data-theme="My Theme"] a {
-	color: var(--preset-accent);
+/* Target headings */
+[data-theme="My Theme"] article h1,
+[data-theme="My Theme"] article h2,
+[data-theme="My Theme"] article h3 {
+	font-family: var(--preset-font-title, inherit);
+	color: var(--preset-heading, var(--preset-foreground));
+}
+
+[data-theme="My Theme"] article p {
+	margin-bottom: 1.5em;
+}
+
+[data-theme="My Theme"] article a {
+	color: var(--preset-link, var(--preset-accent));
 	text-decoration: underline;
 }
 
-[data-theme="My Theme"] code {
+[data-theme="My Theme"] article code {
 	background: var(--preset-code-background, #f1f5f9);
 	padding: 0.2em 0.4em;
 	border-radius: 0.25em;
 }
 
-[data-theme="My Theme"] pre {
+[data-theme="My Theme"] article pre {
 	background: var(--preset-code-background, #1e293b);
 	padding: 1em;
 	border-radius: 0.5em;
 	overflow-x: auto;
 }
 
-[data-theme="My Theme"] blockquote {
+[data-theme="My Theme"] article blockquote {
 	border-left: 4px solid var(--preset-accent);
 	padding-left: 1em;
 	font-style: italic;
 }
 
-[data-theme="My Theme"] table {
+[data-theme="My Theme"] article table {
 	width: 100%;
 	border-collapse: collapse;
 }
 
-[data-theme="My Theme"] th,
-[data-theme="My Theme"] td {
+[data-theme="My Theme"] article th,
+[data-theme="My Theme"] article td {
 	border: 1px solid #e2e8f0;
 	padding: 0.5em;
 }
@@ -178,22 +191,86 @@ Preview mode renders inside an `<article>` with prose classes:
 
 ### Slideshow Mode Selectors
 
-Slideshow mode uses CSS variables for dynamic scaling:
+Slideshow uses semantic HTML elements directly inside the themed container:
 
-```css
-/* Available CSS variables in slideshow */
-var(--slide-h1-size)    /* Computed H1 font size */
-var(--slide-body-size)  /* Computed body font size */
-var(--slide-scale)      /* Current scale factor (0.1 - 1.0) */
+```html
+<article data-theme="Theme Name">
+	<h1>Slide Title</h1>
+	<p>Paragraph text</p>
+	<ul>
+		<li>List item</li>
+	</ul>
+</article>
 ```
 
-Slideshow content is rendered differently - headings, lists, code blocks, etc. are individual components. Target the container:
+Unlike preview mode, there is no extra wrapper - elements are direct children of the themed article. Use `[data-theme]` selectors without `article`:
 
 ```css
+/* Container styles */
 [data-theme="My Theme"] {
 	font-family: var(--preset-font-body, system-ui);
 }
+
+/* Headings - note: no article in selector */
+[data-theme="My Theme"] h1 {
+	font-family: var(--preset-font-title, inherit);
+	color: var(--preset-heading, var(--preset-foreground));
+}
+
+[data-theme="My Theme"] h2,
+[data-theme="My Theme"] h3 {
+	color: var(--preset-heading, var(--preset-foreground));
+}
+
+/* Paragraphs and text */
+[data-theme="My Theme"] p {
+	line-height: 1.6;
+}
+
+/* Links */
+[data-theme="My Theme"] a {
+	color: var(--preset-link, var(--preset-accent));
+}
+
+/* Lists */
+[data-theme="My Theme"] ul,
+[data-theme="My Theme"] ol {
+	padding-left: 1.5em;
+}
+
+/* Blockquotes */
+[data-theme="My Theme"] blockquote {
+	border-left: 4px solid var(--preset-accent);
+	padding-left: 1em;
+}
+
+/* Code */
+[data-theme="My Theme"] code {
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+}
 ```
+
+**Key difference:** Preview uses `[data-theme] article h1`, slideshow uses `[data-theme] h1`.
+
+### Supporting Both Modes
+
+For themes with `type: "both"`, include selectors for each mode:
+
+```css
+/* Preview-specific (with article) */
+[data-theme="My Theme"] article h1 {
+	font-size: 2.5em;
+	text-align: left;
+}
+
+/* Slideshow-specific (without article) */
+[data-theme="My Theme"] h1 {
+	font-size: 3em;
+	text-align: center;
+}
+```
+
+Slideshow selectors (without `article`) will also apply to preview content, but preview-specific selectors (with `article`) have higher specificity and take precedence.
 
 ---
 

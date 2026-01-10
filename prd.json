@@ -642,7 +642,7 @@
 			"Verify it shows [data-theme] article pattern for preview",
 			"Verify it includes examples for h1, p, a, etc."
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theming-guide",
@@ -652,7 +652,7 @@
 			"Verify it shows [data-theme] pattern for slideshow (no article)",
 			"Verify it explains slideshow uses semantic HTML"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theming-guide",
@@ -663,7 +663,7 @@
 			"Verify it states only light/dark appearances are used",
 			"Verify it lists all --preset-* CSS variables"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theming-guide",
@@ -673,7 +673,7 @@
 			"Verify all theme.json fields are documented",
 			"Verify required vs optional fields are marked"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "error-handling",
@@ -684,7 +684,7 @@
 			"Verify warning banner appears",
 			"Verify message mentions theme not found"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "error-handling",
@@ -696,7 +696,7 @@
 			"Verify error handling doesn't crash app",
 			"Verify fallback styling applies"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "error-handling",
@@ -708,6 +708,6 @@
 			"Verify error message appears",
 			"Verify content still renders (fallback)"
 		],
-		"passes": false
+		"passes": true
 	}
 ]
