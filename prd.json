@@ -484,7 +484,7 @@
 			"Verify each level has distinct styling",
 			"Apply custom theme - verify theme affects all headings"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-preview",
@@ -496,7 +496,7 @@
 			"Verify strikethrough renders",
 			"Verify inline code renders"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-preview",
@@ -508,7 +508,7 @@
 			"Verify nested lists render correctly",
 			"Verify task lists render with checkboxes"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-preview",
@@ -519,7 +519,7 @@
 			"Verify multiple languages highlight correctly",
 			"Verify code block background is styled"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-preview",
@@ -530,7 +530,7 @@
 			"Verify table with alignment renders",
 			"Verify table headers are styled differently"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-slideshow",
@@ -541,7 +541,7 @@
 			"Verify no slides are blank or broken",
 			"Verify navigation works (arrows, click)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-slideshow",
@@ -552,7 +552,7 @@
 			"Verify text wraps to multiple lines",
 			"Verify text is readable size (not tiny)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-slideshow",
@@ -563,7 +563,7 @@
 			"Verify syntax highlighting works",
 			"Verify code is readable size"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-slideshow",
@@ -575,7 +575,7 @@
 			"Navigate to three-column slide",
 			"Verify three columns display correctly"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "example-themes",
