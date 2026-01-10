@@ -45,7 +45,7 @@
 			"Verify headings are inside <article> element",
 			"Check data-theme attribute is on article or parent"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-semantic-html",
@@ -56,7 +56,7 @@
 			"Inspect DOM - verify <p> elements exist for text",
 			"Verify paragraphs are inside <article> element"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-semantic-html",
@@ -67,7 +67,7 @@
 			"Inspect DOM - verify <article> wrapper exists",
 			"Verify article has data-theme attribute with theme name"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",

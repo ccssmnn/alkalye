@@ -172,7 +172,6 @@ function Slideshow({
 									}
 								: undefined
 						}
-						data-theme={documentTheme.theme?.name ?? undefined}
 					>
 						{/* Theme warning banner */}
 						{documentTheme.warning && (
@@ -197,12 +196,17 @@ function Slideshow({
 							</div>
 						)}
 
-						<ScaledSlideContainer
-							blocks={visibleBlocks}
-							size={size}
-							slideNumber={currentSlideNumber}
-							onClick={goToNextSlide}
-						/>
+						<article
+							data-theme={documentTheme.theme?.name ?? undefined}
+							className="flex flex-1 flex-col"
+						>
+							<ScaledSlideContainer
+								blocks={visibleBlocks}
+								size={size}
+								slideNumber={currentSlideNumber}
+								onClick={goToNextSlide}
+							/>
+						</article>
 						<SlideControls
 							slides={slides}
 							currentSlideNumber={currentSlideNumber}
@@ -599,8 +603,9 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 function SlideContentItem({ item }: { item: SlideContent }) {
 	if (item.type === "heading") {
 		let scale = headingScales[item.depth] ?? 0.6
+		let Tag = `h${item.depth}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
 		return (
-			<div
+			<Tag
 				className="font-semibold"
 				style={{
 					fontSize: `calc(var(--slide-h1-size) * ${scale})`,
@@ -609,7 +614,7 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 				}}
 			>
 				<RenderSegments segments={item.segments} />
-			</div>
+			</Tag>
 		)
 	}
 
@@ -718,7 +723,7 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	}
 
 	return (
-		<div
+		<p
 			style={{
 				fontSize: "var(--slide-body-size)",
 				marginBottom: "0.3em",
@@ -726,7 +731,7 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 			}}
 		>
 			<RenderSegments segments={item.segments} />
-		</div>
+		</p>
 	)
 }
 

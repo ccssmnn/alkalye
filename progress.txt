@@ -1,0 +1,18 @@
+# Progress Log
+
+## 2026-01-10: Slideshow Semantic HTML
+
+**Feature:** slideshow-semantic-html (3 user stories)
+
+**Changes:**
+- Wrapped slideshow content in `<article>` element with `data-theme` attribute
+- Changed headings from `<div>` to proper `<h1>`-`<h6>` elements based on depth
+- Changed paragraph text from `<div>` to `<p>` elements
+
+**Files modified:**
+- src/components/slideshow.tsx
+
+**Notes for next dev:**
+- This enables CSS selectors like `[data-theme="ThemeName"] h1` to work
+- The slideshow theming stories should now be unblocked
+- Pre-existing test failures in documents.test.ts and spaces.test.ts (Jazz sync issues) are unrelated
