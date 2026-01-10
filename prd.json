@@ -172,7 +172,7 @@
 			"Open slideshow view",
 			"Verify light preset colors are applied"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-presets",
@@ -184,7 +184,7 @@
 			"Open slideshow view",
 			"Verify dark preset colors are applied"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-presets",
@@ -196,7 +196,7 @@
 			"Open slideshow view",
 			"Verify dark preset colors are applied despite system light mode"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-css-loading",

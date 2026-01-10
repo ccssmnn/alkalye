@@ -181,13 +181,12 @@ function useDocumentTheme(
 		return { theme: null, preset: null, warning: null }
 	}
 
-	// Skip appearance-only values (light/dark) - these are handled by parsePresentationTheme
-	if (themeName === "light" || themeName === "dark") {
-		return { theme: null, preset: null, warning: null }
-	}
+	// Handle appearance-only values (light/dark) - these are handled by parsePresentationTheme
+	// but we should still fall through to default theme if one is set
+	let isAppearanceOnlyTheme = themeName === "light" || themeName === "dark"
 
-	// Fall back to default theme if no theme specified in frontmatter
-	let effectiveThemeName = themeName
+	// Fall back to default theme if no theme specified in frontmatter (or if theme is appearance-only)
+	let effectiveThemeName = isAppearanceOnlyTheme ? null : themeName
 	if (!effectiveThemeName) {
 		let settings = me.root.settings
 		if (settings) {
@@ -235,15 +234,15 @@ function useDocumentTheme(
 
 	// Theme not found
 	if (!theme) {
-		// Only show warning if explicitly specified in frontmatter (not from default)
-		if (themeName) {
+		// Only show warning if explicitly specified in frontmatter (not from default or appearance-only)
+		if (themeName && !isAppearanceOnlyTheme) {
 			return {
 				theme: null,
 				preset: null,
 				warning: `Theme "${effectiveThemeName}" not found. Upload it in Settings > Themes.`,
 			}
 		}
-		// Default theme not found - silently fall back (user may have deleted it)
+		// Default theme not found or appearance-only - silently fall back
 		return { theme: null, preset: null, warning: null }
 	}
 

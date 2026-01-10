@@ -86,3 +86,29 @@
 **Notes for next dev:**
 - Next priority: slideshow-presets stories (auto-selecting light/dark presets)
 - Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
+
+---
+
+## 2026-01-10: Slideshow Preset Auto-Selection
+
+**Feature:** slideshow-presets (3 user stories)
+
+**Changes:**
+- Fixed `useDocumentTheme` to fall through to default theme when frontmatter has appearance-only value (`theme: light` or `theme: dark`)
+- Previously, `theme: dark` would skip default theme lookup and return null
+- Now, appearance values are detected and the hook continues to check for default theme in settings
+- Warning message no longer fires for appearance-only values when no default is set
+
+**Files modified:**
+- src/lib/document-theme.ts
+
+**How it works:**
+1. User writes `theme: dark` in frontmatter (appearance override)
+2. `parsePresentationTheme()` extracts this as appearance value
+3. `useDocumentTheme()` detects "dark" is an appearance-only value (not a theme name)
+4. Hook falls through to load default slideshow theme from settings
+5. The dark appearance passed to hook causes dark preset to be selected
+
+**Notes for next dev:**
+- Next priority: preview-css-loading or preview-theming stories
+- Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
