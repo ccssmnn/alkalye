@@ -208,7 +208,7 @@
 			"Verify h1 has custom styling from theme CSS",
 			"Check browser console for no CSS loading errors"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-css-loading",
@@ -220,7 +220,7 @@
 			"Verify custom font renders correctly",
 			"Check Network tab - font files loaded"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-css-loading",
@@ -232,7 +232,7 @@
 			"Verify default styling applies",
 			"Verify theme styling applies once CSS loads"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -243,7 +243,7 @@
 			"Open preview view",
 			"Verify each heading level has theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -254,7 +254,7 @@
 			"Open preview view",
 			"Verify paragraphs have theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -266,7 +266,7 @@
 			"Verify links have theme styling",
 			"Hover over link - verify hover state styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -278,7 +278,7 @@
 			"Verify code blocks have theme background",
 			"Verify inline code has theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -289,7 +289,7 @@
 			"Open preview view",
 			"Verify blockquotes have theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -300,7 +300,7 @@
 			"Open preview view",
 			"Verify table has theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "preview-theming",
@@ -312,7 +312,7 @@
 			"Verify content is inside template structure",
 			"Verify template styling applies"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-presets",

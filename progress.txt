@@ -112,3 +112,34 @@
 **Notes for next dev:**
 - Next priority: preview-css-loading or preview-theming stories
 - Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
+
+---
+
+## 2026-01-10: Preview Theming Support
+
+**Feature:** preview-css-loading (3 stories) + preview-theming (7 stories) = 10 user stories
+
+**Changes:**
+- Fixed preview to pass system appearance to `useDocumentTheme` for preset auto-selection
+- Previously preview called `useDocumentTheme(content, "preview")` without appearance
+- Now calls `useDocumentTheme(content, "preview", resolvedTheme)` matching slideshow behavior
+
+**Files modified:**
+- src/components/preview.tsx:39
+
+**How it works:**
+1. Preview already had `useResolvedTheme()` to get system light/dark mode
+2. Now passes this to `useDocumentTheme` as third argument
+3. Theme presets are auto-selected by appearance (light/dark) just like slideshow
+4. CSS, fonts, and preset variables are injected via `<style>` tag
+
+**Implementation already in place (verified):**
+- `preview.tsx:87-88` - `useThemeStyles(documentTheme)` loads CSS async
+- `preview.tsx:139-149` - combines fontFaceRules + presetVariables + css
+- `preview.tsx:189` - injects via `<style>{injectedStyles}</style>`
+- `preview.tsx:211,219` - `data-theme` attribute on containers
+- `preview.tsx:152-174` - template rendering with `tryRenderTemplateWithContent`
+
+**Notes for next dev:**
+- Next priority: theme-presets, theme-upload, or theme-defaults stories
+- Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)

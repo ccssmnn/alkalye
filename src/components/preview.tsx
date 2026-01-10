@@ -36,7 +36,7 @@ interface PreviewProps {
 
 function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
-	let documentTheme = useDocumentTheme(content, "preview")
+	let documentTheme = useDocumentTheme(content, "preview", resolvedTheme)
 	console.log("[Preview] Document theme:", {
 		themeName: documentTheme.theme?.name,
 		presetName: documentTheme.preset?.name,
