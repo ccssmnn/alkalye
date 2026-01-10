@@ -136,7 +136,7 @@
 			"Switch to dark mode",
 			"Verify background matches dark preset background color"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",
@@ -148,7 +148,7 @@
 			"Verify text color matches preset foreground color",
 			"Verify heading color matches preset heading color (if set)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",
@@ -160,7 +160,7 @@
 			"Verify links use accent color",
 			"Verify blockquote border uses accent color"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-presets",

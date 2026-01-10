@@ -61,3 +61,28 @@
 - Preset colors (background, foreground, accent, etc) are injected as CSS variables
 - Next priority: slideshow-theming preset colors stories (lines 128-164 in PRD)
 - Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
+
+---
+
+## 2026-01-10: Slideshow Preset Colors (Verification)
+
+**Feature:** slideshow-theming preset colors (3 user stories)
+
+**Status:** Already implemented - marked PRD as passing
+
+**Implementation locations:**
+- `src/components/slideshow.tsx:167-174` - applies `var(--preset-background)` and `var(--preset-foreground)` to main container
+- `src/components/slideshow.tsx:561` - links use `var(--preset-link, var(--preset-accent, currentColor))`
+- `src/components/slideshow.tsx:689` - blockquotes use `var(--preset-accent, currentColor)` for border
+- `src/lib/theme-renderer.ts:364-400` - `buildPresetVariables()` generates `:root { --preset-* }` CSS variables
+- `src/lib/document-theme.ts:276-286` - `useDocumentTheme` auto-selects preset by appearance (light/dark)
+
+**How it works:**
+1. User creates theme with light/dark presets in presets.json
+2. `useDocumentTheme` resolves theme + auto-selects preset based on system appearance
+3. `buildPresetVariables()` injects preset colors as CSS variables: `--preset-background`, `--preset-foreground`, `--preset-accent`, etc.
+4. Slideshow applies these via inline styles and CSS var references
+
+**Notes for next dev:**
+- Next priority: slideshow-presets stories (auto-selecting light/dark presets)
+- Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
