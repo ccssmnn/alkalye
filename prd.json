@@ -79,7 +79,7 @@
 			"Verify h1 has custom color from theme CSS",
 			"Verify h1 has custom font-family from theme CSS"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",
@@ -90,7 +90,7 @@
 			"Open slideshow view",
 			"Verify paragraph text uses theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",
@@ -101,7 +101,7 @@
 			"Open slideshow view",
 			"Verify list styling matches theme CSS"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",
@@ -112,7 +112,7 @@
 			"Open slideshow view",
 			"Verify blockquote styling matches theme CSS"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",
@@ -123,7 +123,7 @@
 			"Open slideshow view",
 			"Verify table styling matches theme CSS"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-theming",

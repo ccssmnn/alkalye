@@ -556,7 +556,10 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 					href={segment.href}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="text-brand underline"
+					className="underline"
+					style={{
+						color: "var(--preset-link, var(--preset-accent, currentColor))",
+					}}
 					onClick={e => e.stopPropagation()}
 				>
 					{segment.text}
@@ -595,7 +598,13 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 			)
 		case "codespan":
 			return (
-				<code className="bg-muted rounded px-[0.3em] py-[0.1em] font-mono text-[0.85em]">
+				<code
+					className="rounded px-[0.3em] py-[0.1em] font-mono text-[0.85em]"
+					style={{
+						backgroundColor:
+							"var(--preset-code-background, rgba(127, 127, 127, 0.15))",
+					}}
+				>
 					{segment.text}
 				</code>
 			)
@@ -671,12 +680,13 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	if (item.type === "blockquote") {
 		return (
 			<blockquote
-				className="border-brand border-l-4 text-left italic"
+				className="border-l-4 text-left italic"
 				style={{
 					fontSize: "var(--slide-body-size)",
 					margin: "0.5em 0",
 					paddingLeft: "0.5em",
 					lineHeight: 1.4,
+					borderColor: "var(--preset-accent, currentColor)",
 				}}
 			>
 				<RenderSegments segments={item.segments} />
@@ -774,10 +784,14 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 		// Asset not loaded yet, show placeholder
 		return (
 			<div
-				className="bg-muted flex aspect-video items-center justify-center rounded-lg"
-				style={sizeStyle}
+				className="flex aspect-video items-center justify-center rounded-lg"
+				style={{
+					...sizeStyle,
+					backgroundColor:
+						"var(--preset-code-background, rgba(127, 127, 127, 0.15))",
+				}}
 			>
-				<span className="text-muted-foreground text-sm">Loading...</span>
+				<span className="text-sm opacity-60">Loading...</span>
 			</div>
 		)
 	}
@@ -836,10 +850,14 @@ function HighlightedCode({
 
 	return (
 		<pre
-			className="bg-muted overflow-x-auto rounded-lg text-left"
-			style={style}
+			className="overflow-x-auto rounded-lg text-left"
+			style={{
+				...style,
+				backgroundColor:
+					"var(--preset-code-background, rgba(127, 127, 127, 0.15))",
+			}}
 		>
-			<code className="text-foreground font-mono">{code}</code>
+			<code className="font-mono">{code}</code>
 		</pre>
 	)
 }

@@ -38,3 +38,26 @@
 - This enables CSS selectors like `[data-theme="ThemeName"] h1` to work
 - The slideshow theming stories should now be unblocked
 - Pre-existing test failures in documents.test.ts and spaces.test.ts (Jazz sync issues) are unrelated
+
+---
+
+## 2026-01-10: Slideshow Theme CSS Support
+
+**Feature:** slideshow-theming (5 user stories)
+
+**Changes:**
+- Removed hardcoded Tailwind color classes from slideshow elements to allow theme CSS to apply
+- Links: removed `text-brand`, now use `var(--preset-link, var(--preset-accent, currentColor))`
+- Inline code: removed `bg-muted`, now use `var(--preset-code-background, rgba(127,127,127,0.15))`
+- Blockquotes: removed `border-brand`, now use `var(--preset-accent, currentColor)`
+- Code blocks fallback: removed `bg-muted`/`text-foreground`, now use CSS vars
+- Image placeholder: removed `bg-muted`/`text-muted-foreground`, now use CSS vars
+
+**Files modified:**
+- src/components/slideshow.tsx
+
+**Notes for next dev:**
+- Theme CSS now applies via `[data-theme] h1`, `[data-theme] p`, etc selectors
+- Preset colors (background, foreground, accent, etc) are injected as CSS variables
+- Next priority: slideshow-theming preset colors stories (lines 128-164 in PRD)
+- Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
