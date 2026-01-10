@@ -1,5 +1,27 @@
 # Progress Log
 
+## 2026-01-10: Slideshow Text Wrapping
+
+**Feature:** slideshow-scaling (3 user stories)
+
+**Changes:**
+- Fixed text wrapping: content now wraps at container width instead of scaling to tiny size
+- Added `max-w-full` and `overflow-wrap: break-word` to slide blocks for proper text wrapping
+- Changed measurement to use width constraint so text wraps before scaling kicks in
+- Scaling now only reduces size when wrapped content height exceeds viewport
+- Fixed lint errors: refactored `useThemeStyles` hook to use "adjust state during render" pattern instead of synchronous setState in effects
+
+**Files modified:**
+- src/components/slideshow.tsx
+- src/components/preview.tsx
+
+**Notes for next dev:**
+- Theming infrastructure is already in place (useDocumentTheme, theme-renderer, CSS injection)
+- The slideshow theming stories should be next priority
+- Pre-existing test failures in documents.test.ts and spaces.test.ts (Jazz sync issues) are unrelated
+
+---
+
 ## 2026-01-10: Slideshow Semantic HTML
 
 **Feature:** slideshow-semantic-html (3 user stories)

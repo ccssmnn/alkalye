@@ -403,9 +403,9 @@ function ScaledSlideContainer({
 			let maxW = container!.clientWidth * 0.9
 			let maxH = container!.clientHeight * 0.9
 
-			// Temporarily remove size constraints for measuring
-			// Replace 1fr with auto so cells can expand to natural size
-			content!.style.width = "auto"
+			// For measuring, we want text to wrap at a reasonable width
+			// Use maxW as the constraint so text wraps before scaling
+			content!.style.width = `${maxW}px`
 			content!.style.height = "auto"
 			content!.style.maxHeight = "none"
 			content!.style.gridTemplateRows = gridTemplate.rows.replace(
@@ -426,9 +426,9 @@ function ScaledSlideContainer({
 				content!.style.setProperty("--slide-scale", `${s}`)
 				// Force reflow
 				void content!.offsetHeight
-				let w = content!.scrollWidth
+				// Only check height since width is constrained to wrap
 				let h = content!.scrollHeight
-				return w <= maxW && h <= maxH
+				return h <= maxH
 			}
 
 			// Binary search for optimal scale
@@ -466,7 +466,14 @@ function ScaledSlideContainer({
 		return () => {
 			cancelled = true
 		}
-	}, [slideNumber, blocks, isPortrait, baseSize])
+	}, [
+		slideNumber,
+		blocks,
+		isPortrait,
+		baseSize,
+		gridTemplate.cols,
+		gridTemplate.rows,
+	])
 
 	useEffect(() => {
 		function handleResize() {
@@ -505,7 +512,8 @@ function ScaledSlideContainer({
 				{blocks.map((block, i) => (
 					<div
 						key={i}
-						className="flex min-h-0 min-w-0 flex-col items-center justify-center text-center"
+						className="flex min-h-0 max-w-full min-w-0 flex-col items-center justify-center overflow-hidden text-center"
+						style={{ overflowWrap: "break-word" }}
 					>
 						{block.content.map((item, j) => (
 							<SlideContentItem key={j} item={item} />
@@ -848,35 +856,46 @@ type ThemeStylesResult = {
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [styles, setStyles] = useState<ThemeStyles | null>(null)
 	let [error, setError] = useState<string | null>(null)
-	let [isLoading, setIsLoading] = useState(!!documentTheme.theme)
+	// Track the theme ID we've loaded styles for to derive loading state
+	let [loadedThemeId, setLoadedThemeId] = useState<string | null>(null)
+
+	let currentThemeId = documentTheme.theme?.$jazz.id ?? null
+	let isLoading = currentThemeId !== null && currentThemeId !== loadedThemeId
+
+	// Clear state when theme is removed (adjust state during render pattern)
+	let [prevThemeId, setPrevThemeId] = useState<string | null>(currentThemeId)
+	if (currentThemeId !== prevThemeId) {
+		setPrevThemeId(currentThemeId)
+		if (currentThemeId === null) {
+			setStyles(null)
+			setError(null)
+			setLoadedThemeId(null)
+		}
+	}
 
 	useEffect(() => {
 		// Get styles from cache asynchronously (builds and caches if needed)
-		if (documentTheme.theme) {
-			let cancelled = false
-			setIsLoading(true)
+		if (!documentTheme.theme) return
 
-			tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
-				buildResult => {
-					if (cancelled) return
-					if (buildResult.ok) {
-						setStyles(buildResult.styles)
-						setError(null)
-					} else {
-						setStyles(null)
-						setError(buildResult.error)
-					}
-					setIsLoading(false)
-				},
-			)
+		let cancelled = false
+		let themeId = documentTheme.theme.$jazz.id
 
-			return () => {
-				cancelled = true
-			}
-		} else {
-			setStyles(null)
-			setError(null)
-			setIsLoading(false)
+		tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
+			buildResult => {
+				if (cancelled) return
+				if (buildResult.ok) {
+					setStyles(buildResult.styles)
+					setError(null)
+				} else {
+					setStyles(null)
+					setError(buildResult.error)
+				}
+				setLoadedThemeId(themeId)
+			},
+		)
+
+		return () => {
+			cancelled = true
 		}
 	}, [documentTheme.theme, documentTheme.preset])
 

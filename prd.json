@@ -9,7 +9,7 @@
 			"Verify content scales down only if wrapped height exceeds viewport",
 			"Check that words are never broken mid-word"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-scaling",
@@ -21,7 +21,7 @@
 			"Verify heading remains readable (not tiny)",
 			"Check font size scales proportionally if needed"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-scaling",
@@ -33,7 +33,7 @@
 			"Verify blockquote styling is preserved",
 			"Check border and padding scale correctly"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "slideshow-semantic-html",

@@ -12,8 +12,11 @@ A comprehensive test of all slideshow elements for theme development
 Typography Test
 
 # Heading Level 1
+
 ## Heading Level 2
+
 ### Heading Level 3
+
 #### Heading Level 4
 
 This slide tests all heading sizes.
@@ -21,6 +24,7 @@ This slide tests all heading sizes.
 ---
 
 # Text Formatting
+
     **Bold text** for emphasis
     *Italic text* for subtle emphasis
     ~~Strikethrough~~ for deleted content
@@ -31,6 +35,7 @@ Mix **bold and _italic_** together
 ---
 
 # Links and References
+
     Visit [Alkalye](https://alkalye.com) for more
     Check the [documentation](https://docs.example.com)
     Email us at [hello@example.com](mailto:hello@example.com)
@@ -40,6 +45,7 @@ Links should be styled distinctly from body text.
 ---
 
 # Unordered Lists
+
     - First item in the list
     - Second item with more detail
     - Third item to complete the trio
@@ -51,6 +57,7 @@ Lists should have consistent spacing and bullet styling.
 ---
 
 # Ordered Lists
+
     1. First step in the process
     2. Second step follows naturally
     3. Third step brings us closer
@@ -78,6 +85,7 @@ Two columns with different list types.
 ---
 
 # Blockquotes
+
     > The best way to predict the future is to create it.
     > - Peter Drucker
 
@@ -86,6 +94,7 @@ Quotes for emphasis and attribution.
 ---
 
 # Long Blockquote
+
     > This is a longer quote that spans multiple lines to test how the theme handles text wrapping within blockquotes. It should maintain readability and proper line height throughout.
 
 Testing quote wrapping behavior.
@@ -93,6 +102,7 @@ Testing quote wrapping behavior.
 ---
 
 # Code Block - JavaScript
+
 ```javascript
 function greet(name) {
 	const message = `Hello, ${name}!`
@@ -108,6 +118,7 @@ Syntax highlighting for JavaScript code.
 ---
 
 # Code Block - TypeScript
+
 ```typescript
 interface User {
 	id: string
@@ -130,6 +141,7 @@ TypeScript with type annotations.
 ---
 
 # Code Block - CSS
+
 ```css
 .theme-container {
 	--background: #ffffff;
@@ -152,6 +164,7 @@ CSS custom properties and selectors.
 ---
 
 # Code Block - Python
+
 ```python
 def fibonacci(n: int) -> list[int]:
     """Generate Fibonacci sequence up to n terms."""
@@ -172,6 +185,7 @@ Python with type hints and docstrings.
 ---
 
 # Code Block - Bash
+
 ```bash
 #!/bin/bash
 
@@ -190,6 +204,7 @@ Shell scripts for automation.
 ---
 
 # Simple Table
+
 | Feature   | Status |
 | --------- | ------ |
 | Themes    | Done   |
@@ -202,6 +217,7 @@ Basic two-column table.
 ---
 
 # Complex Table
+
 | Property   | Type  | Default | Description        |
 | ---------- | ----- | ------- | ------------------ |
 | background | color | #fff    | Main background    |
@@ -224,10 +240,12 @@ Images from external sources.
 Two Column Layout
 
 # Left Side
+
     Content for the left column
     Can include multiple items
 
 # Right Side
+
     Content for the right column
     Balanced layout test
 
@@ -238,12 +256,15 @@ Testing two-column layouts.
 Three Column Layout
 
 # One
+
     First column
 
 # Two
+
     Second column
 
 # Three
+
     Third column
 
 Testing three-column grid.
@@ -253,9 +274,11 @@ Testing three-column grid.
 Mixed Content Block
 
 # Code + Text
+
 ```javascript
 const x = 42
 ```
+
     The answer to everything
 
 Combining code with explanatory text.
@@ -271,6 +294,7 @@ Testing how themes handle very short headings.
 ---
 
 # Very Long Heading That Spans Multiple Lines
+
     Testing how the theme handles extremely long headings that need to wrap to multiple lines while maintaining readability
 
 Long heading stress test.
@@ -290,6 +314,7 @@ Paragraph density test.
 ---
 
 # Special Characters
+
     Curly quotes: "Hello" and 'World'
     Dashes: em dash --- and en dash --
     Ellipsis: ...
@@ -311,8 +336,8 @@ Emoji rendering test.
 Thank You
 
 ## Questions?
+
     Contact: assmann@hey.com
     Website: alkalye.com
 
 End of kitchen sink presentation.
-

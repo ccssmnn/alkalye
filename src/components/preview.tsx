@@ -261,35 +261,46 @@ type ThemeStylesResult = {
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [styles, setStyles] = useState<ThemeStyles | null>(null)
 	let [error, setError] = useState<string | null>(null)
-	let [isLoading, setIsLoading] = useState(!!documentTheme.theme)
+	// Track the theme ID we've loaded styles for to derive loading state
+	let [loadedThemeId, setLoadedThemeId] = useState<string | null>(null)
+
+	let currentThemeId = documentTheme.theme?.$jazz.id ?? null
+	let isLoading = currentThemeId !== null && currentThemeId !== loadedThemeId
+
+	// Clear state when theme is removed (adjust state during render pattern)
+	let [prevThemeId, setPrevThemeId] = useState<string | null>(currentThemeId)
+	if (currentThemeId !== prevThemeId) {
+		setPrevThemeId(currentThemeId)
+		if (currentThemeId === null) {
+			setStyles(null)
+			setError(null)
+			setLoadedThemeId(null)
+		}
+	}
 
 	useEffect(() => {
 		// Get styles from cache asynchronously (builds and caches if needed)
-		if (documentTheme.theme) {
-			let cancelled = false
-			setIsLoading(true)
+		if (!documentTheme.theme) return
 
-			tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
-				buildResult => {
-					if (cancelled) return
-					if (buildResult.ok) {
-						setStyles(buildResult.styles)
-						setError(null)
-					} else {
-						setStyles(null)
-						setError(buildResult.error)
-					}
-					setIsLoading(false)
-				},
-			)
+		let cancelled = false
+		let themeId = documentTheme.theme.$jazz.id
 
-			return () => {
-				cancelled = true
-			}
-		} else {
-			setStyles(null)
-			setError(null)
-			setIsLoading(false)
+		tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
+			buildResult => {
+				if (cancelled) return
+				if (buildResult.ok) {
+					setStyles(buildResult.styles)
+					setError(null)
+				} else {
+					setStyles(null)
+					setError(buildResult.error)
+				}
+				setLoadedThemeId(themeId)
+			},
+		)
+
+		return () => {
+			cancelled = true
 		}
 	}, [documentTheme.theme, documentTheme.preset])
 
