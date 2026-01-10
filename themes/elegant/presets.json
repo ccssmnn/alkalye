@@ -31,22 +31,6 @@
 				"title": "Cormorant Garamond",
 				"body": "Montserrat"
 			}
-		},
-		{
-			"name": "Rose Gold",
-			"appearance": "light",
-			"colors": {
-				"background": "#fcf9f9",
-				"foreground": "#2d1f1f",
-				"accent": "#b76e79",
-				"heading": "#1f1414",
-				"link": "#b76e79",
-				"codeBackground": "#f5efef"
-			},
-			"fonts": {
-				"title": "Cormorant Garamond",
-				"body": "Montserrat"
-			}
 		}
 	]
 }

@@ -303,3 +303,31 @@
 - Next priority: example-themes (need to reduce presets to exactly 2 per theme with light/dark), theming-guide, or error-handling
 - Elegant theme has 3 presets, playful has 4 - PRD requires exactly 2
 - Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync issues)
+
+---
+
+## 2026-01-10: Example Themes Preset Standardization
+
+**Feature:** example-themes (5 user stories)
+
+**Changes:**
+- Reduced elegant theme from 3 presets to 2 (removed "Rose Gold" light variant)
+- Reduced playful theme from 4 presets to 2 (removed "Berry" light and "Ocean" dark)
+- Rebuilt elegant.zip and playful.zip with updated presets.json
+
+**Presets after fix:**
+- elegant: Champagne (light), Midnight (dark)
+- playful: Sunny (light), Night (dark)
+- technical: Terminal Light (light), Terminal Dark (dark) - already correct
+- classic: Paper (light), Ink (dark) - already correct
+- minimalist: Light (light), Dark (dark) - already correct
+
+**Files modified:**
+- themes/elegant/presets.json
+- themes/elegant.zip
+- themes/playful/presets.json
+- themes/playful.zip
+
+**Notes for next dev:**
+- Next priority: theming-guide (4 stories) or error-handling (3 stories)
+- Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync issues)

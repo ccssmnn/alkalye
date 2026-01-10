@@ -25,54 +25,6 @@
 			}
 		},
 		{
-			"name": "Berry",
-			"appearance": "light",
-			"colors": {
-				"background": "#fdf2f8",
-				"foreground": "#831843",
-				"accent": "#ec4899",
-				"heading": "#9d174d",
-				"link": "#ec4899",
-				"codeBackground": "#fce7f3",
-				"accents": [
-					"#ec4899",
-					"#f472b6",
-					"#fb7185",
-					"#f87171",
-					"#c084fc",
-					"#a78bfa"
-				]
-			},
-			"fonts": {
-				"title": "Fredoka",
-				"body": "Quicksand"
-			}
-		},
-		{
-			"name": "Ocean",
-			"appearance": "dark",
-			"colors": {
-				"background": "#0c4a6e",
-				"foreground": "#f0f9ff",
-				"accent": "#0ea5e9",
-				"heading": "#e0f2fe",
-				"link": "#38bdf8",
-				"codeBackground": "#075985",
-				"accents": [
-					"#0ea5e9",
-					"#38bdf8",
-					"#7dd3fc",
-					"#bae6fd",
-					"#c026d3",
-					"#f472b6"
-				]
-			},
-			"fonts": {
-				"title": "Fredoka",
-				"body": "Quicksand"
-			}
-		},
-		{
 			"name": "Night",
 			"appearance": "dark",
 			"colors": {

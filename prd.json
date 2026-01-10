@@ -587,7 +587,7 @@
 			"Verify Cormorant Garamond font loads",
 			"Verify elegant styling applies (centered h1, etc.)"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "example-themes",
@@ -599,7 +599,7 @@
 			"Verify preset colors apply (background, text)",
 			"Verify headings use theme styling"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "example-themes",
@@ -610,7 +610,7 @@
 			"View in light system mode - verify light preset",
 			"Switch to dark system mode - verify dark preset"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "example-themes",
@@ -622,7 +622,7 @@
 			"Check classic.zip presets.json - verify 2 presets",
 			"Check playful.zip presets.json - verify 2 presets"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "example-themes",
@@ -632,7 +632,7 @@
 			"Verify one preset has appearance: light",
 			"Verify one preset has appearance: dark"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theming-guide",
