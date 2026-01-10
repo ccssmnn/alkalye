@@ -143,3 +143,33 @@
 **Notes for next dev:**
 - Next priority: theme-presets, theme-upload, or theme-defaults stories
 - Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
+
+---
+
+## 2026-01-10: Theme Presets Verification
+
+**Feature:** theme-presets (3 user stories)
+
+**Status:** Already implemented - marked PRD as passing
+
+**Implementation locations:**
+- `src/lib/theme-renderer.ts:364-400` - `buildPresetVariables()` generates CSS vars:
+  - `--preset-background`, `--preset-foreground`, `--preset-accent` (core colors)
+  - `--preset-accent-1` through `--preset-accent-6` (accent palette)
+  - `--preset-heading`, `--preset-link`, `--preset-code-background` (optional colors)
+  - `--preset-font-title`, `--preset-font-body` (fonts)
+  - `--preset-appearance` (light/dark indicator)
+- `src/lib/document-theme.ts:275-284` - `findPresetByAppearance()` auto-selects light/dark preset
+- `src/components/preview.tsx:144` - injects `themeStyles.presetVariables`
+- `src/components/slideshow.tsx:136` - injects `themeStyles.presetVariables`
+
+**How preset auto-selection works:**
+1. Theme has 2 presets: one with `appearance: "light"`, one with `appearance: "dark"`
+2. `useDocumentTheme()` receives system appearance from `useResolvedTheme()`
+3. `findPresetByAppearance()` returns matching preset
+4. `buildPresetVariables()` generates `:root { --preset-* }` CSS from selected preset
+5. Preview/slideshow inject variables via `<style>` tag
+
+**Notes for next dev:**
+- Next priority: theme-upload, theme-defaults, or error-handling stories
+- Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)

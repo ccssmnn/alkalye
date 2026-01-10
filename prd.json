@@ -324,7 +324,7 @@
 			"Verify light preset in light mode",
 			"Verify dark preset in dark mode"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-presets",
@@ -337,7 +337,7 @@
 			"Verify --preset-foreground is set",
 			"Verify --preset-accent is set"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-presets",
@@ -349,7 +349,7 @@
 			"Verify --preset-font-title is set",
 			"Verify --preset-font-body is set"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-upload",
