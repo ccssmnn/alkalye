@@ -238,3 +238,30 @@
 **Notes for next dev:**
 - Next priority: theme-css-selectors or error-handling stories
 - Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync), theme-sanitize.test.ts (HTML sanitization)
+
+---
+
+## 2026-01-10: Theme CSS Selector Pattern Fix
+
+**Feature:** theme-css-selectors (3 user stories)
+
+**Changes:**
+- Moved `data-theme` attribute from `<article>` to parent `<div>` in preview component
+- This enables theme CSS to use `[data-theme="Name"] article h1` pattern for preview
+- Slideshow already had correct structure: `<article data-theme="Name">` allows `[data-theme] h1` selectors
+
+**Files modified:**
+- src/components/preview.tsx
+
+**Selector patterns now supported:**
+- **Preview:** `[data-theme="Name"] article h1` - the article is a child of the themed container
+- **Slideshow:** `[data-theme="Name"] h1` - h1 is inside the themed article element
+- **Both modes:** Themes with `type: both` can include both selector patterns in their CSS
+
+**DOM structure:**
+- Preview: `<div data-theme="Name"><article class="prose">...</article></div>`
+- Slideshow: `<article data-theme="Name">...</article>`
+
+**Notes for next dev:**
+- Next priority: kitchen-sink files, example-themes, theming-guide, or error-handling
+- Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync issues)

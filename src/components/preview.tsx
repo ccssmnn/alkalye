@@ -213,11 +213,12 @@ function PreviewContent({
 				/>
 			) : (
 				// Default rendering without template
-				<div className="mx-auto max-w-[65ch] px-6 py-8">
-					<article
-						className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4"
-						data-theme={documentTheme.theme?.name ?? undefined}
-					>
+				// data-theme is on the outer div so themes can use [data-theme="Name"] article selectors
+				<div
+					className="mx-auto max-w-[65ch] px-6 py-8"
+					data-theme={documentTheme.theme?.name ?? undefined}
+				>
+					<article className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4">
 						{segments.map((segment, i) => {
 							if (segment.type === "text") {
 								return (

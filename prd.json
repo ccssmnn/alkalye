@@ -450,7 +450,7 @@
 			"Verify h1 styling applies",
 			"Inspect DOM - confirm article element has data-theme"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-css-selectors",
@@ -461,7 +461,7 @@
 			"Verify h1 styling applies",
 			"Confirm styling works without article in selector"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-css-selectors",
@@ -473,7 +473,7 @@
 			"Apply to preview - verify preview rules apply",
 			"Apply to slideshow - verify slideshow rules apply"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "kitchen-sink-preview",
