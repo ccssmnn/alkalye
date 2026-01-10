@@ -361,7 +361,7 @@
 			"Upload in Settings > Themes",
 			"Verify theme appears in list"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-upload",
@@ -372,7 +372,7 @@
 			"Zip and upload",
 			"Verify presets are stored with theme"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-upload",
@@ -383,7 +383,7 @@
 			"Upload theme",
 			"Verify fonts are stored as theme assets"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-upload",
@@ -394,7 +394,7 @@
 			"Verify upload fails",
 			"Verify error message mentions missing 'name'"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-upload",
@@ -405,7 +405,7 @@
 			"Verify upload fails",
 			"Verify error message mentions missing CSS"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-defaults",

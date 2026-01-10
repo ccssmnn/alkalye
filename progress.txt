@@ -173,3 +173,34 @@
 **Notes for next dev:**
 - Next priority: theme-upload, theme-defaults, or error-handling stories
 - Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
+
+---
+
+## 2026-01-10: Theme Upload Tests
+
+**Feature:** theme-upload (5 user stories)
+
+**Status:** Implementation already existed - added comprehensive unit tests to verify
+
+**Changes:**
+- Created `src/lib/theme-upload.test.ts` with 30 tests covering:
+  - `validateThemeJson` validation (8 tests)
+  - Basic zip parsing (4 tests)
+  - CSS handling including sanitization (2 tests)
+  - Presets parsing and validation (5 tests)
+  - Font extraction (3 tests)
+  - HTML template parsing and sanitization (3 tests)
+  - Thumbnail extraction (2 tests)
+  - Error message helpfulness (3 tests)
+
+**Files modified:**
+- src/lib/theme-upload.test.ts (new)
+
+**Implementation locations (pre-existing):**
+- `src/lib/theme-upload.ts` - `parseThemeZip()` parses zip, validates theme.json, extracts CSS/presets/fonts
+- `src/routes/settings.tsx:298-538` - ThemesSection UI with upload handler
+- Theme schema in `src/schema/index.ts:92-105`
+
+**Notes for next dev:**
+- Next priority: theme-defaults or error-handling stories
+- Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
