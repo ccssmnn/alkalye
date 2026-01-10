@@ -204,3 +204,37 @@
 **Notes for next dev:**
 - Next priority: theme-defaults or error-handling stories
 - Pre-existing test failures in documents.test.ts/spaces.test.ts are unrelated (Jazz sync issues)
+
+---
+
+## 2026-01-10: Theme Defaults Verification
+
+**Feature:** theme-defaults (3 user stories)
+
+**Status:** Implementation already existed - added unit tests to verify and document behavior
+
+**Changes:**
+- Created `src/lib/document-theme.test.ts` with 18 tests covering:
+  - `getThemeName` parsing (7 tests) - extracts theme from frontmatter
+  - `getPresetName` parsing (3 tests) - extracts preset from frontmatter
+  - `findThemeByName` lookup (6 tests) - case-insensitive theme search
+  - Documented default theme behavior in test comments
+
+**Files modified:**
+- src/lib/document-theme.test.ts (new)
+
+**Implementation locations (pre-existing):**
+- `src/lib/document-theme.ts:188-202` - fallback to default theme when no frontmatter
+- `src/routes/settings.tsx:541-647` - DefaultThemeSettings UI (dropdowns for preview/slideshow defaults)
+- `src/schema/index.ts:52-56` - Settings schema with `defaultPreviewTheme`/`defaultSlideshowTheme`
+
+**How default themes work:**
+1. User uploads theme and sets as default in Settings > Themes > Default Themes
+2. Settings stores theme name in `defaultPreviewTheme` or `defaultSlideshowTheme`
+3. `useDocumentTheme(content, mode)` checks frontmatter first
+4. If no frontmatter theme (or theme is "light"/"dark" appearance value), falls back to settings default
+5. Frontmatter theme always overrides default theme
+
+**Notes for next dev:**
+- Next priority: theme-css-selectors or error-handling stories
+- Pre-existing test failures: documents.test.ts/spaces.test.ts (Jazz sync), theme-sanitize.test.ts (HTML sanitization)

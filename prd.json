@@ -416,7 +416,7 @@
 			"Open preview view",
 			"Verify default theme styling applies"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-defaults",
@@ -427,7 +427,7 @@
 			"Open slideshow view",
 			"Verify default theme styling applies"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-defaults",
@@ -439,7 +439,7 @@
 			"Open preview view",
 			"Verify ThemeB styling applies, not ThemeA"
 		],
-		"passes": false
+		"passes": true
 	},
 	{
 		"category": "theme-css-selectors",
