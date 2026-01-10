@@ -1,19 +1,30 @@
 import { useEffect, useRef, useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { co, type ResolveQuery } from "jazz-tools"
+import { co, Group, type ResolveQuery, type ID } from "jazz-tools"
+import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount } from "jazz-tools/react"
-import { Document, UserAccount } from "@/schema"
+import { Slider as SliderPrimitive } from "@base-ui/react/slider"
+import {
+	Loader2,
+	X,
+	EllipsisVertical,
+	ChevronLeft,
+	ChevronRight,
+	ChevronDown,
+} from "lucide-react"
+import { toast } from "sonner"
+import { Document, UserAccount, Asset, Space } from "@/schema"
 import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
 import { getDocumentTitle } from "@/lib/document-utils"
+import { getSpaceGroup } from "@/lib/spaces"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import { Slider as SliderPrimitive } from "@base-ui/react/slider"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -36,16 +47,6 @@ import {
 	type EditHistoryItem,
 } from "@/lib/time-machine"
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
-import { toast } from "sonner"
-import type { ID } from "jazz-tools"
-import {
-	Loader2,
-	X,
-	EllipsisVertical,
-	ChevronLeft,
-	ChevronRight,
-	ChevronDown,
-} from "lucide-react"
 import { SidebarProvider } from "@/components/ui/sidebar"
 import {
 	Tooltip,
@@ -381,13 +382,6 @@ function TimeMachineContent({
 		</>
 	)
 }
-
-// --- Handler factories ---
-
-import { Group } from "jazz-tools"
-import { createImage } from "jazz-tools/media"
-import { Asset, Space } from "@/schema"
-import { getSpaceGroup } from "@/lib/spaces"
 
 type TimeMachineCopyParams = {
 	doc: LoadedDocument
@@ -833,7 +827,7 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 
 	return (
 		<div
-			className="border-border bg-background fixed right-0 bottom-0 left-0 z-20 flex flex-col gap-3 border-t px-4 py-3 md:flex-row md:items-center md:gap-4"
+			className="border-border bg-background fixed right-0 bottom-0 left-0 flex flex-col gap-3 border-t px-4 py-3 md:flex-row md:items-center md:gap-4"
 			style={{
 				paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))",
 				paddingLeft: "max(1rem, env(safe-area-inset-left))",
@@ -1151,8 +1145,6 @@ function DateDropdown({
 	)
 }
 
-// --- TimeMachineSlider ---
-
 interface TimeMachineSliderProps {
 	min: number
 	max: number
@@ -1188,12 +1180,10 @@ function TimeMachineSlider({
 
 	function handleValueCommitted(committedValue: number) {
 		setIsDragging(false)
-		// Sync local value with committed value
 		setLocalValue(committedValue)
 		onCommit(committedValue)
 	}
 
-	// Derive display value: use prop value when not dragging, local value when dragging
 	let displayValue = isDragging ? localValue : value
 	let tooltipContent = getTooltipContent(displayValue)
 	let showTooltip = (isDragging || isHovering) && tooltipContent
@@ -1209,7 +1199,7 @@ function TimeMachineSlider({
 			disabled={disabled}
 			thumbAlignment="edge"
 		>
-			<SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50">
+			<SliderPrimitive.Control className="relative flex h-5 w-full touch-none items-center select-none data-disabled:opacity-50">
 				<SliderPrimitive.Track className="bg-muted relative h-1.5 w-full rounded-none select-none">
 					<SliderPrimitive.Indicator className="bg-primary h-full select-none" />
 					<SliderPrimitive.Thumb
@@ -1229,8 +1219,6 @@ function TimeMachineSlider({
 		</SliderPrimitive.Root>
 	)
 }
-
-// --- Types ---
 
 type LoadedDocument = co.loaded<typeof Document, typeof resolve>
 type LoadedMe = ReturnType<

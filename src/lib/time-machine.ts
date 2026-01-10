@@ -29,67 +29,49 @@ function accountIdFromSessionId(sessionId: string): string {
 	return sessionId.slice(0, until)
 }
 
-// Internal structure containing all edit metadata
-interface EditHistoryResult {
+interface EditHistoryCache {
 	edits: EditHistoryItem[]
-	// Store the transaction count to invalidate cache when new edits arrive
 	transactionCount: number
 }
 
-// Cache to avoid recomputing edit history on every render
-// Uses WeakMap with document as key so it auto-cleans when documents are GC'd
-let editHistoryCache = new WeakMap<object, EditHistoryResult>()
+let editHistoryCache = new WeakMap<object, EditHistoryCache>()
 
 function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 	if (!doc.content?.$isLoaded) return []
 
-	// Check cache first - use the content's raw object as cache key
 	let contentRaw = doc.content.$jazz.raw
-	let currentTransactionCount =
-		contentRaw.core.getValidSortedTransactions().length
+	let transactionCount = contentRaw.core.getValidSortedTransactions().length
 	let cached = editHistoryCache.get(contentRaw)
 
-	// Invalidate cache if transaction count has changed (new edits arrived)
-	if (cached && cached.transactionCount === currentTransactionCount) {
+	if (cached && cached.transactionCount === transactionCount) {
 		return cached.edits
 	}
 
-	// Build timeline efficiently using a Map for O(1) lookup
 	let timestampToOp = new Map<
 		number,
 		{ madeAt: number; accountId: string | null }
 	>()
 
-	// Helper to extract operations from a CoJSON raw object's core - O(n) instead of O(n²)
-	function extractOpsFromCore(core: typeof contentRaw.core) {
-		let transactions = core.getValidSortedTransactions()
-		// Transactions are already sorted, just iterate once
-		for (let tx of transactions) {
-			let accountId = accountIdFromSessionId(tx.txID.sessionID)
-			// Only keep the first op at each timestamp (they represent the same moment)
+	function collectTransactions(core: typeof contentRaw.core) {
+		for (let tx of core.getValidSortedTransactions()) {
 			if (!timestampToOp.has(tx.madeAt)) {
 				timestampToOp.set(tx.madeAt, {
 					madeAt: tx.madeAt,
-					accountId,
+					accountId: accountIdFromSessionId(tx.txID.sessionID),
 				})
 			}
 		}
 	}
 
-	// Extract content operations
-	extractOpsFromCore(contentRaw.core)
+	collectTransactions(contentRaw.core)
 
-	// Extract asset list operations (when assets are added/removed)
 	if (doc.assets?.$isLoaded) {
-		let assetsCore = doc.assets.$jazz.raw.core
-		extractOpsFromCore(assetsCore)
+		collectTransactions(doc.assets.$jazz.raw.core)
 	}
 
-	// Get sorted unique timestamps
-	let sortedTimes = [...timestampToOp.keys()].sort((a, b) => a - b)
+	let sortedTimestamps = [...timestampToOp.keys()].sort((a, b) => a - b)
 
-	// Build edit metadata without computing content (lazy loading)
-	let edits: EditHistoryItem[] = sortedTimes.map((time, index) => {
+	let edits: EditHistoryItem[] = sortedTimestamps.map((time, index) => {
 		let op = timestampToOp.get(time)!
 		return {
 			index,
@@ -98,28 +80,15 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 		}
 	})
 
-	// If no edits found, return at least the current state
 	if (edits.length === 0) {
-		edits = [
-			{
-				index: 0,
-				madeAt: doc.createdAt,
-				accountId: null,
-			},
-		]
+		edits = [{ index: 0, madeAt: doc.createdAt, accountId: null }]
 	}
 
-	// Cache the result with transaction count for invalidation
-	let result: EditHistoryResult = {
-		edits,
-		transactionCount: currentTransactionCount,
-	}
-	editHistoryCache.set(contentRaw, result)
+	editHistoryCache.set(contentRaw, { edits, transactionCount })
 
 	return edits
 }
 
-// Get content for a specific edit - lazy loaded
 function getContentAtEdit(doc: LoadedDocument, editIndex: number): string {
 	if (!doc.content?.$isLoaded) return ""
 
@@ -128,16 +97,13 @@ function getContentAtEdit(doc: LoadedDocument, editIndex: number): string {
 		return doc.content.toString()
 	}
 
-	let edit = edits[editIndex]
-	let contentRaw = doc.content.$jazz.raw
-
-	// For the latest edit, just return current content (faster)
-	if (editIndex === edits.length - 1) {
+	let isLatestEdit = editIndex === edits.length - 1
+	if (isLatestEdit) {
 		return doc.content.toString()
 	}
 
-	// Get content at the specific timestamp
-	return contentRaw.atTime(edit.madeAt.getTime()).toString()
+	let edit = edits[editIndex]
+	return doc.content.$jazz.raw.atTime(edit.madeAt.getTime()).toString()
 }
 
 function formatEditDate(date: Date): string {
@@ -159,16 +125,13 @@ function getAuthorName(
 	return account.profile?.name ?? "Unknown"
 }
 
-// --- Day-based grouping ---
-
 interface DayGroup {
-	dateKey: string // YYYY-MM-DD format for sorting/comparison
-	date: Date // Representative date (start of day)
-	edits: EditHistoryItem[] // All edits on this day
-	lastEditIndex: number // Index of the last edit of the day (for day-level scrubbing)
+	dateKey: string
+	date: Date
+	edits: EditHistoryItem[]
+	lastEditIndex: number
 }
 
-// Get a consistent date key for grouping (YYYY-MM-DD in local timezone)
 function getDateKey(date: Date): string {
 	let year = date.getFullYear()
 	let month = String(date.getMonth() + 1).padStart(2, "0")
@@ -176,7 +139,6 @@ function getDateKey(date: Date): string {
 	return `${year}-${month}-${day}`
 }
 
-// Group edits by day, returning an array sorted chronologically
 function groupEditsByDay(edits: EditHistoryItem[]): DayGroup[] {
 	let dayMap = new Map<string, DayGroup>()
 
@@ -184,7 +146,6 @@ function groupEditsByDay(edits: EditHistoryItem[]): DayGroup[] {
 		let dateKey = getDateKey(edit.madeAt)
 
 		if (!dayMap.has(dateKey)) {
-			// Create a date at start of day for display
 			let startOfDay = new Date(edit.madeAt)
 			startOfDay.setHours(0, 0, 0, 0)
 
@@ -198,10 +159,8 @@ function groupEditsByDay(edits: EditHistoryItem[]): DayGroup[] {
 
 		let group = dayMap.get(dateKey)!
 		group.edits.push(edit)
-		// Keep track of the last edit index (edits are already sorted chronologically)
 		group.lastEditIndex = edit.index
 	}
 
-	// Sort by dateKey (chronological order)
 	return [...dayMap.values()].sort((a, b) => a.dateKey.localeCompare(b.dateKey))
 }
