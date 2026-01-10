@@ -63,7 +63,7 @@ interface SidebarFileMenuProps {
 
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
-	let { isMobile, setRightOpenMobile } = useSidebar()
+	let { isMobile, setRightOpenMobile, setLeftOpenMobile } = useSidebar()
 
 	let focusMode = useFocusMode()
 	let [deleteOpen, setDeleteOpen] = useState(false)
@@ -101,6 +101,16 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						<DropdownMenuItem onClick={makeToggleFocusMode(focusMode)}>
 							{focusMode ? "Exit Focus Mode" : "Focus Mode"}
 							<DropdownMenuShortcut>{modKey}⇧F</DropdownMenuShortcut>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={makeOpenTimeMachine(
+								doc,
+								navigate,
+								setLeftOpenMobile,
+								setRightOpenMobile,
+							)}
+						>
+							Time Machine
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
@@ -237,6 +247,23 @@ function useFocusMode() {
 function makeToggleFocusMode(focusMode: boolean) {
 	return function handleToggleFocusMode() {
 		document.documentElement.dataset.focusMode = String(!focusMode)
+	}
+}
+
+function makeOpenTimeMachine(
+	doc: LoadedDocument,
+	navigate: ReturnType<typeof useNavigate>,
+	setLeftOpenMobile: (open: boolean) => void,
+	setRightOpenMobile: (open: boolean) => void,
+) {
+	return function handleOpenTimeMachine() {
+		// Close sidebars before navigating
+		setLeftOpenMobile(false)
+		setRightOpenMobile(false)
+		navigate({
+			to: "/doc/$id/timemachine",
+			params: { id: doc.$jazz.id },
+		})
 	}
 }
 

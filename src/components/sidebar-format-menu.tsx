@@ -25,6 +25,7 @@ export { SidebarFormatMenu }
 interface SidebarFormatMenuProps {
 	editor?: React.RefObject<MarkdownEditorRef | null>
 	disabled?: boolean
+	readOnly?: boolean
 	documents?: { id: string; title: string }[]
 	onCreateDocument?: (title: string) => Promise<string>
 }
@@ -32,6 +33,7 @@ interface SidebarFormatMenuProps {
 function SidebarFormatMenu({
 	editor,
 	disabled,
+	readOnly,
 	documents = [],
 	onCreateDocument,
 }: SidebarFormatMenuProps) {
@@ -71,11 +73,14 @@ function SidebarFormatMenu({
 					side={isMobile ? "bottom" : "left"}
 				>
 					<DropdownMenuSub>
-						<DropdownMenuSubTrigger>Headings</DropdownMenuSubTrigger>
+						<DropdownMenuSubTrigger disabled={readOnly}>
+							Headings
+						</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent>
 							{([1, 2, 3, 4, 5, 6] as const).map(level => (
 								<DropdownMenuItem
 									key={level}
+									disabled={readOnly}
 									onClick={() =>
 										runAction(() => editor?.current?.setHeading(level))
 									}
@@ -91,9 +96,12 @@ function SidebarFormatMenu({
 					</DropdownMenuSub>
 
 					<DropdownMenuSub>
-						<DropdownMenuSubTrigger>Lists</DropdownMenuSubTrigger>
+						<DropdownMenuSubTrigger disabled={readOnly}>
+							Lists
+						</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent>
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() =>
 									runAction(() => editor?.current?.toggleBulletList())
 								}
@@ -102,6 +110,7 @@ function SidebarFormatMenu({
 								<DropdownMenuShortcut>{altModKey}L</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() =>
 									runAction(() => editor?.current?.toggleOrderedList())
 								}
@@ -110,6 +119,7 @@ function SidebarFormatMenu({
 								<DropdownMenuShortcut>{altModKey}O</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() =>
 									runAction(() => editor?.current?.toggleTaskList())
 								}
@@ -119,6 +129,7 @@ function SidebarFormatMenu({
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() =>
 									runAction(() => editor?.current?.toggleTaskComplete())
 								}
@@ -130,6 +141,7 @@ function SidebarFormatMenu({
 					</DropdownMenuSub>
 
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.toggleBlockquote())}
 					>
 						Blockquote
@@ -137,6 +149,7 @@ function SidebarFormatMenu({
 					</DropdownMenuItem>
 
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.setBody())}
 					>
 						Body
@@ -144,15 +157,19 @@ function SidebarFormatMenu({
 					</DropdownMenuItem>
 
 					<DropdownMenuSub>
-						<DropdownMenuSubTrigger>Structure</DropdownMenuSubTrigger>
+						<DropdownMenuSubTrigger disabled={readOnly}>
+							Structure
+						</DropdownMenuSubTrigger>
 						<DropdownMenuSubContent>
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() => runAction(() => editor?.current?.indent())}
 							>
 								Indent
 								<DropdownMenuShortcut>Tab</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() => runAction(() => editor?.current?.outdent())}
 							>
 								Outdent
@@ -160,12 +177,14 @@ function SidebarFormatMenu({
 							</DropdownMenuItem>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() => runAction(() => editor?.current?.moveLineUp())}
 							>
 								Move Line Up
 								<DropdownMenuShortcut>{altModKey}↑</DropdownMenuShortcut>
 							</DropdownMenuItem>
 							<DropdownMenuItem
+								disabled={readOnly}
 								onClick={() => runAction(() => editor?.current?.moveLineDown())}
 							>
 								Move Line Down
@@ -177,18 +196,21 @@ function SidebarFormatMenu({
 					<DropdownMenuSeparator />
 
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.toggleBold())}
 					>
 						Bold
 						<DropdownMenuShortcut>{modKey}B</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.toggleItalic())}
 					>
 						Italic
 						<DropdownMenuShortcut>{modKey}I</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() =>
 							runAction(() => editor?.current?.toggleStrikethrough())
 						}
@@ -199,30 +221,35 @@ function SidebarFormatMenu({
 					<DropdownMenuSeparator />
 
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.toggleInlineCode())}
 					>
 						Code
 						<DropdownMenuShortcut>{modKey}E</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.insertCodeBlock())}
 					>
 						Code Block
 						<DropdownMenuShortcut>{altModKey}C</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.insertLink())}
 					>
 						Add Link
 						<DropdownMenuShortcut>{modKey}K</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.insertImage())}
 					>
 						Add Image
 						<DropdownMenuShortcut>{altModKey}K</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => {
 							let view = editor?.current?.getEditor()
 							if (!view) return

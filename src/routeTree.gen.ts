@@ -20,6 +20,7 @@ import { Route as TutorSlugRouteImport } from './routes/tutor.$slug'
 import { Route as SpacesSpaceIdIndexRouteImport } from './routes/spaces.$spaceId.index'
 import { Route as DocIdIndexRouteImport } from './routes/doc.$id.index'
 import { Route as SpacesSpaceIdSettingsRouteImport } from './routes/spaces.$spaceId.settings'
+import { Route as DocIdTimemachineRouteImport } from './routes/doc.$id.timemachine'
 import { Route as DocIdTeleprompterRouteImport } from './routes/doc.$id.teleprompter'
 import { Route as DocIdSlideshowRouteImport } from './routes/doc.$id.slideshow'
 import { Route as DocIdPreviewRouteImport } from './routes/doc.$id.preview'
@@ -80,6 +81,11 @@ const SpacesSpaceIdSettingsRoute = SpacesSpaceIdSettingsRouteImport.update({
   path: '/spaces/$spaceId/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const DocIdTimemachineRoute = DocIdTimemachineRouteImport.update({
+  id: '/doc/$id/timemachine',
+  path: '/doc/$id/timemachine',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DocIdTeleprompterRoute = DocIdTeleprompterRouteImport.update({
   id: '/doc/$id/teleprompter',
   path: '/doc/$id/teleprompter',
@@ -113,6 +119,7 @@ export interface FileRoutesByFullPath {
   '/doc/$id/preview': typeof DocIdPreviewRoute
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
+  '/doc/$id/timemachine': typeof DocIdTimemachineRoute
   '/spaces/$spaceId/settings': typeof SpacesSpaceIdSettingsRoute
   '/doc/$id': typeof DocIdIndexRoute
   '/spaces/$spaceId': typeof SpacesSpaceIdIndexRoute
@@ -130,6 +137,7 @@ export interface FileRoutesByTo {
   '/doc/$id/preview': typeof DocIdPreviewRoute
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
+  '/doc/$id/timemachine': typeof DocIdTimemachineRoute
   '/spaces/$spaceId/settings': typeof SpacesSpaceIdSettingsRoute
   '/doc/$id': typeof DocIdIndexRoute
   '/spaces/$spaceId': typeof SpacesSpaceIdIndexRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/doc/$id/preview': typeof DocIdPreviewRoute
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
+  '/doc/$id/timemachine': typeof DocIdTimemachineRoute
   '/spaces/$spaceId/settings': typeof SpacesSpaceIdSettingsRoute
   '/doc/$id/': typeof DocIdIndexRoute
   '/spaces/$spaceId/': typeof SpacesSpaceIdIndexRoute
@@ -167,6 +176,7 @@ export interface FileRouteTypes {
     | '/doc/$id/preview'
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
+    | '/doc/$id/timemachine'
     | '/spaces/$spaceId/settings'
     | '/doc/$id'
     | '/spaces/$spaceId'
@@ -184,6 +194,7 @@ export interface FileRouteTypes {
     | '/doc/$id/preview'
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
+    | '/doc/$id/timemachine'
     | '/spaces/$spaceId/settings'
     | '/doc/$id'
     | '/spaces/$spaceId'
@@ -201,6 +212,7 @@ export interface FileRouteTypes {
     | '/doc/$id/preview'
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
+    | '/doc/$id/timemachine'
     | '/spaces/$spaceId/settings'
     | '/doc/$id/'
     | '/spaces/$spaceId/'
@@ -219,6 +231,7 @@ export interface RootRouteChildren {
   DocIdPreviewRoute: typeof DocIdPreviewRoute
   DocIdSlideshowRoute: typeof DocIdSlideshowRoute
   DocIdTeleprompterRoute: typeof DocIdTeleprompterRoute
+  DocIdTimemachineRoute: typeof DocIdTimemachineRoute
   SpacesSpaceIdSettingsRoute: typeof SpacesSpaceIdSettingsRoute
   DocIdIndexRoute: typeof DocIdIndexRoute
   SpacesSpaceIdIndexRoute: typeof SpacesSpaceIdIndexRoute
@@ -304,6 +317,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SpacesSpaceIdSettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/doc/$id/timemachine': {
+      id: '/doc/$id/timemachine'
+      path: '/doc/$id/timemachine'
+      fullPath: '/doc/$id/timemachine'
+      preLoaderRoute: typeof DocIdTimemachineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/doc/$id/teleprompter': {
       id: '/doc/$id/teleprompter'
       path: '/doc/$id/teleprompter'
@@ -347,6 +367,7 @@ const rootRouteChildren: RootRouteChildren = {
   DocIdPreviewRoute: DocIdPreviewRoute,
   DocIdSlideshowRoute: DocIdSlideshowRoute,
   DocIdTeleprompterRoute: DocIdTeleprompterRoute,
+  DocIdTimemachineRoute: DocIdTimemachineRoute,
   SpacesSpaceIdSettingsRoute: SpacesSpaceIdSettingsRoute,
   DocIdIndexRoute: DocIdIndexRoute,
   SpacesSpaceIdIndexRoute: SpacesSpaceIdIndexRoute,

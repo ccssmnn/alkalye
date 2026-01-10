@@ -1,8 +1,14 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
+import { ImageOff } from "lucide-react"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
-import { EditorState, type Extension, Prec } from "@codemirror/state"
+import {
+	EditorState,
+	Compartment,
+	type Extension,
+	Prec,
+} from "@codemirror/state"
 import {
 	EditorView,
 	keymap,
@@ -121,6 +127,9 @@ interface MarkdownEditorRef {
 	getSelection(): { from: number; to: number } | null
 	restoreSelection(selection: { from: number; to: number }): void
 
+	getScrollPosition(): { top: number; left: number }
+	setScrollPosition(position: { top: number; left: number }): void
+
 	undo(): void
 	redo(): void
 	cut(): void
@@ -184,6 +193,7 @@ function MarkdownEditor(
 
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
+	let readOnlyCompartment = useRef(new Compartment())
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
 	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
@@ -392,9 +402,12 @@ function MarkdownEditor(
 			extensions.push(placeholderExt(initRef.current.placeholder))
 		}
 
-		if (initRef.current.readOnly) {
-			extensions.push(EditorState.readOnly.of(true))
-		}
+		// Use compartment for dynamic readOnly state changes
+		extensions.push(
+			readOnlyCompartment.current.of(
+				initRef.current.readOnly ? EditorState.readOnly.of(true) : [],
+			),
+		)
 
 		let state = EditorState.create({
 			doc: initRef.current.value,
@@ -459,6 +472,16 @@ function MarkdownEditor(
 			view.dispatch({ selection: view.state.selection })
 		}
 	}, [view, documents, externalDocs])
+
+	// Update readOnly state when prop changes
+	useEffect(() => {
+		if (!view) return
+		view.dispatch({
+			effects: readOnlyCompartment.current.reconfigure(
+				readOnly ? EditorState.readOnly.of(true) : [],
+			),
+		})
+	}, [view, readOnly])
 
 	function getContent() {
 		return view?.state.doc.toString() ?? ""
@@ -559,6 +582,18 @@ function MarkdownEditor(
 				selection: { anchor: selection.from, head: selection.to },
 			})
 		},
+		getScrollPosition: () => {
+			if (!view) return { top: 0, left: 0 }
+			return {
+				top: view.scrollDOM.scrollTop,
+				left: view.scrollDOM.scrollLeft,
+			}
+		},
+		setScrollPosition: (position: { top: number; left: number }) => {
+			if (!view) return
+			view.scrollDOM.scrollTop = position.top
+			view.scrollDOM.scrollLeft = position.left
+		},
 		undo: () => {
 			if (view) {
 				undo(view)
@@ -651,6 +686,8 @@ function MarkdownEditor(
 				return { from, to }
 			},
 			restoreSelection: () => {},
+			getScrollPosition: () => ({ top: 0, left: 0 }),
+			setScrollPosition: () => {},
 			undo: () => {},
 			redo: () => {},
 			cut: () => {},
@@ -730,10 +767,17 @@ function MarkdownEditor(
 					</DialogHeader>
 					{imagePreview &&
 						(imagePreview.imageId ? (
-							<JazzImage
-								imageId={imagePreview.imageId}
-								className="max-h-[70vh] w-full object-contain"
-							/>
+							assets?.find(a => a.id === imagePreview.imageId) ? (
+								<JazzImage
+									imageId={imagePreview.imageId}
+									className="max-h-[70vh] w-full object-contain"
+								/>
+							) : (
+								<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
+									<ImageOff className="size-12 opacity-50" />
+									<p className="text-sm">Image not available</p>
+								</div>
+							)
 						) : (
 							<img
 								src={imagePreview.url}

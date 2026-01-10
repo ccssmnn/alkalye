@@ -8,7 +8,7 @@ fi
 
 MAX_ITERATIONS=$1
 COMPLETE_TOKEN="<promise>COMPLETE</promise>"
-MODEL="anthropic/claude-opus-4-5-20251101"
+MODEL="claude-opus-4-5-20251101"
 
 for i in $(seq 1 $MAX_ITERATIONS); do
   echo "=== Ralph iteration $i/$MAX_ITERATIONS ==="
@@ -42,8 +42,8 @@ CRITICAL:
 - All commits MUST pass typecheck and tests
 - Always append to progress.txt, never overwrite"
 
-  # Run opencode with the prompt using 'run' subcommand
-  OUTPUT=$(opencode run --model "$MODEL" "$PROMPT" 2>&1) || true
+  # Run claude code with the prompt in print mode, allowing all permissions
+  OUTPUT=$(claude -p "$PROMPT" --model "$MODEL" --dangerously-skip-permissions 2>&1) || true
 
   echo "$OUTPUT"
   

@@ -74,10 +74,26 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
-
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
+	validateSearch: (
+		search: Record<string, unknown>,
+	): {
+		timemachine?: boolean
+		edit?: number
+	} => {
+		return {
+			timemachine:
+				search.timemachine === "true" || search.timemachine === true
+					? true
+					: undefined,
+			edit:
+				typeof search.edit === "string" || typeof search.edit === "number"
+					? Number(search.edit)
+					: undefined,
+		}
+	},
 	loader: async ({ params, context }) => {
 		let doc = await Document.load(params.id, { resolve: loaderResolve })
 		if (!doc.$isLoaded) {
@@ -96,9 +112,22 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
+	let { timemachine, edit } = Route.useSearch()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
+
+	// Redirect old Time Machine URLs to the new route
+	useEffect(() => {
+		if (timemachine) {
+			navigate({
+				to: "/doc/$id/timemachine",
+				params: { id },
+				search: { edit },
+				replace: true,
+			})
+		}
+	}, [timemachine, id, edit, navigate])
 
 	// Redirect to space route if doc belongs to a space
 	useEffect(() => {
@@ -152,7 +181,12 @@ function EditorPage() {
 	)
 }
 
-function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
+interface EditorContentProps {
+	doc: LoadedDocument
+	docId: string
+}
+
+function EditorContent({ doc, docId }: EditorContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
@@ -384,10 +418,15 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								editor={editor}
 								me={me.$isLoaded ? me : undefined}
 							/>
-							<SidebarEditMenu editor={editor} disabled={readOnly} />
+							<SidebarEditMenu
+								editor={editor}
+								disabled={!canEdit(doc)}
+								readOnly={readOnly}
+							/>
 							<SidebarFormatMenu
 								editor={editor}
-								disabled={readOnly}
+								disabled={!canEdit(doc)}
+								readOnly={readOnly}
 								documents={wikiLinkDocs}
 								onCreateDocument={makeCreateDocForWikilink(me, doc)}
 							/>
@@ -610,10 +649,20 @@ function makeDeleteAsset(
 	}
 }
 
+let saveTimeoutId: ReturnType<typeof setTimeout> | null = null
+
 function handleChange(doc: LoadedDocument, newContent: string) {
 	if (!doc.content) return
-	doc.content.$jazz.applyDiff(newContent)
-	doc.$jazz.set("updatedAt", new Date())
+
+	if (saveTimeoutId) {
+		clearTimeout(saveTimeoutId)
+	}
+
+	saveTimeoutId = setTimeout(() => {
+		saveTimeoutId = null
+		doc.content?.$jazz.applyDiff(newContent)
+		doc.$jazz.set("updatedAt", new Date())
+	}, 250)
 }
 
 async function handleSaveCopy(
