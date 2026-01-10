@@ -18,7 +18,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
-import { FileText, History } from "lucide-react"
+import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
 import { canEdit, getDocumentGroup } from "@/lib/documents"
@@ -110,7 +110,6 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 								setRightOpenMobile,
 							)}
 						>
-							<History className="size-4" />
 							Time Machine
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
