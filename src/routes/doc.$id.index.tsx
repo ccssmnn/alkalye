@@ -644,10 +644,20 @@ function makeDeleteAsset(
 	}
 }
 
+let saveTimeoutId: ReturnType<typeof setTimeout> | null = null
+
 function handleChange(doc: LoadedDocument, newContent: string) {
 	if (!doc.content) return
-	doc.content.$jazz.applyDiff(newContent)
-	doc.$jazz.set("updatedAt", new Date())
+
+	if (saveTimeoutId) {
+		clearTimeout(saveTimeoutId)
+	}
+
+	saveTimeoutId = setTimeout(() => {
+		saveTimeoutId = null
+		doc.content?.$jazz.applyDiff(newContent)
+		doc.$jazz.set("updatedAt", new Date())
+	}, 250)
 }
 
 async function handleSaveCopy(

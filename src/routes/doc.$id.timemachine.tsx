@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { co, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount } from "jazz-tools/react"
@@ -13,7 +13,7 @@ import {
 } from "@/components/document-error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import { Slider } from "@/components/ui/slider"
+import { Slider as SliderPrimitive } from "@base-ui/react/slider"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -21,6 +21,10 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
+	DropdownMenuSeparator,
+	DropdownMenuSub,
+	DropdownMenuSubTrigger,
+	DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu"
 import {
 	getEditHistory,
@@ -29,6 +33,7 @@ import {
 	formatEditDate,
 	groupEditsByDay,
 	type DayGroup,
+	type EditHistoryItem,
 } from "@/lib/time-machine"
 import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { toast } from "sonner"
@@ -42,6 +47,14 @@ import {
 	ChevronDown,
 } from "lucide-react"
 import { SidebarProvider } from "@/components/ui/sidebar"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipProvider,
+	TooltipTrigger,
+} from "@/components/ui/tooltip"
+import { Kbd } from "@/components/ui/kbd"
+import { cn } from "@/lib/utils"
 
 export { Route }
 export type { ViewMode }
@@ -54,7 +67,6 @@ let Route = createFileRoute("/doc/$id/timemachine")({
 	): {
 		edit?: number
 		mode?: ViewMode
-		day?: number
 	} => {
 		let mode: ViewMode | undefined
 		if (search.mode === "days" || search.mode === "edits") {
@@ -66,10 +78,6 @@ let Route = createFileRoute("/doc/$id/timemachine")({
 					? Number(search.edit)
 					: undefined,
 			mode,
-			day:
-				typeof search.day === "string" || typeof search.day === "number"
-					? Number(search.day)
-					: undefined,
 		}
 	},
 	loader: async ({ params, context }) => {
@@ -90,7 +98,7 @@ let Route = createFileRoute("/doc/$id/timemachine")({
 function TimeMachinePage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
-	let { edit, mode, day } = Route.useSearch()
+	let { edit, mode } = Route.useSearch()
 
 	let doc = useCoState(Document, id, { resolve })
 
@@ -123,7 +131,6 @@ function TimeMachinePage() {
 				docId={id}
 				initialEdit={edit}
 				initialMode={mode}
-				initialDay={day}
 			/>
 		</SidebarProvider>
 	)
@@ -134,7 +141,6 @@ interface TimeMachineContentProps {
 	docId: string
 	initialEdit?: number
 	initialMode?: ViewMode
-	initialDay?: number
 }
 
 function TimeMachineContent({
@@ -142,7 +148,6 @@ function TimeMachineContent({
 	docId,
 	initialEdit,
 	initialMode,
-	initialDay,
 }: TimeMachineContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
@@ -175,10 +180,15 @@ function TimeMachineContent({
 	let currentEdit = editHistory[currentEditIndex]
 	let timeMachineContent = getContentAtEdit(doc, currentEditIndex)
 
-	// View mode state
+	// View mode state - infer selected day from current edit index
 	let viewMode: ViewMode = initialMode ?? "days"
-	let selectedDayIndex: number | null =
-		viewMode === "edits" && initialDay !== undefined ? initialDay : null
+	let selectedDayIndex: number | null = null
+	if (viewMode === "edits") {
+		selectedDayIndex = dayGroups.findIndex(day =>
+			day.edits.some(e => e.index === currentEditIndex),
+		)
+		if (selectedDayIndex === -1) selectedDayIndex = null
+	}
 
 	// Load the author account for the current Time Machine edit
 	let currentEditAuthor = useCoState(
@@ -220,7 +230,6 @@ function TimeMachineContent({
 				search: {
 					edit: currentEditIndex,
 					mode: viewMode === "edits" ? "edits" : undefined,
-					day: selectedDayIndex ?? undefined,
 				},
 				replace: true,
 			})
@@ -236,20 +245,50 @@ function TimeMachineContent({
 	])
 
 	// Keyboard shortcuts for Time Machine navigation
+	let isViewingDay = viewMode === "edits" && selectedDayIndex !== null
+	let selectedDay =
+		selectedDayIndex !== null ? dayGroups[selectedDayIndex] : null
+
 	useEffect(() => {
+		function getPreviousEditIndex(): number | null {
+			if (isViewingDay && selectedDay) {
+				let editIndexInDay = selectedDay.edits.findIndex(
+					e => e.index === currentEditIndex,
+				)
+				if (editIndexInDay > 0)
+					return selectedDay.edits[editIndexInDay - 1].index
+			} else {
+				if (currentEditIndex > 0) return currentEditIndex - 1
+			}
+			return null
+		}
+
+		function getNextEditIndex(): number | null {
+			if (isViewingDay && selectedDay) {
+				let editIndexInDay = selectedDay.edits.findIndex(
+					e => e.index === currentEditIndex,
+				)
+				if (editIndexInDay < selectedDay.edits.length - 1)
+					return selectedDay.edits[editIndexInDay + 1].index
+			} else {
+				if (currentEditIndex < totalEdits - 1) return currentEditIndex + 1
+			}
+			return null
+		}
+
 		function handleKeyDown(e: KeyboardEvent) {
 			if (e.metaKey || e.ctrlKey || e.altKey) return
 
 			if (e.key === "[") {
 				e.preventDefault()
-				if (currentEditIndex > 0) {
+				let idx = getPreviousEditIndex()
+				if (idx !== null) {
 					navigate({
 						to: "/doc/$id/timemachine",
 						params: { id: docId },
 						search: {
-							edit: currentEditIndex - 1,
+							edit: idx,
 							mode: viewMode === "edits" ? "edits" : undefined,
-							day: selectedDayIndex ?? undefined,
 						},
 					})
 				}
@@ -257,14 +296,14 @@ function TimeMachineContent({
 			}
 			if (e.key === "]") {
 				e.preventDefault()
-				if (currentEditIndex < totalEdits - 1) {
+				let idx = getNextEditIndex()
+				if (idx !== null) {
 					navigate({
 						to: "/doc/$id/timemachine",
 						params: { id: docId },
 						search: {
-							edit: currentEditIndex + 1,
+							edit: idx,
 							mode: viewMode === "edits" ? "edits" : undefined,
-							day: selectedDayIndex ?? undefined,
 						},
 					})
 				}
@@ -281,6 +320,8 @@ function TimeMachineContent({
 		navigate,
 		viewMode,
 		selectedDayIndex,
+		isViewingDay,
+		selectedDay,
 	])
 
 	return (
@@ -335,36 +376,7 @@ function TimeMachineContent({
 						docId,
 					})}
 				/>
-				<TimeMachineBottomBar
-					currentEditIndex={currentEditIndex}
-					dayGroups={dayGroups}
-					selectedDayIndex={selectedDayIndex}
-					viewMode={viewMode}
-					disabled={dayGroups.length <= 1 && totalEdits <= 1}
-					onEditChange={editIndex => {
-						navigate({
-							to: "/doc/$id/timemachine",
-							params: { id: docId },
-							search: {
-								edit: editIndex,
-								mode: viewMode === "edits" ? "edits" : undefined,
-								day: selectedDayIndex ?? undefined,
-							},
-						})
-					}}
-					onViewModeChange={(newMode, dayIndex) => {
-						navigate({
-							to: "/doc/$id/timemachine",
-							params: { id: docId },
-							search: {
-								edit: currentEditIndex,
-								mode: newMode === "edits" ? "edits" : undefined,
-								day: dayIndex,
-							},
-							replace: true,
-						})
-					}}
-				/>
+				<TimeMachineBottomBar editHistory={editHistory} />
 			</div>
 		</>
 	)
@@ -601,40 +613,43 @@ function TimeMachineToolbar({
 }
 
 interface TimeMachineBottomBarProps {
-	currentEditIndex: number
-	dayGroups: DayGroup[]
-	selectedDayIndex: number | null
-	viewMode: ViewMode
-	onEditChange: (editIndex: number) => void
-	onViewModeChange: (mode: ViewMode, dayIndex?: number) => void
-	disabled?: boolean
+	editHistory: EditHistoryItem[]
 }
 
-function TimeMachineBottomBar({
-	currentEditIndex,
-	dayGroups,
-	selectedDayIndex,
-	viewMode,
-	onEditChange,
-	onViewModeChange,
-	disabled = false,
-}: TimeMachineBottomBarProps) {
+function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
+	let { id: docId } = Route.useParams()
+	let { edit: editParam, mode } = Route.useSearch()
+	let navigate = useNavigate()
+
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	let holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+	let holdEditRef = useRef(0)
 
-	let totalDays = dayGroups.length
-	let hasHistory = totalDays > 0
+	let totalEdits = editHistory.length
+	let dayGroups = groupEditsByDay(editHistory)
 
+	let currentEditIndex =
+		editParam !== undefined
+			? Math.min(Math.max(0, editParam), totalEdits - 1)
+			: totalEdits - 1
+
+	// Infer selected day from current edit index when in "edits" mode
+	let viewMode: ViewMode = mode ?? "days"
+	let selectedDayIndex: number | null = null
+	if (viewMode === "edits") {
+		selectedDayIndex = dayGroups.findIndex(day =>
+			day.edits.some(e => e.index === currentEditIndex),
+		)
+		if (selectedDayIndex === -1) selectedDayIndex = null
+	}
+
+	let hasHistory = totalEdits > 0
+	let disabled = dayGroups.length <= 1 && totalEdits <= 1
 	let isViewingDay = viewMode === "edits" && selectedDayIndex !== null
 	let selectedDay =
 		selectedDayIndex !== null ? dayGroups[selectedDayIndex] : null
 
-	let currentDayIndex = dayGroups.findIndex(day =>
-		day.edits.some(e => e.index === currentEditIndex),
-	)
-	if (currentDayIndex === -1 && dayGroups.length > 0) {
-		currentDayIndex = dayGroups.length - 1
-	}
-
+	// Compute slider bounds and value
 	let sliderMax: number
 	let sliderValue: number
 
@@ -645,96 +660,176 @@ function TimeMachineBottomBar({
 		)
 		sliderValue = editIndexInDay >= 0 ? editIndexInDay : 0
 	} else {
-		sliderMax = totalDays - 1
-		sliderValue = currentDayIndex
+		sliderMax = totalEdits - 1
+		sliderValue = currentEditIndex
+	}
+
+	// Keep ref in sync for hold navigation
+	useEffect(() => {
+		holdEditRef.current = currentEditIndex
+	}, [currentEditIndex])
+
+	// Convert slider value to edit index
+	function sliderToEditIndex(value: number): number {
+		if (isViewingDay && selectedDay) {
+			return selectedDay.edits[value]?.index ?? currentEditIndex
+		}
+		return value
+	}
+
+	// Navigate to edit index
+	function navigateToEdit(editIndex: number, replace = false) {
+		navigate({
+			to: "/doc/$id/timemachine",
+			params: { id: docId },
+			search: {
+				edit: editIndex,
+				mode: viewMode === "edits" ? "edits" : undefined,
+			},
+			replace,
+		})
 	}
 
 	function handleSliderChange(value: number) {
+		// Debounce URL updates while dragging
+		if (debounceRef.current) clearTimeout(debounceRef.current)
+		debounceRef.current = setTimeout(() => {
+			let editIndex = sliderToEditIndex(value)
+			navigateToEdit(editIndex, true)
+		}, 150)
+	}
+
+	function handleSliderCommit(value: number) {
+		// Cancel any pending debounce
 		if (debounceRef.current) {
 			clearTimeout(debounceRef.current)
-		}
-		debounceRef.current = setTimeout(() => {
 			debounceRef.current = null
-
-			if (isViewingDay && selectedDay) {
-				let edit = selectedDay.edits[value]
-				if (edit) {
-					onEditChange(edit.index)
-				}
-			} else {
-				let day = dayGroups[value]
-				if (day) {
-					onEditChange(day.lastEditIndex)
-				}
-			}
-		}, 50)
+		}
+		// Immediate navigation on release
+		navigateToEdit(sliderToEditIndex(value))
 	}
 
-	function handlePrevious() {
-		if (isViewingDay && selectedDay) {
-			let editIndexInDay = selectedDay.edits.findIndex(
-				e => e.index === currentEditIndex,
-			)
-			if (editIndexInDay > 0) {
-				onEditChange(selectedDay.edits[editIndexInDay - 1].index)
-			}
-		} else {
-			if (currentDayIndex > 0) {
-				onEditChange(dayGroups[currentDayIndex - 1].lastEditIndex)
+	function handleViewModeChange(newMode: ViewMode, dayIndex?: number) {
+		// When selecting a day, navigate to the last edit of that day
+		let targetEdit = currentEditIndex
+		if (newMode === "edits" && dayIndex !== undefined) {
+			let day = dayGroups[dayIndex]
+			if (day && day.edits.length > 0) {
+				targetEdit = day.edits[day.edits.length - 1].index
 			}
 		}
+		navigate({
+			to: "/doc/$id/timemachine",
+			params: { id: docId },
+			search: {
+				edit: targetEdit,
+				mode: newMode === "edits" ? "edits" : undefined,
+			},
+			replace: true,
+		})
 	}
 
-	function handleNext() {
+	// Get tooltip content for a slider value
+	function getTooltipContent(value: number): string | undefined {
+		let edit: EditHistoryItem | undefined
+		if (isViewingDay && selectedDay) {
+			edit = selectedDay.edits[value]
+		} else {
+			edit = editHistory[value]
+		}
+		if (!edit) return undefined
+		return isViewingDay
+			? edit.madeAt.toLocaleTimeString(undefined, {
+					hour: "numeric",
+					minute: "2-digit",
+				})
+			: formatEditDate(edit.madeAt)
+	}
+
+	function getPreviousEditIndex(fromIndex: number): number | null {
 		if (isViewingDay && selectedDay) {
 			let editIndexInDay = selectedDay.edits.findIndex(
-				e => e.index === currentEditIndex,
+				e => e.index === fromIndex,
 			)
-			if (editIndexInDay < selectedDay.edits.length - 1) {
-				onEditChange(selectedDay.edits[editIndexInDay + 1].index)
-			}
+			if (editIndexInDay > 0) return selectedDay.edits[editIndexInDay - 1].index
 		} else {
-			if (currentDayIndex < dayGroups.length - 1) {
-				onEditChange(dayGroups[currentDayIndex + 1].lastEditIndex)
+			if (fromIndex > 0) return fromIndex - 1
+		}
+		return null
+	}
+
+	function getNextEditIndex(fromIndex: number): number | null {
+		if (isViewingDay && selectedDay) {
+			let editIndexInDay = selectedDay.edits.findIndex(
+				e => e.index === fromIndex,
+			)
+			if (editIndexInDay < selectedDay.edits.length - 1)
+				return selectedDay.edits[editIndexInDay + 1].index
+		} else {
+			if (fromIndex < totalEdits - 1) return fromIndex + 1
+		}
+		return null
+	}
+
+	function startHold(direction: "prev" | "next") {
+		stopHold()
+		holdEditRef.current = currentEditIndex
+		let getNext =
+			direction === "prev"
+				? () => getPreviousEditIndex(holdEditRef.current)
+				: () => getNextEditIndex(holdEditRef.current)
+
+		let idx = getNext()
+		if (idx !== null) {
+			holdEditRef.current = idx
+			navigateToEdit(idx)
+		}
+
+		holdIntervalRef.current = setInterval(() => {
+			let nextIdx = getNext()
+			if (nextIdx !== null) {
+				holdEditRef.current = nextIdx
+				navigateToEdit(nextIdx)
+			} else {
+				stopHold()
 			}
+		}, 100)
+	}
+
+	function stopHold() {
+		if (holdIntervalRef.current) {
+			clearInterval(holdIntervalRef.current)
+			holdIntervalRef.current = null
 		}
 	}
 
 	let isAtStart =
 		isViewingDay && selectedDay
 			? selectedDay.edits[0]?.index === currentEditIndex
-			: currentDayIndex === 0
+			: currentEditIndex === 0
 
 	let isAtEnd =
 		isViewingDay && selectedDay
 			? selectedDay.edits[selectedDay.edits.length - 1]?.index ===
 				currentEditIndex
-			: currentDayIndex >= dayGroups.length - 1
+			: currentEditIndex >= totalEdits - 1
 
-	let currentDay = dayGroups[currentDayIndex]
-	let dateDisplay = currentDay
-		? currentDay.date.toLocaleDateString(undefined, {
-				month: "short",
-				day: "numeric",
-				year:
-					currentDay.date.getFullYear() !== new Date().getFullYear()
-						? "numeric"
-						: undefined,
-			})
-		: ""
-
+	// Status text
 	let statusText: string
 	if (!hasHistory) {
 		statusText = "No previous versions"
 	} else if (isViewingDay && selectedDay) {
 		let editIndexInDay =
 			selectedDay.edits.findIndex(e => e.index === currentEditIndex) + 1
-		statusText = `Edit ${editIndexInDay}/${selectedDay.edits.length} on ${dateDisplay}`
+		statusText = `${editIndexInDay}/${selectedDay.edits.length}`
 	} else {
-		statusText = `${dateDisplay} (${totalDays} ${totalDays === 1 ? "day" : "days"})`
+		statusText = `${currentEditIndex + 1}/${totalEdits}`
 	}
 
-	let modeLabel = isViewingDay ? `${dateDisplay}` : "Days"
+	// Dropdown label
+	let dropdownLabel = isViewingDay
+		? formatDayLabel(selectedDay!.date)
+		: "All history"
 
 	return (
 		<div
@@ -745,170 +840,393 @@ function TimeMachineBottomBar({
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			{/* Mobile: Row 1 - Slider + status */}
+			{/* Mobile: Row 1 - Slider */}
 			<div className="flex items-center gap-3 md:hidden">
-				<Slider
+				<TimeMachineSlider
 					min={0}
 					max={Math.max(0, sliderMax)}
-					value={[sliderValue]}
-					onValueChange={value =>
-						handleSliderChange(Array.isArray(value) ? value[0] : value)
-					}
+					value={sliderValue}
+					onChange={handleSliderChange}
+					onCommit={handleSliderCommit}
 					disabled={disabled || !hasHistory || sliderMax === 0}
 					className="flex-1"
+					getTooltipContent={getTooltipContent}
 				/>
 			</div>
 
-			{/* Mobile: Row 2 - Navigation buttons + mode dropdown + status */}
+			{/* Mobile: Row 2 - Navigation buttons + dropdown + status */}
 			<div className="flex items-center justify-between gap-3 md:hidden">
 				<div className="flex items-center gap-2">
 					<Button
 						variant="outline"
-						size="icon"
-						onClick={handlePrevious}
+						size="sm"
+						onMouseDown={() => startHold("prev")}
+						onMouseUp={stopHold}
+						onMouseLeave={stopHold}
+						onTouchStart={() => startHold("prev")}
+						onTouchEnd={stopHold}
 						disabled={disabled || isAtStart || !hasHistory}
-						aria-label={isViewingDay ? "Previous edit" : "Previous day"}
-						className="size-10"
+						aria-label="Previous edit"
+						className="gap-1"
 					>
-						<ChevronLeft className="size-5" />
+						<ChevronLeft className="size-4" />
+						Previous
 					</Button>
 					<Button
 						variant="outline"
-						size="icon"
-						onClick={handleNext}
+						size="sm"
+						onMouseDown={() => startHold("next")}
+						onMouseUp={stopHold}
+						onMouseLeave={stopHold}
+						onTouchStart={() => startHold("next")}
+						onTouchEnd={stopHold}
 						disabled={disabled || isAtEnd || !hasHistory}
-						aria-label={isViewingDay ? "Next edit" : "Next day"}
-						className="size-10"
+						aria-label="Next edit"
+						className="gap-1"
 					>
-						<ChevronRight className="size-5" />
+						Next
+						<ChevronRight className="size-4" />
 					</Button>
 				</div>
-				<ModeDropdown
+				<DateDropdown
 					dayGroups={dayGroups}
-					currentDayIndex={currentDayIndex}
-					isViewingDay={isViewingDay}
-					modeLabel={modeLabel}
+					selectedDayIndex={selectedDayIndex}
+					dropdownLabel={dropdownLabel}
 					disabled={disabled}
 					hasHistory={hasHistory}
-					onViewModeChange={onViewModeChange}
+					onViewModeChange={handleViewModeChange}
 				/>
-				<div className="text-muted-foreground shrink-0 text-sm">
+				<div className="text-muted-foreground shrink-0 text-sm tabular-nums">
 					{statusText}
 				</div>
 			</div>
 
 			{/* Desktop: Single row layout */}
-			<div className="hidden items-center gap-2 md:flex">
-				<Button
-					variant="outline"
-					size="icon"
-					onClick={handlePrevious}
-					disabled={disabled || isAtStart || !hasHistory}
-					aria-label={isViewingDay ? "Previous edit" : "Previous day"}
-				>
-					<ChevronLeft className="size-4" />
-				</Button>
-				<Button
-					variant="outline"
-					size="icon"
-					onClick={handleNext}
-					disabled={disabled || isAtEnd || !hasHistory}
-					aria-label={isViewingDay ? "Next edit" : "Next day"}
-				>
-					<ChevronRight className="size-4" />
-				</Button>
-			</div>
+			<TooltipProvider>
+				<div className="hidden items-center gap-2 md:flex">
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									variant="outline"
+									size="sm"
+									onMouseDown={() => startHold("prev")}
+									onMouseUp={stopHold}
+									onMouseLeave={stopHold}
+									disabled={disabled || isAtStart || !hasHistory}
+									aria-label="Previous edit"
+									nativeButton={false}
+									className="gap-1"
+								>
+									<ChevronLeft className="size-4" />
+									Previous
+								</Button>
+							}
+						/>
+						<TooltipContent side="top">
+							Previous edit <Kbd>[</Kbd>
+						</TooltipContent>
+					</Tooltip>
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									variant="outline"
+									size="sm"
+									onMouseDown={() => startHold("next")}
+									onMouseUp={stopHold}
+									onMouseLeave={stopHold}
+									disabled={disabled || isAtEnd || !hasHistory}
+									aria-label="Next edit"
+									nativeButton={false}
+									className="gap-1"
+								>
+									Next
+									<ChevronRight className="size-4" />
+								</Button>
+							}
+						/>
+						<TooltipContent side="top">
+							Next edit <Kbd>]</Kbd>
+						</TooltipContent>
+					</Tooltip>
+				</div>
+			</TooltipProvider>
 
-			<ModeDropdown
+			<DateDropdown
 				dayGroups={dayGroups}
-				currentDayIndex={currentDayIndex}
-				isViewingDay={isViewingDay}
-				modeLabel={modeLabel}
+				selectedDayIndex={selectedDayIndex}
+				dropdownLabel={dropdownLabel}
 				disabled={disabled}
 				hasHistory={hasHistory}
-				onViewModeChange={onViewModeChange}
+				onViewModeChange={handleViewModeChange}
 				className="hidden md:flex"
 			/>
 
 			<div className="hidden flex-1 items-center gap-4 md:flex">
-				<Slider
+				<TimeMachineSlider
 					min={0}
 					max={Math.max(0, sliderMax)}
-					value={[sliderValue]}
-					onValueChange={value =>
-						handleSliderChange(Array.isArray(value) ? value[0] : value)
-					}
+					value={sliderValue}
+					onChange={handleSliderChange}
+					onCommit={handleSliderCommit}
 					disabled={disabled || !hasHistory || sliderMax === 0}
 					className="flex-1"
+					getTooltipContent={getTooltipContent}
 				/>
 			</div>
 
-			<div className="text-muted-foreground hidden shrink-0 text-sm md:block">
+			<div className="text-muted-foreground hidden shrink-0 text-sm tabular-nums md:block">
 				{statusText}
 			</div>
 		</div>
 	)
 }
 
-interface ModeDropdownProps {
+function formatDayLabel(date: Date): string {
+	return date.toLocaleDateString(undefined, {
+		month: "short",
+		day: "numeric",
+		year:
+			date.getFullYear() !== new Date().getFullYear() ? "numeric" : undefined,
+	})
+}
+
+function formatMonthLabel(date: Date): string {
+	return date.toLocaleDateString(undefined, {
+		month: "long",
+		year: "numeric",
+	})
+}
+
+type MonthGroup = {
+	label: string
+	days: { day: DayGroup; originalIndex: number }[]
+	totalEdits: number
+}
+
+function groupDaysByMonth(dayGroups: DayGroup[]): {
+	recentDays: { day: DayGroup; originalIndex: number }[]
+	olderMonths: MonthGroup[]
+} {
+	let now = new Date()
+	let sevenDaysAgo = new Date(now)
+	sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+	sevenDaysAgo.setHours(0, 0, 0, 0)
+
+	let recentDays: { day: DayGroup; originalIndex: number }[] = []
+	let olderDays: { day: DayGroup; originalIndex: number }[] = []
+
+	dayGroups.forEach((day, idx) => {
+		if (day.date >= sevenDaysAgo) {
+			recentDays.push({ day, originalIndex: idx })
+		} else {
+			olderDays.push({ day, originalIndex: idx })
+		}
+	})
+
+	let monthMap = new Map<string, MonthGroup>()
+	for (let item of olderDays) {
+		let monthKey = `${item.day.date.getFullYear()}-${item.day.date.getMonth()}`
+		let existing = monthMap.get(monthKey)
+		if (existing) {
+			existing.days.push(item)
+			existing.totalEdits += item.day.edits.length
+		} else {
+			monthMap.set(monthKey, {
+				label: formatMonthLabel(item.day.date),
+				days: [item],
+				totalEdits: item.day.edits.length,
+			})
+		}
+	}
+
+	let olderMonths = Array.from(monthMap.values())
+
+	return { recentDays, olderMonths }
+}
+
+interface DateDropdownProps {
 	dayGroups: DayGroup[]
-	currentDayIndex: number
-	isViewingDay: boolean
-	modeLabel: string
+	selectedDayIndex: number | null
+	dropdownLabel: string
 	disabled: boolean
 	hasHistory: boolean
 	onViewModeChange: (mode: ViewMode, dayIndex?: number) => void
 	className?: string
 }
 
-function ModeDropdown({
+function DateDropdown({
 	dayGroups,
-	currentDayIndex,
-	isViewingDay,
-	modeLabel,
+	selectedDayIndex,
+	dropdownLabel,
 	disabled,
 	hasHistory,
 	onViewModeChange,
 	className = "",
-}: ModeDropdownProps) {
-	let currentDay = dayGroups[currentDayIndex]
-	let hasMultipleEditsToday = currentDay && currentDay.edits.length > 1
+}: DateDropdownProps) {
+	let totalEdits = dayGroups.reduce((sum, day) => sum + day.edits.length, 0)
+	let { recentDays, olderMonths } = groupDaysByMonth(dayGroups)
 
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger
 				disabled={disabled || !hasHistory}
-				className={`border-input bg-background hover:bg-accent hover:text-accent-foreground h-9 items-center justify-between gap-1 rounded-md border px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-50 ${className || "flex"}`}
+				className={`border-input bg-background hover:bg-muted hover:text-foreground h-9 items-center justify-between gap-1 rounded-none border px-3 text-sm disabled:cursor-not-allowed disabled:opacity-50 md:h-7 md:px-2.5 md:text-xs ${className || "flex"}`}
 			>
-				<span>{modeLabel}</span>
+				<span>{dropdownLabel}</span>
 				<ChevronDown className="size-4 opacity-50" />
 			</DropdownMenuTrigger>
-			<DropdownMenuContent side="top" align="start">
+			<DropdownMenuContent
+				side="top"
+				align="start"
+				className="max-h-80 overflow-y-auto"
+			>
 				<DropdownMenuRadioGroup
-					value={isViewingDay ? "edits" : "days"}
+					value={selectedDayIndex !== null ? String(selectedDayIndex) : "all"}
 					onValueChange={value => {
-						if (value === "days") {
+						if (value === "all") {
 							onViewModeChange("days")
 						} else {
-							onViewModeChange("edits", currentDayIndex)
+							onViewModeChange("edits", Number(value))
 						}
 					}}
 				>
-					<DropdownMenuRadioItem value="days">All days</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem
-						value="edits"
-						disabled={!hasMultipleEditsToday}
-					>
-						Edits on{" "}
-						{currentDay?.date.toLocaleDateString(undefined, {
-							month: "short",
-							day: "numeric",
-						})}{" "}
-						({currentDay?.edits.length ?? 0})
+					<DropdownMenuRadioItem value="all">
+						All history ({totalEdits})
 					</DropdownMenuRadioItem>
+
+					{recentDays.length > 0 && (
+						<>
+							<DropdownMenuSeparator />
+							{recentDays.map(({ day, originalIndex }) => (
+								<DropdownMenuRadioItem
+									key={originalIndex}
+									value={String(originalIndex)}
+								>
+									{formatDayLabel(day.date)} ({day.edits.length})
+								</DropdownMenuRadioItem>
+							))}
+						</>
+					)}
 				</DropdownMenuRadioGroup>
+
+				{olderMonths.length > 0 && (
+					<>
+						<DropdownMenuSeparator />
+						{olderMonths.map(month => (
+							<DropdownMenuSub key={month.label}>
+								<DropdownMenuSubTrigger>
+									{month.label} ({month.totalEdits})
+								</DropdownMenuSubTrigger>
+								<DropdownMenuSubContent>
+									<DropdownMenuRadioGroup
+										value={
+											selectedDayIndex !== null
+												? String(selectedDayIndex)
+												: "all"
+										}
+										onValueChange={value => {
+											if (value !== "all") {
+												onViewModeChange("edits", Number(value))
+											}
+										}}
+									>
+										{month.days.map(({ day, originalIndex }) => (
+											<DropdownMenuRadioItem
+												key={originalIndex}
+												value={String(originalIndex)}
+											>
+												{formatDayLabel(day.date)} ({day.edits.length})
+											</DropdownMenuRadioItem>
+										))}
+									</DropdownMenuRadioGroup>
+								</DropdownMenuSubContent>
+							</DropdownMenuSub>
+						))}
+					</>
+				)}
 			</DropdownMenuContent>
 		</DropdownMenu>
+	)
+}
+
+// --- TimeMachineSlider ---
+
+interface TimeMachineSliderProps {
+	min: number
+	max: number
+	value: number
+	onChange: (value: number) => void
+	onCommit: (value: number) => void
+	disabled?: boolean
+	className?: string
+	getTooltipContent: (value: number) => string | undefined
+}
+
+function TimeMachineSlider({
+	min,
+	max,
+	value,
+	onChange,
+	onCommit,
+	disabled,
+	className,
+	getTooltipContent,
+}: TimeMachineSliderProps) {
+	let [localValue, setLocalValue] = useState(value)
+	let [isHovering, setIsHovering] = useState(false)
+	let [isDragging, setIsDragging] = useState(false)
+
+	function handleValueChange(newValue: number, details: { reason: string }) {
+		setLocalValue(newValue)
+		if (details.reason === "drag") {
+			setIsDragging(true)
+		}
+		onChange(newValue)
+	}
+
+	function handleValueCommitted(committedValue: number) {
+		setIsDragging(false)
+		// Sync local value with committed value
+		setLocalValue(committedValue)
+		onCommit(committedValue)
+	}
+
+	// Derive display value: use prop value when not dragging, local value when dragging
+	let displayValue = isDragging ? localValue : value
+	let tooltipContent = getTooltipContent(displayValue)
+	let showTooltip = (isDragging || isHovering) && tooltipContent
+
+	return (
+		<SliderPrimitive.Root
+			className={cn("data-horizontal:w-full", className)}
+			value={displayValue}
+			onValueChange={handleValueChange}
+			onValueCommitted={handleValueCommitted}
+			min={min}
+			max={max}
+			disabled={disabled}
+			thumbAlignment="edge"
+		>
+			<SliderPrimitive.Control className="relative flex w-full touch-none items-center select-none data-disabled:opacity-50">
+				<SliderPrimitive.Track className="bg-muted relative h-1.5 w-full rounded-none select-none">
+					<SliderPrimitive.Indicator className="bg-primary h-full select-none" />
+					<SliderPrimitive.Thumb
+						className="border-ring ring-ring/50 relative block size-5 shrink-0 rounded-none border bg-white transition-[color,box-shadow] select-none after:absolute after:-inset-2 hover:ring-1 focus-visible:ring-1 focus-visible:outline-hidden active:ring-1 disabled:pointer-events-none disabled:opacity-50"
+						onMouseEnter={() => setIsHovering(true)}
+						onMouseLeave={() => setIsHovering(false)}
+					>
+						{showTooltip && (
+							<div className="bg-foreground text-background absolute bottom-full left-1/2 mb-2 -translate-x-1/2 rounded-none px-2 py-1 text-xs whitespace-nowrap">
+								{tooltipContent}
+								<div className="bg-foreground absolute top-full left-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rotate-45" />
+							</div>
+						)}
+					</SliderPrimitive.Thumb>
+				</SliderPrimitive.Track>
+			</SliderPrimitive.Control>
+		</SliderPrimitive.Root>
 	)
 }
 
