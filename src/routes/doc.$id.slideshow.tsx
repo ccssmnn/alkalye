@@ -27,14 +27,20 @@ import { Loader2, FileText } from "lucide-react"
 
 export { Route }
 
+let loaderResolve = {
+	content: true,
+	assets: true,
+} as const satisfies ResolveQuery<typeof Document>
+
 let resolve = {
 	content: true,
+	assets: { $each: { image: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
 let Route = createFileRoute("/doc/$id/slideshow")({
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, {
-			resolve,
+			resolve: loaderResolve,
 		})
 		if (!doc.$isLoaded) {
 			return {
@@ -119,11 +125,13 @@ function SlideshowPage() {
 			: 1
 
 	let canEditDoc = canEdit(doc)
+	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
 
 	return (
 		<Slideshow
 			content={content}
 			slides={slides}
+			assets={assets}
 			wikilinks={wikilinks}
 			currentSlideNumber={currentSlideNumber}
 			onSlideChange={canEditDoc ? makeSlideChange(doc, items) : undefined}

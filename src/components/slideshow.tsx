@@ -6,6 +6,7 @@ import {
 	useState,
 	useLayoutEffect,
 } from "react"
+import { Image as JazzImage } from "jazz-tools/react"
 import { codeToHtml } from "shiki"
 import {
 	parsePresentationSize,
@@ -46,11 +47,20 @@ type ResolvedWikilink = {
 let ThemeContext = createContext<PresentationTheme | null>(null)
 let WikilinkContext = createContext<Map<string, ResolvedWikilink>>(new Map())
 
+type Asset = {
+	$jazz: { id: string }
+	$isLoaded?: boolean
+	image?: { $jazz: { id: string } }
+}
+
+let AssetContext = createContext<Asset[] | undefined>(undefined)
+
 type Slide = { slideNumber: number; blocks: VisualBlock[] }
 
 interface SlideshowProps {
 	content: string
 	slides: Slide[]
+	assets?: Asset[]
 	wikilinks: Map<string, ResolvedWikilink>
 	currentSlideNumber: number
 	onSlideChange?: (slideNumber: number) => void
@@ -61,6 +71,7 @@ interface SlideshowProps {
 function Slideshow({
 	content,
 	slides,
+	assets,
 	wikilinks,
 	currentSlideNumber,
 	onSlideChange,
@@ -133,73 +144,76 @@ function Slideshow({
 	let hasThemeColors = documentTheme.preset != null
 
 	return (
-		<WikilinkContext.Provider value={wikilinks}>
-			<ThemeContext.Provider value={appearanceTheme}>
-				{/* Inject theme styles */}
-				{injectedStyles && <style>{injectedStyles}</style>}
+		<AssetContext.Provider value={assets}>
+			<WikilinkContext.Provider value={wikilinks}>
+				<ThemeContext.Provider value={appearanceTheme}>
+					{/* Inject theme styles */}
+					{injectedStyles && <style>{injectedStyles}</style>}
 
-				<div
-					className={cn(
-						"fixed inset-0 flex flex-col",
-						// Only use hardcoded colors if no custom theme preset provides colors
-						!hasThemeColors &&
-							appearanceTheme === "light" &&
-							"bg-white text-black",
-						!hasThemeColors &&
-							appearanceTheme === "dark" &&
-							"bg-black text-white",
-						!hasThemeColors &&
-							!appearanceTheme &&
-							"bg-background text-foreground",
-					)}
-					style={
-						hasThemeColors
-							? {
-									backgroundColor: "var(--preset-background)",
-									color: "var(--preset-foreground)",
-								}
-							: undefined
-					}
-					data-theme={documentTheme.theme?.name ?? undefined}
-				>
-					{/* Theme warning banner */}
-					{documentTheme.warning && (
-						<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
-							<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
-								<TriangleAlert className="size-4 shrink-0" />
-								<span>{documentTheme.warning}</span>
+					<div
+						className={cn(
+							"fixed inset-0 flex flex-col",
+							// Only use hardcoded colors if no custom theme preset provides colors
+							!hasThemeColors &&
+								appearanceTheme === "light" &&
+								"bg-white text-black",
+							!hasThemeColors &&
+								appearanceTheme === "dark" &&
+								"bg-black text-white",
+							!hasThemeColors &&
+								!appearanceTheme &&
+								"bg-background text-foreground",
+						)}
+						style={
+							hasThemeColors
+								? {
+										backgroundColor: "var(--preset-background)",
+										color: "var(--preset-foreground)",
+									}
+								: undefined
+						}
+						data-theme={documentTheme.theme?.name ?? undefined}
+					>
+						{/* Theme warning banner */}
+						{documentTheme.warning && (
+							<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+								<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+									<TriangleAlert className="size-4 shrink-0" />
+									<span>{documentTheme.warning}</span>
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 
-					{/* Theme error banner (corrupted theme data) */}
-					{themeStylesResult.error && (
-						<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
-							<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
-								<TriangleAlert className="size-4 shrink-0" />
-								<span>
-									Theme error: {themeStylesResult.error}. Using default styles.
-								</span>
+						{/* Theme error banner (corrupted theme data) */}
+						{themeStylesResult.error && (
+							<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+								<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+									<TriangleAlert className="size-4 shrink-0" />
+									<span>
+										Theme error: {themeStylesResult.error}. Using default
+										styles.
+									</span>
+								</div>
 							</div>
-						</div>
-					)}
+						)}
 
-					<ScaledSlideContainer
-						blocks={visibleBlocks}
-						size={size}
-						slideNumber={currentSlideNumber}
-						onClick={goToNextSlide}
-					/>
-					<SlideControls
-						slides={slides}
-						currentSlideNumber={currentSlideNumber}
-						onSlideChange={onSlideChange}
-						onExit={onExit}
-						onGoToTeleprompter={onGoToTeleprompter}
-					/>
-				</div>
-			</ThemeContext.Provider>
-		</WikilinkContext.Provider>
+						<ScaledSlideContainer
+							blocks={visibleBlocks}
+							size={size}
+							slideNumber={currentSlideNumber}
+							onClick={goToNextSlide}
+						/>
+						<SlideControls
+							slides={slides}
+							currentSlideNumber={currentSlideNumber}
+							onSlideChange={onSlideChange}
+							onExit={onExit}
+							onGoToTeleprompter={onGoToTeleprompter}
+						/>
+					</div>
+				</ThemeContext.Provider>
+			</WikilinkContext.Provider>
+		</AssetContext.Provider>
 	)
 }
 
@@ -342,15 +356,22 @@ function ScaledSlideContainer({
 		() => window.innerHeight > window.innerWidth,
 	)
 	let blockCount = blocks.length
-	let gridClass = cn(
-		"grid gap-8",
-		blockCount === 1 && "grid-cols-1 grid-rows-1",
-		blockCount === 2 &&
-			(isPortrait ? "grid-cols-1 grid-rows-2" : "grid-cols-2 grid-rows-1"),
-		blockCount === 3 &&
-			(isPortrait ? "grid-cols-1 grid-rows-3" : "grid-cols-3 grid-rows-1"),
-		blockCount >= 4 && "grid-cols-2 grid-rows-2",
-	)
+
+	// Calculate grid template based on block count and orientation
+	let gridTemplate: { cols: string; rows: string }
+	if (blockCount === 1) {
+		gridTemplate = { cols: "1fr", rows: "1fr" }
+	} else if (blockCount === 2) {
+		gridTemplate = isPortrait
+			? { cols: "1fr", rows: "1fr 1fr" }
+			: { cols: "1fr 1fr", rows: "1fr" }
+	} else if (blockCount === 3) {
+		gridTemplate = isPortrait
+			? { cols: "1fr", rows: "1fr 1fr 1fr" }
+			: { cols: "1fr 1fr 1fr", rows: "1fr" }
+	} else {
+		gridTemplate = { cols: "1fr 1fr", rows: "1fr 1fr" }
+	}
 
 	let baseSize = baseSizes[size]
 
@@ -378,8 +399,19 @@ function ScaledSlideContainer({
 			let maxW = container!.clientWidth * 0.9
 			let maxH = container!.clientHeight * 0.9
 
-			// Temporarily remove width constraint for measuring
+			// Temporarily remove size constraints for measuring
+			// Replace 1fr with auto so cells can expand to natural size
 			content!.style.width = "auto"
+			content!.style.height = "auto"
+			content!.style.maxHeight = "none"
+			content!.style.gridTemplateRows = gridTemplate.rows.replace(
+				/1fr/g,
+				"auto",
+			)
+			content!.style.gridTemplateColumns = gridTemplate.cols.replace(
+				/1fr/g,
+				"auto",
+			)
 
 			function fits(s: number): boolean {
 				content!.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
@@ -387,6 +419,7 @@ function ScaledSlideContainer({
 					"--slide-body-size",
 					`${baseSize.body * s}px`,
 				)
+				content!.style.setProperty("--slide-scale", `${s}`)
 				// Force reflow
 				void content!.offsetHeight
 				let w = content!.scrollWidth
@@ -408,8 +441,12 @@ function ScaledSlideContainer({
 
 			let finalScale = Math.max(10, Math.min(high, 100)) / 100
 
-			// Restore width constraint
+			// Restore constraints
 			content!.style.width = "90%"
+			content!.style.height = ""
+			content!.style.maxHeight = "90%"
+			content!.style.gridTemplateRows = gridTemplate.rows
+			content!.style.gridTemplateColumns = gridTemplate.cols
 
 			if (cancelled) return
 
@@ -446,11 +483,14 @@ function ScaledSlideContainer({
 		>
 			<div
 				ref={contentRef}
-				className={gridClass}
+				className="grid gap-8"
 				style={
 					{
 						"--slide-h1-size": `${baseSize.h1 * scale}px`,
 						"--slide-body-size": `${baseSize.body * scale}px`,
+						"--slide-scale": `${scale}`,
+						gridTemplateColumns: gridTemplate.cols,
+						gridTemplateRows: gridTemplate.rows,
 						opacity: visible ? 1 : 0,
 						transition: visible ? "opacity 150ms ease-in" : "none",
 						width: "90%",
@@ -578,15 +618,7 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	}
 
 	if (item.type === "image") {
-		return (
-			<div style={{ margin: "0.5em 0" }}>
-				<img
-					src={item.src}
-					alt={item.alt}
-					className="mx-auto max-h-[60vh] rounded-lg"
-				/>
-			</div>
-		)
+		return <SlideImage src={item.src} alt={item.alt} />
 	}
 
 	if (item.type === "list") {
@@ -641,22 +673,28 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 
 	if (item.type === "table") {
 		let [header, ...body] = item.rows
+		let borderStyle = {
+			borderBottomWidth: "calc(1px * var(--slide-scale, 1))",
+			borderBottomStyle: "solid" as const,
+			borderBottomColor: "var(--border)",
+		}
 		return (
 			<table
-				className="w-full text-left"
+				className="text-left"
 				style={{
 					fontSize: "calc(var(--slide-body-size) * 0.8)",
 					margin: "0.5em 0",
+					lineHeight: 1.2,
 				}}
 			>
 				{header && (
 					<thead>
-						<tr className="border-border border-b">
+						<tr style={borderStyle}>
 							{header.map((cell, i) => (
 								<th
 									key={i}
 									className="font-semibold"
-									style={{ padding: "0.4em 0.6em" }}
+									style={{ padding: "0.3em 0.5em" }}
 								>
 									{cell}
 								</th>
@@ -666,9 +704,9 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 				)}
 				<tbody>
 					{body.map((row, i) => (
-						<tr key={i} className="border-border border-b">
+						<tr key={i} style={borderStyle}>
 							{row.map((cell, j) => (
-								<td key={j} style={{ padding: "0.4em 0.6em" }}>
+								<td key={j} style={{ padding: "0.3em 0.5em" }}>
 									{cell}
 								</td>
 							))}
@@ -690,6 +728,49 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 			<RenderSegments segments={item.segments} />
 		</div>
 	)
+}
+
+// Base image size at scale=1 (400px), scales with --slide-scale
+let IMAGE_BASE_SIZE = 400
+
+function SlideImage({ src, alt }: { src: string; alt: string }) {
+	let assets = useContext(AssetContext)
+
+	let sizeStyle = {
+		maxWidth: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
+		maxHeight: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
+	}
+
+	// Check if this is a Jazz asset reference
+	let assetMatch = src.match(/^asset:(.+)$/)
+	if (assetMatch) {
+		let assetId = assetMatch[1]
+		let asset = assets?.find(a => a?.$jazz.id === assetId)
+
+		if (asset?.$isLoaded && asset.image) {
+			return (
+				<JazzImage
+					imageId={asset.image.$jazz.id}
+					alt={alt}
+					className="rounded-lg"
+					style={sizeStyle}
+				/>
+			)
+		}
+
+		// Asset not loaded yet, show placeholder
+		return (
+			<div
+				className="bg-muted flex aspect-video items-center justify-center rounded-lg"
+				style={sizeStyle}
+			>
+				<span className="text-muted-foreground text-sm">Loading...</span>
+			</div>
+		)
+	}
+
+	// Regular URL image
+	return <img src={src} alt={alt} className="rounded-lg" style={sizeStyle} />
 }
 
 function HighlightedCode({
