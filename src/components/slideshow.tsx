@@ -26,7 +26,6 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { cn } from "@/lib/utils"
 import { useResolvedTheme } from "@/lib/theme"
 import { EllipsisIcon, TriangleAlert } from "lucide-react"
 import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
@@ -128,20 +127,20 @@ function Slideshow({
 		? `[data-theme] { transition: color 150ms ease-out, background-color 150ms ease-out; }`
 		: ""
 
-	// Combine all theme CSS with transitions first
+	let slideshowBaseCss = getSlideshowBaseCss()
+
+	// Combine base + theme CSS (theme last so it wins)
 	let injectedStyles = themeStyles
 		? [
 				transitionStyles,
 				themeStyles.fontFaceRules,
 				themeStyles.presetVariables,
+				slideshowBaseCss,
 				themeStyles.css,
 			]
 				.filter(Boolean)
 				.join("\n")
-		: transitionStyles
-
-	// Determine if custom theme provides background/foreground via preset
-	let hasThemeColors = documentTheme.preset != null
+		: [transitionStyles, slideshowBaseCss].filter(Boolean).join("\n")
 
 	return (
 		<AssetContext.Provider value={assets}>
@@ -151,27 +150,10 @@ function Slideshow({
 					{injectedStyles && <style>{injectedStyles}</style>}
 
 					<div
-						className={cn(
-							"fixed inset-0 flex flex-col",
-							// Only use hardcoded colors if no custom theme preset provides colors
-							!hasThemeColors &&
-								appearanceTheme === "light" &&
-								"bg-white text-black",
-							!hasThemeColors &&
-								appearanceTheme === "dark" &&
-								"bg-black text-white",
-							!hasThemeColors &&
-								!appearanceTheme &&
-								"bg-background text-foreground",
-						)}
-						style={
-							hasThemeColors
-								? {
-										backgroundColor: "var(--preset-background)",
-										color: "var(--preset-foreground)",
-									}
-								: undefined
-						}
+						data-mode="slideshow"
+						data-theme={documentTheme.theme?.name ?? undefined}
+						data-appearance={effectiveAppearance}
+						className="fixed inset-0 flex flex-col"
 					>
 						{/* Theme warning banner */}
 						{documentTheme.warning && (
@@ -196,15 +178,13 @@ function Slideshow({
 							</div>
 						)}
 
-						<article
-							data-theme={documentTheme.theme?.name ?? undefined}
-							className="flex flex-1 flex-col"
-						>
+						<article className="flex flex-1 flex-col">
 							<ScaledSlideContainer
 								blocks={visibleBlocks}
 								size={size}
 								slideNumber={currentSlideNumber}
 								onClick={goToNextSlide}
+								measureKey={getThemeMeasureKey(documentTheme, themeStyles)}
 							/>
 						</article>
 						<SlideControls
@@ -352,11 +332,13 @@ function ScaledSlideContainer({
 	size,
 	slideNumber,
 	onClick,
+	measureKey,
 }: {
 	blocks: VisualBlock[]
 	size: PresentationSize
 	slideNumber: number
 	onClick: () => void
+	measureKey: string
 }) {
 	let containerRef = useRef<HTMLDivElement>(null)
 	let contentRef = useRef<HTMLDivElement>(null)
@@ -386,7 +368,7 @@ function ScaledSlideContainer({
 	let baseSize = baseSizes[size]
 
 	// Reset visibility when deps change using adjust-state-during-render pattern
-	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}`
+	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}-${measureKey}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
 	if (depsKey !== prevDepsKey) {
 		setPrevDepsKey(depsKey)
@@ -461,6 +443,11 @@ function ScaledSlideContainer({
 				let overflowSensitiveElements = Array.from(
 					content.querySelectorAll<HTMLElement>("pre, table"),
 				)
+				let overflowMeasurementElements = Array.from(
+					content.querySelectorAll<HTMLElement>(
+						"h1,h2,h3,h4,h5,h6,p,pre,table,blockquote,ol,ul,img",
+					),
+				)
 
 				function fits(s: number): boolean {
 					content.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
@@ -485,6 +472,24 @@ function ScaledSlideContainer({
 					for (let el of overflowSensitiveElements) {
 						if (el.scrollWidth > el.clientWidth + 1) return false
 						if (el.scrollHeight > el.clientHeight + 1) return false
+					}
+
+					// scrollWidth/scrollHeight ignore margins; themes can add huge margins.
+					// Measure block element boxes + margins against container bounds.
+					let contentRect = content.getBoundingClientRect()
+					for (let el of overflowMeasurementElements) {
+						let rect = el.getBoundingClientRect()
+						let style = getComputedStyle(el)
+						let marginTop = Number.parseFloat(style.marginTop) || 0
+						let marginRight = Number.parseFloat(style.marginRight) || 0
+						let marginBottom = Number.parseFloat(style.marginBottom) || 0
+						let marginLeft = Number.parseFloat(style.marginLeft) || 0
+
+						if (rect.right + marginRight > contentRect.right + 1) return false
+						if (rect.bottom + marginBottom > contentRect.bottom + 1)
+							return false
+						if (rect.left - marginLeft < contentRect.left - 1) return false
+						if (rect.top - marginTop < contentRect.top - 1) return false
 					}
 
 					return true
@@ -537,10 +542,26 @@ function ScaledSlideContainer({
 		})
 		resizeObserver.observe(initialContainer)
 
+		let fontSet = document.fonts
+		function handleFontsDone() {
+			scheduleMeasure()
+		}
+
+		if (fontSet) {
+			fontSet.ready.then(() => {
+				if (cancelled) return
+				handleFontsDone()
+			})
+			fontSet.addEventListener?.("loadingdone", handleFontsDone)
+			fontSet.addEventListener?.("loadingerror", handleFontsDone)
+		}
+
 		return () => {
 			cancelled = true
 			mutationObserver.disconnect()
 			resizeObserver.disconnect()
+			fontSet?.removeEventListener?.("loadingdone", handleFontsDone)
+			fontSet?.removeEventListener?.("loadingerror", handleFontsDone)
 		}
 	}, [
 		slideNumber,
@@ -549,6 +570,7 @@ function ScaledSlideContainer({
 		baseSize,
 		gridTemplate.cols,
 		gridTemplate.rows,
+		measureKey,
 	])
 
 	useEffect(() => {
@@ -580,13 +602,13 @@ function ScaledSlideContainer({
 			className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden p-8"
 			onClick={onClick}
 		>
-			<div ref={contentRef} className="grid gap-8" style={contentStyle}>
+			<div
+				ref={contentRef}
+				className="slideshow-grid grid gap-8"
+				style={contentStyle}
+			>
 				{blocks.map((block, i) => (
-					<div
-						key={i}
-						className="flex min-h-0 max-w-full min-w-0 flex-col items-center justify-center overflow-hidden text-center"
-						style={{ overflowWrap: "normal", wordBreak: "normal" }}
-					>
+					<div key={i} className="slideshow-cell">
 						{block.content.map((item, j) => (
 							<SlideContentItem key={j} item={item} />
 						))}
@@ -595,15 +617,6 @@ function ScaledSlideContainer({
 			</div>
 		</div>
 	)
-}
-
-let headingScales: Record<number, number> = {
-	1: 1,
-	2: 0.85,
-	3: 0.7,
-	4: 0.6,
-	5: 0.5,
-	6: 0.45,
 }
 
 function RenderSegments({ segments }: { segments: TextSegment[] }) {
@@ -628,10 +641,6 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 					href={segment.href}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="underline"
-					style={{
-						color: "var(--preset-link, var(--preset-accent, currentColor))",
-					}}
 					onClick={e => e.stopPropagation()}
 				>
 					{segment.text}
@@ -658,31 +667,21 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 		}
 		case "strong":
 			return (
-				<strong className="font-bold">
+				<strong>
 					<RenderSegments segments={segment.segments} />
 				</strong>
 			)
 		case "em":
 			return (
-				<em className="italic">
+				<em>
 					<RenderSegments segments={segment.segments} />
 				</em>
 			)
 		case "codespan":
-			return (
-				<code
-					className="rounded px-[0.3em] py-[0.1em] font-mono text-[0.85em]"
-					style={{
-						backgroundColor:
-							"var(--preset-code-background, rgba(127, 127, 127, 0.15))",
-					}}
-				>
-					{segment.text}
-				</code>
-			)
+			return <code>{segment.text}</code>
 		case "del":
 			return (
-				<del className="line-through">
+				<del>
 					<RenderSegments segments={segment.segments} />
 				</del>
 			)
@@ -691,20 +690,13 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 
 function SlideContentItem({ item }: { item: SlideContent }) {
 	if (item.type === "heading") {
-		let scale = headingScales[item.depth] ?? 0.6
-		let Tag = `h${item.depth}` as "h1" | "h2" | "h3" | "h4" | "h5" | "h6"
-		return (
-			<Tag
-				className="font-semibold"
-				style={{
-					fontSize: `calc(var(--slide-h1-size) * ${scale})`,
-					marginBottom: "0.3em",
-					lineHeight: 1.2,
-				}}
-			>
-				<RenderSegments segments={item.segments} />
-			</Tag>
-		)
+		let content = <RenderSegments segments={item.segments} />
+		if (item.depth <= 1) return <h1>{content}</h1>
+		if (item.depth === 2) return <h2>{content}</h2>
+		if (item.depth === 3) return <h3>{content}</h3>
+		if (item.depth === 4) return <h4>{content}</h4>
+		if (item.depth === 5) return <h5>{content}</h5>
+		return <h6>{content}</h6>
 	}
 
 	if (item.type === "code") {
@@ -716,51 +708,17 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	}
 
 	if (item.type === "list") {
-		let listClass = `text-left ${item.ordered ? "list-decimal" : "list-disc"}`
 		let items = item.items.map((listItem, i) => (
-			<li key={i} style={{ marginBottom: "0.2em" }}>
+			<li key={i}>
 				<RenderSegments segments={listItem.segments} />
 			</li>
 		))
-		return item.ordered ? (
-			<ol
-				className={listClass}
-				style={{
-					fontSize: "var(--slide-body-size)",
-					margin: "0.5em 0",
-					paddingLeft: "1.2em",
-					lineHeight: 1.4,
-				}}
-			>
-				{items}
-			</ol>
-		) : (
-			<ul
-				className={listClass}
-				style={{
-					fontSize: "var(--slide-body-size)",
-					margin: "0.5em 0",
-					paddingLeft: "1.2em",
-					lineHeight: 1.4,
-				}}
-			>
-				{items}
-			</ul>
-		)
+		return item.ordered ? <ol>{items}</ol> : <ul>{items}</ul>
 	}
 
 	if (item.type === "blockquote") {
 		return (
-			<blockquote
-				className="border-l-4 text-left italic"
-				style={{
-					fontSize: "var(--slide-body-size)",
-					margin: "0.5em 0",
-					paddingLeft: "0.5em",
-					lineHeight: 1.4,
-					borderColor: "var(--preset-accent, currentColor)",
-				}}
-			>
+			<blockquote>
 				<RenderSegments segments={item.segments} />
 			</blockquote>
 		)
@@ -768,57 +726,22 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 
 	if (item.type === "table") {
 		let [header, ...body] = item.rows
-		let borderStyle = {
-			borderBottomWidth: "calc(1px * var(--slide-scale, 1))",
-			borderBottomStyle: "solid" as const,
-			borderBottomColor: "var(--border)",
-		}
 		return (
-			<table
-				className="table-auto text-left"
-				style={{
-					fontSize: "calc(var(--slide-body-size) * 0.8)",
-					margin: "0.5em 0",
-					lineHeight: 1.2,
-					borderCollapse: "collapse",
-					whiteSpace: "nowrap",
-				}}
-			>
+			<table>
 				{header && (
 					<thead>
-						<tr style={borderStyle}>
+						<tr>
 							{header.map((cell, i) => (
-								<th
-									key={i}
-									className="font-semibold"
-									style={{
-										padding: "0.3em 0.5em",
-										whiteSpace: "nowrap",
-										wordBreak: "normal",
-										verticalAlign: "top",
-									}}
-								>
-									{cell}
-								</th>
+								<th key={i}>{cell}</th>
 							))}
 						</tr>
 					</thead>
 				)}
 				<tbody>
 					{body.map((row, i) => (
-						<tr key={i} style={borderStyle}>
+						<tr key={i}>
 							{row.map((cell, j) => (
-								<td
-									key={j}
-									style={{
-										padding: "0.3em 0.5em",
-										whiteSpace: "nowrap",
-										wordBreak: "normal",
-										verticalAlign: "top",
-									}}
-								>
-									{cell}
-								</td>
+								<td key={j}>{cell}</td>
 							))}
 						</tr>
 					))}
@@ -828,13 +751,7 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	}
 
 	return (
-		<p
-			style={{
-				fontSize: "var(--slide-body-size)",
-				marginBottom: "0.3em",
-				lineHeight: 1.4,
-			}}
-		>
+		<p>
 			<RenderSegments segments={item.segments} />
 		</p>
 	)
@@ -859,24 +776,15 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 
 		if (asset?.$isLoaded && asset.image) {
 			return (
-				<JazzImage
-					imageId={asset.image.$jazz.id}
-					alt={alt}
-					className="rounded-lg"
-					style={sizeStyle}
-				/>
+				<JazzImage imageId={asset.image.$jazz.id} alt={alt} style={sizeStyle} />
 			)
 		}
 
 		// Asset not loaded yet, show placeholder
 		return (
 			<div
-				className="flex aspect-video items-center justify-center rounded-lg"
-				style={{
-					...sizeStyle,
-					backgroundColor:
-						"var(--preset-code-background, rgba(127, 127, 127, 0.15))",
-				}}
+				className="slideshow-image-placeholder flex aspect-video items-center justify-center"
+				style={sizeStyle}
 			>
 				<span className="text-sm opacity-60">Loading...</span>
 			</div>
@@ -884,7 +792,7 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 	}
 
 	// Regular URL image
-	return <img src={src} alt={alt} className="rounded-lg" style={sizeStyle} />
+	return <img src={src} alt={alt} style={sizeStyle} />
 }
 
 function HighlightedCode({
@@ -919,32 +827,18 @@ function HighlightedCode({
 		}
 	}, [code, language, shikiTheme])
 
-	let style = {
-		fontSize: "calc(var(--slide-body-size) * 0.6)",
-		margin: "0.5em 0",
-		padding: "0.6em",
-	}
-
 	if (html) {
 		return (
 			<div
-				className="rounded-lg text-left [&_pre]:m-0 [&_pre]:max-w-full [&_pre]:overflow-hidden [&_pre]:rounded-lg [&_pre]:p-[0.6em] [&_pre]:whitespace-pre"
-				style={{ ...style, padding: 0, maxWidth: "100%", overflow: "hidden" }}
+				className="slideshow-codeblock"
 				dangerouslySetInnerHTML={{ __html: html }}
 			/>
 		)
 	}
 
 	return (
-		<pre
-			className="max-w-full overflow-hidden rounded-lg text-left whitespace-pre"
-			style={{
-				...style,
-				backgroundColor:
-					"var(--preset-code-background, rgba(127, 127, 127, 0.15))",
-			}}
-		>
-			<code className="font-mono">{code}</code>
+		<pre className="slideshow-codeblock">
+			<code>{code}</code>
 		</pre>
 	)
 }
@@ -1005,4 +899,202 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	}, [documentTheme.theme, documentTheme.preset])
 
 	return { styles, error, isLoading }
+}
+
+function getThemeMeasureKey(
+	documentTheme: ResolvedTheme,
+	styles: ThemeStyles | null,
+): string {
+	let themeId = documentTheme.theme?.$jazz.id ?? "__none__"
+	let preset = documentTheme.preset?.name ?? "__none__"
+	if (!styles) return `${themeId}:${preset}:__loading__`
+	let stylesKey = `${styles.presetVariables.length}:${styles.fontFaceRules.length}:${styles.css.length}`
+	return `${themeId}:${preset}:${stylesKey}`
+}
+
+function getSlideshowBaseCss(): string {
+	return `
+:where([data-mode="slideshow"]) {
+	background: var(--preset-background, var(--background));
+	color: var(--preset-foreground, var(--foreground));
+}
+
+:where([data-mode="slideshow"][data-appearance="light"]) {
+	background: var(--preset-background, #ffffff);
+	color: var(--preset-foreground, #000000);
+}
+
+:where([data-mode="slideshow"][data-appearance="dark"]) {
+	background: var(--preset-background, #000000);
+	color: var(--preset-foreground, #ffffff);
+}
+
+:where([data-mode="slideshow"] .slideshow-grid) {
+	font-size: var(--slide-body-size);
+}
+
+:where([data-mode="slideshow"] .slideshow-cell) {
+	display: flex;
+	min-height: 0;
+	min-width: 0;
+	max-width: 100%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	text-align: center;
+	overflow-wrap: normal;
+	word-break: normal;
+}
+
+:where([data-mode="slideshow"] a) {
+	color: var(--preset-link, var(--preset-accent, currentColor));
+	text-decoration: underline;
+}
+
+:where([data-mode="slideshow"] code) {
+	font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+	font-size: 0.85em;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+	padding: 0.15em 0.4em;
+	border-radius: 0.25rem;
+}
+
+:where([data-mode="slideshow"] pre code) {
+	background: none;
+	padding: 0;
+}
+
+:where([data-mode="slideshow"] h1) {
+	font-size: calc(var(--slide-h1-size) * 1);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h2) {
+	font-size: calc(var(--slide-h1-size) * 0.85);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h3) {
+	font-size: calc(var(--slide-h1-size) * 0.7);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h4) {
+	font-size: calc(var(--slide-h1-size) * 0.6);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h5) {
+	font-size: calc(var(--slide-h1-size) * 0.5);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h6) {
+	font-size: calc(var(--slide-h1-size) * 0.45);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] p) {
+	font-size: var(--slide-body-size);
+	margin: 0 0 0.3em;
+	line-height: 1.4;
+}
+
+:where([data-mode="slideshow"] ol) {
+	list-style: decimal;
+	list-style-position: outside;
+}
+
+:where([data-mode="slideshow"] ul) {
+	list-style: disc;
+	list-style-position: outside;
+}
+
+:where([data-mode="slideshow"] :is(ol, ul)) {
+	font-size: var(--slide-body-size);
+	margin: 0.5em 0;
+	padding-left: 1.2em;
+	line-height: 1.4;
+	text-align: left;
+}
+
+:where([data-mode="slideshow"] li) {
+	margin: 0 0 0.2em;
+}
+
+:where([data-mode="slideshow"] blockquote) {
+	font-size: var(--slide-body-size);
+	margin: 0.5em 0;
+	padding-left: 0.5em;
+	line-height: 1.4;
+	text-align: left;
+	font-style: italic;
+	border-left: calc(4px * var(--slide-scale, 1)) solid var(--preset-accent, currentColor);
+}
+
+:where([data-mode="slideshow"] table) {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: left;
+	font-size: calc(var(--slide-body-size) * 0.8);
+	margin: 0.5em 0;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+:where([data-mode="slideshow"] table tr) {
+	border-bottom-width: calc(1px * var(--slide-scale, 1));
+	border-bottom-style: solid;
+	border-bottom-color: var(--border);
+}
+
+:where([data-mode="slideshow"] table :is(th, td)) {
+	padding: 0.3em 0.5em;
+	white-space: nowrap;
+	word-break: normal;
+	vertical-align: top;
+}
+
+:where([data-mode="slideshow"] th) {
+	font-weight: 600;
+}
+
+:where([data-mode="slideshow"] .slideshow-codeblock) {
+	font-size: calc(var(--slide-body-size) * 0.6);
+	margin: 0.5em 0;
+	max-width: 100%;
+	overflow: hidden;
+	text-align: left;
+}
+
+:where([data-mode="slideshow"] .slideshow-codeblock pre) {
+	margin: 0;
+	max-width: 100%;
+	overflow: hidden;
+	white-space: pre;
+	padding: 0.6em;
+	border-radius: 0.5rem;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+}
+
+:where([data-mode="slideshow"] pre.slideshow-codeblock) {
+	max-width: 100%;
+	overflow: hidden;
+	white-space: pre;
+	padding: 0.6em;
+	border-radius: 0.5rem;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+}
+
+:where([data-mode="slideshow"] .slideshow-image-placeholder) {
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+}
+`
 }
