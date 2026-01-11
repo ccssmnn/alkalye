@@ -341,6 +341,12 @@ let baseSizes: Record<PresentationSize, { h1: number; body: number }> = {
 	L: { h1: 120, body: 60 },
 }
 
+type SlideContainerStyle = React.CSSProperties & {
+	"--slide-h1-size": string
+	"--slide-body-size": string
+	"--slide-scale": string
+}
+
 function ScaledSlideContainer({
 	blocks,
 	size,
@@ -389,82 +395,152 @@ function ScaledSlideContainer({
 	}
 
 	useLayoutEffect(() => {
-		let container = containerRef.current
-		let content = contentRef.current
-		if (!container || !content) return
+		let initialContainer = containerRef.current
+		let initialContent = contentRef.current
+		if (!initialContainer || !initialContent) return
 
 		let cancelled = false
+		let isMeasuring = false
+		let isScheduled = false
 
-		async function measure() {
-			// Wait for DOM to update with scale=1
-			await new Promise(r => requestAnimationFrame(r))
+		function scheduleMeasure() {
 			if (cancelled) return
+			if (isScheduled) return
 
-			let maxW = container!.clientWidth * 0.9
-			let maxH = container!.clientHeight * 0.9
+			let container = containerRef.current
+			let content = contentRef.current
+			if (!container || !content) return
 
-			// For measuring, we want text to wrap at a reasonable width
-			// Use maxW as the constraint so text wraps before scaling
-			content!.style.width = `${maxW}px`
-			content!.style.height = "auto"
-			content!.style.maxHeight = "none"
-			content!.style.gridTemplateRows = gridTemplate.rows.replace(
-				/1fr/g,
-				"auto",
-			)
-			content!.style.gridTemplateColumns = gridTemplate.cols.replace(
-				/1fr/g,
-				"auto",
-			)
-
-			function fits(s: number): boolean {
-				content!.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
-				content!.style.setProperty(
-					"--slide-body-size",
-					`${baseSize.body * s}px`,
-				)
-				content!.style.setProperty("--slide-scale", `${s}`)
-				// Force reflow
-				void content!.offsetHeight
-				// Only check height since width is constrained to wrap
-				let h = content!.scrollHeight
-				return h <= maxH
-			}
-
-			// Binary search for optimal scale
-			let low = 10
-			let high = 100
-			while (low <= high) {
-				let mid = Math.floor((low + high) / 2)
-				if (fits(mid / 100)) {
-					low = mid + 1
-				} else {
-					high = mid - 1
-				}
-			}
-
-			let finalScale = Math.max(10, Math.min(high, 100)) / 100
-
-			// Restore constraints
-			content!.style.width = "90%"
-			content!.style.height = ""
-			content!.style.maxHeight = "90%"
-			content!.style.gridTemplateRows = gridTemplate.rows
-			content!.style.gridTemplateColumns = gridTemplate.cols
-
-			if (cancelled) return
-
-			// Apply final scale and fade in
-			setScale(finalScale)
-			await new Promise(r => requestAnimationFrame(r))
-			if (cancelled) return
-			setVisible(true)
+			isScheduled = true
+			const capturedContainer = container
+			const capturedContent = content
+			requestAnimationFrame(() => {
+				isScheduled = false
+				void measure(capturedContainer, capturedContent)
+			})
 		}
 
-		measure()
+		async function measure(container: HTMLDivElement, content: HTMLDivElement) {
+			if (cancelled) return
+			if (isMeasuring) return
+			isMeasuring = true
+			setVisible(false)
+
+			try {
+				await new Promise(r => requestAnimationFrame(r))
+				if (cancelled) return
+
+				let containerStyle = getComputedStyle(container)
+				let paddingX =
+					Number.parseFloat(containerStyle.paddingLeft) +
+					Number.parseFloat(containerStyle.paddingRight)
+				let paddingY =
+					Number.parseFloat(containerStyle.paddingTop) +
+					Number.parseFloat(containerStyle.paddingBottom)
+
+				let availableW = Math.max(0, container.clientWidth - paddingX)
+				let availableH = Math.max(0, container.clientHeight - paddingY)
+
+				let maxW = availableW * 0.9
+				let maxH = availableH * 0.9
+
+				let previousWidth = content.style.width
+				let previousHeight = content.style.height
+				let previousMaxWidth = content.style.maxWidth
+				let previousMaxHeight = content.style.maxHeight
+				let previousGridTemplateRows = content.style.gridTemplateRows
+				let previousGridTemplateColumns = content.style.gridTemplateColumns
+
+				content.style.width = `${maxW}px`
+				content.style.height = `${maxH}px`
+				content.style.maxWidth = "none"
+				content.style.maxHeight = "none"
+				content.style.gridTemplateRows = gridTemplate.rows
+				content.style.gridTemplateColumns = gridTemplate.cols
+
+				let overflowSensitiveElements = Array.from(
+					content.querySelectorAll<HTMLElement>("pre, table"),
+				)
+
+				function fits(s: number): boolean {
+					content.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
+					content.style.setProperty(
+						"--slide-body-size",
+						`${baseSize.body * s}px`,
+					)
+					content.style.setProperty("--slide-scale", `${s}`)
+					void content.offsetHeight
+
+					if (content.scrollWidth > maxW + 1) return false
+					if (content.scrollHeight > maxH + 1) return false
+
+					let cells = Array.from(content.children).flatMap(child =>
+						child instanceof HTMLElement ? [child] : [],
+					)
+					for (let cell of cells) {
+						if (cell.scrollWidth > cell.clientWidth + 1) return false
+						if (cell.scrollHeight > cell.clientHeight + 1) return false
+					}
+
+					for (let el of overflowSensitiveElements) {
+						if (el.scrollWidth > el.clientWidth + 1) return false
+						if (el.scrollHeight > el.clientHeight + 1) return false
+					}
+
+					return true
+				}
+
+				let low = 5
+				let high = 100
+				while (low <= high) {
+					let mid = Math.floor((low + high) / 2)
+					if (fits(mid / 100)) {
+						low = mid + 1
+					} else {
+						high = mid - 1
+					}
+				}
+
+				let finalScale = Math.max(5, Math.min(high, 100)) / 100
+
+				content.style.width = previousWidth
+				content.style.height = previousHeight
+				content.style.maxWidth = previousMaxWidth
+				content.style.maxHeight = previousMaxHeight
+				content.style.gridTemplateRows = previousGridTemplateRows
+				content.style.gridTemplateColumns = previousGridTemplateColumns
+
+				if (cancelled) return
+
+				setScale(finalScale)
+				await new Promise(r => requestAnimationFrame(r))
+				if (cancelled) return
+				setVisible(true)
+			} finally {
+				isMeasuring = false
+			}
+		}
+
+		scheduleMeasure()
+
+		let mutationObserver = new MutationObserver(() => {
+			scheduleMeasure()
+		})
+		mutationObserver.observe(initialContent, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		})
+
+		let resizeObserver = new ResizeObserver(() => {
+			scheduleMeasure()
+		})
+		resizeObserver.observe(initialContainer)
 
 		return () => {
 			cancelled = true
+			mutationObserver.disconnect()
+			resizeObserver.disconnect()
 		}
 	}, [
 		slideNumber,
@@ -486,34 +562,30 @@ function ScaledSlideContainer({
 		return () => window.removeEventListener("resize", handleResize)
 	}, [])
 
+	let contentStyle: SlideContainerStyle = {
+		"--slide-h1-size": `${baseSize.h1 * scale}px`,
+		"--slide-body-size": `${baseSize.body * scale}px`,
+		"--slide-scale": `${scale}`,
+		gridTemplateColumns: gridTemplate.cols,
+		gridTemplateRows: gridTemplate.rows,
+		opacity: visible ? 1 : 0,
+		transition: visible ? "opacity 150ms ease-in" : "none",
+		width: "90%",
+		height: "90%",
+	}
+
 	return (
 		<div
 			ref={containerRef}
 			className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden p-8"
 			onClick={onClick}
 		>
-			<div
-				ref={contentRef}
-				className="grid gap-8"
-				style={
-					{
-						"--slide-h1-size": `${baseSize.h1 * scale}px`,
-						"--slide-body-size": `${baseSize.body * scale}px`,
-						"--slide-scale": `${scale}`,
-						gridTemplateColumns: gridTemplate.cols,
-						gridTemplateRows: gridTemplate.rows,
-						opacity: visible ? 1 : 0,
-						transition: visible ? "opacity 150ms ease-in" : "none",
-						width: "90%",
-						maxHeight: "90%",
-					} as React.CSSProperties
-				}
-			>
+			<div ref={contentRef} className="grid gap-8" style={contentStyle}>
 				{blocks.map((block, i) => (
 					<div
 						key={i}
 						className="flex min-h-0 max-w-full min-w-0 flex-col items-center justify-center overflow-hidden text-center"
-						style={{ overflowWrap: "break-word" }}
+						style={{ overflowWrap: "normal", wordBreak: "normal" }}
 					>
 						{block.content.map((item, j) => (
 							<SlideContentItem key={j} item={item} />
@@ -703,11 +775,13 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 		}
 		return (
 			<table
-				className="text-left"
+				className="table-auto text-left"
 				style={{
 					fontSize: "calc(var(--slide-body-size) * 0.8)",
 					margin: "0.5em 0",
 					lineHeight: 1.2,
+					borderCollapse: "collapse",
+					whiteSpace: "nowrap",
 				}}
 			>
 				{header && (
@@ -717,7 +791,12 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 								<th
 									key={i}
 									className="font-semibold"
-									style={{ padding: "0.3em 0.5em" }}
+									style={{
+										padding: "0.3em 0.5em",
+										whiteSpace: "nowrap",
+										wordBreak: "normal",
+										verticalAlign: "top",
+									}}
 								>
 									{cell}
 								</th>
@@ -729,7 +808,15 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 					{body.map((row, i) => (
 						<tr key={i} style={borderStyle}>
 							{row.map((cell, j) => (
-								<td key={j} style={{ padding: "0.3em 0.5em" }}>
+								<td
+									key={j}
+									style={{
+										padding: "0.3em 0.5em",
+										whiteSpace: "nowrap",
+										wordBreak: "normal",
+										verticalAlign: "top",
+									}}
+								>
 									{cell}
 								</td>
 							))}
@@ -841,8 +928,8 @@ function HighlightedCode({
 	if (html) {
 		return (
 			<div
-				className="overflow-x-auto rounded-lg text-left [&_pre]:rounded-lg [&_pre]:p-[0.6em]"
-				style={{ ...style, padding: 0 }}
+				className="rounded-lg text-left [&_pre]:m-0 [&_pre]:max-w-full [&_pre]:overflow-hidden [&_pre]:rounded-lg [&_pre]:p-[0.6em] [&_pre]:whitespace-pre"
+				style={{ ...style, padding: 0, maxWidth: "100%", overflow: "hidden" }}
 				dangerouslySetInnerHTML={{ __html: html }}
 			/>
 		)
@@ -850,7 +937,7 @@ function HighlightedCode({
 
 	return (
 		<pre
-			className="overflow-x-auto rounded-lg text-left"
+			className="max-w-full overflow-hidden rounded-lg text-left whitespace-pre"
 			style={{
 				...style,
 				backgroundColor:
