@@ -27,6 +27,8 @@ export {
 	setBacklinks,
 	addBacklink,
 	removeBacklink,
+	setTheme,
+	setPreset,
 }
 
 export type { Frontmatter }
@@ -224,6 +226,72 @@ function removeBacklink(content: string, id: string): string {
 	return setBacklinks(
 		content,
 		existing.filter(x => x !== id),
+	)
+}
+
+// Set or update the theme field in frontmatter
+// Pass null or empty string to remove the theme field
+function setTheme(content: string, themeName: string | null): string {
+	let { frontmatter } = parseFrontmatter(content)
+
+	// Remove theme if null or empty
+	if (!themeName) {
+		if (!frontmatter?.theme) return content
+		// Remove the theme line
+		let result = content.replace(
+			/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*\r?\n/,
+			"$1",
+		)
+		return removeEmptyFrontmatter(result)
+	}
+
+	// No frontmatter - create new with theme
+	if (!frontmatter) {
+		return `---\ntheme: ${themeName}\n---\n\n${content}`
+	}
+
+	// Frontmatter exists but no theme field - add it
+	if (!frontmatter.theme) {
+		return content.replace(/^(---\r?\n)/, `$1theme: ${themeName}\n`)
+	}
+
+	// Update existing theme field
+	return content.replace(
+		/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*/,
+		`$1theme: ${themeName}`,
+	)
+}
+
+// Set or update the preset field in frontmatter
+// Pass null or empty string to remove the preset field
+function setPreset(content: string, presetName: string | null): string {
+	let { frontmatter } = parseFrontmatter(content)
+
+	// Remove preset if null or empty
+	if (!presetName) {
+		if (!frontmatter?.preset) return content
+		// Remove the preset line
+		let result = content.replace(
+			/^(---\r?\n[\s\S]*?)preset:\s*[^\r\n]*\r?\n/,
+			"$1",
+		)
+		return removeEmptyFrontmatter(result)
+	}
+
+	// No frontmatter - create new with preset
+	if (!frontmatter) {
+		return `---\npreset: ${presetName}\n---\n\n${content}`
+	}
+
+	// Frontmatter exists but no preset field - add it
+	if (!frontmatter.preset) {
+		return content.replace(/^(---\r?\n)/, `$1preset: ${presetName}\n`)
+	}
+
+	// Update existing preset field
+	return content.replace(
+		/^(---\r?\n[\s\S]*?)preset:\s*[^\r\n]*/,
+		`$1preset: ${presetName}`,
 	)
 }
 

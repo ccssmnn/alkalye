@@ -41,6 +41,7 @@ import {
 	DialogTitle,
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
+import { isMac } from "@/lib/platform"
 
 export {
 	FloatingActions,
@@ -388,8 +389,6 @@ function FloatingActions({
 		document.body,
 	)
 }
-
-// --- Action Components ---
 
 interface TaskActionProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
@@ -842,8 +841,6 @@ function ImageAction({
 		</>
 	)
 }
-
-import { isMac } from "@/lib/platform"
 
 interface ActionButtonProps {
 	icon: React.ReactNode

@@ -16,6 +16,10 @@ export {
 	getRandomWriterName,
 	createSpace,
 	createSpaceDocument,
+	Theme,
+	ThemeAsset,
+	ThemePreset,
+	ThemeType,
 }
 
 let CursorEntry = z.object({
@@ -49,6 +53,57 @@ let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
 
 let Settings = co.map({
 	editor: EditorSettings,
+	defaultPreviewTheme: z.string().optional(),
+	defaultSlideshowTheme: z.string().optional(),
+})
+
+// Theme types: 'preview' for document preview, 'slideshow' for presentations, 'both' for both
+let ThemeType = z.enum(["preview", "slideshow", "both"])
+
+// Color preset for slideshow themes
+let ThemePreset = z.object({
+	name: z.string(),
+	appearance: z.enum(["light", "dark"]),
+	colors: z.object({
+		background: z.string(),
+		foreground: z.string(),
+		accent: z.string(),
+		// Additional accent colors for richer color palettes (accent-2 through accent-6)
+		accents: z.array(z.string()).optional(),
+		heading: z.string().optional(),
+		link: z.string().optional(),
+		codeBackground: z.string().optional(),
+	}),
+	fonts: z
+		.object({
+			title: z.string().optional(),
+			body: z.string().optional(),
+		})
+		.optional(),
+})
+
+// Asset stored within a theme (fonts, images)
+let ThemeAsset = co.map({
+	name: z.string(),
+	mimeType: z.string(),
+	data: co.fileStream(),
+	createdAt: z.date(),
+})
+
+// Theme schema for custom themes
+let Theme = co.map({
+	version: z.literal(1),
+	name: z.string(),
+	author: z.string().optional(),
+	description: z.string().optional(),
+	type: ThemeType,
+	css: co.plainText(),
+	template: co.optional(co.plainText()),
+	presets: z.string().optional(),
+	assets: co.optional(co.list(ThemeAsset)),
+	thumbnail: co.optional(co.image()),
+	createdAt: z.date(),
+	updatedAt: z.date(),
 })
 
 let Asset = co.map({
@@ -89,6 +144,7 @@ let UserRoot = co.map({
 	inactiveDocuments: co.optional(co.list(Document)),
 	spaces: co.optional(co.list(Space)),
 	settings: co.optional(Settings),
+	themes: co.optional(co.list(Theme)),
 	migrationVersion: z.number().optional(),
 })
 
@@ -173,6 +229,11 @@ let UserAccount = co
 		// Initialize empty spaces list if not present
 		if (root && !root.$jazz.has("spaces")) {
 			root.$jazz.set("spaces", co.list(Space).create([], root.$jazz.owner))
+		}
+
+		// Initialize empty themes list if not present
+		if (root && !root.$jazz.has("themes")) {
+			root.$jazz.set("themes", co.list(Theme).create([], root.$jazz.owner))
 		}
 
 		if (!account.$jazz.has("profile")) {

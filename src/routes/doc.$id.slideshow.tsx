@@ -20,6 +20,11 @@ import { Loader2 } from "lucide-react"
 
 export { Route }
 
+let loaderResolve = {
+	content: true,
+	assets: true,
+} as const satisfies ResolveQuery<typeof Document>
+
 let resolve = {
 	content: true,
 	assets: { $each: { image: true } },
@@ -28,7 +33,7 @@ let resolve = {
 let Route = createFileRoute("/doc/$id/slideshow")({
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, {
-			resolve,
+			resolve: loaderResolve,
 		})
 		if (!doc.$isLoaded) {
 			return {

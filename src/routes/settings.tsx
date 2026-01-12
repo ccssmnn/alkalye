@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import {
 	useAccount,
@@ -18,6 +18,12 @@ import {
 	Plus,
 	RefreshCw,
 	WifiOff,
+	Upload,
+	Download,
+	Trash2,
+	Palette,
+	Loader2,
+	AlertCircle,
 } from "lucide-react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
@@ -32,7 +38,18 @@ import {
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Switch } from "@/components/ui/switch"
-import { UserAccount } from "@/schema"
+import { UserAccount, Theme, ThemeAsset, Settings } from "@/schema"
+import { parseThemeZip, type ThemeUploadError } from "@/lib/theme-upload"
+import { exportTheme, type ThemeExportQuery } from "@/lib/theme-export"
+import { createImage } from "jazz-tools/media"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "@/components/ui/select"
 import { useTheme, ThemeToggle } from "@/lib/theme"
 import { AuthForm } from "@/components/auth-form"
 import {
@@ -54,7 +71,17 @@ export { Route }
 
 let settingsQuery = {
 	profile: true,
-	root: { settings: true },
+	root: {
+		settings: true,
+		themes: {
+			$each: {
+				css: true,
+				template: true,
+				thumbnail: { original: true },
+				assets: { $each: { data: true } },
+			},
+		},
+	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
 type LoadedAccount = co.loaded<typeof UserAccount, typeof settingsQuery>
@@ -77,7 +104,7 @@ function SettingsPage() {
 	let data = Route.useLoaderData()
 	let { from } = Route.useSearch()
 	let subscribedMe = useAccount(UserAccount, { resolve: settingsQuery })
-	let me: LoadedAccount | null = subscribedMe.$isLoaded ? subscribedMe : data.me
+	let me = subscribedMe.$isLoaded ? subscribedMe : data.me
 	let isAuthenticated = useIsAuthenticated()
 
 	return (
@@ -121,6 +148,7 @@ function SettingsPage() {
 							</h2>
 							<ThemeToggle theme={theme} setTheme={setTheme} showLabel />
 						</section>
+						<ThemesSection me={me} />
 						<EditorSection settings={me?.root?.settings ?? null} />
 						<InstallationSection />
 						<AppSection />
@@ -260,6 +288,345 @@ function EditNameDialog({
 				</form>
 			</DialogContent>
 		</Dialog>
+	)
+}
+
+interface ThemesSectionProps {
+	me: LoadedAccount | null
+}
+
+function ThemesSection({ me }: ThemesSectionProps) {
+	let fileInputRef = useRef<HTMLInputElement>(null)
+	let [isUploading, setIsUploading] = useState(false)
+	let [uploadError, setUploadError] = useState<ThemeUploadError | null>(null)
+	let [themeToDelete, setThemeToDelete] = useState<co.loaded<
+		typeof Theme
+	> | null>(null)
+	let [exportingThemeId, setExportingThemeId] = useState<string | null>(null)
+
+	if (!me?.root) return null
+
+	let themes = me.root.themes ?? []
+
+	async function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+		let file = e.target.files?.[0]
+		if (!file || !me?.root) return
+
+		// Reset input so same file can be selected again
+		e.target.value = ""
+
+		setIsUploading(true)
+		setUploadError(null)
+
+		let result = await parseThemeZip(file)
+
+		if (!result.ok) {
+			setUploadError(result.error)
+			setIsUploading(false)
+			return
+		}
+
+		let parsed = result.theme
+		let owner = me.root.$jazz.owner
+
+		// Create theme assets for fonts
+		let assets: co.loaded<typeof ThemeAsset>[] = []
+		for (let asset of parsed.assets) {
+			let buffer = await asset.file.arrayBuffer()
+			let fileStream = await co
+				.fileStream()
+				.createFromArrayBuffer(buffer, asset.mimeType, asset.name, { owner })
+			let themeAsset = ThemeAsset.create(
+				{
+					name: asset.name,
+					mimeType: asset.mimeType,
+					data: fileStream,
+					createdAt: new Date(),
+				},
+				owner,
+			)
+			assets.push(themeAsset)
+		}
+
+		// Create thumbnail if provided
+		let thumbnail = parsed.thumbnail
+			? await createImage(parsed.thumbnail, { owner, maxSize: 256 })
+			: undefined
+
+		// Create theme
+		let now = new Date()
+		let theme = Theme.create(
+			{
+				version: 1,
+				name: parsed.name,
+				author: parsed.author,
+				description: parsed.description,
+				type: parsed.type,
+				css: co.plainText().create(parsed.css, owner),
+				template: parsed.template
+					? co.plainText().create(parsed.template, owner)
+					: undefined,
+				presets: parsed.presets ? JSON.stringify(parsed.presets) : undefined,
+				assets:
+					assets.length > 0
+						? co.list(ThemeAsset).create(assets, owner)
+						: undefined,
+				thumbnail,
+				createdAt: now,
+				updatedAt: now,
+			},
+			owner,
+		)
+
+		// Add to themes list
+		if (!me.root.themes) {
+			me.root.$jazz.set("themes", co.list(Theme).create([], owner))
+		}
+		me.root.themes!.$jazz.push(theme)
+
+		setIsUploading(false)
+	}
+
+	function handleDeleteTheme() {
+		if (!themeToDelete || !me?.root?.themes) return
+
+		let index = me.root.themes.findIndex(
+			t => t?.$jazz.id === themeToDelete.$jazz.id,
+		)
+		if (index !== -1) {
+			me.root.themes.$jazz.splice(index, 1)
+		}
+		setThemeToDelete(null)
+	}
+
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">Themes</h2>
+			<div className="bg-muted/30 rounded-lg p-4">
+				{uploadError && (
+					<div className="bg-destructive/10 text-destructive mb-4 flex items-start gap-2 rounded-md p-3 text-sm">
+						<AlertCircle className="mt-0.5 size-4 shrink-0" />
+						<div>
+							<div className="font-medium">{uploadError.message}</div>
+							{"errors" in uploadError && uploadError.errors.length > 0 && (
+								<ul className="mt-1 list-inside list-disc text-xs opacity-80">
+									{uploadError.errors.slice(0, 3).map((err, i) => (
+										<li key={i}>{err}</li>
+									))}
+									{uploadError.errors.length > 3 && (
+										<li>and {uploadError.errors.length - 3} more...</li>
+									)}
+								</ul>
+							)}
+						</div>
+						<Button
+							variant="ghost"
+							size="icon-sm"
+							className="-mt-1 -mr-1 ml-auto"
+							onClick={() => setUploadError(null)}
+						>
+							<span className="sr-only">Dismiss</span>
+							<span aria-hidden>×</span>
+						</Button>
+					</div>
+				)}
+
+				{themes.length === 0 ? (
+					<div className="text-muted-foreground py-4 text-center text-sm">
+						<Palette className="mx-auto mb-2 size-8 opacity-50" />
+						<p>No custom themes yet</p>
+						<p className="mt-1 text-xs opacity-70">
+							Upload a theme.zip to customize preview and slideshow
+						</p>
+					</div>
+				) : (
+					<>
+						<div className="mb-4 space-y-2">
+							{themes.map(theme => {
+								if (!theme) return null
+								return (
+									<div
+										key={theme.$jazz.id}
+										className="bg-background flex items-center gap-3 rounded-md border p-3"
+									>
+										<Palette className="text-muted-foreground size-4 shrink-0" />
+										<div className="min-w-0 flex-1">
+											<div className="truncate font-medium">{theme.name}</div>
+											<div className="text-muted-foreground text-xs">
+												{theme.type === "both"
+													? "Preview & Slideshow"
+													: theme.type === "preview"
+														? "Preview"
+														: "Slideshow"}
+												{theme.author && ` • by ${theme.author}`}
+											</div>
+										</div>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={makeExportTheme(theme, setExportingThemeId)}
+											disabled={exportingThemeId === theme.$jazz.id}
+											aria-label={`Export ${theme.name}`}
+										>
+											{exportingThemeId === theme.$jazz.id ? (
+												<Loader2 className="size-4 animate-spin" />
+											) : (
+												<Download className="size-4" />
+											)}
+										</Button>
+										<Button
+											variant="ghost"
+											size="icon-sm"
+											onClick={() => setThemeToDelete(theme)}
+											aria-label={`Delete ${theme.name}`}
+										>
+											<Trash2 className="size-4" />
+										</Button>
+									</div>
+								)
+							})}
+						</div>
+						<DefaultThemeSettings
+							settings={me.root.settings}
+							themes={me.root.themes}
+						/>
+					</>
+				)}
+
+				<input
+					ref={fileInputRef}
+					type="file"
+					accept=".zip"
+					className="hidden"
+					onChange={handleFileSelect}
+				/>
+				<Button
+					onClick={() => fileInputRef.current?.click()}
+					variant="outline"
+					size="sm"
+					disabled={isUploading}
+				>
+					{isUploading ? (
+						<>
+							<Loader2 className="mr-1.5 size-3.5 animate-spin" />
+							Uploading...
+						</>
+					) : (
+						<>
+							<Upload className="mr-1.5 size-3.5" />
+							Upload Theme
+						</>
+					)}
+				</Button>
+			</div>
+
+			<ConfirmDialog
+				open={!!themeToDelete}
+				onOpenChange={open => !open && setThemeToDelete(null)}
+				title="Delete theme?"
+				description={`Are you sure you want to delete "${themeToDelete?.name}"? Documents using this theme will fall back to default styles.`}
+				confirmLabel="Delete"
+				onConfirm={handleDeleteTheme}
+				variant="destructive"
+			/>
+		</section>
+	)
+}
+
+interface DefaultThemeSettingsProps {
+	settings: co.loaded<typeof Settings> | null | undefined
+	themes: LoadedAccount["root"]["themes"]
+}
+
+type LoadedTheme = co.loaded<typeof Theme>
+
+function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
+	let themesList = themes ?? []
+
+	function isLoadedTheme(t: unknown): t is LoadedTheme {
+		return (
+			!!t && typeof t === "object" && "$isLoaded" in t && t.$isLoaded === true
+		)
+	}
+
+	let loadedThemes = Array.from(themesList).filter(isLoadedTheme)
+	let previewThemes = loadedThemes.filter(
+		t => t.type === "preview" || t.type === "both",
+	)
+	let slideshowThemes = loadedThemes.filter(
+		t => t.type === "slideshow" || t.type === "both",
+	)
+
+	function handlePreviewThemeChange(value: string | null) {
+		if (!settings || !value) return
+		if (value === "__none__") {
+			settings.$jazz.set("defaultPreviewTheme", undefined)
+		} else {
+			settings.$jazz.set("defaultPreviewTheme", value)
+		}
+	}
+
+	function handleSlideshowThemeChange(value: string | null) {
+		if (!settings || !value) return
+		if (value === "__none__") {
+			settings.$jazz.set("defaultSlideshowTheme", undefined)
+		} else {
+			settings.$jazz.set("defaultSlideshowTheme", value)
+		}
+	}
+
+	if (previewThemes.length === 0 && slideshowThemes.length === 0) {
+		return null
+	}
+
+	return (
+		<div className="border-border/50 mb-4 space-y-3 border-t pt-4">
+			<div className="text-muted-foreground text-xs font-medium">
+				Default Themes
+			</div>
+			{previewThemes.length > 0 && (
+				<div className="flex items-center justify-between gap-4">
+					<span className="text-sm">Preview</span>
+					<Select
+						value={settings?.defaultPreviewTheme ?? "__none__"}
+						onValueChange={handlePreviewThemeChange}
+					>
+						<SelectTrigger className="w-40">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="__none__">None</SelectItem>
+							{previewThemes.map(theme => (
+								<SelectItem key={theme.$jazz.id} value={theme.name}>
+									{theme.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+			{slideshowThemes.length > 0 && (
+				<div className="flex items-center justify-between gap-4">
+					<span className="text-sm">Slideshow</span>
+					<Select
+						value={settings?.defaultSlideshowTheme ?? "__none__"}
+						onValueChange={handleSlideshowThemeChange}
+					>
+						<SelectTrigger className="w-40">
+							<SelectValue />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="__none__">None</SelectItem>
+							{slideshowThemes.map(theme => (
+								<SelectItem key={theme.$jazz.id} value={theme.name}>
+									{theme.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+			)}
+		</div>
 	)
 }
 
@@ -742,4 +1109,20 @@ function AppSection() {
 			</div>
 		</section>
 	)
+}
+
+// Handler factories
+
+function makeExportTheme(
+	theme: co.loaded<typeof Theme, ThemeExportQuery>,
+	setExporting: (id: string | null) => void,
+) {
+	return async function handleExport() {
+		setExporting(theme.$jazz.id)
+		try {
+			await exportTheme(theme)
+		} finally {
+			setExporting(null)
+		}
+	}
 }

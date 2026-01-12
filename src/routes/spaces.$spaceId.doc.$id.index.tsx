@@ -417,6 +417,8 @@ function SpaceEditorContent({
 							: undefined
 					}
 					saveCopyState={saveCopyState}
+					content={content}
+					onThemeChange={handleChange}
 				/>
 			</div>
 			<DocumentSidebar

@@ -9,6 +9,8 @@ import {
 	getPath,
 	togglePinned,
 	addTag,
+	setTheme,
+	setPreset,
 } from "./frontmatter"
 
 describe("parseFrontmatter", () => {
@@ -435,6 +437,214 @@ tags: one, two
 			let result = addTag(content, "one")
 
 			expect(getTags(result)).toEqual(["one", "two"])
+		})
+	})
+})
+
+describe("setTheme", () => {
+	it("adds theme to content without frontmatter", () => {
+		let result = setTheme("Content", "MyTheme")
+
+		expect(result).toBe(`---
+theme: MyTheme
+---
+
+Content`)
+	})
+
+	it("adds theme to existing frontmatter without theme", () => {
+		let content = `---
+title: Doc
+---
+Content`
+		let result = setTheme(content, "DarkMode")
+
+		expect(result).toBe(`---
+theme: DarkMode
+title: Doc
+---
+Content`)
+	})
+
+	it("updates existing theme field", () => {
+		let content = `---
+theme: OldTheme
+title: Doc
+---
+Content`
+		let result = setTheme(content, "NewTheme")
+
+		expect(result).toBe(`---
+theme: NewTheme
+title: Doc
+---
+Content`)
+	})
+
+	it("removes theme when null is passed", () => {
+		let content = `---
+theme: MyTheme
+title: Doc
+---
+Content`
+		let result = setTheme(content, null)
+
+		expect(result).toBe(`---
+title: Doc
+---
+Content`)
+		expect(result).not.toContain("theme:")
+	})
+
+	it("removes theme when empty string is passed", () => {
+		let content = `---
+theme: MyTheme
+title: Doc
+---
+Content`
+		let result = setTheme(content, "")
+
+		expect(result).not.toContain("theme:")
+	})
+
+	it("does nothing when removing non-existent theme", () => {
+		let content = `---
+title: Doc
+---
+Content`
+		let result = setTheme(content, null)
+
+		expect(result).toBe(content)
+	})
+
+	it("removes frontmatter when theme is the only field", () => {
+		let content = `---
+theme: MyTheme
+---
+Content`
+		let result = setTheme(content, null)
+
+		expect(result).not.toContain("---")
+		expect(result.trim()).toBe("Content")
+	})
+
+	it("preserves other frontmatter fields when updating theme", () => {
+		let content = `---
+title: Doc
+theme: OldTheme
+pinned: true
+---
+Content`
+		let result = setTheme(content, "NewTheme")
+
+		expect(parseFrontmatter(result).frontmatter).toEqual({
+			title: "Doc",
+			theme: "NewTheme",
+			pinned: true,
+		})
+	})
+})
+
+describe("setPreset", () => {
+	it("adds preset to content without frontmatter", () => {
+		let result = setPreset("Content", "Dark")
+
+		expect(result).toBe(`---
+preset: Dark
+---
+
+Content`)
+	})
+
+	it("adds preset to existing frontmatter without preset", () => {
+		let content = `---
+theme: MyTheme
+---
+Content`
+		let result = setPreset(content, "Light")
+
+		expect(result).toBe(`---
+preset: Light
+theme: MyTheme
+---
+Content`)
+	})
+
+	it("updates existing preset field", () => {
+		let content = `---
+theme: MyTheme
+preset: OldPreset
+---
+Content`
+		let result = setPreset(content, "NewPreset")
+
+		expect(result).toBe(`---
+theme: MyTheme
+preset: NewPreset
+---
+Content`)
+	})
+
+	it("removes preset when null is passed", () => {
+		let content = `---
+theme: MyTheme
+preset: Dark
+---
+Content`
+		let result = setPreset(content, null)
+
+		expect(result).toBe(`---
+theme: MyTheme
+---
+Content`)
+		expect(result).not.toContain("preset:")
+	})
+
+	it("removes preset when empty string is passed", () => {
+		let content = `---
+theme: MyTheme
+preset: Dark
+---
+Content`
+		let result = setPreset(content, "")
+
+		expect(result).not.toContain("preset:")
+	})
+
+	it("does nothing when removing non-existent preset", () => {
+		let content = `---
+theme: MyTheme
+---
+Content`
+		let result = setPreset(content, null)
+
+		expect(result).toBe(content)
+	})
+
+	it("removes frontmatter when preset is the only field", () => {
+		let content = `---
+preset: Dark
+---
+Content`
+		let result = setPreset(content, null)
+
+		expect(result).not.toContain("---")
+		expect(result.trim()).toBe("Content")
+	})
+
+	it("preserves other frontmatter fields when updating preset", () => {
+		let content = `---
+theme: MyTheme
+preset: OldPreset
+pinned: true
+---
+Content`
+		let result = setPreset(content, "NewPreset")
+
+		expect(parseFrontmatter(result).frontmatter).toEqual({
+			theme: "MyTheme",
+			preset: "NewPreset",
+			pinned: true,
 		})
 	})
 })

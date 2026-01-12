@@ -1,13 +1,7 @@
-import {
-	createFileRoute,
-	Navigate,
-	Link,
-	useNavigate,
-} from "@tanstack/react-router"
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
 import { useCoState } from "jazz-tools/react"
 import { type ResolveQuery } from "jazz-tools"
 import { Document } from "@/schema"
-import { getPresentationMode } from "@/lib/presentation"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { altModKey } from "@/lib/platform"
 import { Loader2, EllipsisIcon, Pencil } from "lucide-react"
@@ -104,11 +98,6 @@ function PreviewPage() {
 				</EmptyHeader>
 			</Empty>
 		)
-	}
-
-	let isPresentation = getPresentationMode(content)
-	if (isPresentation) {
-		return <Navigate to="/doc/$id/slideshow" params={{ id }} />
 	}
 
 	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []

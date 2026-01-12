@@ -11,6 +11,13 @@ import {
 import { parseFrontmatter } from "@/editor/frontmatter"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/lib/theme"
+import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
+import {
+	tryCachedThemeStylesAsync,
+	tryRenderTemplateWithContent,
+	type ThemeStyles,
+} from "@/lib/theme-renderer"
+import { TriangleAlert } from "lucide-react"
 
 export { Preview }
 
@@ -29,6 +36,7 @@ interface PreviewProps {
 
 function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
+	let documentTheme = useDocumentTheme(content, "preview", resolvedTheme)
 
 	let wikilinkResolver: WikilinkTitleResolver = docId => {
 		return wikilinks.get(docId) ?? { title: docId, exists: false }
@@ -45,6 +53,7 @@ function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 			marked={marked}
 			cacheVersion={wikilinks.size}
 			onExit={onExit}
+			documentTheme={documentTheme}
 		/>
 	)
 }
@@ -59,15 +68,19 @@ function PreviewContent({
 	marked,
 	cacheVersion,
 	onExit,
+	documentTheme,
 }: {
 	content: string
 	assets?: Asset[]
 	marked: Marked
 	cacheVersion: number
 	onExit?: () => void
+	documentTheme: ResolvedTheme
 }) {
 	let [segments, setSegments] = useState<Segment[]>([])
 	let [prevContent, setPrevContent] = useState(content)
+	let themeStylesResult = useThemeStyles(documentTheme)
+	let themeStyles = themeStylesResult.styles
 
 	// Reset segments when content becomes empty (adjust state during render pattern)
 	if (content !== prevContent) {
@@ -112,6 +125,50 @@ function PreviewContent({
 		return () => document.removeEventListener("keydown", handleKeyDown)
 	}, [onExit])
 
+	// Base transition styles to prevent layout shift when theme loads
+	// These provide smooth transitions for common properties theme CSS might change
+	let transitionStyles = documentTheme.theme
+		? `[data-theme] { transition: color 150ms ease-out, background-color 150ms ease-out; }`
+		: ""
+
+	// Combine all theme CSS with transitions first
+	let injectedStyles = themeStyles
+		? [
+				transitionStyles,
+				themeStyles.fontFaceRules,
+				themeStyles.presetVariables,
+				themeStyles.css,
+			]
+				.filter(Boolean)
+				.join("\n")
+		: transitionStyles
+
+	let templateHtml = documentTheme.theme?.template?.toString() ?? null
+	let themeName = documentTheme.theme?.name ?? "unknown"
+
+	// For template rendering, combine all segment HTML
+	let combinedHtml = segments
+		.map(seg => (seg.type === "text" ? seg.html : ""))
+		.join("")
+
+	// Try to render with template if available
+	let templatedContent: string | null = null
+	let templateError: string | null = null
+	if (templateHtml && combinedHtml) {
+		let result = tryRenderTemplateWithContent(
+			templateHtml,
+			combinedHtml,
+			themeName,
+		)
+		if (result.ok) {
+			templatedContent = result.html
+		} else {
+			templateError = result.error
+		}
+	}
+
+	let errorMessage = themeStylesResult.error || templateError || null
+
 	return (
 		<div
 			className="flex-1 overflow-auto"
@@ -121,36 +178,127 @@ function PreviewContent({
 				paddingBottom: "env(safe-area-inset-bottom)",
 			}}
 		>
-			<div className="mx-auto max-w-[65ch] px-6 py-8">
-				<article className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4">
-					{segments.map((segment, i) => {
-						if (segment.type === "text") {
+			{/* Inject theme styles */}
+			{injectedStyles && <style>{injectedStyles}</style>}
+
+			{/* Theme warning banner */}
+			{documentTheme.warning && (
+				<div className="bg-warning/10 text-warning-foreground border-warning/20 mx-auto mt-4 flex max-w-[65ch] items-center gap-2 rounded-lg border px-4 py-2 text-sm">
+					<TriangleAlert className="size-4 shrink-0" />
+					<span>{documentTheme.warning}</span>
+				</div>
+			)}
+
+			{/* Theme error banner (corrupted theme data) */}
+			{errorMessage && (
+				<div className="bg-destructive/10 text-destructive border-destructive/20 mx-auto mt-4 flex max-w-[65ch] items-center gap-2 rounded-lg border px-4 py-2 text-sm">
+					<TriangleAlert className="size-4 shrink-0" />
+					<span>Theme error: {errorMessage}. Using default styles.</span>
+				</div>
+			)}
+
+			{templatedContent ? (
+				// Render with custom template
+				<div
+					className="mx-auto max-w-[65ch] px-6 py-8"
+					data-theme={documentTheme.theme?.name ?? undefined}
+					dangerouslySetInnerHTML={{ __html: templatedContent }}
+				/>
+			) : (
+				// Default rendering without template
+				// data-theme is on the outer div so themes can use [data-theme="Name"] article selectors
+				<div
+					className="mx-auto max-w-[65ch] px-6 py-8"
+					data-theme={documentTheme.theme?.name ?? undefined}
+				>
+					<article className="prose prose-neutral dark:prose-invert prose-headings:font-semibold prose-a:text-foreground prose-code:before:content-none prose-code:after:content-none [&_pre]:shadow-inset [&_pre]:border-border [&_pre]:rounded-lg [&_pre]:border [&_pre]:p-4">
+						{segments.map((segment, i) => {
+							if (segment.type === "text") {
+								return (
+									<div
+										key={i}
+										dangerouslySetInnerHTML={{ __html: segment.html }}
+									/>
+								)
+							}
 							return (
-								<div
-									key={i}
-									dangerouslySetInnerHTML={{ __html: segment.html }}
-								/>
+								<figure key={i} className="my-4">
+									<JazzImage
+										imageId={segment.imageId}
+										alt={segment.alt}
+										className="w-full rounded-lg"
+									/>
+									{segment.alt && (
+										<figcaption className="text-muted-foreground mt-2 text-center text-sm">
+											{segment.alt}
+										</figcaption>
+									)}
+								</figure>
 							)
-						}
-						return (
-							<figure key={i} className="my-4">
-								<JazzImage
-									imageId={segment.imageId}
-									alt={segment.alt}
-									className="w-full rounded-lg"
-								/>
-								{segment.alt && (
-									<figcaption className="text-muted-foreground mt-2 text-center text-sm">
-										{segment.alt}
-									</figcaption>
-								)}
-							</figure>
-						)
-					})}
-				</article>
-			</div>
+						})}
+					</article>
+				</div>
+			)}
 		</div>
 	)
+}
+
+type ThemeStylesResult = {
+	styles: ThemeStyles | null
+	error: string | null
+	isLoading: boolean
+}
+
+// Hook to get theme styles using the global cache with async loading
+// Styles are loaded asynchronously to prevent blocking rendering of large themes
+// Cache handles blob URL lifecycle, so no cleanup needed here
+function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
+	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+	let [error, setError] = useState<string | null>(null)
+	// Track the theme ID we've loaded styles for to derive loading state
+	let [loadedThemeId, setLoadedThemeId] = useState<string | null>(null)
+
+	let currentThemeId = documentTheme.theme?.$jazz.id ?? null
+	let isLoading = currentThemeId !== null && currentThemeId !== loadedThemeId
+
+	// Clear state when theme is removed (adjust state during render pattern)
+	let [prevThemeId, setPrevThemeId] = useState<string | null>(currentThemeId)
+	if (currentThemeId !== prevThemeId) {
+		setPrevThemeId(currentThemeId)
+		if (currentThemeId === null) {
+			setStyles(null)
+			setError(null)
+			setLoadedThemeId(null)
+		}
+	}
+
+	useEffect(() => {
+		// Get styles from cache asynchronously (builds and caches if needed)
+		if (!documentTheme.theme) return
+
+		let cancelled = false
+		let themeId = documentTheme.theme.$jazz.id
+
+		tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
+			buildResult => {
+				if (cancelled) return
+				if (buildResult.ok) {
+					setStyles(buildResult.styles)
+					setError(null)
+				} else {
+					setStyles(null)
+					setError(buildResult.error)
+				}
+				setLoadedThemeId(themeId)
+			},
+		)
+
+		return () => {
+			cancelled = true
+		}
+	}, [documentTheme.theme, documentTheme.preset])
+
+	return { styles, error, isLoading }
 }
 
 let highlighterPromise: Promise<Highlighter> | null = null

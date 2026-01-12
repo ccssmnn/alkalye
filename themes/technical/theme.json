@@ -1,0 +1,10 @@
+{
+	"version": 1,
+	"name": "Technical",
+	"author": "Alkalye",
+	"description": "Code-focused with monospace fonts and terminal aesthetics",
+	"type": "both",
+	"css": "styles.css",
+	"presets": "presets.json",
+	"template": "document.html"
+}

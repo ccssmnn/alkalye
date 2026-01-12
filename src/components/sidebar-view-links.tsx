@@ -39,13 +39,7 @@ function SidebarViewLinks({ doc }: SidebarViewLinksProps) {
 				<>
 					<SidebarMenuItem>
 						<SidebarMenuButton
-							render={
-								<a
-									href={`/doc/${docId}/slideshow`}
-									target="_blank"
-									rel="noopener noreferrer"
-								/>
-							}
+							render={<Link to="/doc/$id/slideshow" params={{ id: docId }} />}
 						>
 							<Presentation className="size-4" />
 							Slideshow

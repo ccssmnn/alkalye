@@ -26,18 +26,16 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { cn } from "@/lib/utils"
 import { useResolvedTheme } from "@/lib/theme"
-import { EllipsisIcon } from "lucide-react"
+import { EllipsisIcon, TriangleAlert } from "lucide-react"
+import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
+import {
+	tryCachedThemeStylesAsync,
+	type ThemeStyles,
+} from "@/lib/theme-renderer"
 
 export { Slideshow }
 export type { Slide }
-
-type Asset = {
-	$jazz: { id: string }
-	$isLoaded?: boolean
-	image?: { $jazz: { id: string } }
-}
 
 type ResolvedWikilink = {
 	title: string
@@ -47,6 +45,14 @@ type ResolvedWikilink = {
 
 let ThemeContext = createContext<PresentationTheme | null>(null)
 let WikilinkContext = createContext<Map<string, ResolvedWikilink>>(new Map())
+
+type Asset = {
+	$jazz: { id: string }
+	$isLoaded?: boolean
+	image?: { $jazz: { id: string } }
+}
+
+let AssetContext = createContext<Asset[] | undefined>(undefined)
 
 type Slide = { slideNumber: number; blocks: VisualBlock[] }
 
@@ -72,7 +78,18 @@ function Slideshow({
 	onGoToTeleprompter,
 }: SlideshowProps) {
 	let size = parsePresentationSize(content)
-	let theme = parsePresentationTheme(content)
+	let appearanceTheme = parsePresentationTheme(content)
+	let systemTheme = useResolvedTheme()
+
+	let effectiveAppearance = appearanceTheme ?? systemTheme
+
+	let documentTheme = useDocumentTheme(
+		content,
+		"slideshow",
+		effectiveAppearance,
+	)
+	let themeStylesResult = useThemeStyles(documentTheme)
+	let themeStyles = themeStylesResult.styles
 
 	let currentSlide = slides.find(s => s.slideNumber === currentSlideNumber)
 	let currentSlideIdx = slides.findIndex(
@@ -87,34 +104,82 @@ function Slideshow({
 		}
 	}
 
+	let transitionStyles = documentTheme.theme
+		? `[data-theme] { transition: color 150ms ease-out, background-color 150ms ease-out; }`
+		: ""
+
+	let slideshowBaseCss = getSlideshowBaseCss()
+
+	let injectedStyles = themeStyles
+		? [
+				transitionStyles,
+				themeStyles.fontFaceRules,
+				themeStyles.presetVariables,
+				slideshowBaseCss,
+				themeStyles.css,
+			]
+				.filter(Boolean)
+				.join("\n")
+		: [transitionStyles, slideshowBaseCss].filter(Boolean).join("\n")
+
 	return (
-		<WikilinkContext.Provider value={wikilinks}>
-			<ThemeContext.Provider value={theme}>
-				<div
-					className={cn(
-						"fixed inset-0 flex flex-col",
-						theme === "light" && "bg-white text-black",
-						theme === "dark" && "bg-black text-white",
-						!theme && "bg-background text-foreground",
-					)}
-				>
-					<ScaledSlideContainer
-						blocks={visibleBlocks}
-						assets={assets}
-						size={size}
-						slideNumber={currentSlideNumber}
-						onClick={goToNextSlide}
-					/>
-					<SlideControls
-						slides={slides}
-						currentSlideNumber={currentSlideNumber}
-						onSlideChange={onSlideChange}
-						onExit={onExit}
-						onGoToTeleprompter={onGoToTeleprompter}
-					/>
-				</div>
-			</ThemeContext.Provider>
-		</WikilinkContext.Provider>
+		<AssetContext.Provider value={assets}>
+			<WikilinkContext.Provider value={wikilinks}>
+				<ThemeContext.Provider value={appearanceTheme}>
+					{/* Inject theme styles */}
+					{injectedStyles && <style>{injectedStyles}</style>}
+
+					<div
+						data-mode="slideshow"
+						data-theme={documentTheme.theme?.name ?? undefined}
+						data-appearance={effectiveAppearance}
+						className="fixed inset-0 flex flex-col"
+					>
+						{/* Theme warning banner */}
+						{documentTheme.warning && (
+							<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+								<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+									<TriangleAlert className="size-4 shrink-0" />
+									<span>{documentTheme.warning}</span>
+								</div>
+							</div>
+						)}
+
+						{/* Theme error banner (corrupted theme data) */}
+						{themeStylesResult.error && (
+							<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+								<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+									<TriangleAlert className="size-4 shrink-0" />
+									<span>
+										Theme error: {themeStylesResult.error}. Using default
+										styles.
+									</span>
+								</div>
+							</div>
+						)}
+
+						<article className="flex min-h-0 flex-1 flex-col">
+							{documentTheme.isLoading || themeStylesResult.isLoading ? null : (
+								<ScaledSlideContainer
+									blocks={visibleBlocks}
+									size={size}
+									slideNumber={currentSlideNumber}
+									onClick={goToNextSlide}
+									measureKey={getThemeMeasureKey(documentTheme, themeStyles)}
+								/>
+							)}
+						</article>
+						<SlideControls
+							slides={slides}
+							currentSlideNumber={currentSlideNumber}
+							onSlideChange={onSlideChange}
+							onExit={onExit}
+							onGoToTeleprompter={onGoToTeleprompter}
+						/>
+					</div>
+				</ThemeContext.Provider>
+			</WikilinkContext.Provider>
+		</AssetContext.Provider>
 	)
 }
 
@@ -238,109 +303,272 @@ let baseSizes: Record<PresentationSize, { h1: number; body: number }> = {
 	L: { h1: 120, body: 60 },
 }
 
+type SlideContainerStyle = React.CSSProperties & {
+	"--slide-h1-size": string
+	"--slide-body-size": string
+	"--slide-scale": string
+}
+
 function ScaledSlideContainer({
 	blocks,
-	assets,
 	size,
 	slideNumber,
 	onClick,
+	measureKey,
 }: {
 	blocks: VisualBlock[]
-	assets?: Asset[]
 	size: PresentationSize
 	slideNumber: number
 	onClick: () => void
+	measureKey: string
 }) {
 	let containerRef = useRef<HTMLDivElement>(null)
 	let contentRef = useRef<HTMLDivElement>(null)
 	let [visible, setVisible] = useState(false)
 	let [scale, setScale] = useState(1)
+	let [maxDimensions, setMaxDimensions] = useState<{
+		w: number
+		h: number
+	} | null>(null)
 	let [isPortrait, setIsPortrait] = useState(
 		() => window.innerHeight > window.innerWidth,
 	)
 	let blockCount = blocks.length
-	let gridClass = cn(
-		"grid gap-8",
-		blockCount === 1 && "grid-cols-1 grid-rows-1",
-		blockCount === 2 &&
-			(isPortrait ? "grid-cols-1 grid-rows-2" : "grid-cols-2 grid-rows-1"),
-		blockCount === 3 &&
-			(isPortrait ? "grid-cols-1 grid-rows-3" : "grid-cols-3 grid-rows-1"),
-		blockCount >= 4 && "grid-cols-2 grid-rows-2",
-	)
+
+	let gridTemplate: { cols: string; rows: string }
+	if (blockCount === 1) {
+		gridTemplate = { cols: "1fr", rows: "1fr" }
+	} else if (blockCount === 2) {
+		gridTemplate = isPortrait
+			? { cols: "1fr", rows: "1fr 1fr" }
+			: { cols: "1fr 1fr", rows: "1fr" }
+	} else if (blockCount === 3) {
+		gridTemplate = isPortrait
+			? { cols: "1fr", rows: "1fr 1fr 1fr" }
+			: { cols: "1fr 1fr 1fr", rows: "1fr" }
+	} else {
+		gridTemplate = { cols: "1fr 1fr", rows: "1fr 1fr" }
+	}
 
 	let baseSize = baseSizes[size]
 
-	// Reduce font size for multi-column layouts to fit content
-	let columnScale = blockCount >= 3 ? 0.5 : blockCount === 2 ? 0.75 : 1
-
-	// Reset visibility when deps change using adjust-state-during-render pattern
-	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}`
+	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}-${measureKey}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
-	if (depsKey !== prevDepsKey) {
+	let depsChanged = depsKey !== prevDepsKey
+	if (depsChanged) {
 		setPrevDepsKey(depsKey)
 		setVisible(false)
 		setScale(1)
+		setMaxDimensions(null)
 	}
 
+	let effectiveVisible = depsChanged ? false : visible
+	let effectiveScale = depsChanged ? 1 : scale
+	let effectiveMaxDimensions = depsChanged ? null : maxDimensions
+
 	useLayoutEffect(() => {
-		let container = containerRef.current
-		let content = contentRef.current
-		if (!container || !content) return
+		let initialContainer = containerRef.current
+		let initialContent = contentRef.current
+		if (!initialContainer || !initialContent) return
 
 		let cancelled = false
+		let isMeasuring = false
+		let isScheduled = false
+		let measurementComplete = false
 
-		async function measure() {
-			await new Promise(r => requestAnimationFrame(r))
+		function scheduleMeasure() {
 			if (cancelled) return
+			if (isScheduled) return
+			if (measurementComplete) return
 
-			let containerW = container!.clientWidth
-			let containerH = container!.clientHeight
-			let maxW = containerW * 0.9
-			let maxH = containerH * 0.9
+			let container = containerRef.current
+			let content = contentRef.current
+			if (!container || !content) return
 
-			// Temporarily remove width constraint for natural measurement
-			let originalWidth = content!.style.width
-			content!.style.width = "auto"
-
-			// Measure at scale=1 to get natural size
-			content!.style.setProperty(
-				"--slide-h1-size",
-				`${baseSize.h1 * columnScale}px`,
-			)
-			content!.style.setProperty(
-				"--slide-body-size",
-				`${baseSize.body * columnScale}px`,
-			)
-			content!.style.setProperty("--slide-image-size", `${800 * columnScale}px`)
-			void content!.offsetHeight
-
-			let naturalW = content!.scrollWidth
-			let naturalH = content!.scrollHeight
-
-			// Restore width constraint
-			content!.style.width = originalWidth
-
-			if (cancelled) return
-
-			// Calculate scale to fit, but don't scale up if already fits
-			let scaleW = naturalW <= maxW ? 1 : maxW / naturalW
-			let scaleH = naturalH <= maxH ? 1 : maxH / naturalH
-			let finalScale = Math.min(scaleW, scaleH, 1)
-
-			// Apply final scale and fade in
-			setScale(finalScale)
-			await new Promise(r => requestAnimationFrame(r))
-			if (cancelled) return
-			setVisible(true)
+			isScheduled = true
+			let capturedContainer = container
+			let capturedContent = content
+			requestAnimationFrame(() => {
+				isScheduled = false
+				void measure(capturedContainer, capturedContent)
+			})
 		}
 
-		measure()
+		async function measure(container: HTMLDivElement, content: HTMLDivElement) {
+			if (cancelled) return
+			if (isMeasuring) return
+			isMeasuring = true
+			setVisible(false)
+
+			try {
+				await new Promise(r => requestAnimationFrame(r))
+				if (cancelled) return
+
+				let containerStyle = getComputedStyle(container)
+				let paddingX =
+					Number.parseFloat(containerStyle.paddingLeft) +
+					Number.parseFloat(containerStyle.paddingRight)
+				let paddingY =
+					Number.parseFloat(containerStyle.paddingTop) +
+					Number.parseFloat(containerStyle.paddingBottom)
+
+				let availableW = Math.max(0, container.clientWidth - paddingX)
+				let availableH = Math.max(0, container.clientHeight - paddingY)
+
+				let maxW = availableW * 0.9
+				let maxH = availableH * 0.9
+
+				let previousWidth = content.style.width
+				let previousHeight = content.style.height
+				let previousMaxWidth = content.style.maxWidth
+				let previousMaxHeight = content.style.maxHeight
+				let previousGridTemplateRows = content.style.gridTemplateRows
+				let previousGridTemplateColumns = content.style.gridTemplateColumns
+
+				content.style.width = `${maxW}px`
+				content.style.height = `${maxH}px`
+				content.style.maxWidth = "none"
+				content.style.maxHeight = "none"
+				content.style.gridTemplateRows = gridTemplate.rows
+				content.style.gridTemplateColumns = gridTemplate.cols
+
+				let overflowSensitiveElements = Array.from(
+					content.querySelectorAll<HTMLElement>("pre, table"),
+				)
+				let overflowMeasurementElements = Array.from(
+					content.querySelectorAll<HTMLElement>(
+						"h1,h2,h3,h4,h5,h6,p,pre,table,blockquote,ol,ul,img",
+					),
+				)
+
+				function fits(s: number): boolean {
+					content.style.setProperty("--slide-h1-size", `${baseSize.h1 * s}px`)
+					content.style.setProperty(
+						"--slide-body-size",
+						`${baseSize.body * s}px`,
+					)
+					content.style.setProperty("--slide-scale", `${s}`)
+					void content.offsetHeight
+
+					if (content.scrollWidth > maxW + 1) return false
+					if (content.scrollHeight > maxH + 1) return false
+
+					let cells = Array.from(content.children).flatMap(child =>
+						child instanceof HTMLElement ? [child] : [],
+					)
+					for (let cell of cells) {
+						if (cell.scrollWidth > cell.clientWidth + 1) return false
+						if (cell.scrollHeight > cell.clientHeight + 1) return false
+					}
+
+					for (let el of overflowSensitiveElements) {
+						if (el.scrollWidth > el.clientWidth + 1) return false
+						if (el.scrollHeight > el.clientHeight + 1) return false
+					}
+
+					// scrollWidth/scrollHeight ignore margins; themes can add huge margins.
+					// Measure block element boxes + margins against container bounds.
+					let contentRect = content.getBoundingClientRect()
+					for (let el of overflowMeasurementElements) {
+						let rect = el.getBoundingClientRect()
+						let style = getComputedStyle(el)
+						let marginTop = Number.parseFloat(style.marginTop) || 0
+						let marginRight = Number.parseFloat(style.marginRight) || 0
+						let marginBottom = Number.parseFloat(style.marginBottom) || 0
+						let marginLeft = Number.parseFloat(style.marginLeft) || 0
+
+						if (rect.right + marginRight > contentRect.right + 1) return false
+						if (rect.bottom + marginBottom > contentRect.bottom + 1)
+							return false
+						if (rect.left - marginLeft < contentRect.left - 1) return false
+						if (rect.top - marginTop < contentRect.top - 1) return false
+					}
+
+					return true
+				}
+
+				let low = 5
+				let high = 100
+				while (low <= high) {
+					let mid = Math.floor((low + high) / 2)
+					if (fits(mid / 100)) {
+						low = mid + 1
+					} else {
+						high = mid - 1
+					}
+				}
+
+				let finalScale = Math.max(5, Math.min(high, 100)) / 100
+
+				setMaxDimensions({ w: maxW, h: maxH })
+				content.style.width = previousWidth
+				content.style.height = previousHeight
+				content.style.maxWidth = previousMaxWidth
+				content.style.maxHeight = previousMaxHeight
+				content.style.gridTemplateRows = previousGridTemplateRows
+				content.style.gridTemplateColumns = previousGridTemplateColumns
+
+				if (cancelled) return
+
+				setScale(finalScale)
+				measurementComplete = true
+				await new Promise(r => requestAnimationFrame(r))
+				if (cancelled) return
+				setVisible(true)
+			} finally {
+				isMeasuring = false
+			}
+		}
+
+		scheduleMeasure()
+
+		let mutationObserver = new MutationObserver(() => {
+			measurementComplete = false
+			scheduleMeasure()
+		})
+		mutationObserver.observe(initialContent, {
+			childList: true,
+			subtree: true,
+			characterData: true,
+		})
+
+		let resizeObserver = new ResizeObserver(() => {
+			measurementComplete = false
+			scheduleMeasure()
+		})
+		resizeObserver.observe(initialContainer)
+
+		let fontSet = document.fonts
+		function handleFontsDone() {
+			measurementComplete = false
+			scheduleMeasure()
+		}
+
+		if (fontSet) {
+			fontSet.ready.then(() => {
+				if (cancelled) return
+				handleFontsDone()
+			})
+			fontSet.addEventListener?.("loadingdone", handleFontsDone)
+			fontSet.addEventListener?.("loadingerror", handleFontsDone)
+		}
 
 		return () => {
 			cancelled = true
+			mutationObserver.disconnect()
+			resizeObserver.disconnect()
+			fontSet?.removeEventListener?.("loadingdone", handleFontsDone)
+			fontSet?.removeEventListener?.("loadingerror", handleFontsDone)
 		}
-	}, [slideNumber, blocks, isPortrait, baseSize, columnScale])
+	}, [
+		slideNumber,
+		blocks,
+		isPortrait,
+		baseSize,
+		gridTemplate.cols,
+		gridTemplate.rows,
+		measureKey,
+	])
 
 	useEffect(() => {
 		function handleResize() {
@@ -353,6 +581,22 @@ function ScaledSlideContainer({
 		return () => window.removeEventListener("resize", handleResize)
 	}, [])
 
+	let contentStyle: SlideContainerStyle = {
+		"--slide-h1-size": `${baseSize.h1 * effectiveScale}px`,
+		"--slide-body-size": `${baseSize.body * effectiveScale}px`,
+		"--slide-scale": `${effectiveScale}`,
+		gridTemplateColumns: gridTemplate.cols,
+		gridTemplateRows: gridTemplate.rows,
+		opacity: effectiveVisible ? 1 : 0,
+		transition: effectiveVisible ? "opacity 150ms ease-in" : "none",
+		maxWidth: effectiveMaxDimensions
+			? `${effectiveMaxDimensions.w}px`
+			: undefined,
+		maxHeight: effectiveMaxDimensions
+			? `${effectiveMaxDimensions.h}px`
+			: undefined,
+	}
+
 	return (
 		<div
 			ref={containerRef}
@@ -361,41 +605,19 @@ function ScaledSlideContainer({
 		>
 			<div
 				ref={contentRef}
-				className={gridClass}
-				style={
-					{
-						"--slide-h1-size": `${baseSize.h1 * columnScale * scale}px`,
-						"--slide-body-size": `${baseSize.body * columnScale * scale}px`,
-						"--slide-image-size": `${800 * scale}px`,
-						opacity: visible ? 1 : 0,
-						transition: visible ? "opacity 150ms ease-in" : "none",
-						width: "90%",
-						maxHeight: "90%",
-					} as React.CSSProperties
-				}
+				className="slideshow-grid grid gap-8"
+				style={contentStyle}
 			>
 				{blocks.map((block, i) => (
-					<div
-						key={i}
-						className="flex min-h-0 min-w-0 flex-col items-center justify-center text-center"
-					>
+					<div key={i} className="slideshow-cell">
 						{block.content.map((item, j) => (
-							<SlideContentItem key={j} item={item} assets={assets} />
+							<SlideContentItem key={j} item={item} />
 						))}
 					</div>
 				))}
 			</div>
 		</div>
 	)
-}
-
-let headingScales: Record<number, number> = {
-	1: 1,
-	2: 0.85,
-	3: 0.7,
-	4: 0.6,
-	5: 0.5,
-	6: 0.45,
 }
 
 function RenderSegments({ segments }: { segments: TextSegment[] }) {
@@ -420,7 +642,6 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 					href={segment.href}
 					target="_blank"
 					rel="noopener noreferrer"
-					className="text-brand underline"
 					onClick={e => e.stopPropagation()}
 				>
 					{segment.text}
@@ -447,52 +668,36 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 		}
 		case "strong":
 			return (
-				<strong className="font-bold">
+				<strong>
 					<RenderSegments segments={segment.segments} />
 				</strong>
 			)
 		case "em":
 			return (
-				<em className="italic">
+				<em>
 					<RenderSegments segments={segment.segments} />
 				</em>
 			)
 		case "codespan":
-			return (
-				<code className="bg-muted rounded px-[0.3em] py-[0.1em] font-mono text-[0.85em]">
-					{segment.text}
-				</code>
-			)
+			return <code>{segment.text}</code>
 		case "del":
 			return (
-				<del className="line-through">
+				<del>
 					<RenderSegments segments={segment.segments} />
 				</del>
 			)
 	}
 }
 
-function SlideContentItem({
-	item,
-	assets,
-}: {
-	item: SlideContent
-	assets?: Asset[]
-}) {
+function SlideContentItem({ item }: { item: SlideContent }) {
 	if (item.type === "heading") {
-		let scale = headingScales[item.depth] ?? 0.6
-		return (
-			<div
-				className="font-semibold"
-				style={{
-					fontSize: `calc(var(--slide-h1-size) * ${scale})`,
-					marginBottom: "0.3em",
-					lineHeight: 1.2,
-				}}
-			>
-				<RenderSegments segments={item.segments} />
-			</div>
-		)
+		let content = <RenderSegments segments={item.segments} />
+		if (item.depth <= 1) return <h1>{content}</h1>
+		if (item.depth === 2) return <h2>{content}</h2>
+		if (item.depth === 3) return <h3>{content}</h3>
+		if (item.depth === 4) return <h4>{content}</h4>
+		if (item.depth === 5) return <h5>{content}</h5>
+		return <h6>{content}</h6>
 	}
 
 	if (item.type === "code") {
@@ -500,80 +705,21 @@ function SlideContentItem({
 	}
 
 	if (item.type === "image") {
-		let assetMatch = item.src.match(/^asset:([^)]+)$/)
-		let imageId: string | undefined
-		if (assetMatch && assets) {
-			let asset = assets.find(a => a?.$jazz.id === assetMatch[1])
-			if (asset?.$isLoaded && asset.image) {
-				imageId = asset.image.$jazz.id
-			}
-		}
-		return (
-			<div style={{ margin: "0.5em 0" }}>
-				{imageId ? (
-					<JazzImage
-						imageId={imageId}
-						alt={item.alt}
-						className="mx-auto rounded-lg"
-						style={{ maxHeight: "var(--slide-image-size)" }}
-					/>
-				) : (
-					<img
-						src={item.src}
-						alt={item.alt}
-						className="mx-auto rounded-lg"
-						style={{ maxHeight: "var(--slide-image-size)" }}
-					/>
-				)}
-			</div>
-		)
+		return <SlideImage src={item.src} alt={item.alt} />
 	}
 
 	if (item.type === "list") {
-		let listClass = `text-left ${item.ordered ? "list-decimal" : "list-disc"}`
 		let items = item.items.map((listItem, i) => (
-			<li key={i} style={{ marginBottom: "0.2em" }}>
+			<li key={i}>
 				<RenderSegments segments={listItem.segments} />
 			</li>
 		))
-		return item.ordered ? (
-			<ol
-				className={listClass}
-				style={{
-					fontSize: "var(--slide-body-size)",
-					margin: "0.5em 0",
-					paddingLeft: "1.2em",
-					lineHeight: 1.4,
-				}}
-			>
-				{items}
-			</ol>
-		) : (
-			<ul
-				className={listClass}
-				style={{
-					fontSize: "var(--slide-body-size)",
-					margin: "0.5em 0",
-					paddingLeft: "1.2em",
-					lineHeight: 1.4,
-				}}
-			>
-				{items}
-			</ul>
-		)
+		return item.ordered ? <ol>{items}</ol> : <ul>{items}</ul>
 	}
 
 	if (item.type === "blockquote") {
 		return (
-			<blockquote
-				className="border-brand border-l-4 text-left italic"
-				style={{
-					fontSize: "var(--slide-body-size)",
-					margin: "0.5em 0",
-					paddingLeft: "0.5em",
-					lineHeight: 1.4,
-				}}
-			>
+			<blockquote>
 				<RenderSegments segments={item.segments} />
 			</blockquote>
 		)
@@ -582,35 +728,21 @@ function SlideContentItem({
 	if (item.type === "table") {
 		let [header, ...body] = item.rows
 		return (
-			<table
-				className="w-full text-left"
-				style={{
-					fontSize: "calc(var(--slide-body-size) * 0.8)",
-					margin: "0.5em 0",
-				}}
-			>
+			<table>
 				{header && (
 					<thead>
-						<tr className="border-border border-b">
+						<tr>
 							{header.map((cell, i) => (
-								<th
-									key={i}
-									className="font-semibold"
-									style={{ padding: "0.4em 0.6em" }}
-								>
-									{cell}
-								</th>
+								<th key={i}>{cell}</th>
 							))}
 						</tr>
 					</thead>
 				)}
 				<tbody>
 					{body.map((row, i) => (
-						<tr key={i} className="border-border border-b">
+						<tr key={i}>
 							{row.map((cell, j) => (
-								<td key={j} style={{ padding: "0.4em 0.6em" }}>
-									{cell}
-								</td>
+								<td key={j}>{cell}</td>
 							))}
 						</tr>
 					))}
@@ -620,16 +752,44 @@ function SlideContentItem({
 	}
 
 	return (
-		<div
-			style={{
-				fontSize: "var(--slide-body-size)",
-				marginBottom: "0.3em",
-				lineHeight: 1.4,
-			}}
-		>
+		<p>
 			<RenderSegments segments={item.segments} />
-		</div>
+		</p>
 	)
+}
+
+let IMAGE_BASE_SIZE = 400
+
+function SlideImage({ src, alt }: { src: string; alt: string }) {
+	let assets = useContext(AssetContext)
+
+	let sizeStyle = {
+		maxWidth: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
+		maxHeight: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
+	}
+
+	let assetMatch = src.match(/^asset:(.+)$/)
+	if (assetMatch) {
+		let assetId = assetMatch[1]
+		let asset = assets?.find(a => a?.$jazz.id === assetId)
+
+		if (asset?.$isLoaded && asset.image) {
+			return (
+				<JazzImage imageId={asset.image.$jazz.id} alt={alt} style={sizeStyle} />
+			)
+		}
+
+		return (
+			<div
+				className="slideshow-image-placeholder flex aspect-video items-center justify-center"
+				style={sizeStyle}
+			>
+				<span className="text-sm opacity-60">Loading...</span>
+			</div>
+		)
+	}
+
+	return <img src={src} alt={alt} style={sizeStyle} />
 }
 
 function HighlightedCode({
@@ -664,28 +824,290 @@ function HighlightedCode({
 		}
 	}, [code, language, shikiTheme])
 
-	let style = {
-		fontSize: "calc(var(--slide-body-size) * 0.6)",
-		margin: "0.5em 0",
-		padding: "0.6em",
-	}
-
 	if (html) {
 		return (
 			<div
-				className="overflow-x-auto rounded-lg text-left [&_pre]:rounded-lg [&_pre]:p-[0.6em]"
-				style={{ ...style, padding: 0 }}
+				className="slideshow-codeblock"
 				dangerouslySetInnerHTML={{ __html: html }}
 			/>
 		)
 	}
 
 	return (
-		<pre
-			className="bg-muted overflow-x-auto rounded-lg text-left"
-			style={style}
-		>
-			<code className="text-foreground font-mono">{code}</code>
+		<pre className="slideshow-codeblock">
+			<code>{code}</code>
 		</pre>
 	)
+}
+
+type ThemeStylesResult = {
+	styles: ThemeStyles | null
+	error: string | null
+	isLoading: boolean
+}
+
+function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
+	let [styles, setStyles] = useState<ThemeStyles | null>(null)
+	let [error, setError] = useState<string | null>(null)
+	let [loadedThemeId, setLoadedThemeId] = useState<string | null>(null)
+	let [fontsReady, setFontsReady] = useState(false)
+
+	let currentThemeId = documentTheme.theme?.$jazz.id ?? null
+	let isLoading =
+		currentThemeId !== null &&
+		(currentThemeId !== loadedThemeId || (styles !== null && !fontsReady))
+
+	let [prevThemeId, setPrevThemeId] = useState<string | null>(currentThemeId)
+	if (currentThemeId !== prevThemeId) {
+		setPrevThemeId(currentThemeId)
+		setStyles(null)
+		setError(null)
+		setLoadedThemeId(null)
+		setFontsReady(false)
+	}
+
+	useEffect(() => {
+		if (!documentTheme.theme) return
+
+		let cancelled = false
+		let themeId = documentTheme.theme.$jazz.id
+
+		tryCachedThemeStylesAsync(documentTheme.theme, documentTheme.preset).then(
+			buildResult => {
+				if (cancelled) return
+				if (buildResult.ok) {
+					setStyles(buildResult.styles)
+					setError(null)
+				} else {
+					setStyles(null)
+					setError(buildResult.error)
+				}
+				setLoadedThemeId(themeId)
+			},
+		)
+
+		return () => {
+			cancelled = true
+		}
+	}, [documentTheme.theme, documentTheme.preset])
+
+	useEffect(() => {
+		if (!styles) return
+
+		let cancelled = false
+
+		requestAnimationFrame(() => {
+			if (cancelled) return
+			document.fonts.ready.then(() => {
+				if (cancelled) return
+				setFontsReady(true)
+			})
+		})
+
+		return () => {
+			cancelled = true
+		}
+	}, [styles])
+
+	return { styles, error, isLoading }
+}
+
+function getThemeMeasureKey(
+	documentTheme: ResolvedTheme,
+	styles: ThemeStyles | null,
+): string {
+	let themeId = documentTheme.theme?.$jazz.id ?? "__none__"
+	let preset = documentTheme.preset?.name ?? "__none__"
+	if (!styles) return `${themeId}:${preset}:__loading__`
+	let stylesKey = `${styles.presetVariables.length}:${styles.fontFaceRules.length}:${styles.css.length}`
+	return `${themeId}:${preset}:${stylesKey}`
+}
+
+function getSlideshowBaseCss(): string {
+	return `
+:where([data-mode="slideshow"]) {
+	background: var(--preset-background, var(--background));
+	color: var(--preset-foreground, var(--foreground));
+}
+
+:where([data-mode="slideshow"][data-appearance="light"]) {
+	background: var(--preset-background, #ffffff);
+	color: var(--preset-foreground, #000000);
+}
+
+:where([data-mode="slideshow"][data-appearance="dark"]) {
+	background: var(--preset-background, #000000);
+	color: var(--preset-foreground, #ffffff);
+}
+
+:where([data-mode="slideshow"] .slideshow-grid) {
+	font-size: var(--slide-body-size);
+}
+
+:where([data-mode="slideshow"] .slideshow-cell) {
+	display: flex;
+	min-height: 0;
+	min-width: 0;
+	max-width: 100%;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	overflow: hidden;
+	text-align: center;
+	overflow-wrap: normal;
+	word-break: normal;
+}
+
+:where([data-mode="slideshow"] a) {
+	color: var(--preset-link, var(--preset-accent, currentColor));
+	text-decoration: underline;
+}
+
+:where([data-mode="slideshow"] code) {
+	font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace);
+	font-size: 0.85em;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+	padding: 0.15em 0.4em;
+	border-radius: 0.25rem;
+}
+
+:where([data-mode="slideshow"] pre code) {
+	background: none;
+	padding: 0;
+}
+
+:where([data-mode="slideshow"] h1) {
+	font-size: calc(var(--slide-h1-size) * 1);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h2) {
+	font-size: calc(var(--slide-h1-size) * 0.85);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h3) {
+	font-size: calc(var(--slide-h1-size) * 0.7);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h4) {
+	font-size: calc(var(--slide-h1-size) * 0.6);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h5) {
+	font-size: calc(var(--slide-h1-size) * 0.5);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] h6) {
+	font-size: calc(var(--slide-h1-size) * 0.45);
+	margin: 0 0 0.3em;
+	line-height: 1.2;
+}
+
+:where([data-mode="slideshow"] p) {
+	font-size: var(--slide-body-size);
+	margin: 0 0 0.3em;
+	line-height: 1.4;
+}
+
+:where([data-mode="slideshow"] ol) {
+	list-style: decimal;
+	list-style-position: outside;
+}
+
+:where([data-mode="slideshow"] ul) {
+	list-style: disc;
+	list-style-position: outside;
+}
+
+:where([data-mode="slideshow"] :is(ol, ul)) {
+	font-size: var(--slide-body-size);
+	margin: 0.5em 0;
+	padding-left: 1.2em;
+	line-height: 1.4;
+	text-align: left;
+}
+
+:where([data-mode="slideshow"] li) {
+	margin: 0 0 0.2em;
+}
+
+:where([data-mode="slideshow"] blockquote) {
+	font-size: var(--slide-body-size);
+	margin: 0.5em 0;
+	padding-left: 0.5em;
+	line-height: 1.4;
+	text-align: left;
+	font-style: italic;
+	border-left: calc(4px * var(--slide-scale, 1)) solid var(--preset-accent, currentColor);
+}
+
+:where([data-mode="slideshow"] table) {
+	width: 100%;
+	border-collapse: collapse;
+	text-align: left;
+	font-size: calc(var(--slide-body-size) * 0.8);
+	margin: 0.5em 0;
+	line-height: 1.2;
+	white-space: nowrap;
+}
+
+:where([data-mode="slideshow"] table tr) {
+	border-bottom-width: calc(1px * var(--slide-scale, 1));
+	border-bottom-style: solid;
+	border-bottom-color: var(--border);
+}
+
+:where([data-mode="slideshow"] table :is(th, td)) {
+	padding: 0.3em 0.5em;
+	white-space: nowrap;
+	word-break: normal;
+	vertical-align: top;
+}
+
+:where([data-mode="slideshow"] th) {
+	font-weight: 600;
+}
+
+:where([data-mode="slideshow"] .slideshow-codeblock) {
+	font-size: calc(var(--slide-body-size) * 0.6);
+	margin: 0.5em 0;
+	max-width: 100%;
+	overflow: hidden;
+	text-align: left;
+}
+
+:where([data-mode="slideshow"] .slideshow-codeblock pre) {
+	margin: 0;
+	max-width: 100%;
+	overflow: hidden;
+	white-space: pre;
+	padding: 0.6em;
+	border-radius: 0.5rem;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+	border: 1px solid rgba(127, 127, 127, 0.3);
+}
+
+:where([data-mode="slideshow"] pre.slideshow-codeblock) {
+	max-width: 100%;
+	overflow: hidden;
+	white-space: pre;
+	padding: 0.6em;
+	border-radius: 0.5rem;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+	border: 1px solid rgba(127, 127, 127, 0.3);
+}
+
+:where([data-mode="slideshow"] .slideshow-image-placeholder) {
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+}
+`
 }

@@ -1,7 +1,7 @@
 import { useState, useSyncExternalStore } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { co, Group } from "jazz-tools"
-import { useCoState } from "jazz-tools/react"
+import { useCoState, useAccount } from "jazz-tools/react"
 import {
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -35,6 +35,18 @@ import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
 import type { MarkdownEditorRef } from "@/editor/editor"
 
+import {
+	findThemeByName,
+	getThemeName,
+	getPresetName,
+	findPresetByName,
+	getThemePresets,
+	findPresetByAppearance,
+	type LoadedThemes,
+} from "@/lib/document-theme"
+import { buildPrintableHtml, openPrintWindow } from "@/lib/pdf-export"
+import { Marked } from "marked"
+
 export { SidebarFileMenu }
 
 type LoadedDocument = co.loaded<
@@ -57,6 +69,17 @@ interface SidebarFileMenuProps {
 	spaceId?: string
 }
 
+// --- Component ---
+
+let themesResolve = {
+	root: {
+		settings: true,
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
+	},
+} as const
+
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
 	let { isMobile, setRightOpenMobile, setLeftOpenMobile } = useSidebar()
@@ -70,6 +93,9 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let docWithContent = useCoState(Document, doc.$jazz.id, {
 		resolve: { content: true },
 	})
+
+	// Load user's themes for PDF export
+	let meWithThemes = useAccount(UserAccount, { resolve: themesResolve })
 
 	let content = doc.content?.toString() ?? ""
 	let readOnly = !canEdit(doc)
@@ -155,6 +181,18 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						<DropdownMenuItem onClick={makeSaveAs(content)}>
 							Save as...
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={makePrintPdf(
+								content,
+								meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
+								meWithThemes.$isLoaded
+									? (meWithThemes.root?.settings?.defaultPreviewTheme ?? null)
+									: null,
+							)}
+						>
+							Print to PDF
+							<DropdownMenuShortcut>{modKey}P</DropdownMenuShortcut>
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeDuplicate(doc, me, spaceId, navigate)}
@@ -454,6 +492,62 @@ function makeSaveAs(content: string) {
 	return async function handleSaveAs() {
 		let title = getDocumentTitle(content)
 		await saveDocumentAs(content, title)
+	}
+}
+
+function makePrintPdf(
+	content: string,
+	themes: LoadedThemes | undefined,
+	defaultPreviewTheme: string | null,
+) {
+	return async function handlePrintPdf() {
+		let { body } = parseFrontmatter(content)
+		let title = getDocumentTitle(content)
+
+		// Resolve theme and preset from frontmatter (same logic as useDocumentTheme)
+		let themeName = getThemeName(content)
+		let presetName = getPresetName(content)
+
+		// Handle "light"/"dark" as appearance-only, not theme names
+		let isAppearanceOnlyTheme = themeName === "light" || themeName === "dark"
+		let effectiveThemeName = isAppearanceOnlyTheme ? null : themeName
+
+		// Fall back to default preview theme from settings
+		if (!effectiveThemeName && defaultPreviewTheme) {
+			effectiveThemeName = defaultPreviewTheme
+		}
+
+		let theme = effectiveThemeName
+			? findThemeByName(themes ?? null, effectiveThemeName)
+			: null
+		let preset = null
+
+		if (theme && presetName) {
+			preset = findPresetByName(theme, presetName)
+		} else if (theme) {
+			// PDF always uses light mode
+			preset = findPresetByAppearance(theme, "light")
+			if (!preset) {
+				let presets = getThemePresets(theme)
+				preset = presets[0] ?? null
+			}
+		}
+
+		// Render markdown to HTML
+		let marked = new Marked()
+		marked.setOptions({ gfm: true, breaks: true })
+		let htmlContent = await marked.parse(body)
+
+		// Build printable HTML with theme styles
+		let printableHtml = await buildPrintableHtml({
+			title,
+			htmlContent,
+			theme,
+			preset,
+		})
+
+		// Open print window
+		openPrintWindow(printableHtml)
 	}
 }
 
