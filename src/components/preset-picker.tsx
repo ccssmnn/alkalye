@@ -17,11 +17,7 @@ import {
 import { Paintbrush, Check, Sun, Moon } from "lucide-react"
 import { Theme, UserAccount } from "@/schema"
 import { parseFrontmatter, setPreset } from "@/editor/frontmatter"
-import {
-	getThemePresets,
-	findThemeByName,
-	type ThemePresetType,
-} from "@/lib/document-theme"
+import { getThemePresets, type ThemePresetType } from "@/lib/document-theme"
 
 export { PresetPicker }
 
@@ -51,9 +47,8 @@ function PresetPicker({
 	let currentThemeName = frontmatter?.theme as string | undefined
 	let currentPresetName = frontmatter?.preset as string | undefined
 
-	// Find the current theme
 	let currentTheme = currentThemeName
-		? findThemeByName(themes as never, currentThemeName)
+		? themes.find(t => t.name.toLowerCase() === currentThemeName.toLowerCase())
 		: null
 
 	// Get presets from current theme

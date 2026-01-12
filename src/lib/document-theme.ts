@@ -61,8 +61,8 @@ function findThemeByName(
 
 	let lowerName = themeName.toLowerCase()
 	for (let theme of themes) {
-		if (theme?.name?.toLowerCase() === lowerName) {
-			return theme as co.loaded<typeof Theme, ThemesQuery["$each"]>
+		if (theme?.name?.toLowerCase() === lowerName && theme.$isLoaded) {
+			return theme
 		}
 	}
 	return null
@@ -157,9 +157,9 @@ function useDocumentTheme(
 		return { theme: null, preset: null, warning: null, isLoading: false }
 	}
 
-	let themes = me.root.themes as LoadedThemes
+	let themes = me.root.themes
 
-	let theme = findThemeByName(themes, effectiveThemeName)
+	let theme = findThemeByName(themes as LoadedThemes, effectiveThemeName)
 	if (!theme) {
 		if (themeName && !isAppearanceOnlyTheme) {
 			return {

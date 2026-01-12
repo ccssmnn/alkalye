@@ -386,8 +386,8 @@ function ScaledSlideContainer({
 			if (!container || !content) return
 
 			isScheduled = true
-			const capturedContainer = container
-			const capturedContent = content
+			let capturedContainer = container
+			let capturedContent = content
 			requestAnimationFrame(() => {
 				isScheduled = false
 				void measure(capturedContainer, capturedContent)

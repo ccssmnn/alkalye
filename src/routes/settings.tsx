@@ -104,7 +104,7 @@ function SettingsPage() {
 	let data = Route.useLoaderData()
 	let { from } = Route.useSearch()
 	let subscribedMe = useAccount(UserAccount, { resolve: settingsQuery })
-	let me: LoadedAccount | null = subscribedMe.$isLoaded ? subscribedMe : data.me
+	let me = subscribedMe.$isLoaded ? subscribedMe : data.me
 	let isAuthenticated = useIsAuthenticated()
 
 	return (
@@ -464,10 +464,7 @@ function ThemesSection({ me }: ThemesSectionProps) {
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											onClick={makeExportTheme(
-												theme as co.loaded<typeof Theme, ThemeExportQuery>,
-												setExportingThemeId,
-											)}
+											onClick={makeExportTheme(theme, setExportingThemeId)}
 											disabled={exportingThemeId === theme.$jazz.id}
 											aria-label={`Export ${theme.name}`}
 										>
@@ -480,9 +477,7 @@ function ThemesSection({ me }: ThemesSectionProps) {
 										<Button
 											variant="ghost"
 											size="icon-sm"
-											onClick={() =>
-												setThemeToDelete(theme as co.loaded<typeof Theme>)
-											}
+											onClick={() => setThemeToDelete(theme)}
 											aria-label={`Delete ${theme.name}`}
 										>
 											<Trash2 className="size-4" />
