@@ -183,7 +183,7 @@ function makeDownloadAsset(doc: LoadedDocument) {
 
 async function handleSaveCopy(
 	doc: LoadedDocument,
-	me: LoadedMe,
+	me: co.loaded<typeof UserAccount, { root: { documents: true } }>,
 	setSaveCopyState: (state: "idle" | "saving" | "saved") => void,
 	navigate: ReturnType<typeof useNavigate>,
 ) {

@@ -18,12 +18,8 @@ import {
 	makeDownloadAsset,
 	handleSaveCopy,
 	setupKeyboardShortcuts,
-	loaderResolve,
 	resolve,
-	settingsResolve,
-	meResolve,
 	type LoadedDocument,
-	type LoadedMe,
 } from "@/lib/editor-utils"
 import {
 	MarkdownEditor,
@@ -81,42 +77,35 @@ import { HelpMenu } from "@/components/help-menu"
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
-	loader: async ({ params, context }) => {
-		let doc = await Document.load(params.id, { resolve: loaderResolve })
-		if (!doc.$isLoaded) {
-			return { doc: null, loadingState: doc.$jazz.loadingState, me: null }
-		}
-
-		let me = context.me
-			? await context.me.$jazz.ensureLoaded({ resolve: settingsResolve })
-			: null
-
-		return { doc, loadingState: null, me }
-	},
 	component: EditorPage,
 })
 
 function EditorPage() {
 	let { id } = Route.useParams()
-	let data = Route.useLoaderData()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
 
+	// Redirect space docs to their proper route
+	let spaceId = doc.$isLoaded ? doc.spaceId : undefined
 	useEffect(() => {
-		if (data.doc?.spaceId) {
+		if (spaceId) {
 			navigate({
 				to: "/spaces/$spaceId/doc/$id",
-				params: { spaceId: data.doc.spaceId, id },
+				params: { spaceId, id },
 				replace: true,
 			})
 		}
-	}, [data.doc?.spaceId, id, navigate])
-	if (!data.doc) {
-		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
+	}, [spaceId, id, navigate])
+
+	// Error states
+	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
+		if (doc.$jazz.loadingState === "unauthorized")
+			return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
-	if (data.doc.spaceId) {
+
+	if (!doc.$isLoaded) {
 		return (
 			<Empty className="h-screen">
 				<EmptyHeader>
@@ -127,13 +116,7 @@ function EditorPage() {
 		)
 	}
 
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
-			return <DocumentUnauthorized />
-		return <DocumentNotFound />
-	}
-
-	if (!doc.$isLoaded) {
+	if (doc.spaceId) {
 		return (
 			<Empty className="h-screen">
 				<EmptyHeader>
@@ -156,9 +139,19 @@ interface EditorContentProps {
 	docId: string
 }
 
+let personalMeResolve = {
+	root: {
+		documents: { $each: { content: true } },
+		settings: true,
+	},
+} as const
+
+type LoadedMe = ReturnType<
+	typeof useAccount<typeof UserAccount, typeof personalMeResolve>
+>
+
 function EditorContent({ doc, docId }: EditorContentProps) {
 	let navigate = useNavigate()
-	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
@@ -174,12 +167,10 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
 
 	let isAuthenticated = useIsAuthenticated()
-	let me = useAccount(UserAccount, { resolve: meResolve })
+	let me = useAccount(UserAccount, { resolve: personalMeResolve })
 
 	let editorSettings =
-		me.$isLoaded && me.root?.settings?.$isLoaded
-			? me.root.settings
-			: data.me?.root?.settings
+		me.$isLoaded && me.root?.settings?.$isLoaded ? me.root.settings : undefined
 
 	let readOnly = !canEdit(doc)
 	let canSaveCopy =
@@ -367,6 +358,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 			</ListSidebar>
 			<div className="markdown-editor flex-1" ref={containerRef}>
 				<MarkdownEditor
+					key={docId}
 					ref={editor}
 					value={content}
 					onChange={handleChange}
@@ -387,7 +379,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
 					onSaveCopy={
-						canSaveCopy
+						canSaveCopy && me.$isLoaded
 							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
 							: undefined
 					}

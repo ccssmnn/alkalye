@@ -21,7 +21,6 @@ import {
 	loaderResolve,
 	resolve,
 	settingsResolve,
-	meResolve,
 	type LoadedDocument,
 } from "@/lib/editor-utils"
 import {
@@ -197,7 +196,7 @@ function SpaceEditorContent({
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
 
 	let isAuthenticated = useIsAuthenticated()
-	let me = useAccount(UserAccount, { resolve: meResolve })
+	let me = useAccount(UserAccount, { resolve: spaceMeResolve })
 
 	let editorSettings =
 		me.$isLoaded && me.root?.settings?.$isLoaded
@@ -390,6 +389,7 @@ function SpaceEditorContent({
 			</ListSidebar>
 			<div className="markdown-editor flex-1" ref={containerRef}>
 				<MarkdownEditor
+					key={docId}
 					ref={editor}
 					value={content}
 					onChange={handleChange}
@@ -410,7 +410,7 @@ function SpaceEditorContent({
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
 					onSaveCopy={
-						canSaveCopy
+						canSaveCopy && me.$isLoaded
 							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
 							: undefined
 					}
@@ -569,6 +569,15 @@ let spaceLoaderResolve = {
 let spaceResolve = {
 	documents: { $each: { content: true } },
 } as const satisfies ResolveQuery<typeof Space>
+
+// For space route: load personal docs (for SidebarFileMenu) but NOT spaces
+// Space docs come from spaceResolve
+let spaceMeResolve = {
+	root: {
+		documents: { $each: { content: true } },
+		settings: true,
+	},
+} as const
 
 function getSpaceDocs(
 	space: LoadedSpace,

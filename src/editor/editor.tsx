@@ -428,6 +428,7 @@ function MarkdownEditor(
 
 		let currentContent = view.state.doc.toString()
 		if (value !== currentContent && value !== lastExternalValue.current) {
+			// Same document with remote changes - diff to preserve cursor
 			let cursorPos = view.state.selection.main.head
 			let anchorPos = view.state.selection.main.anchor
 
