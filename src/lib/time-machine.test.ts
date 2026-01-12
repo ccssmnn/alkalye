@@ -1,9 +1,5 @@
 import { beforeEach, describe, expect, test } from "vitest"
-import {
-	createJazzTestAccount,
-	setActiveAccount,
-	setupJazzTestSync,
-} from "jazz-tools/testing"
+import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
 import { Document, UserAccount } from "@/schema"
 import { createPersonalDocument } from "@/lib/documents"
 import {
@@ -16,17 +12,12 @@ import type { co } from "jazz-tools"
 
 describe("Time Machine - Edit History", () => {
 	let adminAccount: co.loaded<typeof UserAccount>
-	let otherAccount: co.loaded<typeof UserAccount>
 
 	beforeEach(async () => {
 		await setupJazzTestSync()
 
 		adminAccount = await createJazzTestAccount({
 			isCurrentActiveAccount: true,
-			AccountSchema: UserAccount,
-		})
-
-		otherAccount = await createJazzTestAccount({
 			AccountSchema: UserAccount,
 		})
 	})
@@ -65,61 +56,6 @@ describe("Time Machine - Edit History", () => {
 		}
 	})
 
-	// Skipped: Multi-user sync has timing issues in test env, works in production
-	test.skip("getEditHistory orders interleaved edits from multiple users chronologically", async () => {
-		let doc = await createPersonalDocument(adminAccount, "Admin initial")
-		let group = doc.$jazz.owner
-
-		group.addMember(otherAccount, "writer")
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		await new Promise(r => setTimeout(r, 10))
-		doc.content!.$jazz.applyDiff("Admin edit 1")
-
-		setActiveAccount(otherAccount)
-		let otherDoc = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!otherDoc.$isLoaded) throw new Error("Doc not loaded for other user")
-
-		await new Promise(r => setTimeout(r, 10))
-		otherDoc.content!.$jazz.applyDiff("Other user edit")
-
-		setActiveAccount(adminAccount)
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-
-		await new Promise(r => setTimeout(r, 10))
-		doc.content!.$jazz.applyDiff("Admin edit 2")
-
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		let loaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!loaded.$isLoaded) throw new Error("Doc not loaded")
-
-		let editHistory = getEditHistory(loaded)
-
-		expect(editHistory.length).toBeGreaterThanOrEqual(4)
-
-		for (let i = 1; i < editHistory.length; i++) {
-			let prevTime = editHistory[i - 1].madeAt.getTime()
-			let currTime = editHistory[i].madeAt.getTime()
-			expect(currTime).toBeGreaterThanOrEqual(prevTime)
-		}
-
-		let adminAccountId = adminAccount.$jazz.id
-		let otherAccountId = otherAccount.$jazz.id
-
-		let adminEdits = editHistory.filter(e => e.accountId === adminAccountId)
-		let otherEdits = editHistory.filter(e => e.accountId === otherAccountId)
-
-		expect(adminEdits.length).toBeGreaterThanOrEqual(2)
-		expect(otherEdits.length).toBeGreaterThanOrEqual(1)
-	})
-
 	test("getEditHistory handles single edit document", async () => {
 		let doc = await createPersonalDocument(adminAccount, "Only content")
 
@@ -152,156 +88,6 @@ describe("Time Machine - Edit History", () => {
 			expect(edit.accountId).not.toBeNull()
 			expect(typeof edit.accountId).toBe("string")
 		}
-	})
-
-	// Skipped: Multi-user sync has timing issues in test env, works in production
-	test.skip("restore overwrites regardless of concurrent edits", async () => {
-		let doc = await createPersonalDocument(adminAccount, "Original content")
-		let group = doc.$jazz.owner
-		group.addMember(otherAccount, "writer")
-
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		let adminLoaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!adminLoaded.$isLoaded) throw new Error("Doc not loaded for admin")
-
-		getEditHistory(adminLoaded)
-		let historicalContent = getContentAtEdit(adminLoaded, 0)
-
-		setActiveAccount(otherAccount)
-		let otherDoc = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!otherDoc.$isLoaded) throw new Error("Doc not loaded for other user")
-
-		await new Promise(r => setTimeout(r, 10))
-		otherDoc.content!.$jazz.applyDiff("User B made concurrent edits")
-
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-		setActiveAccount(adminAccount)
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-
-		adminLoaded.content!.$jazz.applyDiff(historicalContent)
-		adminLoaded.$jazz.set("updatedAt", new Date())
-
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-
-		let finalLoaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!finalLoaded.$isLoaded) throw new Error("Doc not loaded")
-
-		expect(finalLoaded.content?.toString()).toBe("Original content")
-
-		let finalHistory = getEditHistory(finalLoaded)
-		let contentVersions = finalHistory.map((_, i) =>
-			getContentAtEdit(finalLoaded, i),
-		)
-
-		expect(contentVersions).toContain("Original content")
-		expect(contentVersions).toContain("User B made concurrent edits")
-
-		let lastEditContent = getContentAtEdit(finalLoaded, finalHistory.length - 1)
-		expect(lastEditContent).toBe("Original content")
-	})
-
-	// Skipped: Multi-user sync has timing issues in test env, works in production
-	test.skip("multiple users can be in Time Machine simultaneously", async () => {
-		let doc = await createPersonalDocument(adminAccount, "Shared content")
-		let group = doc.$jazz.owner
-		group.addMember(otherAccount, "writer")
-
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		await new Promise(r => setTimeout(r, 10))
-		doc.content!.$jazz.applyDiff("First edit")
-
-		await new Promise(r => setTimeout(r, 10))
-		doc.content!.$jazz.applyDiff("Second edit")
-
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		let adminLoaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!adminLoaded.$isLoaded) throw new Error("Doc not loaded for admin")
-
-		let adminHistory = getEditHistory(adminLoaded)
-
-		setActiveAccount(otherAccount)
-		let otherLoaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!otherLoaded.$isLoaded) throw new Error("Doc not loaded for other user")
-
-		let otherHistory = getEditHistory(otherLoaded)
-
-		expect(adminHistory.length).toBe(otherHistory.length)
-
-		for (let i = 0; i < adminHistory.length; i++) {
-			expect(adminHistory[i].madeAt.getTime()).toBe(
-				otherHistory[i].madeAt.getTime(),
-			)
-			let adminContent = getContentAtEdit(adminLoaded, i)
-			let otherContent = getContentAtEdit(otherLoaded, i)
-			expect(adminContent).toBe(otherContent)
-		}
-
-		let userAPosition = 0
-		let userBPosition = 2
-
-		expect(getContentAtEdit(adminLoaded, userAPosition)).toBe("Shared content")
-		expect(getContentAtEdit(otherLoaded, userBPosition)).toBe("Second edit")
-	})
-
-	// Skipped: Multi-user sync has timing issues in test env, works in production
-	test.skip("getEditHistory reflects new edits after sync (silent update)", async () => {
-		let doc = await createPersonalDocument(adminAccount, "Initial")
-		let group = doc.$jazz.owner
-		group.addMember(otherAccount, "writer")
-
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		let adminLoaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!adminLoaded.$isLoaded) throw new Error("Doc not loaded for admin")
-
-		let initialHistory = getEditHistory(adminLoaded)
-		let initialCount = initialHistory.length
-
-		setActiveAccount(otherAccount)
-		let otherDoc = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!otherDoc.$isLoaded) throw new Error("Doc not loaded for other user")
-
-		await new Promise(r => setTimeout(r, 10))
-		otherDoc.content!.$jazz.applyDiff("Collaborator edit")
-
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-		setActiveAccount(adminAccount)
-		await adminAccount.$jazz.waitForAllCoValuesSync()
-
-		let adminReloaded = await Document.load(doc.$jazz.id, {
-			resolve: { content: true, assets: true },
-		})
-		if (!adminReloaded.$isLoaded) throw new Error("Doc not reloaded")
-
-		let updatedHistory = getEditHistory(adminReloaded)
-
-		expect(updatedHistory.length).toBe(initialCount + 1)
-
-		let lastEdit = updatedHistory[updatedHistory.length - 1]
-		expect(lastEdit.accountId).toBe(otherAccount.$jazz.id)
-		let lastContent = getContentAtEdit(adminReloaded, updatedHistory.length - 1)
-		expect(lastContent).toBe("Collaborator edit")
 	})
 
 	test("getContentAtEdit returns content at specific edit index", async () => {
