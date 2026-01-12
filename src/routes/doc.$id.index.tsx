@@ -40,7 +40,7 @@ import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
 import { SpaceSelector } from "@/components/space-selector"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
-import { ImportDropZone } from "@/components/import-drop-zone"
+
 import {
 	SidebarImportExport,
 	handleImportFiles,
@@ -313,61 +313,58 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	return (
 		<>
 			<title>{docTitle}</title>
-			<ImportDropZone
+			<ListSidebar
+				header={
+					<>
+						<SidebarImportExport
+							docs={allDocs.filter(d => !d.deletedAt)}
+							onImport={async files => {
+								if (personalDocs) await handleImportFiles(files, personalDocs)
+							}}
+						/>
+						<Button
+							size="sm"
+							nativeButton={false}
+							render={
+								<Link
+									to="/new"
+									onClick={() => isMobile && setLeftOpenMobile(false)}
+								/>
+							}
+						>
+							<Plus />
+							New
+						</Button>
+					</>
+				}
+				footer={<SidebarSyncStatus />}
 				onImport={async files => {
 					if (personalDocs) await handleImportFiles(files, personalDocs)
 				}}
 			>
-				<ListSidebar
-					header={
-						<>
-							<SidebarImportExport
-								docs={allDocs.filter(d => !d.deletedAt)}
-								onImport={async files => {
-									if (personalDocs) await handleImportFiles(files, personalDocs)
-								}}
-							/>
-							<Button
-								size="sm"
-								nativeButton={false}
-								render={
-									<Link
-										to="/new"
-										onClick={() => isMobile && setLeftOpenMobile(false)}
-									/>
-								}
-							>
-								<Plus />
-								New
-							</Button>
-						</>
+				<SpaceSelector />
+				<SidebarDocumentList
+					docs={allDocs}
+					currentDocId={docId}
+					isLoading={!me.$isLoaded}
+					onDocClick={() => isMobile && setLeftOpenMobile(false)}
+					onDuplicate={docToDuplicate =>
+						handleDuplicateDocument(
+							docToDuplicate,
+							me,
+							isMobile,
+							setLeftOpenMobile,
+							navigate,
+						)
 					}
-					footer={<SidebarSyncStatus />}
-				>
-					<SpaceSelector />
-					<SidebarDocumentList
-						docs={allDocs}
-						currentDocId={docId}
-						isLoading={!me.$isLoaded}
-						onDocClick={() => isMobile && setLeftOpenMobile(false)}
-						onDuplicate={docToDuplicate =>
-							handleDuplicateDocument(
-								docToDuplicate,
-								me,
-								isMobile,
-								setLeftOpenMobile,
-								navigate,
-							)
+					onDelete={docToDelete => {
+						deletePersonalDocument(docToDelete)
+						if (docToDelete.$jazz.id === docId) {
+							navigate({ to: "/" })
 						}
-						onDelete={docToDelete => {
-							deletePersonalDocument(docToDelete)
-							if (docToDelete.$jazz.id === docId) {
-								navigate({ to: "/" })
-							}
-						}}
-					/>
-				</ListSidebar>
-			</ImportDropZone>
+					}}
+				/>
+			</ListSidebar>
 			<div className="markdown-editor flex-1" ref={containerRef}>
 				<MarkdownEditor
 					ref={editor}

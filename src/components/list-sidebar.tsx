@@ -4,6 +4,8 @@ import {
 	SidebarFooter,
 	SidebarHeader,
 } from "@/components/ui/sidebar"
+import { ImportDropZone } from "@/components/import-drop-zone"
+import type { ImportedFile } from "@/lib/import"
 
 export { ListSidebar }
 
@@ -11,10 +13,12 @@ function ListSidebar({
 	header,
 	footer,
 	children,
+	onImport,
 }: {
 	header?: React.ReactNode
 	footer?: React.ReactNode
 	children: React.ReactNode
+	onImport?: (files: ImportedFile[]) => Promise<void>
 }) {
 	return (
 		<Sidebar side="left" collapsible="offcanvas">
@@ -28,7 +32,13 @@ function ListSidebar({
 				<div className="flex items-center gap-1">{header}</div>
 			</SidebarHeader>
 
-			<SidebarContent>{children}</SidebarContent>
+			<SidebarContent className="relative">
+				{onImport ? (
+					<ImportDropZone onImport={onImport}>{children}</ImportDropZone>
+				) : (
+					children
+				)}
+			</SidebarContent>
 
 			<SidebarFooter className="border-border flex flex-row gap-2 border-t">
 				{footer}

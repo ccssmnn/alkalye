@@ -55,7 +55,7 @@ function ImportDropZone({ onImport, children }: ImportDropZoneProps) {
 		>
 			{isDragging && (
 				<div className="bg-background/90 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
-					<div className="border-primary rounded-lg border-2 border-dashed p-6 text-center">
+					<div className="text-center">
 						<Upload className="text-primary mx-auto mb-2 size-8" />
 						<p className="text-sm font-medium">
 							Drop .md, .txt files or folders
