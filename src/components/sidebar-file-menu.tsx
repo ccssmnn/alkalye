@@ -37,8 +37,6 @@ import type { MarkdownEditorRef } from "@/editor/editor"
 
 export { SidebarFileMenu }
 
-// --- Types ---
-
 type LoadedDocument = co.loaded<
 	typeof Document,
 	{ content: true; assets: { $each: { image: true } } }
@@ -58,8 +56,6 @@ interface SidebarFileMenuProps {
 	me?: LoadedMe
 	spaceId?: string
 }
-
-// --- Component ---
 
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
@@ -226,8 +222,6 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	)
 }
 
-// --- Hooks ---
-
 function useFocusMode() {
 	return useSyncExternalStore(
 		callback => {
@@ -241,8 +235,6 @@ function useFocusMode() {
 		() => document.documentElement.dataset.focusMode === "true",
 	)
 }
-
-// --- Handler factories ---
 
 function makeToggleFocusMode(focusMode: boolean) {
 	return function handleToggleFocusMode() {
@@ -536,11 +528,7 @@ function makeMoveToSpace(
 	return function handleMoveToSpace(
 		destination: { id: string; name: string } | null,
 	) {
-		// Navigate to the document's new location
-		// We need to get the doc ID from the current route, but since we're in a callback
-		// the navigation will happen after the move completes
 		if (destination) {
-			// Get current doc ID from URL and navigate to new space location
 			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
 			if (docId) {
 				navigate({
@@ -549,7 +537,6 @@ function makeMoveToSpace(
 				})
 			}
 		} else if (currentSpaceId) {
-			// Moving from space to personal
 			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
 			if (docId) {
 				navigate({ to: "/doc/$id", params: { id: docId } })
@@ -557,8 +544,6 @@ function makeMoveToSpace(
 		}
 	}
 }
-
-// --- Utilities ---
 
 function runWithMobileClose(
 	isMobile: boolean,

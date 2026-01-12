@@ -545,8 +545,6 @@ function makeTimeMachineRestore(params: TimeMachineRestoreParams) {
 	}
 }
 
-// --- UI Components ---
-
 interface TimeMachineToolbarProps {
 	editDate: Date
 	authorName: string
