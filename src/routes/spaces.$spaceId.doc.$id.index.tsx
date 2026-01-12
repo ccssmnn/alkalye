@@ -184,6 +184,11 @@ function SpaceEditorContent({
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let pendingSave = useRef<{
+		timeoutId: ReturnType<typeof setTimeout>
+		content: string
+		cursor: { from: number; to?: number } | null
+	} | null>(null)
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
@@ -226,6 +231,22 @@ function SpaceEditorContent({
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
+
+	// Flush pending save when content changes (remote update arrived)
+	// This prevents visual flicker where local changes disappear briefly
+	useEffect(() => {
+		if (!pendingSave.current || !doc.content) return
+		clearTimeout(pendingSave.current.timeoutId)
+		let pendingContent = pendingSave.current.content
+		let cursor = pendingSave.current.cursor
+		pendingSave.current = null
+		doc.content.$jazz.applyDiff(pendingContent)
+		doc.$jazz.set("updatedAt", new Date())
+		if (cursor) {
+			updateCursor(cursor.from, cursor.to)
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [content])
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
@@ -344,12 +365,31 @@ function SpaceEditorContent({
 					ref={editor}
 					value={content}
 					onChange={newContent => {
-						handleChange(doc, newContent)
+						if (pendingSave.current) {
+							clearTimeout(pendingSave.current.timeoutId)
+						}
+						pendingSave.current = {
+							content: newContent,
+							cursor: null,
+							timeoutId: setTimeout(() => {
+								let cursor = pendingSave.current?.cursor
+								pendingSave.current = null
+								doc.content?.$jazz.applyDiff(newContent)
+								doc.$jazz.set("updatedAt", new Date())
+								if (cursor) {
+									updateCursor(cursor.from, cursor.to)
+								}
+							}, 250),
+						}
 						syncBacklinks(newContent)
 					}}
-					onCursorChange={(from, to) =>
-						updateCursor(from, from !== to ? to : undefined)
-					}
+					onCursorChange={(from, to) => {
+						if (pendingSave.current) {
+							pendingSave.current.cursor = { from, to }
+						} else {
+							updateCursor(from, to)
+						}
+					}}
 					placeholder="Start writing..."
 					readOnly={readOnly}
 					assets={assets}
@@ -595,12 +635,6 @@ function makeDeleteAsset(
 			doc.$jazz.set("updatedAt", new Date())
 		}
 	}
-}
-
-function handleChange(doc: LoadedDocument, newContent: string) {
-	if (!doc.content) return
-	doc.content.$jazz.applyDiff(newContent)
-	doc.$jazz.set("updatedAt", new Date())
 }
 
 async function handleSaveCopy(

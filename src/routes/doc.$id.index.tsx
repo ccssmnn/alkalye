@@ -189,6 +189,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let pendingSave = useRef<{
+		timeoutId: ReturnType<typeof setTimeout>
+		content: string
+		cursor: { from: number; to?: number } | null
+	} | null>(null)
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
@@ -229,8 +234,24 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
 	useEditorSettings(editorSettings)
 
-	let content = doc.content?.toString() ?? ""
+	let content = doc.content.toString()
 	let docTitle = getDocumentTitle(content)
+
+	// Flush pending save when content changes (remote update arrived)
+	// This prevents visual flicker where local changes disappear briefly
+	useEffect(() => {
+		if (!pendingSave.current) return
+		clearTimeout(pendingSave.current.timeoutId)
+		let pendingContent = pendingSave.current.content
+		let cursor = pendingSave.current.cursor
+		pendingSave.current = null
+		doc.content.$jazz.applyDiff(pendingContent)
+		doc.$jazz.set("updatedAt", new Date())
+		if (cursor) {
+			updateCursor(cursor.from, cursor.to)
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [content])
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
@@ -349,12 +370,33 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					ref={editor}
 					value={content}
 					onChange={newContent => {
-						handleChange(doc, newContent)
+						if (pendingSave.current) {
+							clearTimeout(pendingSave.current.timeoutId)
+						}
+						pendingSave.current = {
+							content: newContent,
+							cursor: null,
+							timeoutId: setTimeout(() => {
+								let cursor = pendingSave.current?.cursor
+								pendingSave.current = null
+								doc.content.$jazz.applyDiff(newContent)
+								doc.$jazz.set("updatedAt", new Date())
+								// Send cursor position after content is committed
+								if (cursor) {
+									updateCursor(cursor.from, cursor.to)
+								}
+							}, 250),
+						}
 						syncBacklinks(newContent)
 					}}
-					onCursorChange={(from, to) =>
-						updateCursor(from, from !== to ? to : undefined)
-					}
+					onCursorChange={(from, to) => {
+						// Delay cursor sync while content changes are pending
+						if (pendingSave.current) {
+							pendingSave.current.cursor = { from, to }
+						} else {
+							updateCursor(from, to)
+						}
+					}}
 					placeholder="Start writing..."
 					readOnly={readOnly}
 					assets={assets}
@@ -642,22 +684,6 @@ function makeDeleteAsset(
 			doc.$jazz.set("updatedAt", new Date())
 		}
 	}
-}
-
-let saveTimeoutId: ReturnType<typeof setTimeout> | null = null
-
-function handleChange(doc: LoadedDocument, newContent: string) {
-	if (!doc.content) return
-
-	if (saveTimeoutId) {
-		clearTimeout(saveTimeoutId)
-	}
-
-	saveTimeoutId = setTimeout(() => {
-		saveTimeoutId = null
-		doc.content?.$jazz.applyDiff(newContent)
-		doc.$jazz.set("updatedAt", new Date())
-	}, 250)
 }
 
 async function handleSaveCopy(
