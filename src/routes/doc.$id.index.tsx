@@ -77,23 +77,6 @@ import { HelpMenu } from "@/components/help-menu"
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
-	validateSearch: (
-		search: Record<string, unknown>,
-	): {
-		timemachine?: boolean
-		edit?: number
-	} => {
-		return {
-			timemachine:
-				search.timemachine === "true" || search.timemachine === true
-					? true
-					: undefined,
-			edit:
-				typeof search.edit === "string" || typeof search.edit === "number"
-					? Number(search.edit)
-					: undefined,
-		}
-	},
 	loader: async ({ params, context }) => {
 		let doc = await Document.load(params.id, { resolve: loaderResolve })
 		if (!doc.$isLoaded) {
@@ -112,21 +95,9 @@ let Route = createFileRoute("/doc/$id/")({
 function EditorPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
-	let { timemachine, edit } = Route.useSearch()
 	let navigate = useNavigate()
 
 	let doc = useCoState(Document, id, { resolve })
-
-	useEffect(() => {
-		if (timemachine) {
-			navigate({
-				to: "/doc/$id/timemachine",
-				params: { id },
-				search: { edit },
-				replace: true,
-			})
-		}
-	}, [timemachine, id, edit, navigate])
 
 	useEffect(() => {
 		if (data.doc?.spaceId) {
@@ -307,6 +278,34 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	let personalDocs =
 		me.$isLoaded && me.root?.documents?.$isLoaded ? me.root.documents : null
 
+	function handleChange(newContent: string) {
+		if (pendingSave.current) {
+			clearTimeout(pendingSave.current.timeoutId)
+		}
+		pendingSave.current = {
+			content: newContent,
+			cursor: null,
+			timeoutId: setTimeout(() => {
+				let cursor = pendingSave.current?.cursor
+				pendingSave.current = null
+				doc.content.$jazz.applyDiff(newContent)
+				doc.$jazz.set("updatedAt", new Date())
+				if (cursor) {
+					updateCursor(cursor.from, cursor.to)
+				}
+			}, 250),
+		}
+		syncBacklinks(newContent)
+	}
+
+	function handleCursorChange(from: number, to?: number) {
+		if (pendingSave.current) {
+			pendingSave.current.cursor = { from, to }
+		} else {
+			updateCursor(from, to)
+		}
+	}
+
 	return (
 		<>
 			<title>{docTitle}</title>
@@ -369,34 +368,8 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				<MarkdownEditor
 					ref={editor}
 					value={content}
-					onChange={newContent => {
-						if (pendingSave.current) {
-							clearTimeout(pendingSave.current.timeoutId)
-						}
-						pendingSave.current = {
-							content: newContent,
-							cursor: null,
-							timeoutId: setTimeout(() => {
-								let cursor = pendingSave.current?.cursor
-								pendingSave.current = null
-								doc.content.$jazz.applyDiff(newContent)
-								doc.$jazz.set("updatedAt", new Date())
-								// Send cursor position after content is committed
-								if (cursor) {
-									updateCursor(cursor.from, cursor.to)
-								}
-							}, 250),
-						}
-						syncBacklinks(newContent)
-					}}
-					onCursorChange={(from, to) => {
-						// Delay cursor sync while content changes are pending
-						if (pendingSave.current) {
-							pendingSave.current.cursor = { from, to }
-						} else {
-							updateCursor(from, to)
-						}
-					}}
+					onChange={handleChange}
+					onCursorChange={handleCursorChange}
 					placeholder="Start writing..."
 					readOnly={readOnly}
 					assets={assets}
