@@ -32,7 +32,13 @@ import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Image as ImageIcon, Pencil, Trash2, Plus } from "lucide-react"
+import {
+	Image as ImageIcon,
+	Pencil,
+	Trash2,
+	Plus,
+	Download,
+} from "lucide-react"
 
 export { SidebarAssets }
 export type { SidebarAsset }
@@ -49,6 +55,7 @@ interface SidebarAssetsProps {
 	onUpload?: (files: FileList) => void
 	onRename?: (assetId: string, newName: string) => void
 	onDelete?: (assetId: string) => void
+	onDownload?: (assetId: string, name: string) => void
 	onInsert?: (assetId: string, name: string) => void
 	isAssetUsed?: (assetId: string) => boolean
 }
@@ -59,6 +66,7 @@ function SidebarAssets({
 	onUpload,
 	onRename,
 	onDelete,
+	onDownload,
 	onInsert,
 	isAssetUsed,
 }: SidebarAssetsProps) {
@@ -170,6 +178,14 @@ function SidebarAssets({
 											>
 												<Plus className="size-4" />
 												Insert
+											</DropdownMenuItem>
+										)}
+										{onDownload && (
+											<DropdownMenuItem
+												onClick={() => onDownload(asset.id, asset.name)}
+											>
+												<Download className="size-4" />
+												Download
 											</DropdownMenuItem>
 										)}
 										{onRename && (

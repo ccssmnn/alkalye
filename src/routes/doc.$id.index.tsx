@@ -15,6 +15,7 @@ import {
 	makeRenameAsset,
 	makeIsAssetUsed,
 	makeDeleteAsset,
+	makeDownloadAsset,
 	handleSaveCopy,
 	setupKeyboardShortcuts,
 	loaderResolve,
@@ -464,6 +465,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 						onUpload={makeUploadAssets(doc)}
 						onRename={makeRenameAsset(doc)}
 						onDelete={makeDeleteAsset(doc, docWithContent)}
+						onDownload={makeDownloadAsset(doc)}
 						onInsert={(assetId, name) => {
 							editor.current?.insertText(`![${name}](asset:${assetId})`)
 						}}

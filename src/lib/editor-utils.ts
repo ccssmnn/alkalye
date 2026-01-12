@@ -13,6 +13,7 @@ export {
 	makeRenameAsset,
 	makeIsAssetUsed,
 	makeDeleteAsset,
+	makeDownloadAsset,
 	handleSaveCopy,
 	setupKeyboardShortcuts,
 	loaderResolve,
@@ -155,6 +156,28 @@ function makeDeleteAsset(
 			doc.assets.$jazz.splice(idx, 1)
 			doc.$jazz.set("updatedAt", new Date())
 		}
+	}
+}
+
+function makeDownloadAsset(doc: LoadedDocument) {
+	return function handleDownloadAsset(assetId: string, name: string) {
+		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return
+
+		let original = asset.image.original
+		if (!original?.$isLoaded) return
+
+		let blob = original.toBlob()
+		if (!blob) return
+
+		let url = URL.createObjectURL(blob)
+		let a = document.createElement("a")
+		a.href = url
+		a.download = `${name}.${blob.type.split("/")[1] || "png"}`
+		document.body.appendChild(a)
+		a.click()
+		document.body.removeChild(a)
+		URL.revokeObjectURL(url)
 	}
 }
 
