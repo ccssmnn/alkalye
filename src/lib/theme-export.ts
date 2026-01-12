@@ -30,16 +30,6 @@ interface ThemeManifest {
 	thumbnail?: string
 }
 
-/**
- * Export a theme as a zip file that can be re-imported.
- * Creates a complete theme.zip with:
- * - theme.json manifest
- * - styles.css
- * - template.html (if present)
- * - presets.json (if present)
- * - fonts/ directory with font files
- * - thumbnail image (if present)
- */
 async function exportTheme(theme: LoadedThemeForExport): Promise<void> {
 	let zip = new JSZip()
 

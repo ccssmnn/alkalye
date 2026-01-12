@@ -27,7 +27,6 @@ type ThemeStyles = {
 	blobUrls: string[]
 }
 
-// Cache for built theme styles, keyed by theme ID + preset name
 type CacheEntry = {
 	styles: ThemeStyles
 	themeUpdatedAt: number
@@ -39,8 +38,6 @@ function getCacheKey(themeId: string, presetName: string | null): string {
 	return `${themeId}:${presetName ?? "__default__"}`
 }
 
-// Get cached theme styles or build and cache them
-// Returns cached styles if theme hasn't been updated since caching
 function getCachedThemeStyles(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -55,21 +52,18 @@ function getCachedThemeStyles(
 		return cached.styles
 	}
 
-	// Revoke old blob URLs if we're replacing an existing cache entry
 	if (cached) {
 		for (let url of cached.styles.blobUrls) {
 			URL.revokeObjectURL(url)
 		}
 	}
 
-	// Build new styles and cache them
 	let styles = buildThemeStyles(theme, preset)
 	themeStylesCache.set(cacheKey, { styles, themeUpdatedAt })
 
 	return styles
 }
 
-// Cleanup cache entry for a specific theme (call when theme is deleted)
 function cleanupThemeCache(themeId: string): void {
 	for (let [key, entry] of themeStylesCache) {
 		if (key.startsWith(`${themeId}:`)) {
@@ -85,8 +79,6 @@ type ThemeRenderResult =
 	| { ok: true; styles: ThemeStyles }
 	| { ok: false; error: string }
 
-// Build complete CSS styles for a theme including fonts and preset variables
-// Returns blob URLs that should be revoked when component unmounts
 function buildThemeStyles(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -95,14 +87,11 @@ function buildThemeStyles(
 	let fontFaceRules = ""
 	let presetVariables = ""
 
-	// Build @font-face rules from theme assets
 	if (theme.assets?.$isLoaded) {
 		for (let asset of [...theme.assets]) {
 			if (!asset?.$isLoaded) continue
 			let loaded = asset as LoadedAsset
 			if (!loaded.data?.$isLoaded) continue
-
-			// Only process font files
 			if (!loaded.mimeType.startsWith("font/")) continue
 
 			let blob = loaded.data.toBlob()
@@ -121,17 +110,14 @@ function buildThemeStyles(
 		}
 	}
 
-	// Build CSS variables from preset colors
 	if (preset) {
 		let vars: string[] = []
 		let { colors, fonts } = preset
 
-		// Core colors
 		vars.push(`--preset-background: ${colors.background}`)
 		vars.push(`--preset-foreground: ${colors.foreground}`)
 		vars.push(`--preset-accent: ${colors.accent}`)
 
-		// Accent color palette (accent-1 is the primary accent, accent-2 through accent-6 from accents array)
 		vars.push(`--preset-accent-1: ${colors.accent}`)
 		if (colors.accents) {
 			for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
@@ -139,20 +125,16 @@ function buildThemeStyles(
 			}
 		}
 
-		// Optional colors
 		if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
 		if (colors.link) vars.push(`--preset-link: ${colors.link}`)
 		if (colors.codeBackground)
 			vars.push(`--preset-code-background: ${colors.codeBackground}`)
 
-		// Fonts
 		if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
 		if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
 
-		// Add appearance class
 		vars.push(`--preset-appearance: ${preset.appearance}`)
 
-		// Also expose as --theme-* aliases for theme authors who prefer this naming
 		vars.push(`--theme-background: ${colors.background}`)
 		vars.push(`--theme-foreground: ${colors.foreground}`)
 		vars.push(`--theme-accent: ${colors.accent}`)
@@ -160,7 +142,6 @@ function buildThemeStyles(
 		presetVariables = `:root {\n\t${vars.join(";\n\t")};\n}`
 	}
 
-	// Get the theme CSS
 	let css = theme.css?.toString() ?? ""
 
 	return {
@@ -181,9 +162,6 @@ function getFontFormat(mimeType: string): string {
 	return formats[mimeType] ?? "woff2"
 }
 
-// Safe wrapper that catches errors during theme style building
-// Returns a result object indicating success or failure with error message
-// Logs errors to console for debugging
 function tryBuildThemeStyles(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -202,9 +180,6 @@ function tryBuildThemeStyles(
 	}
 }
 
-// Safe wrapper that uses caching for theme styles
-// Returns cached styles if available, otherwise builds and caches them
-// Logs errors to console for debugging
 function tryCachedThemeStyles(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -223,8 +198,6 @@ function tryCachedThemeStyles(
 	}
 }
 
-// Async version of getCachedThemeStyles that yields to the main thread
-// This prevents large themes from blocking rendering
 async function getCachedThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -239,22 +212,18 @@ async function getCachedThemeStylesAsync(
 		return cached.styles
 	}
 
-	// Revoke old blob URLs if we're replacing an existing cache entry
 	if (cached) {
 		for (let url of cached.styles.blobUrls) {
 			URL.revokeObjectURL(url)
 		}
 	}
 
-	// Build new styles asynchronously and cache them
 	let styles = await buildThemeStylesAsync(theme, preset)
 	themeStylesCache.set(cacheKey, { styles, themeUpdatedAt })
 
 	return styles
 }
 
-// Async version of buildThemeStyles that yields to the main thread
-// This allows the browser to render content while processing large themes
 async function buildThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -263,15 +232,12 @@ async function buildThemeStylesAsync(
 	let fontFaceRules = ""
 	let presetVariables = ""
 
-	// Build CSS variables first (fast, needed for initial colors)
 	if (preset) {
 		presetVariables = buildPresetVariables(preset)
 	}
 
-	// Yield to main thread before processing fonts
 	await yieldToMain()
 
-	// Build @font-face rules from theme assets
 	if (theme.assets?.$isLoaded) {
 		let assets = [...theme.assets]
 		for (let i = 0; i < assets.length; i++) {
@@ -279,8 +245,6 @@ async function buildThemeStylesAsync(
 			if (!asset?.$isLoaded) continue
 			let loaded = asset as LoadedAsset
 			if (!loaded.data?.$isLoaded) continue
-
-			// Only process font files
 			if (!loaded.mimeType.startsWith("font/")) continue
 
 			let blob = loaded.data.toBlob()
@@ -296,14 +260,12 @@ async function buildThemeStylesAsync(
 	font-display: swap;
 }
 `
-			// Yield every few fonts to keep UI responsive
 			if (i % 3 === 2) {
 				await yieldToMain()
 			}
 		}
 	}
 
-	// Get the theme CSS
 	let css = theme.css?.toString() ?? ""
 
 	return {
@@ -314,26 +276,20 @@ async function buildThemeStylesAsync(
 	}
 }
 
-// Yield to the main thread to allow rendering/events to process
 function yieldToMain(): Promise<void> {
 	return new Promise(resolve => {
-		// Use setTimeout(0) for broader compatibility
-		// requestIdleCallback would be better but not available everywhere
 		setTimeout(resolve, 0)
 	})
 }
 
-// Extract preset variable building into reusable function
 function buildPresetVariables(preset: ThemePresetType): string {
 	let vars: string[] = []
 	let { colors, fonts } = preset
 
-	// Core colors
 	vars.push(`--preset-background: ${colors.background}`)
 	vars.push(`--preset-foreground: ${colors.foreground}`)
 	vars.push(`--preset-accent: ${colors.accent}`)
 
-	// Accent color palette (accent-1 is the primary accent, accent-2 through accent-6 from accents array)
 	vars.push(`--preset-accent-1: ${colors.accent}`)
 	if (colors.accents) {
 		for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
@@ -341,20 +297,16 @@ function buildPresetVariables(preset: ThemePresetType): string {
 		}
 	}
 
-	// Optional colors
 	if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
 	if (colors.link) vars.push(`--preset-link: ${colors.link}`)
 	if (colors.codeBackground)
 		vars.push(`--preset-code-background: ${colors.codeBackground}`)
 
-	// Fonts
 	if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
 	if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
 
-	// Add appearance class
 	vars.push(`--preset-appearance: ${preset.appearance}`)
 
-	// Also expose as --theme-* aliases for theme authors who prefer this naming
 	vars.push(`--theme-background: ${colors.background}`)
 	vars.push(`--theme-foreground: ${colors.foreground}`)
 	vars.push(`--theme-accent: ${colors.accent}`)
@@ -362,8 +314,6 @@ function buildPresetVariables(preset: ThemePresetType): string {
 	return `:root {\n\t${vars.join(";\n\t")};\n}`
 }
 
-// Async safe wrapper that uses caching for theme styles
-// Returns cached styles if available, otherwise builds and caches them asynchronously
 async function tryCachedThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -386,38 +336,26 @@ type TemplateRenderResult =
 	| { ok: true; html: string }
 	| { ok: false; error: string }
 
-// Render document content into an HTML template
-// Template should have an element with [data-document] attribute
-// Returns null if template is invalid (no data-document placeholder)
 function renderTemplateWithContent(
 	template: string,
 	content: string,
 ): string | null {
-	// Parse the template to find the data-document placeholder
 	let parser = new DOMParser()
 	let doc = parser.parseFromString(template, "text/html")
 
-	// Find the element with data-document attribute
 	let placeholder = doc.querySelector("[data-document]")
 	if (!placeholder) return null
 
-	// Inject the rendered content into the placeholder
 	placeholder.innerHTML = content
 
-	// Collect styles from head (DOMParser moves <style> tags there)
 	let headStyles = Array.from(doc.head.querySelectorAll("style"))
 		.map(s => s.outerHTML)
 		.join("\n")
 
-	// Return body HTML + head styles
-	// This preserves <style> blocks that were in the original template
 	let bodyHtml = doc.body.innerHTML
 	return headStyles ? bodyHtml + "\n" + headStyles : bodyHtml
 }
 
-// Safe wrapper that catches errors during template rendering
-// Returns a result object indicating success or failure with error message
-// Logs errors to console for debugging
 function tryRenderTemplateWithContent(
 	template: string,
 	content: string,

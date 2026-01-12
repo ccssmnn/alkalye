@@ -37,15 +37,6 @@ interface PreviewProps {
 function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
 	let documentTheme = useDocumentTheme(content, "preview", resolvedTheme)
-	console.log("[Preview] Document theme:", {
-		themeName: documentTheme.theme?.name,
-		presetName: documentTheme.preset?.name,
-		warning: documentTheme.warning,
-		hasTemplate: !!documentTheme.theme?.template,
-		templateLength: documentTheme.theme?.template?.toString().length,
-		hasCss: !!documentTheme.theme?.css,
-		cssLength: documentTheme.theme?.css?.toString().length,
-	})
 
 	let wikilinkResolver: WikilinkTitleResolver = docId => {
 		return wikilinks.get(docId) ?? { title: docId, exists: false }
@@ -152,20 +143,6 @@ function PreviewContent({
 				.join("\n")
 		: transitionStyles
 
-	console.log("[PreviewContent] Theme styles:", {
-		hasThemeStyles: !!themeStyles,
-		hasFontFaceRules: !!themeStyles?.fontFaceRules,
-		fontFaceLength: themeStyles?.fontFaceRules?.length,
-		hasPresetVariables: !!themeStyles?.presetVariables,
-		presetVarsLength: themeStyles?.presetVariables?.length,
-		hasCss: !!themeStyles?.css,
-		cssLength: themeStyles?.css?.length,
-		cssFirst200: themeStyles?.css?.slice(0, 200),
-		injectedStylesLength: injectedStyles.length,
-		error: themeStylesResult.error,
-	})
-
-	// Get template HTML from theme (if available)
 	let templateHtml = documentTheme.theme?.template?.toString() ?? null
 	let themeName = documentTheme.theme?.name ?? "unknown"
 
@@ -190,20 +167,6 @@ function PreviewContent({
 		}
 	}
 
-	console.log("[PreviewContent] Template rendering:", {
-		hasTemplateHtml: !!templateHtml,
-		templateHtmlLength: templateHtml?.length,
-		templateFirst200: templateHtml?.slice(0, 200),
-		hasCombinedHtml: !!combinedHtml,
-		combinedHtmlLength: combinedHtml?.length,
-		hasTemplatedContent: !!templatedContent,
-		templatedContentLength: templatedContent?.length,
-		templatedFirst300: templatedContent?.slice(0, 300),
-		templateError,
-		usingTemplatePath: !!templatedContent,
-	})
-
-	// Combine all error messages for display
 	let errorMessage = themeStylesResult.error || templateError || null
 
 	return (

@@ -547,15 +547,6 @@ type LoadedTheme = co.loaded<typeof Theme>
 
 function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 	let themesList = themes ?? []
-	console.log("[DefaultThemeSettings] Settings object:", settings)
-	console.log(
-		"[DefaultThemeSettings] Current defaultPreviewTheme:",
-		settings?.defaultPreviewTheme,
-	)
-	console.log(
-		"[DefaultThemeSettings] Current defaultSlideshowTheme:",
-		settings?.defaultSlideshowTheme,
-	)
 
 	function isLoadedTheme(t: unknown): t is LoadedTheme {
 		return (
@@ -573,7 +564,6 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 
 	function handlePreviewThemeChange(value: string | null) {
 		if (!settings || !value) return
-		console.log("[Settings] Setting defaultPreviewTheme to:", value)
 		if (value === "__none__") {
 			settings.$jazz.set("defaultPreviewTheme", undefined)
 		} else {
@@ -583,7 +573,6 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 
 	function handleSlideshowThemeChange(value: string | null) {
 		if (!settings || !value) return
-		console.log("[Settings] Setting defaultSlideshowTheme to:", value)
 		if (value === "__none__") {
 			settings.$jazz.set("defaultSlideshowTheme", undefined)
 		} else {

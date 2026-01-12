@@ -7,8 +7,6 @@ export { buildPrintableHtml, openPrintWindow }
 type LoadedTheme = co.loaded<typeof Theme, ThemesQuery["$each"]>
 type LoadedAsset = co.loaded<typeof ThemeAsset, { data: true }>
 
-// Build a complete HTML document ready for printing/PDF export
-// Includes all theme CSS and fonts embedded as base64 data URIs
 async function buildPrintableHtml(params: {
 	title: string
 	htmlContent: string
@@ -23,19 +21,15 @@ async function buildPrintableHtml(params: {
 	let themeCss = ""
 
 	if (theme) {
-		// Build @font-face rules with base64 embedded fonts
 		fontFaceRules = await buildFontFaceRulesBase64(theme)
 
-		// Build preset CSS variables
 		if (preset) {
 			presetVariables = buildPresetVariables(preset)
 		}
 
-		// Get theme CSS
 		themeCss = theme.css?.toString() ?? ""
 	}
 
-	// Build the complete HTML document
 	let html = `<!DOCTYPE html>
 <html lang="en" data-theme="${appearance}">
 <head>
@@ -227,32 +221,25 @@ async function buildPrintableHtml(params: {
 	return html
 }
 
-// Open a new window with the printable HTML and trigger print dialog
 function openPrintWindow(html: string): void {
 	let printWindow = window.open("", "_blank")
 	if (!printWindow) {
-		// Popup blocked - fall back to opening in same window
 		let blob = new Blob([html], { type: "text/html" })
 		let url = URL.createObjectURL(blob)
 		window.open(url, "_blank")
-		// Note: can't revoke URL since new window needs it
 		return
 	}
 
 	printWindow.document.write(html)
 	printWindow.document.close()
 
-	// Wait for fonts to load before printing
 	printWindow.onload = () => {
-		// Small delay to ensure fonts are fully rendered
 		setTimeout(() => {
 			printWindow.print()
 		}, 100)
 	}
 }
 
-// Build @font-face rules with fonts embedded as base64 data URIs
-// This ensures fonts work in the printed PDF without external references
 async function buildFontFaceRulesBase64(theme: LoadedTheme): Promise<string> {
 	if (!theme.assets?.$isLoaded) return ""
 
@@ -262,14 +249,11 @@ async function buildFontFaceRulesBase64(theme: LoadedTheme): Promise<string> {
 		if (!asset?.$isLoaded) continue
 		let loaded = asset as LoadedAsset
 		if (!loaded.data?.$isLoaded) continue
-
-		// Only process font files
 		if (!loaded.mimeType.startsWith("font/")) continue
 
 		let blob = loaded.data.toBlob()
 		if (!blob) continue
 
-		// Convert blob to base64 data URI
 		let base64 = await blobToBase64(blob)
 		let dataUri = `data:${loaded.mimeType};base64,${base64}`
 
@@ -284,17 +268,14 @@ async function buildFontFaceRulesBase64(theme: LoadedTheme): Promise<string> {
 	return rules.join("\n")
 }
 
-// Build CSS variables from preset colors
 function buildPresetVariables(preset: ThemePresetType): string {
 	let vars: string[] = []
 	let { colors, fonts } = preset
 
-	// Core colors
 	vars.push(`--preset-background: ${colors.background}`)
 	vars.push(`--preset-foreground: ${colors.foreground}`)
 	vars.push(`--preset-accent: ${colors.accent}`)
 
-	// Accent color palette
 	vars.push(`--preset-accent-1: ${colors.accent}`)
 	if (colors.accents) {
 		for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
@@ -302,20 +283,16 @@ function buildPresetVariables(preset: ThemePresetType): string {
 		}
 	}
 
-	// Optional colors
 	if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
 	if (colors.link) vars.push(`--preset-link: ${colors.link}`)
 	if (colors.codeBackground)
 		vars.push(`--preset-code-background: ${colors.codeBackground}`)
 
-	// Fonts
 	if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
 	if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
 
-	// Appearance
 	vars.push(`--preset-appearance: ${preset.appearance}`)
 
-	// Theme aliases
 	vars.push(`--theme-background: ${colors.background}`)
 	vars.push(`--theme-foreground: ${colors.foreground}`)
 	vars.push(`--theme-accent: ${colors.accent}`)
@@ -323,13 +300,11 @@ function buildPresetVariables(preset: ThemePresetType): string {
 	return `:root {\n\t${vars.join(";\n\t")};\n}`
 }
 
-// Convert Blob to base64 string
 function blobToBase64(blob: Blob): Promise<string> {
 	return new Promise((resolve, reject) => {
 		let reader = new FileReader()
 		reader.onloadend = () => {
 			let result = reader.result as string
-			// Remove the data URL prefix to get just the base64
 			let base64 = result.split(",")[1]
 			resolve(base64)
 		}
@@ -338,7 +313,6 @@ function blobToBase64(blob: Blob): Promise<string> {
 	})
 }
 
-// Get font format from MIME type
 function getFontFormat(mimeType: string): string {
 	let formats: Record<string, string> = {
 		"font/woff2": "woff2",
@@ -349,7 +323,6 @@ function getFontFormat(mimeType: string): string {
 	return formats[mimeType] ?? "woff2"
 }
 
-// Escape HTML special characters
 function escapeHtml(str: string): string {
 	return str
 		.replace(/&/g, "&amp;")

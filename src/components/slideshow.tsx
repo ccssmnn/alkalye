@@ -81,10 +81,8 @@ function Slideshow({
 	let appearanceTheme = parsePresentationTheme(content)
 	let systemTheme = useResolvedTheme()
 
-	// Effective appearance: frontmatter override takes precedence, then system theme
 	let effectiveAppearance = appearanceTheme ?? systemTheme
 
-	// Pass appearance to useDocumentTheme for auto-selecting light/dark presets
 	let documentTheme = useDocumentTheme(
 		content,
 		"slideshow",
@@ -106,15 +104,12 @@ function Slideshow({
 		}
 	}
 
-	// Base transition styles to prevent layout shift when theme loads
-	// These provide smooth transitions for common properties theme CSS might change
 	let transitionStyles = documentTheme.theme
 		? `[data-theme] { transition: color 150ms ease-out, background-color 150ms ease-out; }`
 		: ""
 
 	let slideshowBaseCss = getSlideshowBaseCss()
 
-	// Combine base + theme CSS (theme last so it wins)
 	let injectedStyles = themeStyles
 		? [
 				transitionStyles,
@@ -340,7 +335,6 @@ function ScaledSlideContainer({
 	)
 	let blockCount = blocks.length
 
-	// Calculate grid template based on block count and orientation
 	let gridTemplate: { cols: string; rows: string }
 	if (blockCount === 1) {
 		gridTemplate = { cols: "1fr", rows: "1fr" }
@@ -358,7 +352,6 @@ function ScaledSlideContainer({
 
 	let baseSize = baseSizes[size]
 
-	// Reset visibility when deps change using adjust-state-during-render pattern
 	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}-${measureKey}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
 	let depsChanged = depsKey !== prevDepsKey
@@ -369,7 +362,6 @@ function ScaledSlideContainer({
 		setMaxDimensions(null)
 	}
 
-	// Use effective values that account for in-progress state updates
 	let effectiveVisible = depsChanged ? false : visible
 	let effectiveScale = depsChanged ? 1 : scale
 	let effectiveMaxDimensions = depsChanged ? null : maxDimensions
@@ -766,7 +758,6 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	)
 }
 
-// Base image size at scale=1 (400px), scales with --slide-scale
 let IMAGE_BASE_SIZE = 400
 
 function SlideImage({ src, alt }: { src: string; alt: string }) {
@@ -777,7 +768,6 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 		maxHeight: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
 	}
 
-	// Check if this is a Jazz asset reference
 	let assetMatch = src.match(/^asset:(.+)$/)
 	if (assetMatch) {
 		let assetId = assetMatch[1]
@@ -789,7 +779,6 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 			)
 		}
 
-		// Asset not loaded yet, show placeholder
 		return (
 			<div
 				className="slideshow-image-placeholder flex aspect-video items-center justify-center"
@@ -800,7 +789,6 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 		)
 	}
 
-	// Regular URL image
 	return <img src={src} alt={alt} style={sizeStyle} />
 }
 
@@ -858,23 +846,17 @@ type ThemeStylesResult = {
 	isLoading: boolean
 }
 
-// Hook to get theme styles using the global cache with async loading
-// Styles are loaded asynchronously to prevent blocking rendering of large themes
-// Cache handles blob URL lifecycle, so no cleanup needed here
 function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [styles, setStyles] = useState<ThemeStyles | null>(null)
 	let [error, setError] = useState<string | null>(null)
-	// Track the theme ID we've loaded styles for to derive loading state
 	let [loadedThemeId, setLoadedThemeId] = useState<string | null>(null)
 	let [fontsReady, setFontsReady] = useState(false)
 
 	let currentThemeId = documentTheme.theme?.$jazz.id ?? null
-	// Loading if: theme exists but styles not loaded, OR styles loaded but fonts not ready
 	let isLoading =
 		currentThemeId !== null &&
 		(currentThemeId !== loadedThemeId || (styles !== null && !fontsReady))
 
-	// Clear state when theme changes (adjust state during render pattern)
 	let [prevThemeId, setPrevThemeId] = useState<string | null>(currentThemeId)
 	if (currentThemeId !== prevThemeId) {
 		setPrevThemeId(currentThemeId)
@@ -884,7 +866,6 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 		setFontsReady(false)
 	}
 
-	// Load theme styles
 	useEffect(() => {
 		if (!documentTheme.theme) return
 
@@ -910,13 +891,11 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 		}
 	}, [documentTheme.theme, documentTheme.preset])
 
-	// Wait for fonts AFTER styles are set (so font-face rules are in DOM)
 	useEffect(() => {
 		if (!styles) return
 
 		let cancelled = false
 
-		// Wait a frame for styles to be injected into DOM, then wait for fonts
 		requestAnimationFrame(() => {
 			if (cancelled) return
 			document.fonts.ready.then(() => {

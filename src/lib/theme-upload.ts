@@ -12,20 +12,6 @@ export {
 	type ThemeUploadError,
 }
 
-// iA Writer template detection and conversion
-// iA Writer templates are bundles with structure:
-// TemplateName.iatemplate/Contents/Info.plist
-// TemplateName.iatemplate/Contents/Resources/document.html
-// TemplateName.iatemplate/Contents/Resources/style.css
-
-// iA Presenter theme detection and conversion
-// iA Presenter themes have structure:
-// ThemeName.iapresentertheme/template.json (or template.json at root)
-// ThemeName.iapresentertheme/presets.json
-// ThemeName.iapresentertheme/styles.css or theme.css
-// ThemeName.iapresentertheme/fonts/
-
-// Schema for theme.json manifest file
 let ThemeJsonSchema = z.object({
 	version: z.literal(1),
 	name: z.string().min(1, "Theme name is required"),
@@ -92,21 +78,16 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		}
 	}
 
-	// Check for iA Writer template format first
-	// iA Writer templates have Contents/Info.plist structure
 	let plistPath = findIAWriterPlist(zip)
 	if (plistPath) {
 		return parseIAWriterTemplate(zip, plistPath)
 	}
 
-	// Check for iA Presenter theme format
-	// iA Presenter themes have template.json structure
 	let templateJsonPath = findIAPresenterTemplate(zip)
 	if (templateJsonPath) {
 		return parseIAPresenterTheme(zip, templateJsonPath)
 	}
 
-	// Find theme.json - could be at root or in a single top-level folder
 	let themeJsonPath = findFile(zip, "theme.json")
 	if (!themeJsonPath) {
 		return {
@@ -119,12 +100,10 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		}
 	}
 
-	// Determine base path (folder containing theme.json)
 	let basePath = themeJsonPath.includes("/")
 		? themeJsonPath.substring(0, themeJsonPath.lastIndexOf("/") + 1)
 		: ""
 
-	// Parse theme.json
 	let themeJsonContent: string
 	try {
 		themeJsonContent = await zip.file(themeJsonPath)!.async("string")
@@ -149,7 +128,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 
 	let themeJson = themeJsonResult.data
 
-	// Read CSS file
 	let cssPath = basePath + themeJson.css
 	let cssFile = zip.file(cssPath)
 	if (!cssFile) {
@@ -165,7 +143,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 	let css: string
 	try {
 		let rawCss = await cssFile.async("string")
-		// Sanitize CSS to remove dangerous patterns
 		let cssResult = sanitizeCss(rawCss)
 		css = cssResult.sanitized
 	} catch {
@@ -179,7 +156,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		}
 	}
 
-	// Read template if specified
 	let template: string | undefined
 	if (themeJson.template) {
 		let templatePath = basePath + themeJson.template
@@ -187,7 +163,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		if (templateFile) {
 			try {
 				let rawTemplate = await templateFile.async("string")
-				// Sanitize HTML template to remove scripts, event handlers, etc.
 				let templateResult = sanitizeHtml(rawTemplate)
 				template = templateResult.sanitized
 			} catch {
@@ -196,7 +171,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		}
 	}
 
-	// Read presets if specified
 	let presets: z.infer<typeof ThemePreset>[] | undefined
 	if (themeJson.presets) {
 		let presetsPath = basePath + themeJson.presets
@@ -206,7 +180,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 				let presetsContent = await presetsFile.async("string")
 				let presetsJson = JSON.parse(presetsContent)
 
-				// Validate presets array
 				let presetsArray = Array.isArray(presetsJson)
 					? presetsJson
 					: presetsJson.presets
@@ -263,7 +236,6 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 		}
 	}
 
-	// Extract font assets
 	let assets: ParsedThemeAsset[] = []
 	if (themeJson.fonts) {
 		for (let font of themeJson.fonts) {
@@ -280,13 +252,12 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 						file,
 					})
 				} catch {
-					// Font loading failed, continue without it
+					// skip
 				}
 			}
 		}
 	}
 
-	// Read thumbnail if specified
 	let thumbnail: File | undefined
 	if (themeJson.thumbnail) {
 		let thumbnailPath = basePath + themeJson.thumbnail
@@ -297,7 +268,7 @@ async function parseThemeZip(file: File): Promise<ParseResult> {
 				let mimeType = getImageMimeType(themeJson.thumbnail)
 				thumbnail = new File([blob], "thumbnail", { type: mimeType })
 			} catch {
-				// Thumbnail is optional, continue without it
+				// skip
 			}
 		}
 	}
@@ -395,8 +366,6 @@ function getImageMimeType(path: string): string {
 	return mimeTypes[ext || ""] || "image/png"
 }
 
-// iA Writer template support
-
 interface IAWriterPlist {
 	CFBundleName?: string
 	IATemplateDocumentFile?: string
@@ -408,10 +377,6 @@ function findIAWriterPlist(zip: JSZip): string | null {
 	let found: string | null = null
 	zip.forEach((path, entry) => {
 		if (entry.dir) return
-		// Match patterns like:
-		// Contents/Info.plist (at root)
-		// Something.iatemplate/Contents/Info.plist (one folder deep)
-		// Something/Contents/Info.plist (one folder deep)
 		if (
 			path.endsWith("/Contents/Info.plist") ||
 			path === "Contents/Info.plist"
@@ -423,11 +388,8 @@ function findIAWriterPlist(zip: JSZip): string | null {
 }
 
 function parsePlist(content: string): IAWriterPlist {
-	// Simple XML plist parser for the fields we need
-	// Handles the standard Apple plist format
 	let result: IAWriterPlist = {}
 
-	// Extract key-value pairs from dict
 	let keyRegex = /<key>([^<]+)<\/key>\s*<string>([^<]*)<\/string>/g
 	let match: RegExpExecArray | null
 
@@ -457,7 +419,6 @@ function extractCssPathsFromHtml(html: string): string[] {
 
 	while ((match = linkRegex.exec(html)) !== null) {
 		let href = match[1]
-		// Only include relative paths (not http/https URLs)
 		if (
 			!href.startsWith("http://") &&
 			!href.startsWith("https://") &&
@@ -475,20 +436,17 @@ function extractImportsFromCss(
 	basePath: string,
 	zip: JSZip,
 ): string[] {
-	// Extract @import paths from CSS
 	let paths: string[] = []
 	let importRegex = /@import\s+['"]([^'"]+)['"]/g
 	let match: RegExpExecArray | null
 
 	while ((match = importRegex.exec(css)) !== null) {
 		let importPath = match[1]
-		// Only include relative paths
 		if (
 			!importPath.startsWith("http://") &&
 			!importPath.startsWith("https://") &&
 			!importPath.startsWith("//")
 		) {
-			// Resolve relative path
 			let fullPath = basePath + importPath
 			if (zip.file(fullPath)) {
 				paths.push(importPath)
@@ -503,12 +461,9 @@ async function parseIAWriterTemplate(
 	zip: JSZip,
 	plistPath: string,
 ): Promise<ParseResult> {
-	// Determine base paths
-	// plistPath is like "Something.iatemplate/Contents/Info.plist" or "Contents/Info.plist"
-	let contentsPath = plistPath.substring(0, plistPath.lastIndexOf("/") + 1) // "Something.iatemplate/Contents/"
+	let contentsPath = plistPath.substring(0, plistPath.lastIndexOf("/") + 1)
 	let resourcesPath = contentsPath + "Resources/"
 
-	// Read and parse Info.plist
 	let plistContent: string
 	try {
 		plistContent = await zip.file(plistPath)!.async("string")
@@ -525,7 +480,6 @@ async function parseIAWriterTemplate(
 
 	let plist = parsePlist(plistContent)
 
-	// Validate required fields
 	if (!plist.CFBundleName) {
 		return {
 			ok: false,
@@ -550,7 +504,6 @@ async function parseIAWriterTemplate(
 		}
 	}
 
-	// Read document.html (main template)
 	let templateFileName = plist.IATemplateDocumentFile + ".html"
 	let templatePath = resourcesPath + templateFileName
 	let templateFile = zip.file(templatePath)
@@ -580,10 +533,8 @@ async function parseIAWriterTemplate(
 		}
 	}
 
-	// Extract CSS file paths from HTML
 	let cssFilePaths = extractCssPathsFromHtml(rawTemplate)
 
-	// Read and concatenate all CSS files
 	let cssContents: string[] = []
 	let processedCssFiles = new Set<string>()
 
@@ -598,13 +549,11 @@ async function parseIAWriterTemplate(
 		try {
 			let cssContent = await cssFile.async("string")
 
-			// Find @import statements and process those files first
 			let imports = extractImportsFromCss(cssContent, resourcesPath, zip)
 			for (let importPath of imports) {
 				await processCssFile(importPath)
 			}
 
-			// Remove @import statements from the CSS since we're inlining them
 			let cleanedCss = cssContent.replace(
 				/@import\s+['"][^'"]+['"]\s*[^;]*;?/g,
 				"",
@@ -613,7 +562,7 @@ async function parseIAWriterTemplate(
 				cssContents.push(`/* Source: ${cssFileName} */\n${cleanedCss}`)
 			}
 		} catch {
-			// CSS file failed to load, skip it
+			// skip
 		}
 	}
 
@@ -621,12 +570,10 @@ async function parseIAWriterTemplate(
 		await processCssFile(cssFilePath)
 	}
 
-	// Also try style.css if not already included
 	if (!processedCssFiles.has("style.css")) {
 		await processCssFile("style.css")
 	}
 
-	// Combine all CSS
 	let combinedCss = cssContents.join("\n\n")
 
 	if (!combinedCss.trim()) {
@@ -639,25 +586,12 @@ async function parseIAWriterTemplate(
 		}
 	}
 
-	// Sanitize CSS and HTML
 	let sanitizedCss = sanitizeCss(combinedCss).sanitized
 	let sanitizedTemplate = sanitizeHtml(rawTemplate).sanitized
 
-	// Extract font files from Resources folder
 	let assets: ParsedThemeAsset[] = []
 	let fontExtensions = [".woff2", ".woff", ".ttf", ".otf"]
 
-	zip.forEach((path, entry) => {
-		if (entry.dir) return
-		if (!path.startsWith(resourcesPath)) return
-
-		let ext = path.toLowerCase().substring(path.lastIndexOf("."))
-		if (fontExtensions.includes(ext)) {
-			// Will be loaded async below
-		}
-	})
-
-	// Load font files
 	for (let [path, entry] of Object.entries(zip.files)) {
 		if (entry.dir) continue
 		if (!path.startsWith(resourcesPath)) continue
@@ -675,7 +609,7 @@ async function parseIAWriterTemplate(
 					file,
 				})
 			} catch {
-				// Font loading failed, skip
+				// skip
 			}
 		}
 	}
@@ -686,7 +620,7 @@ async function parseIAWriterTemplate(
 			name: plist.CFBundleName,
 			author: plist.IATemplateAuthor,
 			description: plist.IATemplateDescription,
-			type: "preview", // iA Writer templates are always preview type
+			type: "preview",
 			css: sanitizedCss,
 			template: sanitizedTemplate,
 			presets: undefined,
@@ -696,9 +630,6 @@ async function parseIAWriterTemplate(
 	}
 }
 
-// iA Presenter theme support
-
-// Schema for iA Presenter template.json
 let IAPresenterTemplateSchema = z.object({
 	name: z.string(),
 	author: z.string().optional(),
@@ -710,8 +641,6 @@ let IAPresenterTemplateSchema = z.object({
 type IAPresenterTemplate = z.infer<typeof IAPresenterTemplateSchema>
 
 function findIAPresenterTemplate(zip: JSZip): string | null {
-	// Look for template.json (iA Presenter's manifest file)
-	// Must NOT have theme.json (our standard format) to avoid conflicts
 	let hasThemeJson = false
 	let templateJsonPath: string | null = null
 
@@ -726,7 +655,6 @@ function findIAPresenterTemplate(zip: JSZip): string | null {
 		}
 	})
 
-	// Only treat as iA Presenter if template.json exists WITHOUT theme.json
 	if (hasThemeJson) return null
 	return templateJsonPath
 }
@@ -735,12 +663,10 @@ async function parseIAPresenterTheme(
 	zip: JSZip,
 	templateJsonPath: string,
 ): Promise<ParseResult> {
-	// Determine base path (folder containing template.json)
 	let basePath = templateJsonPath.includes("/")
 		? templateJsonPath.substring(0, templateJsonPath.lastIndexOf("/") + 1)
 		: ""
 
-	// Read and parse template.json
 	let templateJsonContent: string
 	try {
 		templateJsonContent = await zip.file(templateJsonPath)!.async("string")
@@ -783,7 +709,6 @@ async function parseIAPresenterTheme(
 		}
 	}
 
-	// Find CSS file - check template.json css field, then common names
 	let cssContent: string | undefined
 	let cssFilesToTry = [
 		templateJson.css,
@@ -801,7 +726,7 @@ async function parseIAPresenterTheme(
 				cssContent = sanitizeCss(rawCss).sanitized
 				break
 			} catch {
-				// Try next CSS file
+				// skip
 			}
 		}
 	}
@@ -816,7 +741,6 @@ async function parseIAPresenterTheme(
 		}
 	}
 
-	// Read presets.json if available
 	let presets: z.infer<typeof ThemePreset>[] | undefined
 	let presetsFileName = templateJson.presets || "presets.json"
 	let presetsPath = basePath + presetsFileName
@@ -827,8 +751,6 @@ async function parseIAPresenterTheme(
 			let presetsContent = await presetsFile.async("string")
 			let presetsJson = JSON.parse(presetsContent)
 
-			// iA Presenter presets may be in different formats
-			// Try to extract the presets array
 			let presetsArray = Array.isArray(presetsJson)
 				? presetsJson
 				: presetsJson.presets || presetsJson.colors || presetsJson.themes
@@ -837,7 +759,6 @@ async function parseIAPresenterTheme(
 				let validatedPresets: z.infer<typeof ThemePreset>[] = []
 
 				for (let preset of presetsArray) {
-					// Convert iA Presenter preset format to our format
 					let converted = convertIAPresenterPreset(preset)
 					if (converted) {
 						validatedPresets.push(converted)
@@ -849,11 +770,10 @@ async function parseIAPresenterTheme(
 				}
 			}
 		} catch {
-			// Presets are optional, continue without them
+			// skip
 		}
 	}
 
-	// Extract font assets from fonts/ folder or root
 	let assets: ParsedThemeAsset[] = []
 	let fontExtensions = [".woff2", ".woff", ".ttf", ".otf"]
 
@@ -874,12 +794,11 @@ async function parseIAPresenterTheme(
 					file,
 				})
 			} catch {
-				// Font loading failed, skip
+				// skip
 			}
 		}
 	}
 
-	// Look for thumbnail
 	let thumbnail: File | undefined
 	let thumbnailNames = [
 		"thumbnail.png",
@@ -897,7 +816,7 @@ async function parseIAPresenterTheme(
 				thumbnail = new File([blob], "thumbnail", { type: mimeType })
 				break
 			} catch {
-				// Thumbnail loading failed, skip
+				// skip
 			}
 		}
 	}
@@ -908,7 +827,7 @@ async function parseIAPresenterTheme(
 			name: templateJson.name,
 			author: templateJson.author,
 			description: templateJson.description,
-			type: "slideshow", // iA Presenter themes are always slideshow type
+			type: "slideshow",
 			css: cssContent,
 			template: undefined,
 			presets,
@@ -918,34 +837,26 @@ async function parseIAPresenterTheme(
 	}
 }
 
-// Convert iA Presenter preset format to our ThemePreset format
 function convertIAPresenterPreset(
 	preset: Record<string, unknown>,
 ): z.infer<typeof ThemePreset> | null {
-	// iA Presenter presets may have different structures
-	// Try to extract what we need
-
 	let name = preset.name as string | undefined
 	if (!name || typeof name !== "string") {
-		// Try alternative field names
 		name = (preset.title as string) || (preset.label as string) || "Unnamed"
 	}
 
-	// Determine appearance from preset data
 	let appearance: "light" | "dark" = "light"
 	if (preset.appearance === "dark" || preset.mode === "dark") {
 		appearance = "dark"
 	} else if (preset.appearance === "light" || preset.mode === "light") {
 		appearance = "light"
 	} else {
-		// Try to infer from background color
 		let bg = extractColor(preset, ["background", "backgroundColor", "bg"])
 		if (bg && isColorDark(bg)) {
 			appearance = "dark"
 		}
 	}
 
-	// Extract colors - try various field names
 	let background = extractColor(preset, ["background", "backgroundColor", "bg"])
 	let foreground = extractColor(preset, [
 		"foreground",
@@ -961,7 +872,6 @@ function convertIAPresenterPreset(
 		"highlight",
 	])
 
-	// If essential colors are missing, try nested colors object
 	let colors = preset.colors as Record<string, unknown> | undefined
 	if (colors && typeof colors === "object") {
 		background = background || extractColor(colors, ["background", "bg"])
@@ -970,15 +880,12 @@ function convertIAPresenterPreset(
 		accent = accent || extractColor(colors, ["accent", "primary"])
 	}
 
-	// Require at least background and foreground
 	if (!background || !foreground) {
 		return null
 	}
 
-	// Default accent to foreground if not specified
 	accent = accent || foreground
 
-	// Extract optional colors
 	let heading = extractColor(preset, ["heading", "headingColor", "h1"])
 	let link = extractColor(preset, ["link", "linkColor", "a"])
 	let codeBackground = extractColor(preset, [
@@ -988,7 +895,6 @@ function convertIAPresenterPreset(
 		"codeBg",
 	])
 
-	// Extract additional accent colors
 	let accents: string[] = []
 	let accentFields = ["accent2", "accent3", "accent4", "accent5", "accent6"]
 	for (let field of accentFields) {
@@ -998,7 +904,6 @@ function convertIAPresenterPreset(
 		}
 	}
 
-	// Try to extract fonts
 	let fonts: { title?: string; body?: string } | undefined
 	let titleFont = preset.titleFont || preset.headingFont || preset.title_font
 	let bodyFont = preset.bodyFont || preset.textFont || preset.body_font
@@ -1039,8 +944,6 @@ function extractColor(
 }
 
 function isColorDark(color: string): boolean {
-	// Simple heuristic to determine if a color is dark
-	// Works with hex colors and some named colors
 	let hex = color.toLowerCase().replace("#", "")
 
 	if (hex.length === 3) {
@@ -1048,7 +951,6 @@ function isColorDark(color: string): boolean {
 	}
 
 	if (hex.length !== 6 || !/^[0-9a-f]+$/.test(hex)) {
-		// Can't parse, assume light
 		return false
 	}
 
@@ -1056,7 +958,6 @@ function isColorDark(color: string): boolean {
 	let g = parseInt(hex.substring(2, 4), 16)
 	let b = parseInt(hex.substring(4, 6), 16)
 
-	// Calculate relative luminance
 	let luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255
 
 	return luminance < 0.5
