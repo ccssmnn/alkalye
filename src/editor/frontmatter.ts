@@ -1,25 +1,10 @@
-import { EditorState, type Extension } from "@codemirror/state"
-import {
-	Decoration,
-	EditorView,
-	ViewPlugin,
-	type DecorationSet,
-	WidgetType,
-} from "@codemirror/view"
-import {
-	foldEffect,
-	unfoldEffect,
-	foldedRanges,
-	foldService,
-	codeFolding,
-} from "@codemirror/language"
+import { EditorState } from "@codemirror/state"
 
 export {
 	getPath,
 	getTags,
 	parseFrontmatter,
 	getFrontmatterRange,
-	frontmatterFolding,
 	togglePinned,
 	addTag,
 	getBacklinks,
@@ -182,7 +167,6 @@ function getBacklinksWithRange(content: string): BacklinksWithRange | null {
 }
 
 function removeEmptyFrontmatter(content: string): string {
-	// Remove frontmatter if it's empty (only whitespace between ---)
 	return content.replace(/^---\r?\n\s*---\r?\n?/, "")
 }
 
@@ -229,15 +213,11 @@ function removeBacklink(content: string, id: string): string {
 	)
 }
 
-// Set or update the theme field in frontmatter
-// Pass null or empty string to remove the theme field
 function setTheme(content: string, themeName: string | null): string {
 	let { frontmatter } = parseFrontmatter(content)
 
-	// Remove theme if null or empty
 	if (!themeName) {
 		if (!frontmatter?.theme) return content
-		// Remove the theme line
 		let result = content.replace(
 			/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*\r?\n/,
 			"$1",
@@ -245,32 +225,25 @@ function setTheme(content: string, themeName: string | null): string {
 		return removeEmptyFrontmatter(result)
 	}
 
-	// No frontmatter - create new with theme
 	if (!frontmatter) {
 		return `---\ntheme: ${themeName}\n---\n\n${content}`
 	}
 
-	// Frontmatter exists but no theme field - add it
 	if (!frontmatter.theme) {
 		return content.replace(/^(---\r?\n)/, `$1theme: ${themeName}\n`)
 	}
 
-	// Update existing theme field
 	return content.replace(
 		/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*/,
 		`$1theme: ${themeName}`,
 	)
 }
 
-// Set or update the preset field in frontmatter
-// Pass null or empty string to remove the preset field
 function setPreset(content: string, presetName: string | null): string {
 	let { frontmatter } = parseFrontmatter(content)
 
-	// Remove preset if null or empty
 	if (!presetName) {
 		if (!frontmatter?.preset) return content
-		// Remove the preset line
 		let result = content.replace(
 			/^(---\r?\n[\s\S]*?)preset:\s*[^\r\n]*\r?\n/,
 			"$1",
@@ -278,17 +251,14 @@ function setPreset(content: string, presetName: string | null): string {
 		return removeEmptyFrontmatter(result)
 	}
 
-	// No frontmatter - create new with preset
 	if (!frontmatter) {
 		return `---\npreset: ${presetName}\n---\n\n${content}`
 	}
 
-	// Frontmatter exists but no preset field - add it
 	if (!frontmatter.preset) {
 		return content.replace(/^(---\r?\n)/, `$1preset: ${presetName}\n`)
 	}
 
-	// Update existing preset field
 	return content.replace(
 		/^(---\r?\n[\s\S]*?)preset:\s*[^\r\n]*/,
 		`$1preset: ${presetName}`,
@@ -311,148 +281,3 @@ function getFrontmatterRange(
 	}
 	return null
 }
-
-function isFrontmatterFolded(state: EditorState): boolean {
-	let range = getFrontmatterRange(state)
-	if (!range) return false
-
-	let folded = false
-	foldedRanges(state).between(range.from, range.to, () => {
-		folded = true
-	})
-	return folded
-}
-
-let frontmatterFoldService = foldService.of((state, from, _to) => {
-	let doc = state.doc
-	let firstLine = doc.line(1)
-	if (from !== firstLine.from) return null
-
-	return getFrontmatterRange(state)
-})
-
-class FoldHintWidget extends WidgetType {
-	toDOM(view: EditorView) {
-		let span = document.createElement("span")
-		span.className = "cm-frontmatter-fold-hint"
-		span.textContent = "fold frontmatter"
-		span.onclick = e => {
-			e.preventDefault()
-			e.stopPropagation()
-			let range = getFrontmatterRange(view.state)
-			if (range) {
-				view.dispatch({
-					effects: foldEffect.of({ from: range.from, to: range.to }),
-				})
-			}
-		}
-		return span
-	}
-}
-
-let foldHintWidget = Decoration.widget({
-	widget: new FoldHintWidget(),
-	side: 1,
-})
-
-let foldHintPlugin = ViewPlugin.fromClass(
-	class {
-		decorations: DecorationSet
-
-		constructor(view: EditorView) {
-			this.decorations = this.buildDecorations(view)
-		}
-
-		update(update: { docChanged: boolean; view: EditorView }) {
-			if (update.docChanged || this.shouldRebuild(update.view)) {
-				this.decorations = this.buildDecorations(update.view)
-			}
-		}
-
-		shouldRebuild(view: EditorView): boolean {
-			let range = getFrontmatterRange(view.state)
-			if (!range) return this.decorations.size > 0
-			let folded = isFrontmatterFolded(view.state)
-			let hasDecoration = this.decorations.size > 0
-			return folded === hasDecoration
-		}
-
-		buildDecorations(view: EditorView): DecorationSet {
-			let range = getFrontmatterRange(view.state)
-			if (!range) return Decoration.none
-			if (isFrontmatterFolded(view.state)) return Decoration.none
-
-			let firstLine = view.state.doc.line(1)
-			return Decoration.set([foldHintWidget.range(firstLine.to)])
-		}
-	},
-	{
-		decorations: v => v.decorations,
-	},
-)
-
-let autoFoldFrontmatter = ViewPlugin.fromClass(
-	class {
-		constructor(view: EditorView) {
-			let range = getFrontmatterRange(view.state)
-			if (range) {
-				setTimeout(() => {
-					view.dispatch({
-						effects: foldEffect.of({ from: range.from, to: range.to }),
-					})
-				}, 0)
-			}
-		}
-		update() {}
-	},
-)
-
-let frontmatterFolding: Extension = [
-	frontmatterFoldService,
-	codeFolding({
-		placeholderDOM(view) {
-			let span = document.createElement("span")
-			span.className = "cm-foldPlaceholder"
-			span.textContent = "frontmatter..."
-			span.onclick = e => {
-				e.preventDefault()
-				e.stopPropagation()
-				let range = getFrontmatterRange(view.state)
-				if (range) {
-					view.dispatch({
-						effects: unfoldEffect.of({ from: range.from, to: range.to }),
-					})
-				}
-			}
-			return span
-		},
-	}),
-	foldHintPlugin,
-	autoFoldFrontmatter,
-	EditorView.baseTheme({
-		".cm-frontmatter-fold-hint": {
-			cursor: "pointer",
-			color: "var(--editor-muted-foreground, var(--muted-foreground, #999))",
-			fontSize: "0.85em",
-			marginLeft: "0.5em",
-			fontFamily: "var(--editor-font-family, 'Geist Mono Variable', monospace)",
-		},
-		".cm-frontmatter-fold-hint:hover": {
-			color: "var(--editor-foreground, var(--foreground, #1a1a1a))",
-		},
-	}),
-	EditorView.theme({
-		".cm-foldPlaceholder": {
-			backgroundColor: "transparent",
-			color: "var(--editor-muted-foreground, var(--muted-foreground, #999))",
-			border: "none",
-			padding: "0",
-			fontFamily: "var(--editor-font-family, 'Geist Mono Variable', monospace)",
-			fontSize: "0.85em",
-			cursor: "pointer",
-		},
-		".cm-foldPlaceholder:hover": {
-			color: "var(--editor-foreground, var(--foreground, #1a1a1a))",
-		},
-	}),
-]

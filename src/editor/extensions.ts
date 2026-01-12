@@ -6,7 +6,6 @@ import {
 	codeHighlightStyle,
 } from "./theme"
 import { lineDecorations } from "./line-decorations"
-import { frontmatterFolding } from "./frontmatter"
 import { presentationDecorations } from "./presentation-decorations"
 import {
 	keyboardAwareScrollMargins,
@@ -44,6 +43,5 @@ let editorExtensions: Extension = [
 	keyboardAwareScrollMargins,
 	preventBrowserScroll,
 	clickBelowContent,
-	frontmatterFolding,
 	presentationDecorations,
 ]
