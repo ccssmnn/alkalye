@@ -96,12 +96,13 @@
 		font-size: 1.8em;
 	}
 
-	@keyframes spin {
-		from {
-			transform: rotate(0deg);
+	@media print {
+		[data-theme] .playful-wrapper {
+			padding: 0;
 		}
-		to {
-			transform: rotate(360deg);
+		[data-theme] .playful-deco-top,
+		[data-theme] .playful-deco-bottom {
+			display: none;
 		}
 	}
 </style>

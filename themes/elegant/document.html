@@ -79,14 +79,17 @@
 		opacity: 0.3;
 	}
 
-	@keyframes reveal {
-		from {
-			opacity: 0;
-			filter: blur(5px);
+	@media print {
+		[data-theme] .elegant-wrapper {
+			padding: 0;
 		}
-		to {
-			opacity: 1;
-			filter: blur(0);
+		[data-theme] .elegant-ornament-top,
+		[data-theme] .elegant-ornament-bottom {
+			display: none;
+		}
+		[data-theme] .elegant-content::before,
+		[data-theme] .elegant-content::after {
+			display: none;
 		}
 	}
 </style>

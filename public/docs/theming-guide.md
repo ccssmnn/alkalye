@@ -20,7 +20,7 @@ Themes are packaged as `.zip` files with a `theme.json` manifest.
 ```
 my-theme/
 ├── theme.json
-└── theme.css
+└── styles.css
 ```
 
 **theme.json:**
@@ -30,18 +30,18 @@ my-theme/
 	"version": 1,
 	"name": "My Theme",
 	"type": "preview",
-	"css": "theme.css"
+	"css": "styles.css"
 }
 ```
 
-**theme.css:**
+**styles.css:**
 
 ```css
-[data-theme="My Theme"] {
+[data-theme] {
 	font-family: Georgia, serif;
 }
 
-[data-theme="My Theme"] h1 {
+[data-theme] h1 {
 	color: #2563eb;
 }
 ```
@@ -105,23 +105,52 @@ theme-name/
 
 ### Theme Container
 
-All theme CSS should be scoped to `[data-theme="Theme Name"]`:
+Theme CSS uses `[data-theme]` to scope styles. You can use either:
+
+- `[data-theme]` - Matches any active theme (simpler, recommended)
+- `[data-theme="Theme Name"]` - Matches only your specific theme (stricter)
 
 ```css
-[data-theme="My Theme"] {
-	/* Global styles */
+[data-theme] {
+	/* Global styles for this theme */
 }
 
-[data-theme="My Theme"] h1 {
+[data-theme] h1 {
 	/* Heading styles */
 }
 ```
 
-The theme name must match exactly (case-sensitive).
+### Mode-Specific Selectors
 
-### Preview Mode Selectors
+Alkalye renders content in three modes, each with different DOM structures:
 
-Preview mode uses this DOM structure:
+| Mode      | Attribute                              | Container Structure                               |
+| --------- | -------------------------------------- | ------------------------------------------------- |
+| Preview   | `data-theme` only                      | `<div data-theme><article>...</article></div>`    |
+| Slideshow | `data-theme` + `data-mode="slideshow"` | `<div data-mode="slideshow" data-theme>...</div>` |
+| Print     | Uses `@media print`                    | Same as preview                                   |
+
+Use these patterns to target specific modes:
+
+```css
+/* Preview only (article wrapper exists) */
+[data-theme] article h1 { ... }
+
+/* Slideshow only */
+[data-mode="slideshow"] h1 { ... }
+
+/* Print only */
+@media print {
+	[data-theme] article { ... }
+}
+
+/* Both preview and slideshow (no article selector) */
+[data-theme] h1 { ... }
+```
+
+### Preview Mode
+
+Preview mode wraps content in an `article` element:
 
 ```html
 <div data-theme="Theme Name">
@@ -132,145 +161,193 @@ Preview mode uses this DOM structure:
 </div>
 ```
 
-Use `[data-theme] article` to target the content container:
+Use `[data-theme] article` to target preview content:
 
 ```css
-/* Target the article container */
-[data-theme="My Theme"] article {
+[data-theme] article {
 	font-family: var(--preset-font-body, system-ui);
 	line-height: 1.8;
 }
 
-/* Target headings */
-[data-theme="My Theme"] article h1,
-[data-theme="My Theme"] article h2,
-[data-theme="My Theme"] article h3 {
+[data-theme] article h1,
+[data-theme] article h2,
+[data-theme] article h3 {
 	font-family: var(--preset-font-title, inherit);
 	color: var(--preset-heading, var(--preset-foreground));
 }
 
-[data-theme="My Theme"] article p {
+[data-theme] article p {
 	margin-bottom: 1.5em;
 }
 
-[data-theme="My Theme"] article a {
+[data-theme] article a {
 	color: var(--preset-link, var(--preset-accent));
 	text-decoration: underline;
 }
 
-[data-theme="My Theme"] article code {
+[data-theme] article code {
 	background: var(--preset-code-background, #f1f5f9);
 	padding: 0.2em 0.4em;
 	border-radius: 0.25em;
 }
 
-[data-theme="My Theme"] article pre {
+[data-theme] article pre {
 	background: var(--preset-code-background, #1e293b);
 	padding: 1em;
 	border-radius: 0.5em;
 	overflow-x: auto;
 }
 
-[data-theme="My Theme"] article blockquote {
+[data-theme] article blockquote {
 	border-left: 4px solid var(--preset-accent);
 	padding-left: 1em;
 	font-style: italic;
 }
 
-[data-theme="My Theme"] article table {
+[data-theme] article table {
 	width: 100%;
 	border-collapse: collapse;
 }
 
-[data-theme="My Theme"] article th,
-[data-theme="My Theme"] article td {
+[data-theme] article th,
+[data-theme] article td {
 	border: 1px solid #e2e8f0;
 	padding: 0.5em;
 }
 ```
 
-### Slideshow Mode Selectors
+### Slideshow Mode
 
-Slideshow uses semantic HTML elements directly inside the themed container:
+Slideshow mode uses `data-mode="slideshow"` and has a grid-based structure:
 
 ```html
-<article data-theme="Theme Name">
-	<h1>Slide Title</h1>
-	<p>Paragraph text</p>
-	<ul>
-		<li>List item</li>
-	</ul>
-</article>
+<div data-mode="slideshow" data-theme="Theme Name" data-appearance="light">
+	<div class="slideshow-grid">
+		<div class="slideshow-cell">
+			<h1>Slide Title</h1>
+			<p>Content</p>
+		</div>
+	</div>
+</div>
 ```
 
-Unlike preview mode, there is no extra wrapper - elements are direct children of the themed article. Use `[data-theme]` selectors without `article`:
+Use `[data-mode="slideshow"]` for slideshow-specific styles:
 
 ```css
-/* Container styles */
-[data-theme="My Theme"] {
-	font-family: var(--preset-font-body, system-ui);
+/* Slideshow container */
+[data-mode="slideshow"] {
+	background: var(--preset-background);
+	color: var(--preset-foreground);
 }
 
-/* Headings - note: no article in selector */
-[data-theme="My Theme"] h1 {
+/* Slideshow headings */
+[data-mode="slideshow"] h1 {
 	font-family: var(--preset-font-title, inherit);
 	color: var(--preset-heading, var(--preset-foreground));
 }
 
-[data-theme="My Theme"] h2,
-[data-theme="My Theme"] h3 {
+[data-mode="slideshow"] h2,
+[data-mode="slideshow"] h3 {
 	color: var(--preset-heading, var(--preset-foreground));
 }
 
-/* Paragraphs and text */
-[data-theme="My Theme"] p {
+/* Slideshow text */
+[data-mode="slideshow"] p {
 	line-height: 1.6;
 }
 
-/* Links */
-[data-theme="My Theme"] a {
+/* Slideshow links */
+[data-mode="slideshow"] a {
 	color: var(--preset-link, var(--preset-accent));
 }
 
-/* Lists */
-[data-theme="My Theme"] ul,
-[data-theme="My Theme"] ol {
+/* Slideshow lists */
+[data-mode="slideshow"] ul,
+[data-mode="slideshow"] ol {
 	padding-left: 1.5em;
 }
 
-/* Blockquotes */
-[data-theme="My Theme"] blockquote {
+/* Slideshow blockquotes */
+[data-mode="slideshow"] blockquote {
 	border-left: 4px solid var(--preset-accent);
 	padding-left: 1em;
 }
 
-/* Code */
-[data-theme="My Theme"] code {
+/* Slideshow code */
+[data-mode="slideshow"] code {
 	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
 }
 ```
 
-**Key difference:** Preview uses `[data-theme] article h1`, slideshow uses `[data-theme] h1`.
+#### Slideshow CSS Variables
 
-### Supporting Both Modes
-
-For themes with `type: "both"`, include selectors for each mode:
+Slideshow mode provides additional variables for scaling:
 
 ```css
-/* Preview-specific (with article) */
-[data-theme="My Theme"] article h1 {
+--slide-h1-size    /* Computed h1 font size */
+--slide-body-size  /* Computed body font size */
+--slide-scale      /* Scale factor (0.05 to 1.0) */
+```
+
+These are calculated automatically based on content and viewport.
+
+### Print Mode
+
+Print styles apply when exporting to PDF or printing:
+
+```css
+@media print {
+	[data-theme] article {
+		max-width: none;
+		font-size: 11pt;
+	}
+
+	/* Prevent page breaks inside elements */
+	[data-theme] article h1,
+	[data-theme] article h2,
+	[data-theme] article h3 {
+		page-break-after: avoid;
+		break-after: avoid;
+	}
+
+	[data-theme] article pre,
+	[data-theme] article blockquote,
+	[data-theme] article table {
+		page-break-inside: avoid;
+		break-inside: avoid;
+	}
+
+	/* Hide elements not needed in print */
+	.no-print {
+		display: none;
+	}
+}
+```
+
+### Supporting Both Preview and Slideshow
+
+For themes with `type: "both"`, use mode-specific selectors:
+
+```css
+/* Shared styles (both modes) */
+[data-theme] {
+	font-family: var(--preset-font-body, system-ui);
+}
+
+/* Preview-specific */
+[data-theme] article h1 {
 	font-size: 2.5em;
 	text-align: left;
 }
 
-/* Slideshow-specific (without article) */
-[data-theme="My Theme"] h1 {
-	font-size: 3em;
+/* Slideshow-specific */
+[data-mode="slideshow"] h1 {
+	font-size: var(--slide-h1-size);
 	text-align: center;
 }
 ```
 
-Slideshow selectors (without `article`) will also apply to preview content, but preview-specific selectors (with `article`) have higher specificity and take precedence.
+Preview selectors (`[data-theme] article`) won't match slideshow content. Slideshow selectors (`[data-mode="slideshow"]`) won't match preview content.
 
 ---
 
@@ -322,16 +399,16 @@ For convenience, these aliases are also set:
 Always provide fallbacks for optional variables:
 
 ```css
-[data-theme="My Theme"] h1 {
+[data-theme] h1 {
 	color: var(--preset-heading, var(--preset-foreground));
 	font-family: var(--preset-font-title, inherit);
 }
 
-[data-theme="My Theme"] a {
+[data-theme] a {
 	color: var(--preset-link, var(--preset-accent));
 }
 
-[data-theme="My Theme"] pre {
+[data-theme] pre {
 	background: var(--preset-code-background, #1e293b);
 }
 ```
@@ -342,44 +419,46 @@ Always provide fallbacks for optional variables:
 
 ### presets.json Format
 
-Presets define color schemes for slideshows:
+Presets define color schemes for slideshows. The file must contain an object with a `presets` array:
 
 ```json
-[
-	{
-		"name": "Light",
-		"appearance": "light",
-		"colors": {
-			"background": "#ffffff",
-			"foreground": "#1a1a1a",
-			"accent": "#3b82f6",
-			"accents": ["#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
-			"heading": "#0f172a",
-			"link": "#2563eb",
-			"codeBackground": "#f1f5f9"
+{
+	"presets": [
+		{
+			"name": "Light",
+			"appearance": "light",
+			"colors": {
+				"background": "#ffffff",
+				"foreground": "#1a1a1a",
+				"accent": "#3b82f6",
+				"accents": ["#10b981", "#f59e0b", "#ef4444", "#8b5cf6"],
+				"heading": "#0f172a",
+				"link": "#2563eb",
+				"codeBackground": "#f1f5f9"
+			},
+			"fonts": {
+				"title": "MyFont-Bold",
+				"body": "MyFont"
+			}
 		},
-		"fonts": {
-			"title": "MyFont-Bold",
-			"body": "MyFont"
+		{
+			"name": "Dark",
+			"appearance": "dark",
+			"colors": {
+				"background": "#0f172a",
+				"foreground": "#f1f5f9",
+				"accent": "#60a5fa",
+				"heading": "#ffffff",
+				"link": "#93c5fd",
+				"codeBackground": "#1e293b"
+			},
+			"fonts": {
+				"title": "MyFont-Bold",
+				"body": "MyFont"
+			}
 		}
-	},
-	{
-		"name": "Dark",
-		"appearance": "dark",
-		"colors": {
-			"background": "#0f172a",
-			"foreground": "#f1f5f9",
-			"accent": "#60a5fa",
-			"heading": "#ffffff",
-			"link": "#93c5fd",
-			"codeBackground": "#1e293b"
-		},
-		"fonts": {
-			"title": "MyFont-Bold",
-			"body": "MyFont"
-		}
-	}
-]
+	]
+}
 ```
 
 ### Preset Schema
@@ -454,7 +533,7 @@ Include font files in your theme package:
 ```
 my-theme/
 ├── theme.json
-├── theme.css
+├── styles.css
 └── fonts/
     ├── MyFont-Regular.woff2
     ├── MyFont-Bold.woff2
@@ -480,15 +559,15 @@ my-theme/
 Fonts are loaded with `@font-face` automatically. Use them by name:
 
 ```css
-[data-theme="My Theme"] {
+[data-theme] {
 	font-family: "MyFont", system-ui, sans-serif;
 }
 
-[data-theme="My Theme"] h1 {
+[data-theme] h1 {
 	font-family: "MyFont-Bold", "MyFont", system-ui, sans-serif;
 }
 
-[data-theme="My Theme"] em {
+[data-theme] em {
 	font-family: "MyFont-Italic", "MyFont", system-ui, sans-serif;
 }
 ```
@@ -509,11 +588,11 @@ Reference fonts in presets for dynamic switching:
 Then use the CSS variables:
 
 ```css
-[data-theme="My Theme"] {
+[data-theme] {
 	font-family: var(--preset-font-body, "MyFont");
 }
 
-[data-theme="My Theme"] h1 {
+[data-theme] h1 {
 	font-family: var(--preset-font-title, "MyFont-Bold");
 }
 ```
@@ -711,18 +790,18 @@ Test your theme against the kitchen sink documents:
 ### Minimal Preview Theme
 
 ```css
-[data-theme="Clean"] {
+[data-theme] {
 	font-family: "Helvetica Neue", Arial, sans-serif;
 	line-height: 1.7;
 }
 
-[data-theme="Clean"] h1 {
+[data-theme] article h1 {
 	font-size: 2.5em;
 	font-weight: 300;
 	margin-bottom: 0.5em;
 }
 
-[data-theme="Clean"] a {
+[data-theme] article a {
 	color: #0066cc;
 	text-decoration: none;
 	border-bottom: 1px solid currentColor;
@@ -732,39 +811,46 @@ Test your theme against the kitchen sink documents:
 ### Slideshow Theme with Presets
 
 ```css
-[data-theme="Corporate"] {
+/* Base styles for both modes */
+[data-theme] {
 	font-family: var(--preset-font-body, "Arial", sans-serif);
+}
+
+/* Slideshow-specific */
+[data-mode="slideshow"] {
 	background: var(--preset-background);
 	color: var(--preset-foreground);
 }
 
-[data-theme="Corporate"] h1 {
+[data-mode="slideshow"] h1 {
 	font-family: var(--preset-font-title, inherit);
 	color: var(--preset-heading, var(--preset-foreground));
 }
 ```
 
 ```json
-[
-	{
-		"name": "Professional Light",
-		"appearance": "light",
-		"colors": {
-			"background": "#f8fafc",
-			"foreground": "#1e293b",
-			"accent": "#0284c7"
+{
+	"presets": [
+		{
+			"name": "Professional Light",
+			"appearance": "light",
+			"colors": {
+				"background": "#f8fafc",
+				"foreground": "#1e293b",
+				"accent": "#0284c7"
+			}
+		},
+		{
+			"name": "Professional Dark",
+			"appearance": "dark",
+			"colors": {
+				"background": "#0f172a",
+				"foreground": "#e2e8f0",
+				"accent": "#38bdf8"
+			}
 		}
-	},
-	{
-		"name": "Professional Dark",
-		"appearance": "dark",
-		"colors": {
-			"background": "#0f172a",
-			"foreground": "#e2e8f0",
-			"accent": "#38bdf8"
-		}
-	}
-]
+	]
+}
 ```
 
 ---

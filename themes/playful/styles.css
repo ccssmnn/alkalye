@@ -45,17 +45,9 @@
 	font-size: 1.8em;
 	margin-top: 2em;
 	margin-bottom: 0.8em;
-	padding: 0.6em 0;
-	background: linear-gradient(
-		90deg,
-		var(--preset-accent-1, var(--preset-accent)),
-		transparent
-	);
-	-webkit-background-clip: text;
-	-webkit-text-fill-color: transparent;
-	background-clip: text;
-	border-radius: 12px;
-	display: inline-block;
+	padding-left: 0.5em;
+	border-left: 4px solid var(--preset-accent-1, var(--preset-accent));
+	color: var(--preset-heading, var(--preset-foreground));
 }
 
 [data-theme] article h3 {
@@ -73,26 +65,21 @@
 [data-theme] article a {
 	color: var(--preset-link, var(--preset-accent));
 	text-decoration: none;
-	background: var(--preset-accent-1, var(--preset-accent));
-	color: var(--preset-background);
-	padding: 0.2em 0.6em;
-	border-radius: 20px;
 	font-weight: 600;
-	display: inline-block;
-	transition: transform 0.15s ease;
+	border-bottom: 2px solid var(--preset-accent-1, var(--preset-accent));
+	transition: border-color 0.15s ease;
 }
 
 [data-theme] article a:hover {
-	transform: scale(1.05);
+	border-bottom-color: var(--preset-accent-2, var(--preset-accent));
 }
 
 [data-theme] article strong {
 	font-weight: 700;
-	color: var(--preset-accent-1, var(--preset-accent));
 }
 
 [data-theme] article em {
-	color: var(--preset-accent-2, var(--preset-accent));
+	font-style: italic;
 }
 
 [data-theme] article ul,
@@ -111,50 +98,33 @@
 }
 
 [data-theme] article code {
-	font-family: "Fredoka", sans-serif;
-	font-size: 0.9em;
-	background: var(--preset-accent-1, var(--preset-accent));
-	color: var(--preset-background);
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	font-size: 0.85em;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.12));
+	color: var(--preset-foreground);
 	padding: 0.2em 0.5em;
-	border-radius: 8px;
-	font-weight: 500;
+	border-radius: 6px;
 }
 
 [data-theme] article pre {
-	font-family: "Fredoka", sans-serif;
-	background: linear-gradient(
-		135deg,
-		var(--preset-accent-1, var(--preset-accent)),
-		var(--preset-accent-2, var(--preset-accent))
-	);
-	border-radius: 16px;
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.08));
+	border: 2px solid var(--preset-accent-1, var(--preset-accent));
+	border-radius: 12px;
 	padding: 1.2em;
 	margin: 1.5em 0;
-	position: relative;
-	overflow: hidden;
-}
-
-[data-theme] article pre::before {
-	content: "Code";
-	position: absolute;
-	top: 0;
-	right: 0;
-	background: var(--preset-background);
-	color: var(--preset-accent-1, var(--preset-accent));
-	font-size: 0.7em;
-	font-weight: 600;
-	padding: 0.3em 0.8em;
-	border-bottom-left-radius: 12px;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
+	overflow-x: auto;
+	font-size: 0.85em;
+	line-height: 1.6;
 }
 
 [data-theme] article pre code {
-	background: rgba(255, 255, 255, 0.95);
-	padding: 0.8em;
-	display: block;
-	border-radius: 8px;
-	color: var(--preset-foreground);
+	background: none;
+	padding: 0;
+	border-radius: 0;
+	color: inherit;
 }
 
 [data-theme] article blockquote {
@@ -165,12 +135,6 @@
 	border-radius: 0 12px 12px 0;
 	font-style: italic;
 	font-weight: 500;
-}
-
-[data-theme] article blockquote::before {
-	content: "💡";
-	margin-right: 0.5em;
-	font-style: normal;
 }
 
 [data-theme] article hr {

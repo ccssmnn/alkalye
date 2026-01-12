@@ -34,16 +34,17 @@
 		color: var(--preset-accent);
 		margin-top: 4em;
 		opacity: 0.3;
-		animation: breathe 4s ease-in-out infinite;
 	}
 
-	@keyframes breathe {
-		0%,
-		100% {
-			opacity: 0.2;
+	@media print {
+		[data-theme] .classic-wrapper {
+			padding: 0;
 		}
-		50% {
-			opacity: 0.4;
+		[data-theme] .classic-chapter::before {
+			display: none;
+		}
+		[data-theme] .classic-folium {
+			display: none;
 		}
 	}
 </style>

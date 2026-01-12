@@ -85,28 +85,26 @@
 
 [data-theme] article li {
 	margin-bottom: 0.5em;
-	text-indent: -1em;
-	padding-left: 1em;
 }
 
 [data-theme] article code {
-	font-family: "Crimson Pro", Georgia, serif;
-	font-style: italic;
-	font-size: 0.9em;
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	font-size: 0.85em;
 	background: rgba(127, 127, 127, 0.1);
-	padding: 0.1em 0.3em;
-	border-radius: 2px;
+	padding: 0.15em 0.4em;
+	border-radius: 3px;
 }
 
 [data-theme] article pre {
-	font-family: "Crimson Pro", Georgia, serif;
-	background: rgba(127, 127, 127, 0.08);
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
+	background: var(--preset-code-background, rgba(127, 127, 127, 0.08));
 	border-left: 3px solid var(--preset-accent);
 	padding: 1.2em 1.5em;
 	margin: 1.5em 0;
-	font-size: 0.9em;
-	line-height: 1.7;
-	text-indent: 0;
+	font-size: 0.85em;
+	line-height: 1.6;
 }
 
 [data-theme] article pre code {

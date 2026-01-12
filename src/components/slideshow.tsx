@@ -1093,6 +1093,7 @@ function getSlideshowBaseCss(): string {
 	padding: 0.6em;
 	border-radius: 0.5rem;
 	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+	border: 1px solid rgba(127, 127, 127, 0.3);
 }
 
 :where([data-mode="slideshow"] pre.slideshow-codeblock) {
@@ -1102,6 +1103,7 @@ function getSlideshowBaseCss(): string {
 	padding: 0.6em;
 	border-radius: 0.5rem;
 	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+	border: 1px solid rgba(127, 127, 127, 0.3);
 }
 
 :where([data-mode="slideshow"] .slideshow-image-placeholder) {

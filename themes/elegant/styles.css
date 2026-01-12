@@ -83,7 +83,6 @@
 
 [data-theme] article em {
 	font-style: italic;
-	color: var(--preset-accent);
 }
 
 [data-theme] article ul,
@@ -97,23 +96,24 @@
 }
 
 [data-theme] article code {
-	font-family: var(--font-body);
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
 	font-size: 0.85em;
 	background: rgba(127, 127, 127, 0.08);
 	padding: 0.15em 0.4em;
 	border-radius: 2px;
 	color: var(--preset-foreground);
-	border: 1px solid rgba(127, 127, 127, 0.15);
 }
 
 [data-theme] article pre {
-	font-family: var(--font-body);
+	font-family:
+		ui-monospace, SFMono-Regular, "SF Mono", Menlo, Monaco, Consolas, monospace;
 	background: var(--preset-code-background);
 	border: 1px solid rgba(127, 127, 127, 0.2);
 	padding: 1.5em;
 	margin: 2em 0;
 	font-size: 0.85em;
-	line-height: 1.7;
+	line-height: 1.6;
 	border-radius: 2px;
 }
 
