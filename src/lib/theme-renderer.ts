@@ -229,33 +229,13 @@ async function getCachedThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
 ): Promise<ThemeStyles> {
-	console.log(
-		"[getCachedThemeStylesAsync] Called for theme:",
-		theme.name,
-		"preset:",
-		preset?.name,
-	)
 	let themeId = theme.$jazz.id
 	let presetName = preset?.name ?? null
 	let cacheKey = getCacheKey(themeId, presetName)
 	let themeUpdatedAt = theme.updatedAt?.getTime() ?? 0
 
-	console.log(
-		"[getCachedThemeStylesAsync] Cache key:",
-		cacheKey,
-		"themeUpdatedAt:",
-		themeUpdatedAt,
-	)
-
 	let cached = themeStylesCache.get(cacheKey)
-	console.log(
-		"[getCachedThemeStylesAsync] Cache hit:",
-		!!cached,
-		"cache size:",
-		themeStylesCache.size,
-	)
 	if (cached && cached.themeUpdatedAt === themeUpdatedAt) {
-		console.log("[getCachedThemeStylesAsync] Returning cached styles")
 		return cached.styles
 	}
 
@@ -279,12 +259,6 @@ async function buildThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
 ): Promise<ThemeStyles> {
-	console.log(
-		"[buildThemeStylesAsync] Building styles for theme:",
-		theme.name,
-		"with preset:",
-		preset?.name,
-	)
 	let blobUrls: string[] = []
 	let fontFaceRules = ""
 	let presetVariables = ""
@@ -292,10 +266,6 @@ async function buildThemeStylesAsync(
 	// Build CSS variables first (fast, needed for initial colors)
 	if (preset) {
 		presetVariables = buildPresetVariables(preset)
-		console.log(
-			"[buildThemeStylesAsync] Built preset variables:",
-			presetVariables.substring(0, 100),
-		)
 	}
 
 	// Yield to main thread before processing fonts
@@ -335,13 +305,6 @@ async function buildThemeStylesAsync(
 
 	// Get the theme CSS
 	let css = theme.css?.toString() ?? ""
-
-	console.log("[buildThemeStylesAsync] Returning styles:", {
-		cssLength: css.length,
-		fontFaceRulesLength: fontFaceRules.length,
-		presetVariablesLength: presetVariables.length,
-		blobUrlsCount: blobUrls.length,
-	})
 
 	return {
 		css,
@@ -405,12 +368,6 @@ async function tryCachedThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
 ): Promise<ThemeRenderResult> {
-	console.log(
-		"[tryCachedThemeStylesAsync] Called with theme:",
-		theme.name,
-		"preset:",
-		preset?.name,
-	)
 	try {
 		let styles = await getCachedThemeStylesAsync(theme, preset)
 		return { ok: true, styles }

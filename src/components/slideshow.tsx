@@ -90,23 +90,8 @@ function Slideshow({
 		"slideshow",
 		effectiveAppearance,
 	)
-	console.log("[Slideshow] Document theme resolved:", {
-		themeName: documentTheme.theme?.name,
-		presetName: documentTheme.preset?.name,
-		warning: documentTheme.warning,
-		appearance: effectiveAppearance,
-	})
-
 	let themeStylesResult = useThemeStyles(documentTheme)
 	let themeStyles = themeStylesResult.styles
-	console.log("[Slideshow] Theme styles result:", {
-		hasStyles: !!themeStyles,
-		error: themeStylesResult.error,
-		isLoading: themeStylesResult.isLoading,
-		hasFontFace: !!themeStyles?.fontFaceRules,
-		hasPresetVars: !!themeStyles?.presetVariables,
-		hasCss: !!themeStyles?.css,
-	})
 
 	let currentSlide = slides.find(s => s.slideNumber === currentSlideNumber)
 	let currentSlideIdx = slides.findIndex(
@@ -178,14 +163,16 @@ function Slideshow({
 							</div>
 						)}
 
-						<article className="flex flex-1 flex-col">
-							<ScaledSlideContainer
-								blocks={visibleBlocks}
-								size={size}
-								slideNumber={currentSlideNumber}
-								onClick={goToNextSlide}
-								measureKey={getThemeMeasureKey(documentTheme, themeStyles)}
-							/>
+						<article className="flex min-h-0 flex-1 flex-col">
+							{documentTheme.isLoading || themeStylesResult.isLoading ? null : (
+								<ScaledSlideContainer
+									blocks={visibleBlocks}
+									size={size}
+									slideNumber={currentSlideNumber}
+									onClick={goToNextSlide}
+									measureKey={getThemeMeasureKey(documentTheme, themeStyles)}
+								/>
+							)}
 						</article>
 						<SlideControls
 							slides={slides}
@@ -344,6 +331,10 @@ function ScaledSlideContainer({
 	let contentRef = useRef<HTMLDivElement>(null)
 	let [visible, setVisible] = useState(false)
 	let [scale, setScale] = useState(1)
+	let [maxDimensions, setMaxDimensions] = useState<{
+		w: number
+		h: number
+	} | null>(null)
 	let [isPortrait, setIsPortrait] = useState(
 		() => window.innerHeight > window.innerWidth,
 	)
@@ -370,11 +361,18 @@ function ScaledSlideContainer({
 	// Reset visibility when deps change using adjust-state-during-render pattern
 	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}-${measureKey}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
-	if (depsKey !== prevDepsKey) {
+	let depsChanged = depsKey !== prevDepsKey
+	if (depsChanged) {
 		setPrevDepsKey(depsKey)
 		setVisible(false)
 		setScale(1)
+		setMaxDimensions(null)
 	}
+
+	// Use effective values that account for in-progress state updates
+	let effectiveVisible = depsChanged ? false : visible
+	let effectiveScale = depsChanged ? 1 : scale
+	let effectiveMaxDimensions = depsChanged ? null : maxDimensions
 
 	useLayoutEffect(() => {
 		let initialContainer = containerRef.current
@@ -384,10 +382,12 @@ function ScaledSlideContainer({
 		let cancelled = false
 		let isMeasuring = false
 		let isScheduled = false
+		let measurementComplete = false
 
 		function scheduleMeasure() {
 			if (cancelled) return
 			if (isScheduled) return
+			if (measurementComplete) return
 
 			let container = containerRef.current
 			let content = contentRef.current
@@ -508,6 +508,7 @@ function ScaledSlideContainer({
 
 				let finalScale = Math.max(5, Math.min(high, 100)) / 100
 
+				setMaxDimensions({ w: maxW, h: maxH })
 				content.style.width = previousWidth
 				content.style.height = previousHeight
 				content.style.maxWidth = previousMaxWidth
@@ -518,6 +519,7 @@ function ScaledSlideContainer({
 				if (cancelled) return
 
 				setScale(finalScale)
+				measurementComplete = true
 				await new Promise(r => requestAnimationFrame(r))
 				if (cancelled) return
 				setVisible(true)
@@ -529,6 +531,7 @@ function ScaledSlideContainer({
 		scheduleMeasure()
 
 		let mutationObserver = new MutationObserver(() => {
+			measurementComplete = false
 			scheduleMeasure()
 		})
 		mutationObserver.observe(initialContent, {
@@ -538,12 +541,14 @@ function ScaledSlideContainer({
 		})
 
 		let resizeObserver = new ResizeObserver(() => {
+			measurementComplete = false
 			scheduleMeasure()
 		})
 		resizeObserver.observe(initialContainer)
 
 		let fontSet = document.fonts
 		function handleFontsDone() {
+			measurementComplete = false
 			scheduleMeasure()
 		}
 
@@ -585,15 +590,19 @@ function ScaledSlideContainer({
 	}, [])
 
 	let contentStyle: SlideContainerStyle = {
-		"--slide-h1-size": `${baseSize.h1 * scale}px`,
-		"--slide-body-size": `${baseSize.body * scale}px`,
-		"--slide-scale": `${scale}`,
+		"--slide-h1-size": `${baseSize.h1 * effectiveScale}px`,
+		"--slide-body-size": `${baseSize.body * effectiveScale}px`,
+		"--slide-scale": `${effectiveScale}`,
 		gridTemplateColumns: gridTemplate.cols,
 		gridTemplateRows: gridTemplate.rows,
-		opacity: visible ? 1 : 0,
-		transition: visible ? "opacity 150ms ease-in" : "none",
-		width: "90%",
-		height: "90%",
+		opacity: effectiveVisible ? 1 : 0,
+		transition: effectiveVisible ? "opacity 150ms ease-in" : "none",
+		maxWidth: effectiveMaxDimensions
+			? `${effectiveMaxDimensions.w}px`
+			: undefined,
+		maxHeight: effectiveMaxDimensions
+			? `${effectiveMaxDimensions.h}px`
+			: undefined,
 	}
 
 	return (
@@ -857,23 +866,26 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 	let [error, setError] = useState<string | null>(null)
 	// Track the theme ID we've loaded styles for to derive loading state
 	let [loadedThemeId, setLoadedThemeId] = useState<string | null>(null)
+	let [fontsReady, setFontsReady] = useState(false)
 
 	let currentThemeId = documentTheme.theme?.$jazz.id ?? null
-	let isLoading = currentThemeId !== null && currentThemeId !== loadedThemeId
+	// Loading if: theme exists but styles not loaded, OR styles loaded but fonts not ready
+	let isLoading =
+		currentThemeId !== null &&
+		(currentThemeId !== loadedThemeId || (styles !== null && !fontsReady))
 
-	// Clear state when theme is removed (adjust state during render pattern)
+	// Clear state when theme changes (adjust state during render pattern)
 	let [prevThemeId, setPrevThemeId] = useState<string | null>(currentThemeId)
 	if (currentThemeId !== prevThemeId) {
 		setPrevThemeId(currentThemeId)
-		if (currentThemeId === null) {
-			setStyles(null)
-			setError(null)
-			setLoadedThemeId(null)
-		}
+		setStyles(null)
+		setError(null)
+		setLoadedThemeId(null)
+		setFontsReady(false)
 	}
 
+	// Load theme styles
 	useEffect(() => {
-		// Get styles from cache asynchronously (builds and caches if needed)
 		if (!documentTheme.theme) return
 
 		let cancelled = false
@@ -897,6 +909,26 @@ function useThemeStyles(documentTheme: ResolvedTheme): ThemeStylesResult {
 			cancelled = true
 		}
 	}, [documentTheme.theme, documentTheme.preset])
+
+	// Wait for fonts AFTER styles are set (so font-face rules are in DOM)
+	useEffect(() => {
+		if (!styles) return
+
+		let cancelled = false
+
+		// Wait a frame for styles to be injected into DOM, then wait for fonts
+		requestAnimationFrame(() => {
+			if (cancelled) return
+			document.fonts.ready.then(() => {
+				if (cancelled) return
+				setFontsReady(true)
+			})
+		})
+
+		return () => {
+			cancelled = true
+		}
+	}, [styles])
 
 	return { styles, error, isLoading }
 }
