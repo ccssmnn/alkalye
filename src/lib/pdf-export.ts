@@ -12,13 +12,13 @@ async function buildPrintableHtml(params: {
 	htmlContent: string
 	theme: LoadedTheme | null
 	preset: ThemePresetType | null
-	appearance: "light" | "dark"
 }): Promise<string> {
-	let { title, htmlContent, theme, preset, appearance } = params
+	let { title, htmlContent, theme, preset } = params
 
 	let fontFaceRules = ""
 	let presetVariables = ""
 	let themeCss = ""
+	let bodyContent = ""
 
 	if (theme) {
 		fontFaceRules = await buildFontFaceRulesBase64(theme)
@@ -27,16 +27,40 @@ async function buildPrintableHtml(params: {
 			presetVariables = buildPresetVariables(preset)
 		}
 
-		themeCss = theme.css?.toString() ?? ""
+		// Get CSS if loaded
+		if (theme.css?.$isLoaded) {
+			themeCss = theme.css.toString()
+		}
+
+		// Try to render with theme template
+		if (theme.template?.$isLoaded) {
+			let templateHtml = theme.template.toString()
+			let rendered = renderTemplateWithContent(templateHtml, htmlContent)
+			if (rendered) {
+				bodyContent = `<div data-theme="${theme.name}">${rendered}</div>`
+			}
+		}
+	}
+
+	// Fall back to default structure if no template or template failed
+	if (!bodyContent) {
+		let themeName = theme?.name ?? ""
+		bodyContent = `<div data-theme="${themeName}"><article>${htmlContent}</article></div>`
 	}
 
 	let html = `<!DOCTYPE html>
-<html lang="en" data-theme="${appearance}">
+<html lang="en">
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>${escapeHtml(title)}</title>
 	<style>
+		/* Disable all animations for print */
+		*, *::before, *::after {
+			animation: none !important;
+			transition: none !important;
+		}
+
 		/* Reset and base styles */
 		*, *::before, *::after {
 			box-sizing: border-box;
@@ -53,8 +77,8 @@ async function buildPrintableHtml(params: {
 			margin: 0;
 			padding: 2rem;
 			font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-			color: ${appearance === "dark" ? "#e5e5e5" : "#171717"};
-			background: ${appearance === "dark" ? "#171717" : "#ffffff"};
+			color: #171717;
+			background: #ffffff;
 		}
 
 		/* Print-specific styles */
@@ -80,15 +104,9 @@ async function buildPrintableHtml(params: {
 				page-break-inside: avoid;
 				break-inside: avoid;
 			}
-
-			/* Keep headings with following content */
-			h1, h2, h3, h4, h5, h6 {
-				page-break-after: avoid;
-				break-after: avoid;
-			}
 		}
 
-		/* Prose styles for content */
+		/* Prose styles for content (default, theme CSS overrides) */
 		article {
 			max-width: 65ch;
 			margin: 0 auto;
@@ -132,7 +150,7 @@ async function buildPrintableHtml(params: {
 		}
 
 		article pre {
-			background: ${appearance === "dark" ? "#262626" : "#f5f5f5"};
+			background: #f5f5f5;
 			padding: 1em;
 			border-radius: 0.5em;
 			overflow-x: auto;
@@ -146,7 +164,7 @@ async function buildPrintableHtml(params: {
 		}
 
 		article :not(pre) > code {
-			background: ${appearance === "dark" ? "#262626" : "#f5f5f5"};
+			background: #f5f5f5;
 			padding: 0.2em 0.4em;
 			border-radius: 0.25em;
 		}
@@ -175,19 +193,19 @@ async function buildPrintableHtml(params: {
 		}
 
 		article th, article td {
-			border: 1px solid ${appearance === "dark" ? "#404040" : "#e5e5e5"};
+			border: 1px solid #e5e5e5;
 			padding: 0.5em;
 			text-align: left;
 		}
 
 		article th {
-			background: ${appearance === "dark" ? "#262626" : "#f5f5f5"};
+			background: #f5f5f5;
 			font-weight: 600;
 		}
 
 		article hr {
 			border: none;
-			border-top: 1px solid ${appearance === "dark" ? "#404040" : "#e5e5e5"};
+			border-top: 1px solid #e5e5e5;
 			margin: 2em 0;
 		}
 
@@ -212,13 +230,31 @@ async function buildPrintableHtml(params: {
 	${themeCss ? `<style>\n${themeCss}\n</style>` : ""}
 </head>
 <body>
-	<article data-theme="${theme?.name ?? ""}">
-		${htmlContent}
-	</article>
+	${bodyContent}
 </body>
 </html>`
 
 	return html
+}
+
+function renderTemplateWithContent(
+	template: string,
+	content: string,
+): string | null {
+	let parser = new DOMParser()
+	let doc = parser.parseFromString(template, "text/html")
+
+	let placeholder = doc.querySelector("[data-document]")
+	if (!placeholder) return null
+
+	placeholder.innerHTML = content
+
+	let headStyles = Array.from(doc.head.querySelectorAll("style"))
+		.map(s => s.outerHTML)
+		.join("\n")
+
+	let bodyHtml = doc.body.innerHTML
+	return headStyles ? bodyHtml + "\n" + headStyles : bodyHtml
 }
 
 function openPrintWindow(html: string): void {
@@ -233,10 +269,12 @@ function openPrintWindow(html: string): void {
 	printWindow.document.write(html)
 	printWindow.document.close()
 
-	printWindow.onload = () => {
-		setTimeout(() => {
-			printWindow.print()
-		}, 100)
+	printWindow.onload = async () => {
+		// Wait for fonts to load before printing
+		if (printWindow.document.fonts?.ready) {
+			await printWindow.document.fonts.ready
+		}
+		printWindow.print()
 	}
 }
 
