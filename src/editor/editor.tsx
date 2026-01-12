@@ -1,8 +1,14 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
+import { ImageOff } from "lucide-react"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
-import { EditorState, type Extension, Prec } from "@codemirror/state"
+import {
+	EditorState,
+	Compartment,
+	type Extension,
+	Prec,
+} from "@codemirror/state"
 import {
 	EditorView,
 	keymap,
@@ -33,6 +39,7 @@ import {
 	moveLineUp,
 	setBody,
 	setHeadingLevel,
+	sortTasks,
 	toggleBlockquote,
 	toggleBold,
 	toggleBulletList,
@@ -40,7 +47,7 @@ import {
 	toggleItalic,
 	toggleOrderedList,
 	toggleStrikethrough,
-	toggleTaskComplete,
+	toggleTaskCompleteWithSort,
 	toggleTaskList,
 } from "./commands"
 import { createBracketsExtension } from "./autocomplete-brackets"
@@ -108,6 +115,7 @@ interface MarkdownEditorProps {
 	placeholder?: string
 	readOnly?: boolean
 	className?: string
+	autoSortTasks?: boolean
 }
 
 interface MarkdownEditorRef {
@@ -118,6 +126,9 @@ interface MarkdownEditorRef {
 
 	getSelection(): { from: number; to: number } | null
 	restoreSelection(selection: { from: number; to: number }): void
+
+	getScrollPosition(): { top: number; left: number }
+	setScrollPosition(position: { top: number; left: number }): void
 
 	undo(): void
 	redo(): void
@@ -145,6 +156,8 @@ interface MarkdownEditorRef {
 	moveLineUp(): void
 	moveLineDown(): void
 
+	sortTasks(): void
+
 	getLinkAtCursor(): string | null
 	getEditor(): EditorView | null
 	refreshDecorations(): void
@@ -171,6 +184,7 @@ function MarkdownEditor(
 		placeholder,
 		readOnly,
 		className,
+		autoSortTasks,
 		ref,
 	} = props
 
@@ -179,6 +193,7 @@ function MarkdownEditor(
 
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
+	let readOnlyCompartment = useRef(new Compartment())
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
 	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
@@ -188,19 +203,22 @@ function MarkdownEditor(
 		imageId: string | null
 	} | null>(null)
 
-	// Refs for callbacks and data - CodeMirror extensions capture these at init time
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
 	let dataRef = useRef({ assets, documents })
+	let autoSortRef = useRef(autoSortTasks ?? false)
 
 	useEffect(() => {
 		callbacksRef.current = { onChange, onCursorChange, onFocus, onBlur }
 	})
 
 	useEffect(() => {
+		autoSortRef.current = autoSortTasks ?? false
+	}, [autoSortTasks])
+
+	useEffect(() => {
 		dataRef.current = { assets, documents }
 	})
 
-	// Build title cache for wikilink resolution (from documents prop)
 	let titleCache = new Map<string, { title: string; exists: boolean }>()
 	if (documents) {
 		for (let doc of documents) {
@@ -212,16 +230,13 @@ function MarkdownEditor(
 		titleCacheRef.current = titleCache
 	})
 
-	// Extract wikilink IDs from content that aren't in local documents
 	let links = parseWikiLinks(value)
 	let externalWikilinkIds = [
 		...new Set(links.map(l => l.id).filter(id => !titleCache.has(id))),
 	]
 
-	// Resolve external wikilinks (public docs not in user's doc list)
 	let externalDocs = useDocTitles(externalWikilinkIds)
 
-	// Resolver: check local cache first, then external resolved docs
 	let wikilinkResolver = (id: string) => {
 		let local = titleCacheRef.current.get(id)
 		if (local) return local
@@ -255,13 +270,11 @@ function MarkdownEditor(
 		}
 	}
 
-	// Store in ref for stable reference
 	let wikilinkResolverRef = useRef(wikilinkResolver)
 	useEffect(() => {
 		wikilinkResolverRef.current = wikilinkResolver
 	})
 
-	// Refs for init values
 	let initRef = useRef({
 		value,
 		placeholder,
@@ -269,7 +282,6 @@ function MarkdownEditor(
 		isMobile,
 	})
 
-	// Initialize CodeMirror
 	useEffect(() => {
 		if (!containerRef.current) return
 
@@ -302,7 +314,12 @@ function MarkdownEditor(
 						run: toggleTaskList,
 						preventDefault: true,
 					},
-					{ key: "Alt-Mod-x", run: toggleTaskComplete, preventDefault: true },
+					{
+						key: "Alt-Mod-x",
+						run: view => toggleTaskCompleteWithSort(autoSortRef.current)(view),
+						preventDefault: true,
+					},
+					{ key: "Alt-Mod-Shift-x", run: sortTasks, preventDefault: true },
 					{ key: "Alt-Mod-q", run: toggleBlockquote, preventDefault: true },
 					{ key: "Alt-Mod-c", run: insertCodeBlock, preventDefault: true },
 					{ key: "Alt-Mod-ArrowUp", run: moveLineUp, preventDefault: true },
@@ -363,7 +380,6 @@ function MarkdownEditor(
 			createImageDecorations(imageResolver, handleImagePreview),
 		]
 
-		// Wikilink autocomplete (desktop only, requires documents)
 		if (!initRef.current.isMobile) {
 			extensions.push(
 				createWikilinkAutocomplete(
@@ -377,9 +393,11 @@ function MarkdownEditor(
 			extensions.push(placeholderExt(initRef.current.placeholder))
 		}
 
-		if (initRef.current.readOnly) {
-			extensions.push(EditorState.readOnly.of(true))
-		}
+		extensions.push(
+			readOnlyCompartment.current.of(
+				initRef.current.readOnly ? EditorState.readOnly.of(true) : [],
+			),
+		)
 
 		let state = EditorState.create({
 			doc: initRef.current.value,
@@ -399,14 +417,12 @@ function MarkdownEditor(
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once
 	}, [])
 
-	// Dispatch remote cursors
 	useEffect(() => {
 		if (view && remoteCursors) {
 			dispatchRemoteCursors(view, remoteCursors)
 		}
 	}, [view, remoteCursors])
 
-	// Sync external value changes
 	useEffect(() => {
 		if (!view) return
 
@@ -415,7 +431,6 @@ function MarkdownEditor(
 			let cursorPos = view.state.selection.main.head
 			let anchorPos = view.state.selection.main.anchor
 
-			// Compute diff and map cursor through changes
 			let changes: { from: number; to: number; insert: string }[] = []
 			for (let [fromA, toA, fromB, toB] of diff(currentContent, value)) {
 				changes.push({
@@ -438,12 +453,20 @@ function MarkdownEditor(
 		lastExternalValue.current = value
 	}, [value, view])
 
-	// Refresh decorations when documents or external docs change
 	useEffect(() => {
 		if (view) {
 			view.dispatch({ selection: view.state.selection })
 		}
 	}, [view, documents, externalDocs])
+
+	useEffect(() => {
+		if (!view) return
+		view.dispatch({
+			effects: readOnlyCompartment.current.reconfigure(
+				readOnly ? EditorState.readOnly.of(true) : [],
+			),
+		})
+	}, [view, readOnly])
 
 	function getContent() {
 		return view?.state.doc.toString() ?? ""
@@ -509,7 +532,6 @@ function MarkdownEditor(
 		}
 	}
 
-	// Image upload handler for floating actions
 	async function handleUploadAndInsert(
 		file: File,
 		replaceRange: { from: number; to: number },
@@ -543,6 +565,18 @@ function MarkdownEditor(
 			view.dispatch({
 				selection: { anchor: selection.from, head: selection.to },
 			})
+		},
+		getScrollPosition: () => {
+			if (!view) return { top: 0, left: 0 }
+			return {
+				top: view.scrollDOM.scrollTop,
+				left: view.scrollDOM.scrollLeft,
+			}
+		},
+		setScrollPosition: (position: { top: number; left: number }) => {
+			if (!view) return
+			view.scrollDOM.scrollTop = position.top
+			view.scrollDOM.scrollLeft = position.left
 		},
 		undo: () => {
 			if (view) {
@@ -595,7 +629,8 @@ function MarkdownEditor(
 		toggleBulletList: () => runCommand(toggleBulletList),
 		toggleOrderedList: () => runCommand(toggleOrderedList),
 		toggleTaskList: () => runCommand(toggleTaskList),
-		toggleTaskComplete: () => runCommand(toggleTaskComplete),
+		toggleTaskComplete: () =>
+			runCommand(toggleTaskCompleteWithSort(autoSortRef.current)),
 		toggleBlockquote: () => runCommand(toggleBlockquote),
 		setBody: () => runCommand(setBody),
 		insertLink: () => runCommand(insertLink),
@@ -615,12 +650,12 @@ function MarkdownEditor(
 		},
 		moveLineUp: () => runCommand(moveLineUp),
 		moveLineDown: () => runCommand(moveLineDown),
+		sortTasks: () => runCommand(sortTasks),
 		getLinkAtCursor,
 		getEditor: () => view,
 		refreshDecorations,
 	}))
 
-	// Create a stable ref object for FloatingActions
 	let internalRef = useRef<MarkdownEditorRef | null>(null)
 	useEffect(() => {
 		internalRef.current = {
@@ -634,6 +669,8 @@ function MarkdownEditor(
 				return { from, to }
 			},
 			restoreSelection: () => {},
+			getScrollPosition: () => ({ top: 0, left: 0 }),
+			setScrollPosition: () => {},
 			undo: () => {},
 			redo: () => {},
 			cut: () => {},
@@ -647,7 +684,12 @@ function MarkdownEditor(
 			toggleBulletList: () => {},
 			toggleOrderedList: () => {},
 			toggleTaskList: () => {},
-			toggleTaskComplete: () => {},
+			toggleTaskComplete: () => {
+				if (view) {
+					toggleTaskCompleteWithSort(autoSortRef.current)(view)
+					view.focus()
+				}
+			},
 			toggleBlockquote: () => {},
 			setBody: () => {},
 			insertLink: () => {},
@@ -657,6 +699,7 @@ function MarkdownEditor(
 			outdent: () => {},
 			moveLineUp: () => {},
 			moveLineDown: () => {},
+			sortTasks: () => {},
 			getLinkAtCursor,
 			getEditor: () => view,
 			refreshDecorations,
@@ -707,10 +750,17 @@ function MarkdownEditor(
 					</DialogHeader>
 					{imagePreview &&
 						(imagePreview.imageId ? (
-							<JazzImage
-								imageId={imagePreview.imageId}
-								className="max-h-[70vh] w-full object-contain"
-							/>
+							assets?.find(a => a.id === imagePreview.imageId) ? (
+								<JazzImage
+									imageId={imagePreview.imageId}
+									className="max-h-[70vh] w-full object-contain"
+								/>
+							) : (
+								<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
+									<ImageOff className="size-12 opacity-50" />
+									<p className="text-sm">Image not available</p>
+								</div>
+							)
 						) : (
 							<img
 								src={imagePreview.url}

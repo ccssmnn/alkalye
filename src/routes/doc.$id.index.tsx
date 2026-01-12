@@ -4,17 +4,26 @@ import {
 	useNavigate,
 	useBlocker,
 	Link,
+	useLocation,
 } from "@tanstack/react-router"
-import { co, Group, type ResolveQuery } from "jazz-tools"
-import { createImage } from "jazz-tools/media"
+import { co, Group } from "jazz-tools"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
+import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import {
-	Asset,
-	Document,
-	Space,
-	UserAccount,
-	createSpaceDocument,
-} from "@/schema"
+	makeUploadImage,
+	makeUploadAssets,
+	makeRenameAsset,
+	makeIsAssetUsed,
+	makeDeleteAsset,
+	handleSaveCopy,
+	setupKeyboardShortcuts,
+	loaderResolve,
+	resolve,
+	settingsResolve,
+	meResolve,
+	type LoadedDocument,
+	type LoadedMe,
+} from "@/lib/editor-utils"
 import {
 	MarkdownEditor,
 	useMarkdownEditorRef,
@@ -46,18 +55,13 @@ import {
 	SidebarMenu,
 	SidebarSeparator,
 } from "@/components/ui/sidebar"
-import {
-	canEdit,
-	isDocumentPublic,
-	copyDocumentToMyList,
-	getDocumentGroup,
-} from "@/lib/documents"
+import { canEdit, isDocumentPublic, getDocumentGroup } from "@/lib/documents"
 import { deletePersonalDocument } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { HelpCircle, Loader2, Settings, Plus } from "lucide-react"
-import { saveDocumentAs } from "@/lib/export"
+
 import { SidebarViewLinks } from "@/components/sidebar-view-links"
 import { SidebarFileMenu } from "@/components/sidebar-file-menu"
 import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
@@ -73,7 +77,6 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
-
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
@@ -99,7 +102,6 @@ function EditorPage() {
 
 	let doc = useCoState(Document, id, { resolve })
 
-	// Redirect to space route if doc belongs to a space
 	useEffect(() => {
 		if (data.doc?.spaceId) {
 			navigate({
@@ -109,13 +111,10 @@ function EditorPage() {
 			})
 		}
 	}, [data.doc?.spaceId, id, navigate])
-
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
-
-	// Show loading while redirecting to space route
 	if (data.doc.spaceId) {
 		return (
 			<Empty className="h-screen">
@@ -151,7 +150,12 @@ function EditorPage() {
 	)
 }
 
-function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
+interface EditorContentProps {
+	doc: LoadedDocument
+	docId: string
+}
+
+function EditorContent({ doc, docId }: EditorContentProps) {
 	let navigate = useNavigate()
 	let data = Route.useLoaderData()
 	let editor = useMarkdownEditorRef()
@@ -159,6 +163,11 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let pendingSave = useRef<{
+		timeoutId: ReturnType<typeof setTimeout>
+		content: string
+		cursor: { from: number; to?: number } | null
+	} | null>(null)
 
 	let { theme, setTheme } = useTheme()
 	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
@@ -199,8 +208,24 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
 	useEditorSettings(editorSettings)
 
-	let content = doc.content?.toString() ?? ""
+	let content = doc.content.toString()
 	let docTitle = getDocumentTitle(content)
+
+	// Flush pending save when content changes (remote update arrived)
+	// This prevents visual flicker where local changes disappear briefly
+	useEffect(() => {
+		if (!pendingSave.current) return
+		clearTimeout(pendingSave.current.timeoutId)
+		let pendingContent = pendingSave.current.content
+		let cursor = pendingSave.current.cursor
+		pendingSave.current = null
+		doc.content.$jazz.applyDiff(pendingContent)
+		doc.$jazz.set("updatedAt", new Date())
+		if (cursor) {
+			updateCursor(cursor.from, cursor.to)
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [content])
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
@@ -255,6 +280,34 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 
 	let personalDocs =
 		me.$isLoaded && me.root?.documents?.$isLoaded ? me.root.documents : null
+
+	function handleChange(newContent: string) {
+		if (pendingSave.current) {
+			clearTimeout(pendingSave.current.timeoutId)
+		}
+		pendingSave.current = {
+			content: newContent,
+			cursor: null,
+			timeoutId: setTimeout(() => {
+				let cursor = pendingSave.current?.cursor
+				pendingSave.current = null
+				doc.content.$jazz.applyDiff(newContent)
+				doc.$jazz.set("updatedAt", new Date())
+				if (cursor) {
+					updateCursor(cursor.from, cursor.to)
+				}
+			}, 250),
+		}
+		syncBacklinks(newContent)
+	}
+
+	function handleCursorChange(from: number, to?: number) {
+		if (pendingSave.current) {
+			pendingSave.current.cursor = { from, to }
+		} else {
+			updateCursor(from, to)
+		}
+	}
 
 	return (
 		<>
@@ -318,13 +371,8 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				<MarkdownEditor
 					ref={editor}
 					value={content}
-					onChange={newContent => {
-						handleChange(doc, newContent)
-						syncBacklinks(newContent)
-					}}
-					onCursorChange={(from, to) =>
-						updateCursor(from, from !== to ? to : undefined)
-					}
+					onChange={handleChange}
+					onCursorChange={handleCursorChange}
 					placeholder="Start writing..."
 					readOnly={readOnly}
 					assets={assets}
@@ -332,6 +380,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 					remoteCursors={remoteCursors}
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
+					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 				/>
 				<EditorToolbar
 					editor={editor}
@@ -353,7 +402,7 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 				header={
 					<>
 						<ThemeToggle theme={theme} setTheme={setTheme} />
-						<SettingsButton pathname={location.pathname} />
+						<SettingsButton />
 					</>
 				}
 				footer={
@@ -384,12 +433,17 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 								editor={editor}
 								me={me.$isLoaded ? me : undefined}
 							/>
-							<SidebarEditMenu editor={editor} disabled={readOnly} />
+							<SidebarEditMenu
+								editor={editor}
+								disabled={!canEdit(doc)}
+								readOnly={readOnly}
+							/>
 							<SidebarFormatMenu
 								editor={editor}
-								disabled={readOnly}
+								disabled={!canEdit(doc)}
+								readOnly={readOnly}
 								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocForWikilink(me, doc)}
+								onCreateDocument={makeCreateDocument(me)}
 							/>
 						</SidebarMenu>
 					</SidebarGroupContent>
@@ -421,8 +475,9 @@ function EditorContent({ doc, docId }: { doc: LoadedDocument; docId: string }) {
 	)
 }
 
-function SettingsButton({ pathname }: { pathname: string }) {
+function SettingsButton() {
 	let { needRefresh } = usePWA()
+	let location = useLocation()
 	return (
 		<Tooltip>
 			<TooltipTrigger
@@ -431,7 +486,9 @@ function SettingsButton({ pathname }: { pathname: string }) {
 						variant="ghost"
 						size="icon"
 						nativeButton={false}
-						render={<Link to="/settings" search={{ from: pathname }} />}
+						render={
+							<Link to="/settings" search={{ from: location.pathname }} />
+						}
 						className="relative"
 					>
 						<Settings />
@@ -482,158 +539,6 @@ function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
 	}
 }
 
-function makeUploadImage(doc: LoadedDocument) {
-	return async function handleUploadImage(
-		file: File,
-	): Promise<{ id: string; name: string }> {
-		let image = await createImage(file, {
-			owner: doc.$jazz.owner,
-			maxSize: 2048,
-		})
-
-		if (!doc.assets) {
-			doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
-		}
-
-		let asset = Asset.create(
-			{
-				type: "image",
-				name: file.name.replace(/\.[^.]+$/, ""),
-				image,
-				createdAt: new Date(),
-			},
-			doc.$jazz.owner,
-		)
-
-		doc.assets!.$jazz.push(asset)
-		doc.$jazz.set("updatedAt", new Date())
-
-		return { id: asset.$jazz.id, name: asset.name }
-	}
-}
-
-function makeUploadAssets(doc: LoadedDocument) {
-	return async function handleUploadAssets(files: FileList) {
-		for (let file of Array.from(files)) {
-			if (!file.type.startsWith("image/")) continue
-
-			let image = await createImage(file, {
-				owner: doc.$jazz.owner,
-				maxSize: 2048,
-			})
-
-			if (!doc.assets) {
-				doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
-			}
-
-			let asset = Asset.create(
-				{
-					type: "image",
-					name: file.name.replace(/\.[^.]+$/, ""),
-					image,
-					createdAt: new Date(),
-				},
-				doc.$jazz.owner,
-			)
-
-			doc.assets!.$jazz.push(asset)
-		}
-
-		doc.$jazz.set("updatedAt", new Date())
-	}
-}
-
-function makeRenameAsset(doc: LoadedDocument) {
-	return function handleRenameAsset(assetId: string, newName: string) {
-		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
-		if (asset?.$isLoaded) {
-			asset.$jazz.set("name", newName)
-			doc.$jazz.set("updatedAt", new Date())
-		}
-	}
-}
-
-function makeCreateDocForWikilink(me: LoadedMe, doc: LoadedDocument) {
-	return async function handleCreateDocForWikilink(
-		title: string,
-	): Promise<string> {
-		if (!me.$isLoaded || !me.root?.documents?.$isLoaded)
-			throw new Error("Not ready")
-		let now = new Date()
-		let newDoc = Document.create(
-			{
-				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, doc.$jazz.owner),
-				createdAt: now,
-				updatedAt: now,
-			},
-			doc.$jazz.owner,
-		)
-		me.root.documents.$jazz.push(newDoc)
-		return newDoc.$jazz.id
-	}
-}
-
-function makeIsAssetUsed(docWithContent: MaybeDocWithContent) {
-	return function isAssetUsed(assetId: string): boolean {
-		if (!docWithContent?.$isLoaded || !docWithContent.content) return false
-		let content = docWithContent.content.toString()
-		let regex = new RegExp(`!\\[[^\\]]*\\]\\(asset:${assetId}\\)`)
-		return regex.test(content)
-	}
-}
-
-function makeDeleteAsset(
-	doc: LoadedDocument,
-	docWithContent: MaybeDocWithContent,
-) {
-	return function handleDeleteAsset(assetId: string) {
-		if (!doc.assets) return
-
-		if (docWithContent?.$isLoaded && docWithContent.content) {
-			let content = docWithContent.content.toString()
-			let regex = new RegExp(`!\\[[^\\]]*\\]\\(asset:${assetId}\\)`, "g")
-			let newContent = content.replace(regex, "")
-			if (newContent !== content) {
-				docWithContent.content.$jazz.applyDiff(newContent)
-			}
-		}
-
-		let idx = doc.assets.findIndex(a => a?.$jazz.id === assetId)
-		if (idx !== -1) {
-			doc.assets.$jazz.splice(idx, 1)
-			doc.$jazz.set("updatedAt", new Date())
-		}
-	}
-}
-
-function handleChange(doc: LoadedDocument, newContent: string) {
-	if (!doc.content) return
-	doc.content.$jazz.applyDiff(newContent)
-	doc.$jazz.set("updatedAt", new Date())
-}
-
-async function handleSaveCopy(
-	doc: LoadedDocument,
-	me: LoadedMe,
-	setSaveCopyState: (state: "idle" | "saving" | "saved") => void,
-	navigate: ReturnType<typeof useNavigate>,
-) {
-	if (!me.$isLoaded) return
-	setSaveCopyState("saving")
-
-	try {
-		let newDoc = await copyDocumentToMyList(doc, me)
-		setSaveCopyState("saved")
-		setTimeout(() => {
-			navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
-		}, 1000)
-	} catch (e) {
-		console.error("Failed to save copy:", e)
-		setSaveCopyState("idle")
-	}
-}
-
 function handleDuplicateDocument(
 	doc: co.loaded<typeof Document, { content: true }>,
 	me: LoadedMe,
@@ -659,91 +564,6 @@ function handleDuplicateDocument(
 	if (isMobile) setLeftOpenMobile(false)
 	navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
 }
-
-function setupKeyboardShortcuts(opts: {
-	navigate: ReturnType<typeof useNavigate>
-	docId: string
-	toggleLeft: () => void
-	toggleRight: () => void
-	toggleFocusMode: () => void
-	docWithContent: MaybeDocWithContent
-}) {
-	function handleKeyDown(e: KeyboardEvent) {
-		// Cmd+Alt+R: Preview
-		if (
-			(e.metaKey || e.ctrlKey) &&
-			e.altKey &&
-			(e.key.toLowerCase() === "r" || e.code === "KeyR")
-		) {
-			e.preventDefault()
-			opts.navigate({
-				to: "/doc/$id/preview",
-				params: { id: opts.docId },
-				search: { from: undefined },
-			})
-			return
-		}
-		// Cmd+Shift+E: Toggle left sidebar
-		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
-			e.preventDefault()
-			opts.toggleLeft()
-			return
-		}
-		// Cmd+.: Toggle right sidebar
-		if ((e.metaKey || e.ctrlKey) && e.key === ".") {
-			e.preventDefault()
-			opts.toggleRight()
-			return
-		}
-		// Cmd+Shift+F: Toggle focus mode
-		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
-			e.preventDefault()
-			opts.toggleFocusMode()
-			return
-		}
-		// Cmd+S: Save as
-		if ((e.metaKey || e.ctrlKey) && e.key === "s") {
-			e.preventDefault()
-			if (!opts.docWithContent?.$isLoaded) return
-			let title = getDocumentTitle(opts.docWithContent)
-			saveDocumentAs(opts.docWithContent.content?.toString() ?? "", title)
-		}
-	}
-
-	document.addEventListener("keydown", handleKeyDown)
-	return () => document.removeEventListener("keydown", handleKeyDown)
-}
-type LoadedDocument = co.loaded<typeof Document, typeof resolve>
-type MaybeDocWithContent = ReturnType<
-	typeof useCoState<typeof Document, { content: true }>
->
-type LoadedMe = ReturnType<
-	typeof useAccount<typeof UserAccount, typeof meResolve>
->
-
-let loaderResolve = {
-	content: true,
-	cursors: true,
-	assets: true,
-} as const satisfies ResolveQuery<typeof Document>
-
-let resolve = {
-	content: true,
-	cursors: true,
-	assets: { $each: { image: true } },
-} as const satisfies ResolveQuery<typeof Document>
-
-let settingsResolve = {
-	root: { settings: true },
-} as const satisfies ResolveQuery<typeof UserAccount>
-
-let meResolve = {
-	root: {
-		documents: { $each: { content: true } },
-		spaces: { $each: { documents: { $each: { content: true } } } },
-		settings: true,
-	},
-} as const satisfies ResolveQuery<typeof UserAccount>
 
 function getPersonalDocs(
 	me: LoadedMe,

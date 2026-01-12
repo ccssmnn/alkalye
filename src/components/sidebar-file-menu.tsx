@@ -49,8 +49,6 @@ import { Marked } from "marked"
 
 export { SidebarFileMenu }
 
-// --- Types ---
-
 type LoadedDocument = co.loaded<
 	typeof Document,
 	{ content: true; assets: { $each: { image: true } } }
@@ -84,7 +82,7 @@ let themesResolve = {
 
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
-	let { isMobile, setRightOpenMobile } = useSidebar()
+	let { isMobile, setRightOpenMobile, setLeftOpenMobile } = useSidebar()
 
 	let focusMode = useFocusMode()
 	let [deleteOpen, setDeleteOpen] = useState(false)
@@ -125,6 +123,16 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						<DropdownMenuItem onClick={makeToggleFocusMode(focusMode)}>
 							{focusMode ? "Exit Focus Mode" : "Focus Mode"}
 							<DropdownMenuShortcut>{modKey}⇧F</DropdownMenuShortcut>
+						</DropdownMenuItem>
+						<DropdownMenuItem
+							onClick={makeOpenTimeMachine(
+								doc,
+								navigate,
+								setLeftOpenMobile,
+								setRightOpenMobile,
+							)}
+						>
+							Time Machine
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
@@ -252,8 +260,6 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	)
 }
 
-// --- Hooks ---
-
 function useFocusMode() {
 	return useSyncExternalStore(
 		callback => {
@@ -268,11 +274,25 @@ function useFocusMode() {
 	)
 }
 
-// --- Handler factories ---
-
 function makeToggleFocusMode(focusMode: boolean) {
 	return function handleToggleFocusMode() {
 		document.documentElement.dataset.focusMode = String(!focusMode)
+	}
+}
+
+function makeOpenTimeMachine(
+	doc: LoadedDocument,
+	navigate: ReturnType<typeof useNavigate>,
+	setLeftOpenMobile: (open: boolean) => void,
+	setRightOpenMobile: (open: boolean) => void,
+) {
+	return function handleOpenTimeMachine() {
+		setLeftOpenMobile(false)
+		setRightOpenMobile(false)
+		navigate({
+			to: "/doc/$id/timemachine",
+			params: { id: doc.$jazz.id },
+		})
 	}
 }
 
@@ -601,11 +621,7 @@ function makeMoveToSpace(
 	return function handleMoveToSpace(
 		destination: { id: string; name: string } | null,
 	) {
-		// Navigate to the document's new location
-		// We need to get the doc ID from the current route, but since we're in a callback
-		// the navigation will happen after the move completes
 		if (destination) {
-			// Get current doc ID from URL and navigate to new space location
 			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
 			if (docId) {
 				navigate({
@@ -614,7 +630,6 @@ function makeMoveToSpace(
 				})
 			}
 		} else if (currentSpaceId) {
-			// Moving from space to personal
 			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
 			if (docId) {
 				navigate({ to: "/doc/$id", params: { id: docId } })
@@ -622,8 +637,6 @@ function makeMoveToSpace(
 		}
 	}
 }
-
-// --- Utilities ---
 
 function runWithMobileClose(
 	isMobile: boolean,

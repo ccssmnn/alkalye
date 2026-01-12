@@ -37,6 +37,7 @@ let EditorSettings = z.object({
 	strikethroughDoneTasks: z.boolean(),
 	fadeDoneTasks: z.boolean(),
 	highlightCurrentLine: z.boolean(),
+	autoSortTasks: z.boolean(),
 })
 
 let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
@@ -47,6 +48,7 @@ let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
 	strikethroughDoneTasks: false,
 	fadeDoneTasks: false,
 	highlightCurrentLine: true,
+	autoSortTasks: false,
 }
 
 let Settings = co.map({

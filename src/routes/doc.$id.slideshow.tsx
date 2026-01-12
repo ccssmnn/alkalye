@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
+import { createFileRoute, useNavigate } from "@tanstack/react-router"
 import { useCoState } from "jazz-tools/react"
 import { type ResolveQuery, co } from "jazz-tools"
 import { Document } from "@/schema"
@@ -6,14 +6,7 @@ import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
-import {
-	Empty,
-	EmptyHeader,
-	EmptyTitle,
-	EmptyDescription,
-	EmptyContent,
-} from "@/components/ui/empty"
-import { Button } from "@/components/ui/button"
+import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
 import { Slideshow, type Slide } from "@/components/slideshow"
 import { parsePresentation, type PresentationItem } from "@/lib/presentation"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
@@ -23,7 +16,7 @@ import {
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
 import { canEdit } from "@/lib/documents"
-import { Loader2, FileText } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 export { Route }
 
@@ -96,34 +89,12 @@ function SlideshowPage() {
 	let items = content ? parsePresentation(content) : []
 	let slides = getSlides(items)
 
-	if (slides.length === 0) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<FileText className="text-muted-foreground size-8" />
-					<EmptyTitle>No slides found</EmptyTitle>
-					<EmptyDescription>
-						Add headings (# or ##) to create slides
-					</EmptyDescription>
-				</EmptyHeader>
-				<EmptyContent>
-					<Button
-						variant="outline"
-						nativeButton={false}
-						render={<Link to="/doc/$id" params={{ id }} />}
-					>
-						Back to Editor
-					</Button>
-				</EmptyContent>
-			</Empty>
-		)
-	}
-
 	let currentSlideNumber =
 		doc.presentationLine !== undefined && items[doc.presentationLine]
 			? items[doc.presentationLine].slideNumber
 			: 1
 
+	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
 	let canEditDoc = canEdit(doc)
 	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
 
