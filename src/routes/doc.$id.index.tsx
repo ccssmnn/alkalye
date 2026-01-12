@@ -455,7 +455,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 
 				<SidebarSeparator />
 
-				<SidebarGroup>
+				<SidebarGroup className="flex-1">
 					<SidebarAssets
 						assets={sidebarAssets}
 						readOnly={readOnly}

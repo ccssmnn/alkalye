@@ -38,6 +38,7 @@ import {
 	Trash2,
 	Plus,
 	Download,
+	Upload,
 } from "lucide-react"
 
 export { SidebarAssets }
@@ -76,6 +77,25 @@ function SidebarAssets({
 	let [renamingAsset, setRenamingAsset] = useState<SidebarAsset | null>(null)
 	let [deleteOpen, setDeleteOpen] = useState(false)
 	let [deletingAssetId, setDeletingAssetId] = useState<string | null>(null)
+	let [isDragging, setIsDragging] = useState(false)
+
+	function handleDrop(e: React.DragEvent) {
+		e.preventDefault()
+		setIsDragging(false)
+		if (readOnly || !onUpload) return
+
+		let files = e.dataTransfer.files
+		if (files.length > 0) {
+			let imageFiles = Array.from(files).filter(f =>
+				f.type.startsWith("image/"),
+			)
+			if (imageFiles.length > 0) {
+				let dt = new DataTransfer()
+				imageFiles.forEach(f => dt.items.add(f))
+				onUpload(dt.files)
+			}
+		}
+	}
 
 	function handleRename(asset: SidebarAsset) {
 		setRenamingAsset(asset)
@@ -107,7 +127,27 @@ function SidebarAssets({
 	}
 
 	return (
-		<>
+		<div
+			className="relative flex flex-1 flex-col"
+			onDragOver={e => {
+				e.preventDefault()
+				if (!readOnly) setIsDragging(true)
+			}}
+			onDragLeave={e => {
+				e.preventDefault()
+				if (!e.currentTarget.contains(e.relatedTarget as Node))
+					setIsDragging(false)
+			}}
+			onDrop={handleDrop}
+		>
+			{isDragging && (
+				<div className="bg-background/90 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
+					<div className="text-center">
+						<Upload className="text-primary mx-auto mb-2 size-8" />
+						<p className="text-sm font-medium">Drop images here</p>
+					</div>
+				</div>
+			)}
 			<SidebarGroupLabel className="flex items-center justify-between pr-2">
 				<span>Assets</span>
 				<Tooltip>
@@ -137,9 +177,9 @@ function SidebarAssets({
 					}
 				}}
 			/>
-			<SidebarGroupContent>
+			<SidebarGroupContent className="flex flex-1 flex-col">
 				{assets.length === 0 ? (
-					<div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-8 text-xs">
+					<div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-xs">
 						<ImageIcon className="size-6 opacity-50" />
 						<p>No assets yet</p>
 					</div>
@@ -232,7 +272,7 @@ function SidebarAssets({
 				variant="destructive"
 				onConfirm={handleConfirmDelete}
 			/>
-		</>
+		</div>
 	)
 }
 

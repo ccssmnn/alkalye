@@ -482,7 +482,7 @@ function SpaceEditorContent({
 
 				<SidebarSeparator />
 
-				<SidebarGroup>
+				<SidebarGroup className="flex-1">
 					<SidebarAssets
 						assets={sidebarAssets}
 						readOnly={readOnly}
