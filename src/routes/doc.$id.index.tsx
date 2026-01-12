@@ -395,7 +395,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					}
 					saveCopyState={saveCopyState}
 					content={content}
-					onThemeChange={newContent => handleChange(doc, newContent)}
+					onThemeChange={handleChange}
 				/>
 			</div>
 			<DocumentSidebar
