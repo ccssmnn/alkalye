@@ -171,7 +171,6 @@ function TimeMachineContent({
 	let totalEdits = editHistory.length
 	let dayGroups = groupEditsByDay(editHistory)
 
-	// Determine current edit index
 	let currentEditIndex =
 		initialEdit !== undefined
 			? Math.min(Math.max(0, initialEdit), totalEdits - 1)
