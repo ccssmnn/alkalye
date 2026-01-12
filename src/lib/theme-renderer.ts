@@ -447,9 +447,15 @@ function renderTemplateWithContent(
 	// Inject the rendered content into the placeholder
 	placeholder.innerHTML = content
 
-	// Return the body's inner HTML (not the full document)
-	// This allows the preview component to wrap it appropriately
-	return doc.body.innerHTML
+	// Collect styles from head (DOMParser moves <style> tags there)
+	let headStyles = Array.from(doc.head.querySelectorAll("style"))
+		.map(s => s.outerHTML)
+		.join("\n")
+
+	// Return body HTML + head styles
+	// This preserves <style> blocks that were in the original template
+	let bodyHtml = doc.body.innerHTML
+	return headStyles ? bodyHtml + "\n" + headStyles : bodyHtml
 }
 
 // Safe wrapper that catches errors during template rendering
