@@ -96,7 +96,6 @@ function SlideshowPage() {
 
 	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
 	let canEditDoc = canEdit(doc)
-	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
 
 	return (
 		<Slideshow
