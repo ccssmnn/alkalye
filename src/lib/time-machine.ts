@@ -1,4 +1,4 @@
-import type { co } from "jazz-tools"
+import type { co, ID } from "jazz-tools"
 import type { Document, UserAccount } from "@/schema"
 
 export {
@@ -21,12 +21,12 @@ type LoadedAccount = co.loaded<typeof UserAccount, { profile: true }>
 interface EditHistoryItem {
 	index: number
 	madeAt: Date
-	accountId: string | null
+	accountId: ID<typeof UserAccount> | null
 }
 
-function accountIdFromSessionId(sessionId: string): string {
+function accountIdFromSessionId(sessionId: string): ID<typeof UserAccount> {
 	let until = sessionId.indexOf("_session")
-	return sessionId.slice(0, until)
+	return sessionId.slice(0, until) as ID<typeof UserAccount>
 }
 
 interface EditHistoryCache {

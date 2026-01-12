@@ -249,7 +249,6 @@ function makeOpenTimeMachine(
 	setRightOpenMobile: (open: boolean) => void,
 ) {
 	return function handleOpenTimeMachine() {
-		// Close sidebars before navigating
 		setLeftOpenMobile(false)
 		setRightOpenMobile(false)
 		navigate({

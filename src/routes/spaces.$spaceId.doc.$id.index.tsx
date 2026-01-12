@@ -653,7 +653,6 @@ function setupKeyboardShortcuts(opts: {
 	docWithContent: MaybeDocWithContent
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
-		// Cmd+Alt+R: Preview
 		if (
 			(e.metaKey || e.ctrlKey) &&
 			e.altKey &&
@@ -667,25 +666,21 @@ function setupKeyboardShortcuts(opts: {
 			})
 			return
 		}
-		// Cmd+Shift+E: Toggle left sidebar
 		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
 			e.preventDefault()
 			opts.toggleLeft()
 			return
 		}
-		// Cmd+.: Toggle right sidebar
 		if ((e.metaKey || e.ctrlKey) && e.key === ".") {
 			e.preventDefault()
 			opts.toggleRight()
 			return
 		}
-		// Cmd+Shift+F: Toggle focus mode
 		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
 			e.preventDefault()
 			opts.toggleFocusMode()
 			return
 		}
-		// Cmd+S: Save as
 		if ((e.metaKey || e.ctrlKey) && e.key === "s") {
 			e.preventDefault()
 			if (!opts.docWithContent?.$isLoaded) return

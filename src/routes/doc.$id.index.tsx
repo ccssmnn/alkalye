@@ -117,7 +117,6 @@ function EditorPage() {
 
 	let doc = useCoState(Document, id, { resolve })
 
-	// Redirect old Time Machine URLs to the new route
 	useEffect(() => {
 		if (timemachine) {
 			navigate({
@@ -129,7 +128,6 @@ function EditorPage() {
 		}
 	}, [timemachine, id, edit, navigate])
 
-	// Redirect to space route if doc belongs to a space
 	useEffect(() => {
 		if (data.doc?.spaceId) {
 			navigate({
@@ -139,13 +137,10 @@ function EditorPage() {
 			})
 		}
 	}, [data.doc?.spaceId, id, navigate])
-
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
-
-	// Show loading while redirecting to space route
 	if (data.doc.spaceId) {
 		return (
 			<Empty className="h-screen">
@@ -721,7 +716,6 @@ function setupKeyboardShortcuts(opts: {
 	docWithContent: MaybeDocWithContent
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
-		// Cmd+Alt+R: Preview
 		if (
 			(e.metaKey || e.ctrlKey) &&
 			e.altKey &&
@@ -735,25 +729,21 @@ function setupKeyboardShortcuts(opts: {
 			})
 			return
 		}
-		// Cmd+Shift+E: Toggle left sidebar
 		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {
 			e.preventDefault()
 			opts.toggleLeft()
 			return
 		}
-		// Cmd+.: Toggle right sidebar
 		if ((e.metaKey || e.ctrlKey) && e.key === ".") {
 			e.preventDefault()
 			opts.toggleRight()
 			return
 		}
-		// Cmd+Shift+F: Toggle focus mode
 		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
 			e.preventDefault()
 			opts.toggleFocusMode()
 			return
 		}
-		// Cmd+S: Save as
 		if ((e.metaKey || e.ctrlKey) && e.key === "s") {
 			e.preventDefault()
 			if (!opts.docWithContent?.$isLoaded) return

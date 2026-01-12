@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import { createFileRoute, useNavigate } from "@tanstack/react-router"
-import { co, Group, type ResolveQuery, type ID } from "jazz-tools"
+import { co, Group, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount } from "jazz-tools/react"
 import { Slider as SliderPrimitive } from "@base-ui/react/slider"
@@ -167,7 +167,6 @@ function TimeMachineContent({
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
 
-	// Time Machine state
 	let editHistory = getEditHistory(doc)
 	let totalEdits = editHistory.length
 	let dayGroups = groupEditsByDay(editHistory)
@@ -181,7 +180,6 @@ function TimeMachineContent({
 	let currentEdit = editHistory[currentEditIndex]
 	let timeMachineContent = getContentAtEdit(doc, currentEditIndex)
 
-	// View mode state - infer selected day from current edit index
 	let viewMode: ViewMode = initialMode ?? "days"
 	let selectedDayIndex: number | null = null
 	if (viewMode === "edits") {
@@ -191,14 +189,12 @@ function TimeMachineContent({
 		if (selectedDayIndex === -1) selectedDayIndex = null
 	}
 
-	// Load the author account for the current Time Machine edit
 	let currentEditAuthor = useCoState(
 		UserAccount,
-		currentEdit?.accountId as ID<typeof UserAccount> | undefined,
+		currentEdit?.accountId ?? undefined,
 		{ resolve: { profile: true } },
 	)
 
-	// Redirect to include edit param in URL when entering Time Machine without one
 	useEffect(() => {
 		if (initialEdit === undefined && totalEdits > 0) {
 			navigate({
@@ -212,7 +208,6 @@ function TimeMachineContent({
 		}
 	}, [initialEdit, totalEdits, docId, navigate])
 
-	// Show toast when edit param is clamped to valid range
 	let shownClampToastRef = useRef(false)
 	useEffect(() => {
 		if (initialEdit === undefined || totalEdits === 0) return
@@ -224,7 +219,6 @@ function TimeMachineContent({
 				description: `Edit ${initialEdit + 1} doesn't exist. Showing closest available version.`,
 				duration: 4000,
 			})
-			// Update URL to show the clamped value
 			navigate({
 				to: "/doc/$id/timemachine",
 				params: { id: docId },
@@ -245,7 +239,6 @@ function TimeMachineContent({
 		selectedDayIndex,
 	])
 
-	// Keyboard shortcuts for Time Machine navigation
 	let isViewingDay = viewMode === "edits" && selectedDayIndex !== null
 	let selectedDay =
 		selectedDayIndex !== null ? dayGroups[selectedDayIndex] : null
@@ -400,39 +393,31 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 			params
 		if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
 
-		// Determine the owner group for the new document
 		let owner: Group
 		let targetSpace: LoadedSpace | undefined
 
 		if (doc.spaceId) {
-			// Find the target space for proper group hierarchy
 			let space = me.root.spaces?.find(s => s?.$jazz.id === doc.spaceId)
 			if (space?.$isLoaded) {
 				targetSpace = space as LoadedSpace
-				// Create document-specific group with space group as parent
 				let spaceGroup = getSpaceGroup(space as LoadedSpace)
 				if (spaceGroup) {
 					owner = Group.create()
 					owner.addMember(spaceGroup)
 				} else {
-					// Fallback to personal group if space group not found
 					owner = Group.create()
 				}
 			} else {
-				// Fallback to personal group if space not loaded
 				owner = Group.create()
 			}
 		} else {
-			// Personal document - create new group
 			owner = Group.create()
 		}
 
-		// Build a map of old asset ID -> new asset ID for content replacement
 		let assetIdMap = new Map<string, string>()
 		let newAssets = co.list(Asset).create([], owner)
 		let assets = doc.assets ?? []
 
-		// Deep copy each asset
 		for (let asset of [...assets]) {
 			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
 
@@ -443,13 +428,11 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 			if (!blob) continue
 
 			try {
-				// Create a new image from the blob
 				let newImage = await createImage(blob, {
 					owner,
 					maxSize: 2048,
 				})
 
-				// Create a new asset with the copied image
 				let newAsset = Asset.create(
 					{
 						type: "image",
@@ -468,7 +451,6 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 			}
 		}
 
-		// Replace asset references in content with new asset IDs
 		let content = historicalContent
 		for (let [oldId, newId] of assetIdMap) {
 			content = content.replace(
@@ -477,15 +459,12 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 			)
 		}
 
-		// Add frontmatter noting the source
 		let formattedDate = formatEditDate(editDate)
 		let frontmatter = `---\ntimemachine: restored from ${originalTitle} at ${formattedDate}\n---\n\n`
 
-		// Add frontmatter to content, update title to indicate it's a copy
 		let lines = content.split("\n")
 		let newTitle = `${originalTitle} (restored)`
 
-		// Replace or add title
 		if (lines[0]?.startsWith("#")) {
 			lines[0] = `# ${newTitle}`
 		} else {
@@ -494,7 +473,6 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 
 		let finalContent = frontmatter + lines.join("\n")
 
-		// Create the new document
 		let now = new Date()
 		let newDoc = Document.create(
 			{
@@ -508,14 +486,12 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 			owner,
 		)
 
-		// Add to the appropriate list
 		if (targetSpace?.documents?.$isLoaded) {
 			targetSpace.documents.$jazz.push(newDoc)
 		} else {
 			me.root.documents.$jazz.push(newDoc)
 		}
 
-		// Navigate to the new document
 		navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
 	}
 }
@@ -532,11 +508,9 @@ function makeTimeMachineRestore(params: TimeMachineRestoreParams) {
 		let { doc, historicalContent, navigate, docId } = params
 		if (!doc.content) return
 
-		// Overwrite the current document content with the historical version
 		doc.content.$jazz.applyDiff(historicalContent)
 		doc.$jazz.set("updatedAt", new Date())
 
-		// Exit Time Machine mode
 		navigate({
 			to: "/doc/$id",
 			params: { id: docId },
@@ -625,7 +599,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 			? Math.min(Math.max(0, editParam), totalEdits - 1)
 			: totalEdits - 1
 
-	// Infer selected day from current edit index when in "edits" mode
 	let viewMode: ViewMode = mode ?? "days"
 	let selectedDayIndex: number | null = null
 	if (viewMode === "edits") {
@@ -641,7 +614,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 	let selectedDay =
 		selectedDayIndex !== null ? dayGroups[selectedDayIndex] : null
 
-	// Compute slider bounds and value
 	let sliderMax: number
 	let sliderValue: number
 
@@ -656,12 +628,10 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 		sliderValue = currentEditIndex
 	}
 
-	// Keep ref in sync for hold navigation
 	useEffect(() => {
 		holdEditRef.current = currentEditIndex
 	}, [currentEditIndex])
 
-	// Convert slider value to edit index
 	function sliderToEditIndex(value: number): number {
 		if (isViewingDay && selectedDay) {
 			return selectedDay.edits[value]?.index ?? currentEditIndex
@@ -669,7 +639,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 		return value
 	}
 
-	// Navigate to edit index
 	function navigateToEdit(editIndex: number, replace = false) {
 		navigate({
 			to: "/doc/$id/timemachine",
@@ -683,7 +652,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 	}
 
 	function handleSliderChange(value: number) {
-		// Debounce URL updates while dragging
 		if (debounceRef.current) clearTimeout(debounceRef.current)
 		debounceRef.current = setTimeout(() => {
 			let editIndex = sliderToEditIndex(value)
@@ -692,17 +660,14 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 	}
 
 	function handleSliderCommit(value: number) {
-		// Cancel any pending debounce
 		if (debounceRef.current) {
 			clearTimeout(debounceRef.current)
 			debounceRef.current = null
 		}
-		// Immediate navigation on release
 		navigateToEdit(sliderToEditIndex(value))
 	}
 
 	function handleViewModeChange(newMode: ViewMode, dayIndex?: number) {
-		// When selecting a day, navigate to the last edit of that day
 		let targetEdit = currentEditIndex
 		if (newMode === "edits" && dayIndex !== undefined) {
 			let day = dayGroups[dayIndex]
@@ -721,7 +686,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 		})
 	}
 
-	// Get tooltip content for a slider value
 	function getTooltipContent(value: number): string | undefined {
 		let edit: EditHistoryItem | undefined
 		if (isViewingDay && selectedDay) {
@@ -806,7 +770,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 				currentEditIndex
 			: currentEditIndex >= totalEdits - 1
 
-	// Status text
 	let statusText: string
 	if (!hasHistory) {
 		statusText = "No previous versions"
@@ -818,7 +781,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 		statusText = `${currentEditIndex + 1}/${totalEdits}`
 	}
 
-	// Dropdown label
 	let dropdownLabel = isViewingDay
 		? formatDayLabel(selectedDay!.date)
 		: "All history"
@@ -832,7 +794,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			{/* Mobile: Row 1 - Slider */}
 			<div className="flex items-center gap-3 md:hidden">
 				<TimeMachineSlider
 					min={0}
@@ -846,7 +807,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 				/>
 			</div>
 
-			{/* Mobile: Row 2 - Navigation buttons + dropdown + status */}
 			<div className="flex items-center justify-between gap-3 md:hidden">
 				<div className="flex items-center gap-2">
 					<Button
@@ -893,7 +853,6 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 				</div>
 			</div>
 
-			{/* Desktop: Single row layout */}
 			<TooltipProvider>
 				<div className="hidden items-center gap-2 md:flex">
 					<Tooltip>

@@ -203,7 +203,6 @@ function MarkdownEditor(
 		imageId: string | null
 	} | null>(null)
 
-	// Refs for callbacks and data - CodeMirror extensions capture these at init time
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
@@ -220,7 +219,6 @@ function MarkdownEditor(
 		dataRef.current = { assets, documents }
 	})
 
-	// Build title cache for wikilink resolution (from documents prop)
 	let titleCache = new Map<string, { title: string; exists: boolean }>()
 	if (documents) {
 		for (let doc of documents) {
@@ -232,16 +230,13 @@ function MarkdownEditor(
 		titleCacheRef.current = titleCache
 	})
 
-	// Extract wikilink IDs from content that aren't in local documents
 	let links = parseWikiLinks(value)
 	let externalWikilinkIds = [
 		...new Set(links.map(l => l.id).filter(id => !titleCache.has(id))),
 	]
 
-	// Resolve external wikilinks (public docs not in user's doc list)
 	let externalDocs = useDocTitles(externalWikilinkIds)
 
-	// Resolver: check local cache first, then external resolved docs
 	let wikilinkResolver = (id: string) => {
 		let local = titleCacheRef.current.get(id)
 		if (local) return local
@@ -275,13 +270,11 @@ function MarkdownEditor(
 		}
 	}
 
-	// Store in ref for stable reference
 	let wikilinkResolverRef = useRef(wikilinkResolver)
 	useEffect(() => {
 		wikilinkResolverRef.current = wikilinkResolver
 	})
 
-	// Refs for init values
 	let initRef = useRef({
 		value,
 		placeholder,
@@ -289,7 +282,6 @@ function MarkdownEditor(
 		isMobile,
 	})
 
-	// Initialize CodeMirror
 	useEffect(() => {
 		if (!containerRef.current) return
 
@@ -388,7 +380,6 @@ function MarkdownEditor(
 			createImageDecorations(imageResolver, handleImagePreview),
 		]
 
-		// Wikilink autocomplete (desktop only, requires documents)
 		if (!initRef.current.isMobile) {
 			extensions.push(
 				createWikilinkAutocomplete(
@@ -402,7 +393,6 @@ function MarkdownEditor(
 			extensions.push(placeholderExt(initRef.current.placeholder))
 		}
 
-		// Use compartment for dynamic readOnly state changes
 		extensions.push(
 			readOnlyCompartment.current.of(
 				initRef.current.readOnly ? EditorState.readOnly.of(true) : [],
@@ -427,14 +417,12 @@ function MarkdownEditor(
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once
 	}, [])
 
-	// Dispatch remote cursors
 	useEffect(() => {
 		if (view && remoteCursors) {
 			dispatchRemoteCursors(view, remoteCursors)
 		}
 	}, [view, remoteCursors])
 
-	// Sync external value changes
 	useEffect(() => {
 		if (!view) return
 
@@ -443,7 +431,6 @@ function MarkdownEditor(
 			let cursorPos = view.state.selection.main.head
 			let anchorPos = view.state.selection.main.anchor
 
-			// Compute diff and map cursor through changes
 			let changes: { from: number; to: number; insert: string }[] = []
 			for (let [fromA, toA, fromB, toB] of diff(currentContent, value)) {
 				changes.push({
@@ -466,14 +453,12 @@ function MarkdownEditor(
 		lastExternalValue.current = value
 	}, [value, view])
 
-	// Refresh decorations when documents or external docs change
 	useEffect(() => {
 		if (view) {
 			view.dispatch({ selection: view.state.selection })
 		}
 	}, [view, documents, externalDocs])
 
-	// Update readOnly state when prop changes
 	useEffect(() => {
 		if (!view) return
 		view.dispatch({
@@ -547,7 +532,6 @@ function MarkdownEditor(
 		}
 	}
 
-	// Image upload handler for floating actions
 	async function handleUploadAndInsert(
 		file: File,
 		replaceRange: { from: number; to: number },
@@ -672,7 +656,6 @@ function MarkdownEditor(
 		refreshDecorations,
 	}))
 
-	// Create a stable ref object for FloatingActions
 	let internalRef = useRef<MarkdownEditorRef | null>(null)
 	useEffect(() => {
 		internalRef.current = {
