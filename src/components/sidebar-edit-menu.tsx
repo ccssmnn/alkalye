@@ -21,9 +21,10 @@ export { SidebarEditMenu }
 interface SidebarEditMenuProps {
 	editor?: React.RefObject<MarkdownEditorRef | null>
 	disabled?: boolean
+	readOnly?: boolean
 }
 
-function SidebarEditMenu({ editor, disabled }: SidebarEditMenuProps) {
+function SidebarEditMenu({ editor, disabled, readOnly }: SidebarEditMenuProps) {
 	let { isMobile } = useSidebar()
 	let savedSelection = useRef<{ from: number; to: number } | null>(null)
 
@@ -57,12 +58,14 @@ function SidebarEditMenu({ editor, disabled }: SidebarEditMenuProps) {
 					side={isMobile ? "bottom" : "left"}
 				>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.undo())}
 					>
 						Undo
 						<DropdownMenuShortcut>{modKey}Z</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.redo())}
 					>
 						Redo
@@ -73,6 +76,7 @@ function SidebarEditMenu({ editor, disabled }: SidebarEditMenuProps) {
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.cut())}
 					>
 						Cut
@@ -85,6 +89,7 @@ function SidebarEditMenu({ editor, disabled }: SidebarEditMenuProps) {
 						<DropdownMenuShortcut>{modKey}C</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
+						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.paste())}
 					>
 						Paste
