@@ -600,7 +600,7 @@ function ScaledSlideContainer({
 	return (
 		<div
 			ref={containerRef}
-			className="flex flex-1 cursor-pointer items-center justify-center overflow-hidden p-8"
+			className="flex flex-1 cursor-pointer items-center justify-center p-8"
 			onClick={onClick}
 		>
 			<div
@@ -705,7 +705,11 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	}
 
 	if (item.type === "image") {
-		return <SlideImage src={item.src} alt={item.alt} />
+		return (
+			<div className="slideshow-image-container">
+				<SlideImage src={item.src} alt={item.alt} />
+			</div>
+		)
 	}
 
 	if (item.type === "list") {
@@ -758,15 +762,8 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 	)
 }
 
-let IMAGE_BASE_SIZE = 400
-
 function SlideImage({ src, alt }: { src: string; alt: string }) {
 	let assets = useContext(AssetContext)
-
-	let sizeStyle = {
-		maxWidth: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
-		maxHeight: `calc(${IMAGE_BASE_SIZE}px * var(--slide-scale, 1))`,
-	}
 
 	let assetMatch = src.match(/^asset:(.+)$/)
 	if (assetMatch) {
@@ -775,21 +772,22 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 
 		if (asset?.$isLoaded && asset.image) {
 			return (
-				<JazzImage imageId={asset.image.$jazz.id} alt={alt} style={sizeStyle} />
+				<JazzImage
+					imageId={asset.image.$jazz.id}
+					alt={alt}
+					className="slideshow-image"
+				/>
 			)
 		}
 
 		return (
-			<div
-				className="slideshow-image-placeholder flex aspect-video items-center justify-center"
-				style={sizeStyle}
-			>
+			<div className="slideshow-image-placeholder flex aspect-video items-center justify-center">
 				<span className="text-sm opacity-60">Loading...</span>
 			</div>
 		)
 	}
 
-	return <img src={src} alt={alt} style={sizeStyle} />
+	return <img src={src} alt={alt} className="slideshow-image" />
 }
 
 function HighlightedCode({
@@ -952,7 +950,6 @@ function getSlideshowBaseCss(): string {
 	flex-direction: column;
 	align-items: center;
 	justify-content: center;
-	overflow: hidden;
 	text-align: center;
 	overflow-wrap: normal;
 	word-break: normal;
@@ -1081,14 +1078,12 @@ function getSlideshowBaseCss(): string {
 	font-size: calc(var(--slide-body-size) * 0.6);
 	margin: 0.5em 0;
 	max-width: 100%;
-	overflow: hidden;
 	text-align: left;
 }
 
 :where([data-mode="slideshow"] .slideshow-codeblock pre) {
 	margin: 0;
 	max-width: 100%;
-	overflow: hidden;
 	white-space: pre;
 	padding: 0.6em;
 	border-radius: 0.5rem;
@@ -1098,7 +1093,6 @@ function getSlideshowBaseCss(): string {
 
 :where([data-mode="slideshow"] pre.slideshow-codeblock) {
 	max-width: 100%;
-	overflow: hidden;
 	white-space: pre;
 	padding: 0.6em;
 	border-radius: 0.5rem;
@@ -1106,8 +1100,22 @@ function getSlideshowBaseCss(): string {
 	border: 1px solid rgba(127, 127, 127, 0.3);
 }
 
+:where([data-mode="slideshow"] .slideshow-image-container) {
+	flex: 1;
+	width: 100%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
 :where([data-mode="slideshow"] .slideshow-image-placeholder) {
 	background: var(--preset-code-background, rgba(127, 127, 127, 0.15));
+}
+
+:where([data-mode="slideshow"] .slideshow-image) {
+	max-width: 100%;
+	max-height: 100%;
+	object-fit: contain;
 }
 `
 }
