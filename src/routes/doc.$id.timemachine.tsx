@@ -588,6 +588,7 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+	let holdDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let holdEditRef = useRef(0)
 
 	let totalEdits = editHistory.length
@@ -740,18 +741,24 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 			navigateToEdit(idx)
 		}
 
-		holdIntervalRef.current = setInterval(() => {
-			let nextIdx = getNext()
-			if (nextIdx !== null) {
-				holdEditRef.current = nextIdx
-				navigateToEdit(nextIdx)
-			} else {
-				stopHold()
-			}
-		}, 100)
+		holdDelayRef.current = setTimeout(() => {
+			holdIntervalRef.current = setInterval(() => {
+				let nextIdx = getNext()
+				if (nextIdx !== null) {
+					holdEditRef.current = nextIdx
+					navigateToEdit(nextIdx)
+				} else {
+					stopHold()
+				}
+			}, 100)
+		}, 1500)
 	}
 
 	function stopHold() {
+		if (holdDelayRef.current) {
+			clearTimeout(holdDelayRef.current)
+			holdDelayRef.current = null
+		}
 		if (holdIntervalRef.current) {
 			clearInterval(holdIntervalRef.current)
 			holdIntervalRef.current = null
@@ -821,7 +828,7 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 						className="gap-1"
 					>
 						<ChevronLeft className="size-4" />
-						Previous
+						<span className="sr-only sm:not-sr-only">Previous</span>
 					</Button>
 					<Button
 						variant="outline"
@@ -835,7 +842,7 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 						aria-label="Next edit"
 						className="gap-1"
 					>
-						Next
+						<span className="sr-only sm:not-sr-only">Next</span>
 						<ChevronRight className="size-4" />
 					</Button>
 				</div>
