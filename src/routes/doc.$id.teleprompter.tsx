@@ -22,6 +22,7 @@ import {
 	useDocTitles,
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
+import { useScreenWakeLock } from "@/lib/screen-wake-lock"
 import { Loader2, FileText } from "lucide-react"
 
 export { Route }
@@ -55,6 +56,8 @@ function TeleprompterPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
 	let navigate = useNavigate()
+
+	useScreenWakeLock()
 
 	let doc = useCoState(Document, id, { resolve })
 

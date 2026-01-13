@@ -16,6 +16,7 @@ import {
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
 import { canEdit } from "@/lib/documents"
+import { useScreenWakeLock } from "@/lib/screen-wake-lock"
 import { Loader2 } from "lucide-react"
 
 export { Route }
@@ -57,6 +58,8 @@ function SlideshowPage() {
 	let { id } = Route.useParams()
 	let data = Route.useLoaderData()
 	let navigate = useNavigate()
+
+	useScreenWakeLock()
 
 	let doc = useCoState(Document, id, { resolve })
 
