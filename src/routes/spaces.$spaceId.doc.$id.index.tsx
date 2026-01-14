@@ -193,7 +193,13 @@ function SpaceEditorContent({
 	} | null>(null)
 
 	let { theme, setTheme } = useTheme()
-	let { toggleLeft, toggleRight, isMobile, setLeftOpenMobile } = useSidebar()
+	let {
+		toggleLeft,
+		toggleRight,
+		isMobile,
+		setLeftOpenMobile,
+		setRightOpenMobile,
+	} = useSidebar()
 
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, { resolve: spaceMeResolve })
@@ -446,6 +452,7 @@ function SpaceEditorContent({
 						}
 						align={isMobile ? "center" : "end"}
 						side={isMobile ? "top" : "left"}
+						onNavigate={() => setRightOpenMobile(false)}
 					/>
 				}
 			>
