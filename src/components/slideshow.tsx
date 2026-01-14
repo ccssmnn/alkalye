@@ -163,7 +163,6 @@ function Slideshow({
 								<ScaledSlideContainer
 									blocks={visibleBlocks}
 									size={size}
-									slideNumber={currentSlideNumber}
 									onClick={goToNextSlide}
 									measureKey={getThemeMeasureKey(documentTheme, themeStyles)}
 								/>
@@ -312,13 +311,11 @@ type SlideContainerStyle = React.CSSProperties & {
 function ScaledSlideContainer({
 	blocks,
 	size,
-	slideNumber,
 	onClick,
 	measureKey,
 }: {
 	blocks: VisualBlock[]
 	size: PresentationSize
-	slideNumber: number
 	onClick: () => void
 	measureKey: string
 }) {
@@ -352,7 +349,8 @@ function ScaledSlideContainer({
 
 	let baseSize = baseSizes[size]
 
-	let depsKey = `${slideNumber}-${blocks.length}-${isPortrait}-${baseSize.h1}-${measureKey}`
+	let blocksKey = JSON.stringify(blocks)
+	let depsKey = `${blocksKey}-${isPortrait}-${baseSize.h1}-${measureKey}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
 	let depsChanged = depsKey !== prevDepsKey
 	if (depsChanged) {
@@ -375,6 +373,7 @@ function ScaledSlideContainer({
 		let isMeasuring = false
 		let isScheduled = false
 		let measurementComplete = false
+		let isInitialMeasure = true
 
 		function scheduleMeasure() {
 			if (cancelled) return
@@ -398,7 +397,9 @@ function ScaledSlideContainer({
 			if (cancelled) return
 			if (isMeasuring) return
 			isMeasuring = true
-			setVisible(false)
+			if (isInitialMeasure) {
+				setVisible(false)
+			}
 
 			try {
 				await new Promise(r => requestAnimationFrame(r))
@@ -512,6 +513,7 @@ function ScaledSlideContainer({
 
 				setScale(finalScale)
 				measurementComplete = true
+				isInitialMeasure = false
 				await new Promise(r => requestAnimationFrame(r))
 				if (cancelled) return
 				setVisible(true)
@@ -561,8 +563,7 @@ function ScaledSlideContainer({
 			fontSet?.removeEventListener?.("loadingerror", handleFontsDone)
 		}
 	}, [
-		slideNumber,
-		blocks,
+		blocksKey,
 		isPortrait,
 		baseSize,
 		gridTemplate.cols,
