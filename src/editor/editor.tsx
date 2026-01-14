@@ -90,6 +90,7 @@ type RemoteCursor = {
 type Asset = {
 	id: string
 	name: string
+	imageId?: string
 }
 
 interface MarkdownEditorProps {
@@ -751,17 +752,23 @@ function MarkdownEditor(
 					</DialogHeader>
 					{imagePreview &&
 						(imagePreview.imageId ? (
-							assets?.find(a => a.id === imagePreview.imageId) ? (
-								<JazzImage
-									imageId={imagePreview.imageId}
-									className="max-h-[70vh] w-full object-contain"
-								/>
-							) : (
-								<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
-									<ImageOff className="size-12 opacity-50" />
-									<p className="text-sm">Image not available</p>
-								</div>
-							)
+							(() => {
+								let asset = assets?.find(a => a.id === imagePreview.imageId)
+								if (!asset?.imageId) {
+									return (
+										<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
+											<ImageOff className="size-12 opacity-50" />
+											<p className="text-sm">Image not available</p>
+										</div>
+									)
+								}
+								return (
+									<JazzImage
+										imageId={asset.imageId}
+										className="max-h-[70vh] w-full object-contain"
+									/>
+								)
+							})()
 						) : (
 							<img
 								src={imagePreview.url}

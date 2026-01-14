@@ -210,7 +210,12 @@ function SpaceEditorContent({
 		getDocumentGroup(doc)?.myRole() !== "admin"
 
 	let { updateCursor, remoteCursors } = usePresence({ doc })
-	let assets = doc.assets?.map(a => ({ id: a.$jazz.id, name: a.name })) ?? []
+	let assets =
+		doc.assets?.map(a => ({
+			id: a.$jazz.id,
+			name: a.name,
+			imageId: a.image?.$jazz.id,
+		})) ?? []
 
 	// Get documents from the space for wikilinks
 	let documents: WikilinkDoc[] = []

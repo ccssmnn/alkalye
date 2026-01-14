@@ -179,7 +179,12 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		getDocumentGroup(doc)?.myRole() !== "admin"
 
 	let { updateCursor, remoteCursors } = usePresence({ doc })
-	let assets = doc.assets?.map(a => ({ id: a.$jazz.id, name: a.name })) ?? []
+	let assets =
+		doc.assets?.map(a => ({
+			id: a.$jazz.id,
+			name: a.name,
+			imageId: a.image?.$jazz.id,
+		})) ?? []
 
 	// Get documents for wikilink autocomplete - personal docs only
 	let documents: WikilinkDoc[] = []
