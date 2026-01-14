@@ -14,6 +14,7 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuSeparator,
 	DropdownMenuLabel,
+	DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
 import { Palette, Check } from "lucide-react"
 import { Theme, UserAccount } from "@/schema"
@@ -55,11 +56,15 @@ function ThemePicker({ content, onThemeChange, disabled }: ThemePickerProps) {
 
 	let hasThemes = themes.length > 0
 
+	if (!hasThemes) {
+		return null
+	}
+
 	return (
 		<DropdownMenu>
 			<Tooltip>
 				<DropdownMenuTrigger
-					disabled={disabled || !hasThemes}
+					disabled={disabled}
 					render={
 						<TooltipTrigger
 							render={
@@ -69,7 +74,7 @@ function ThemePicker({ content, onThemeChange, disabled }: ThemePickerProps) {
 									aria-label="Theme"
 									className="shrink-0"
 									nativeButton={false}
-									disabled={disabled || !hasThemes}
+									disabled={disabled}
 								>
 									<Palette />
 								</Button>
@@ -77,15 +82,11 @@ function ThemePicker({ content, onThemeChange, disabled }: ThemePickerProps) {
 						/>
 					}
 				/>
-				<TooltipContent>
-					{!hasThemes
-						? "No themes available (upload in Settings)"
-						: "Select theme"}
-				</TooltipContent>
+				<TooltipContent>Select theme</TooltipContent>
 			</Tooltip>
 			<DropdownMenuContent align="center">
 				{previewThemes.length > 0 && (
-					<>
+					<DropdownMenuGroup>
 						<DropdownMenuLabel>Preview Themes</DropdownMenuLabel>
 						{previewThemes.map(theme => (
 							<ThemeMenuItem
@@ -100,13 +101,13 @@ function ThemePicker({ content, onThemeChange, disabled }: ThemePickerProps) {
 								}}
 							/>
 						))}
-					</>
+					</DropdownMenuGroup>
 				)}
 				{previewThemes.length > 0 && slideshowThemes.length > 0 && (
 					<DropdownMenuSeparator />
 				)}
 				{slideshowThemes.length > 0 && (
-					<>
+					<DropdownMenuGroup>
 						<DropdownMenuLabel>Slideshow Themes</DropdownMenuLabel>
 						{slideshowThemes.map(theme => (
 							<ThemeMenuItem
@@ -121,7 +122,7 @@ function ThemePicker({ content, onThemeChange, disabled }: ThemePickerProps) {
 								}}
 							/>
 						))}
-					</>
+					</DropdownMenuGroup>
 				)}
 				{currentThemeName && (
 					<>

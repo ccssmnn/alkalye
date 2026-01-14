@@ -13,6 +13,7 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuSeparator,
 	DropdownMenuLabel,
+	DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
 import { Paintbrush, Check, Sun, Moon } from "lucide-react"
 import { Theme, UserAccount } from "@/schema"
@@ -95,7 +96,7 @@ function PresetPicker({
 			</Tooltip>
 			<DropdownMenuContent align="center">
 				{lightPresets.length > 0 && (
-					<>
+					<DropdownMenuGroup>
 						<DropdownMenuLabel className="flex items-center gap-1.5">
 							<Sun className="size-3.5" />
 							Light
@@ -113,13 +114,13 @@ function PresetPicker({
 								}}
 							/>
 						))}
-					</>
+					</DropdownMenuGroup>
 				)}
 				{lightPresets.length > 0 && darkPresets.length > 0 && (
 					<DropdownMenuSeparator />
 				)}
 				{darkPresets.length > 0 && (
-					<>
+					<DropdownMenuGroup>
 						<DropdownMenuLabel className="flex items-center gap-1.5">
 							<Moon className="size-3.5" />
 							Dark
@@ -137,7 +138,7 @@ function PresetPicker({
 								}}
 							/>
 						))}
-					</>
+					</DropdownMenuGroup>
 				)}
 				{currentPresetName && (
 					<>

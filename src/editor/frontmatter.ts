@@ -222,7 +222,9 @@ function setTheme(content: string, themeName: string | null): string {
 			/^(---\r?\n[\s\S]*?)theme:\s*[^\r\n]*\r?\n/,
 			"$1",
 		)
-		return removeEmptyFrontmatter(result)
+		result = removeEmptyFrontmatter(result)
+		// Also remove preset when removing theme
+		return setPreset(result, null)
 	}
 
 	if (!frontmatter) {
