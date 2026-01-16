@@ -5,7 +5,6 @@ import { createImage } from "jazz-tools/media"
 import { useCoState, useAccount } from "jazz-tools/react"
 import { Slider as SliderPrimitive } from "@base-ui/react/slider"
 import {
-	Loader2,
 	X,
 	EllipsisVertical,
 	ChevronLeft,
@@ -23,7 +22,7 @@ import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -82,7 +81,7 @@ let Route = createFileRoute("/doc/$id/timemachine")({
 		}
 	},
 	loader: async ({ params, context }) => {
-		let doc = await Document.load(params.id, { resolve: loaderResolve })
+		let doc = await Document.load(params.id, { resolve })
 		if (!doc.$isLoaded) {
 			return { doc: null, loadingState: doc.$jazz.loadingState, me: null }
 		}
@@ -101,29 +100,26 @@ function TimeMachinePage() {
 	let data = Route.useLoaderData()
 	let { edit, mode } = Route.useSearch()
 
-	let doc = useCoState(Document, id, { resolve })
+	let subscribedDoc = useCoState(Document, id, { resolve })
 
+	// Error states from loader
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
+	// Handle live access revocation
+	if (
+		!subscribedDoc.$isLoaded &&
+		subscribedDoc.$jazz.loadingState !== "loading"
+	) {
+		if (subscribedDoc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading document...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
-	}
+	// Fall back to preloaded data while subscription is loading
+	let doc = subscribedDoc.$isLoaded ? subscribedDoc : data.doc
 
 	return (
 		<SidebarProvider>
@@ -1225,11 +1221,6 @@ type LoadedDocument = co.loaded<typeof Document, typeof resolve>
 type LoadedMe = ReturnType<
 	typeof useAccount<typeof UserAccount, typeof meResolve>
 >
-
-let loaderResolve = {
-	content: true,
-	assets: true,
-} as const satisfies ResolveQuery<typeof Document>
 
 let resolve = {
 	content: true,

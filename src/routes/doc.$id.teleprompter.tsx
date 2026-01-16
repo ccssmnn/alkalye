@@ -23,7 +23,7 @@ import {
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
 import { useScreenWakeLock } from "@/lib/screen-wake-lock"
-import { Loader2, FileText } from "lucide-react"
+import { FileText } from "lucide-react"
 
 export { Route }
 
@@ -59,34 +59,33 @@ function TeleprompterPage() {
 
 	useScreenWakeLock()
 
-	let doc = useCoState(Document, id, { resolve })
+	let subscribedDoc = useCoState(Document, id, { resolve })
 
-	let content = doc.$isLoaded ? (doc.content?.toString() ?? "") : ""
+	// Extract content for wikilinks (use loader data as fallback, empty if neither)
+	let content =
+		(subscribedDoc.$isLoaded ? subscribedDoc : data.doc)?.content?.toString() ??
+		""
 	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
 	let wikilinks = useDocTitles(wikilinkIds, data.wikilinkCache)
 
+	// Error states from loader
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
+	// Handle live access revocation
+	if (
+		!subscribedDoc.$isLoaded &&
+		subscribedDoc.$jazz.loadingState !== "loading"
+	) {
+		if (subscribedDoc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading document...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
-	}
-
+	// Fall back to preloaded data while subscription is loading
+	let doc = subscribedDoc.$isLoaded ? subscribedDoc : data.doc
 	let items = content ? parsePresentation(content) : []
 
 	if (items.length === 0) {

@@ -6,7 +6,7 @@ import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+
 import { Slideshow, type Slide } from "@/components/slideshow"
 import { parsePresentation, type PresentationItem } from "@/lib/presentation"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
@@ -17,14 +17,8 @@ import {
 } from "@/lib/doc-resolver"
 import { canEdit } from "@/lib/documents"
 import { useScreenWakeLock } from "@/lib/screen-wake-lock"
-import { Loader2 } from "lucide-react"
 
 export { Route }
-
-let loaderResolve = {
-	content: true,
-	assets: true,
-} as const satisfies ResolveQuery<typeof Document>
 
 let resolve = {
 	content: true,
@@ -34,7 +28,7 @@ let resolve = {
 let Route = createFileRoute("/doc/$id/slideshow")({
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, {
-			resolve: loaderResolve,
+			resolve,
 		})
 		if (!doc.$isLoaded) {
 			return {
@@ -61,34 +55,33 @@ function SlideshowPage() {
 
 	useScreenWakeLock()
 
-	let doc = useCoState(Document, id, { resolve })
+	let subscribedDoc = useCoState(Document, id, { resolve })
 
-	let content = doc.$isLoaded ? (doc.content?.toString() ?? "") : ""
+	// Extract content for wikilinks (use loader data as fallback, empty if neither)
+	let content =
+		(subscribedDoc.$isLoaded ? subscribedDoc : data.doc)?.content?.toString() ??
+		""
 	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
 	let wikilinks = useDocTitles(wikilinkIds, data.wikilinkCache)
 
+	// Error states from loader
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
+	// Handle live access revocation
+	if (
+		!subscribedDoc.$isLoaded &&
+		subscribedDoc.$jazz.loadingState !== "loading"
+	) {
+		if (subscribedDoc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading presentation...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
-	}
-
+	// Fall back to preloaded data while subscription is loading
+	let doc = subscribedDoc.$isLoaded ? subscribedDoc : data.doc
 	let items = content ? parsePresentation(content) : []
 	let slides = getSlides(items)
 

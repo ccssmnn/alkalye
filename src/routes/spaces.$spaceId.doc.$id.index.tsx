@@ -18,7 +18,6 @@ import {
 	makeDownloadAsset,
 	handleSaveCopy,
 	setupKeyboardShortcuts,
-	loaderResolve,
 	resolve,
 	settingsResolve,
 	type LoadedDocument,
@@ -50,7 +49,7 @@ import {
 	SpaceNotFound,
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -61,7 +60,7 @@ import { canEdit, isDocumentPublic, getDocumentGroup } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
-import { HelpCircle, Loader2, Settings, Plus } from "lucide-react"
+import { HelpCircle, Settings, Plus } from "lucide-react"
 
 import { SidebarViewLinks } from "@/components/sidebar-view-links"
 import { SidebarFileMenu } from "@/components/sidebar-file-menu"
@@ -84,8 +83,8 @@ export { Route }
 let Route = createFileRoute("/spaces/$spaceId/doc/$id/")({
 	loader: async ({ params, context }) => {
 		let [space, doc] = await Promise.all([
-			Space.load(params.spaceId, { resolve: spaceLoaderResolve }),
-			Document.load(params.id, { resolve: loaderResolve }),
+			Space.load(params.spaceId, { resolve: spaceResolve }),
+			Document.load(params.id, { resolve }),
 		])
 
 		if (!space.$isLoaded) {
@@ -122,10 +121,30 @@ function SpaceEditorPage() {
 	let space = useCoState(Space, spaceId, { resolve: spaceResolve })
 	let doc = useCoState(Document, id, { resolve })
 
-	// Space not found or unauthorized
+	// Space not found or unauthorized (from loader)
 	if (!data.space) {
 		if (data.loadingState === "unauthorized") return <SpaceUnauthorized />
 		return <SpaceNotFound />
+	}
+
+	// Handle live access revocation (ignore "loading" state - use loader data as fallback)
+	if (!space.$isLoaded && space.$jazz.loadingState !== "loading") {
+		if (space.$jazz.loadingState === "unauthorized")
+			return <SpaceUnauthorized />
+		return <SpaceNotFound />
+	}
+
+	// Doc not found or unauthorized (from loader)
+	if (!data.doc) {
+		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
+		return <DocumentNotFound />
+	}
+
+	// Handle live access revocation for doc
+	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
+		if (doc.$jazz.loadingState === "unauthorized")
+			return <DocumentUnauthorized />
+		return <DocumentNotFound />
 	}
 
 	// Space deleted
@@ -133,34 +152,15 @@ function SpaceEditorPage() {
 		return <SpaceDeleted />
 	}
 
-	// Doc not found or unauthorized
-	if (!data.doc) {
-		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
-		return <DocumentNotFound />
-	}
-
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
-			return <DocumentUnauthorized />
-		return <DocumentNotFound />
-	}
-
-	if (!doc.$isLoaded || !space.$isLoaded) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading document...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
-	}
+	// Use loader data as fallback while subscription is loading
+	let loadedSpace = space.$isLoaded ? space : data.space
+	let loadedDoc = doc.$isLoaded ? doc : data.doc
 
 	return (
 		<SidebarProvider>
 			<SpaceEditorContent
-				space={space}
-				doc={doc}
+				space={loadedSpace}
+				doc={loadedDoc}
 				spaceId={spaceId}
 				docId={id}
 			/>
@@ -573,10 +573,6 @@ function handleDuplicateDocument(
 }
 
 type LoadedSpace = co.loaded<typeof Space, typeof spaceResolve>
-
-let spaceLoaderResolve = {
-	documents: true,
-} as const satisfies ResolveQuery<typeof Space>
 
 let spaceResolve = {
 	documents: { $each: { content: true } },

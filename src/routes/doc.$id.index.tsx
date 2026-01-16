@@ -77,17 +77,29 @@ import { HelpMenu } from "@/components/help-menu"
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
+	loader: async ({ params }) => {
+		let doc = await Document.load(params.id, { resolve })
+		if (!doc.$isLoaded) {
+			return { doc: null, loadingState: doc.$jazz.loadingState }
+		}
+		return { doc, loadingState: null }
+	},
 	component: EditorPage,
 })
 
 function EditorPage() {
 	let { id } = Route.useParams()
+	let data = Route.useLoaderData()
 	let navigate = useNavigate()
 
-	let doc = useCoState(Document, id, { resolve })
+	let subscribedDoc = useCoState(Document, id, { resolve })
 
-	// Redirect space docs to their proper route
-	let spaceId = doc.$isLoaded ? doc.spaceId : undefined
+	// Get spaceId for redirect (from either source, safely)
+	let spaceId = subscribedDoc.$isLoaded
+		? subscribedDoc.spaceId
+		: data.doc?.spaceId
+
+	// Redirect space docs to their proper route (must call useEffect unconditionally)
 	useEffect(() => {
 		if (spaceId) {
 			navigate({
@@ -98,23 +110,24 @@ function EditorPage() {
 		}
 	}, [spaceId, id, navigate])
 
-	// Error states
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
+	// Error states from loader
+	if (!data.doc) {
+		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
+		return <DocumentNotFound />
+	}
+
+	// Handle live access revocation
+	if (
+		!subscribedDoc.$isLoaded &&
+		subscribedDoc.$jazz.loadingState !== "loading"
+	) {
+		if (subscribedDoc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading document...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
-	}
+	// Fall back to preloaded data while subscription is loading
+	let doc = subscribedDoc.$isLoaded ? subscribedDoc : data.doc
 
 	if (doc.spaceId) {
 		return (

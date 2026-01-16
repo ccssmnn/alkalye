@@ -4,12 +4,12 @@ import { type ResolveQuery } from "jazz-tools"
 import { Document } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { altModKey } from "@/lib/platform"
-import { Loader2, EllipsisIcon, Pencil } from "lucide-react"
+import { EllipsisIcon, Pencil } from "lucide-react"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,
@@ -30,11 +30,6 @@ import {
 
 export { Route }
 
-let loaderResolve = {
-	content: true,
-	assets: true,
-} as const satisfies ResolveQuery<typeof Document>
-
 let resolve = {
 	content: true,
 	assets: { $each: { image: true } },
@@ -43,7 +38,7 @@ let resolve = {
 let Route = createFileRoute("/doc/$id/preview")({
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, {
-			resolve: loaderResolve,
+			resolve,
 		})
 		if (!doc.$isLoaded) {
 			return {
@@ -72,34 +67,33 @@ function PreviewPage() {
 	let data = Route.useLoaderData()
 	let navigate = useNavigate()
 
-	let doc = useCoState(Document, id, { resolve })
+	let subscribedDoc = useCoState(Document, id, { resolve })
 
-	let content = doc.$isLoaded ? (doc.content?.toString() ?? "") : ""
+	// Extract content for wikilinks (use loader data as fallback, empty if neither)
+	let content =
+		(subscribedDoc.$isLoaded ? subscribedDoc : data.doc)?.content?.toString() ??
+		""
 	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
 	let wikilinkCache = useDocTitles(wikilinkIds, data.wikilinkCache)
 
+	// Error states from loader
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
-		if (doc.$jazz.loadingState === "unauthorized")
+	// Handle live access revocation
+	if (
+		!subscribedDoc.$isLoaded &&
+		subscribedDoc.$jazz.loadingState !== "loading"
+	) {
+		if (subscribedDoc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	if (!doc.$isLoaded) {
-		return (
-			<Empty className="h-screen">
-				<EmptyHeader>
-					<Loader2 className="text-muted-foreground size-8 animate-spin" />
-					<EmptyTitle>Loading document...</EmptyTitle>
-				</EmptyHeader>
-			</Empty>
-		)
-	}
-
+	// Fall back to preloaded data while subscription is loading
+	let doc = subscribedDoc.$isLoaded ? subscribedDoc : data.doc
 	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
 	let docTitle = getDocumentTitle(content)
 
