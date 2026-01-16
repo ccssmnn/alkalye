@@ -178,3 +178,10 @@ function makeDelete(doc: LoadedDocument, navigate: NavigateFn) {
 - Left: navigation/branding
 - Center: title (absolutely positioned for true centering)
 - Right: actions dropdown
+
+### Forms
+
+- Use `@tanstack/react-form` with `useForm` for all forms
+- Use field components from `@/components/ui/field` (`Field`, `FieldLabel`, `FieldError`, etc.)
+- Use `form.Field` render props pattern for each input
+- Handle validation via tanstack form's `validators` option

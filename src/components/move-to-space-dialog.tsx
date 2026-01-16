@@ -1,7 +1,8 @@
 import { useState } from "react"
+import { useForm } from "@tanstack/react-form"
 import { co, Group } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
-import { User, ArrowRight } from "lucide-react"
+import { User, ArrowRight, Plus } from "lucide-react"
 import {
 	Dialog,
 	DialogContent,
@@ -19,7 +20,9 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import { SpaceInitials } from "@/components/space-selector"
-import { Document, UserAccount } from "@/schema"
+import { Field, FieldLabel } from "@/components/ui/field"
+import { Input } from "@/components/ui/input"
+import { Document, UserAccount, createSpace } from "@/schema"
 import { getSpaceGroup } from "@/lib/spaces"
 import { getDocumentGroup } from "@/lib/documents"
 
@@ -57,34 +60,88 @@ function MoveToSpaceDialog({
 	onMove,
 }: MoveToSpaceDialogProps) {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
-	let [destination, setDestination] = useState<string>("")
-	let [isMoving, setIsMoving] = useState(false)
 	let [lastOpen, setLastOpen] = useState(false)
+	let [destination, setDestination] = useState("")
+	let [newSpaceName, setNewSpaceName] = useState("")
+	let [isSubmitting, setIsSubmitting] = useState(false)
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let availableSpaces = currentSpaceId
 		? spaces.filter(s => s.$jazz.id !== currentSpaceId)
 		: spaces
 
+	let defaultDestination = currentSpaceId
+		? "personal"
+		: (availableSpaces[0]?.$jazz.id ?? "")
+
+	let form = useForm({
+		defaultValues: {
+			destination: defaultDestination,
+			newSpaceName: "",
+		},
+		onSubmit: async ({ value }) => {
+			if (!me?.$isLoaded || !me.root) return
+
+			let { destination, newSpaceName } = value
+			if (destination === "personal" && !currentSpaceId) return
+			if (destination === currentSpaceId) return
+			if (destination === "__new__" && !newSpaceName.trim()) return
+
+			setIsSubmitting(true)
+			try {
+				let selectedSpace: SpaceOption | null = null
+
+				if (destination === "__new__") {
+					let space = createSpace(newSpaceName.trim(), me.root)
+					selectedSpace = { id: space.$jazz.id, name: space.name }
+				} else if (destination !== "personal") {
+					let space = spaces.find(s => s.$jazz.id === destination)
+					if (space) {
+						selectedSpace = { id: space.$jazz.id, name: space.name }
+					}
+				}
+
+				await moveDocumentToSpace({
+					doc,
+					destination: selectedSpace,
+					currentSpaceId,
+					me,
+				})
+
+				onMove?.(selectedSpace)
+				onOpenChange(false)
+			} catch (err) {
+				console.error("Failed to move document:", err)
+			} finally {
+				setIsSubmitting(false)
+			}
+		},
+	})
+
 	if (open && !lastOpen) {
-		let defaultDest = currentSpaceId
-			? "personal"
-			: (availableSpaces[0]?.$jazz.id ?? "")
-		setDestination(defaultDest)
-		setIsMoving(false)
+		form.reset({
+			destination: defaultDestination,
+			newSpaceName: "",
+		})
+		setDestination(defaultDestination)
+		setNewSpaceName("")
+		setIsSubmitting(false)
 	}
 	if (open !== lastOpen) {
 		setLastOpen(open)
 	}
+
+	let isCreatingNew = destination === "__new__"
 
 	let currentLocation = currentSpaceId
 		? (spaces.find(s => s.$jazz.id === currentSpaceId)?.name ?? "Space")
 		: "Personal"
 
 	let isDisabled =
-		isMoving ||
+		isSubmitting ||
 		(destination === "personal" && !currentSpaceId) ||
-		destination === currentSpaceId
+		destination === currentSpaceId ||
+		(isCreatingNew && !newSpaceName.trim())
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
@@ -97,16 +154,10 @@ function MoveToSpaceDialog({
 				</DialogHeader>
 
 				<form
-					onSubmit={makeSubmit({
-						me,
-						doc,
-						destination,
-						spaces,
-						currentSpaceId,
-						setIsMoving,
-						onMove,
-						onOpenChange,
-					})}
+					onSubmit={e => {
+						e.preventDefault()
+						form.handleSubmit()
+					}}
 				>
 					<div className="space-y-4">
 						<div className="text-muted-foreground flex items-center gap-2 text-sm">
@@ -116,50 +167,89 @@ function MoveToSpaceDialog({
 							</span>
 						</div>
 
-						<div className="flex items-center gap-2">
-							<ArrowRight className="text-muted-foreground size-4" />
-							<Select
-								value={destination}
-								onValueChange={v => v && setDestination(v)}
-							>
-								<SelectTrigger className="flex-1">
-									{destination === "personal" ? (
-										<div className="inline-flex items-center gap-3">
-											<User />
-											<span>Personal</span>
-										</div>
-									) : (
-										(() => {
-											let space = availableSpaces.find(
-												s => s.$jazz.id === destination,
-											)
-											return space ? (
+						<form.Field name="destination">
+							{field => (
+								<div className="flex items-center gap-2">
+									<ArrowRight className="text-muted-foreground size-4" />
+									<Select
+										value={field.state.value}
+										onValueChange={v => {
+											if (!v) return
+											field.handleChange(v)
+											setDestination(v)
+										}}
+									>
+										<SelectTrigger className="flex-1">
+											{field.state.value === "personal" ? (
 												<div className="inline-flex items-center gap-3">
-													<SpaceInitials name={space.name} size="sm" />
-													<span>{space.name}</span>
+													<User />
+													<span>Personal</span>
+												</div>
+											) : field.state.value === "__new__" ? (
+												<div className="inline-flex items-center gap-3">
+													<Plus className="size-4" />
+													<span>Create new space</span>
 												</div>
 											) : (
-												<SelectValue />
-											)
-										})()
-									)}
-								</SelectTrigger>
-								<SelectContent>
-									{!currentSpaceId ? null : (
-										<SelectItem value="personal">
-											<User className="size-4" />
-											<span>Personal</span>
-										</SelectItem>
-									)}
-									{availableSpaces.map(space => (
-										<SelectItem key={space.$jazz.id} value={space.$jazz.id}>
-											<SpaceInitials name={space.name} size="sm" />
-											<span>{space.name}</span>
-										</SelectItem>
-									))}
-								</SelectContent>
-							</Select>
-						</div>
+												(() => {
+													let space = availableSpaces.find(
+														s => s.$jazz.id === field.state.value,
+													)
+													return space ? (
+														<div className="inline-flex items-center gap-3">
+															<SpaceInitials name={space.name} size="sm" />
+															<span>{space.name}</span>
+														</div>
+													) : (
+														<SelectValue />
+													)
+												})()
+											)}
+										</SelectTrigger>
+										<SelectContent>
+											{!currentSpaceId ? null : (
+												<SelectItem value="personal">
+													<User className="size-4" />
+													<span>Personal</span>
+												</SelectItem>
+											)}
+											{availableSpaces.map(space => (
+												<SelectItem key={space.$jazz.id} value={space.$jazz.id}>
+													<SpaceInitials name={space.name} size="sm" />
+													<span>{space.name}</span>
+												</SelectItem>
+											))}
+											<SelectItem value="__new__">
+												<Plus className="size-4" />
+												<span>Create new space</span>
+											</SelectItem>
+										</SelectContent>
+									</Select>
+								</div>
+							)}
+						</form.Field>
+
+						{isCreatingNew && (
+							<form.Field name="newSpaceName">
+								{field => (
+									<Field>
+										<FieldLabel htmlFor={field.name}>Space name</FieldLabel>
+										<Input
+											id={field.name}
+											name={field.name}
+											value={field.state.value}
+											onChange={e => {
+												field.handleChange(e.target.value)
+												setNewSpaceName(e.target.value)
+											}}
+											placeholder="My Space"
+											autoComplete="off"
+											autoFocus
+										/>
+									</Field>
+								)}
+							</form.Field>
+						)}
 					</div>
 
 					<DialogFooter className="mt-4">
@@ -168,75 +258,18 @@ function MoveToSpaceDialog({
 							variant="outline"
 							size="sm"
 							onClick={() => onOpenChange(false)}
-							disabled={isMoving}
+							disabled={isSubmitting}
 						>
 							Cancel
 						</Button>
 						<Button type="submit" size="sm" disabled={isDisabled}>
-							{isMoving ? "Moving..." : "Move"}
+							{isSubmitting ? "Moving..." : "Move"}
 						</Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>
 		</Dialog>
 	)
-}
-
-type SubmitOptions = {
-	me: ReturnType<typeof useAccount<typeof UserAccount, typeof spacesQuery>>
-	doc: LoadedDocument
-	destination: string
-	spaces: LoadedSpaceWithAvatar[]
-	currentSpaceId?: string
-	setIsMoving: (v: boolean) => void
-	onMove?: (destination: SpaceOption | null) => void
-	onOpenChange: (open: boolean) => void
-}
-
-function makeSubmit(opts: SubmitOptions) {
-	let {
-		me,
-		doc,
-		destination,
-		spaces,
-		currentSpaceId,
-		setIsMoving,
-		onMove,
-		onOpenChange,
-	} = opts
-
-	return async function handleSubmit(e: React.FormEvent) {
-		e.preventDefault()
-		if (!me?.$isLoaded) return
-
-		if (destination === "personal" && !currentSpaceId) return
-		if (destination === currentSpaceId) return
-
-		setIsMoving(true)
-
-		try {
-			let selectedSpace: SpaceOption | null = null
-			if (destination !== "personal") {
-				let space = spaces.find(s => s.$jazz.id === destination)
-				if (space) {
-					selectedSpace = { id: space.$jazz.id, name: space.name }
-				}
-			}
-
-			await moveDocumentToSpace({
-				doc,
-				destination: selectedSpace,
-				currentSpaceId,
-				me,
-			})
-
-			onMove?.(selectedSpace)
-			onOpenChange(false)
-		} catch (err) {
-			console.error("Failed to move document:", err)
-			setIsMoving(false)
-		}
-	}
 }
 
 type LoadedSpaceWithAvatar = NonNullable<
