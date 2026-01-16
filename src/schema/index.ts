@@ -113,6 +113,12 @@ let Asset = co.map({
 	createdAt: z.date(),
 })
 
+let HighlightRange = z.object({
+	// 0-indexed character offset in the full document content
+	start: z.number(),
+	end: z.number(),
+})
+
 let Document = co.map({
 	version: z.literal(1),
 	content: co.plainText(),
@@ -121,6 +127,7 @@ let Document = co.map({
 	deletedAt: z.date().optional(),
 	permanentlyDeletedAt: z.date().optional(),
 	presentationLine: z.number().optional(),
+	highlightRange: HighlightRange.optional(),
 	spaceId: z.string().optional(),
 	createdAt: z.date(),
 	updatedAt: z.date(),

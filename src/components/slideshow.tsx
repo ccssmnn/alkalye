@@ -35,7 +35,9 @@ import {
 } from "@/lib/theme-renderer"
 
 export { Slideshow }
-export type { Slide }
+export type { Slide, HighlightRange }
+
+type HighlightRange = { start: number; end: number } | null
 
 type ResolvedWikilink = {
 	title: string
@@ -43,8 +45,15 @@ type ResolvedWikilink = {
 	isPresentation: boolean
 }
 
+type ScopedHighlight = {
+	range: NonNullable<HighlightRange>
+	slideSearchStart: number
+}
+
 let ThemeContext = createContext<PresentationTheme | null>(null)
 let WikilinkContext = createContext<Map<string, ResolvedWikilink>>(new Map())
+let HighlightContext = createContext<ScopedHighlight | null>(null)
+let ContentContext = createContext<string>("")
 
 type Asset = {
 	$jazz: { id: string }
@@ -62,6 +71,7 @@ interface SlideshowProps {
 	assets?: Asset[]
 	wikilinks: Map<string, ResolvedWikilink>
 	currentSlideNumber: number
+	highlightRange: HighlightRange
 	onSlideChange?: (slideNumber: number) => void
 	onExit?: () => void
 	onGoToTeleprompter?: () => void
@@ -73,6 +83,7 @@ function Slideshow({
 	assets,
 	wikilinks,
 	currentSlideNumber,
+	highlightRange,
 	onSlideChange,
 	onExit,
 	onGoToTeleprompter,
@@ -97,6 +108,10 @@ function Slideshow({
 	)
 
 	let visibleBlocks = currentSlide?.blocks ?? []
+
+	// Compute content offset range for current slide to scope highlighting
+	let slideContentRange = getSlideContentRange(content, visibleBlocks)
+	let scopedHighlight = scopeHighlightToSlide(highlightRange, slideContentRange)
 
 	function goToNextSlide() {
 		if (currentSlideIdx < slides.length - 1 && onSlideChange) {
@@ -126,56 +141,64 @@ function Slideshow({
 		<AssetContext.Provider value={assets}>
 			<WikilinkContext.Provider value={wikilinks}>
 				<ThemeContext.Provider value={appearanceTheme}>
-					{/* Inject theme styles */}
-					{injectedStyles && <style>{injectedStyles}</style>}
+					<HighlightContext.Provider value={scopedHighlight}>
+						<ContentContext.Provider value={content}>
+							{/* Inject theme styles */}
+							{injectedStyles && <style>{injectedStyles}</style>}
 
-					<div
-						data-mode="slideshow"
-						data-theme={documentTheme.theme?.name ?? undefined}
-						data-appearance={effectiveAppearance}
-						className="fixed inset-0 flex flex-col"
-					>
-						{/* Theme warning banner */}
-						{documentTheme.warning && (
-							<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
-								<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
-									<TriangleAlert className="size-4 shrink-0" />
-									<span>{documentTheme.warning}</span>
-								</div>
-							</div>
-						)}
+							<div
+								data-mode="slideshow"
+								data-theme={documentTheme.theme?.name ?? undefined}
+								data-appearance={effectiveAppearance}
+								className="fixed inset-0 flex flex-col"
+							>
+								{/* Theme warning banner */}
+								{documentTheme.warning && (
+									<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+										<div className="bg-warning/90 text-warning-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+											<TriangleAlert className="size-4 shrink-0" />
+											<span>{documentTheme.warning}</span>
+										</div>
+									</div>
+								)}
 
-						{/* Theme error banner (corrupted theme data) */}
-						{themeStylesResult.error && (
-							<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
-								<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
-									<TriangleAlert className="size-4 shrink-0" />
-									<span>
-										Theme error: {themeStylesResult.error}. Using default
-										styles.
-									</span>
-								</div>
-							</div>
-						)}
+								{/* Theme error banner (corrupted theme data) */}
+								{themeStylesResult.error && (
+									<div className="absolute top-4 left-1/2 z-50 -translate-x-1/2">
+										<div className="bg-destructive/90 text-destructive-foreground flex items-center gap-2 rounded-lg px-4 py-2 text-sm shadow-lg">
+											<TriangleAlert className="size-4 shrink-0" />
+											<span>
+												Theme error: {themeStylesResult.error}. Using default
+												styles.
+											</span>
+										</div>
+									</div>
+								)}
 
-						<article className="flex min-h-0 flex-1 flex-col">
-							{documentTheme.isLoading || themeStylesResult.isLoading ? null : (
-								<ScaledSlideContainer
-									blocks={visibleBlocks}
-									size={size}
-									onClick={goToNextSlide}
-									measureKey={getThemeMeasureKey(documentTheme, themeStyles)}
+								<article className="flex min-h-0 flex-1 flex-col">
+									{documentTheme.isLoading ||
+									themeStylesResult.isLoading ? null : (
+										<ScaledSlideContainer
+											blocks={visibleBlocks}
+											size={size}
+											onClick={goToNextSlide}
+											measureKey={getThemeMeasureKey(
+												documentTheme,
+												themeStyles,
+											)}
+										/>
+									)}
+								</article>
+								<SlideControls
+									slides={slides}
+									currentSlideNumber={currentSlideNumber}
+									onSlideChange={onSlideChange}
+									onExit={onExit}
+									onGoToTeleprompter={onGoToTeleprompter}
 								/>
-							)}
-						</article>
-						<SlideControls
-							slides={slides}
-							currentSlideNumber={currentSlideNumber}
-							onSlideChange={onSlideChange}
-							onExit={onExit}
-							onGoToTeleprompter={onGoToTeleprompter}
-						/>
-					</div>
+							</div>
+						</ContentContext.Provider>
+					</HighlightContext.Provider>
 				</ThemeContext.Provider>
 			</WikilinkContext.Provider>
 		</AssetContext.Provider>
@@ -633,10 +656,18 @@ function RenderSegments({ segments }: { segments: TextSegment[] }) {
 
 function RenderSegment({ segment }: { segment: TextSegment }) {
 	let wikilinks = useContext(WikilinkContext)
+	let highlight = useContext(HighlightContext)
+	let content = useContext(ContentContext)
 
 	switch (segment.type) {
 		case "text":
-			return <>{segment.text}</>
+			return (
+				<HighlightedText
+					text={segment.text}
+					content={content}
+					highlight={highlight}
+				/>
+			)
 		case "link":
 			return (
 				<a
@@ -645,7 +676,11 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 					rel="noopener noreferrer"
 					onClick={e => e.stopPropagation()}
 				>
-					{segment.text}
+					<HighlightedText
+						text={segment.text}
+						content={content}
+						highlight={highlight}
+					/>
 				</a>
 			)
 		case "wikilink": {
@@ -680,7 +715,15 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 				</em>
 			)
 		case "codespan":
-			return <code>{segment.text}</code>
+			return (
+				<code>
+					<HighlightedText
+						text={segment.text}
+						content={content}
+						highlight={highlight}
+					/>
+				</code>
+			)
 		case "del":
 			return (
 				<del>
@@ -688,6 +731,45 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 				</del>
 			)
 	}
+}
+
+function HighlightedText({
+	text,
+	content,
+	highlight,
+}: {
+	text: string
+	content: string
+	highlight: ScopedHighlight | null
+}) {
+	if (!highlight) return <>{text}</>
+
+	let { range, slideSearchStart } = highlight
+
+	let textIndex = content.indexOf(text, slideSearchStart)
+	if (textIndex === -1) return <>{text}</>
+
+	let textStart = textIndex
+	let textEnd = textIndex + text.length
+
+	let noOverlap = range.end <= textStart || range.start >= textEnd
+	if (noOverlap) return <>{text}</>
+
+	let relStart = Math.max(0, range.start - textStart)
+	let relEnd = Math.min(text.length, range.end - textStart)
+	if (relStart >= relEnd) return <>{text}</>
+
+	let before = text.slice(0, relStart)
+	let highlighted = text.slice(relStart, relEnd)
+	let after = text.slice(relEnd)
+
+	return (
+		<>
+			{before}
+			<mark className="highlighted">{highlighted}</mark>
+			{after}
+		</>
+	)
 }
 
 function SlideContentItem({ item }: { item: SlideContent }) {
@@ -800,17 +882,27 @@ function HighlightedCode({
 }) {
 	let presentationTheme = useContext(ThemeContext)
 	let systemTheme = useResolvedTheme()
+	let highlight = useContext(HighlightContext)
+	let content = useContext(ContentContext)
 	let [html, setHtml] = useState<string | null>(null)
 
 	let effectiveTheme = presentationTheme ?? systemTheme
 	let shikiTheme =
 		effectiveTheme === "light" ? "github-light-default" : "vesper"
 
+	// Stable key for decorations
+	let decorationKey = highlight?.range
+		? `${highlight.range.start}-${highlight.range.end}`
+		: "none"
+
 	useEffect(() => {
 		let cancelled = false
+		let decorations = computeCodeDecorations(code, content, highlight)
+
 		codeToHtml(code, {
 			lang: language || "text",
 			theme: shikiTheme,
+			decorations,
 		})
 			.then(result => {
 				if (!cancelled) setHtml(result)
@@ -821,7 +913,7 @@ function HighlightedCode({
 		return () => {
 			cancelled = true
 		}
-	}, [code, language, shikiTheme])
+	}, [code, language, shikiTheme, decorationKey, content, highlight])
 
 	if (html) {
 		return (
@@ -837,6 +929,38 @@ function HighlightedCode({
 			<code>{code}</code>
 		</pre>
 	)
+}
+
+type ShikiDecoration = {
+	start: number
+	end: number
+	properties: { class: string }
+}
+
+function computeCodeDecorations(
+	code: string,
+	content: string,
+	highlight: ScopedHighlight | null,
+): ShikiDecoration[] {
+	if (!highlight) return []
+
+	let { range, slideSearchStart } = highlight
+
+	let codeStart = content.indexOf(code, slideSearchStart)
+	if (codeStart === -1) return []
+
+	let codeEnd = codeStart + code.length
+
+	let noOverlap = range.end <= codeStart || range.start >= codeEnd
+	if (noOverlap) return []
+
+	let relStart = Math.max(0, range.start - codeStart)
+	let relEnd = Math.min(code.length, range.end - codeStart)
+	if (relStart >= relEnd) return []
+
+	return [
+		{ start: relStart, end: relEnd, properties: { class: "highlighted" } },
+	]
 }
 
 type ThemeStylesResult = {
@@ -1118,5 +1242,53 @@ function getSlideshowBaseCss(): string {
 	max-height: 100%;
 	object-fit: contain;
 }
+
+:where([data-mode="slideshow"] .highlighted),
+:where([data-mode="slideshow"] mark.highlighted) {
+	background: var(--highlight-background, oklch(from var(--brand, #6366f1) l c h / 0.15));
+	border: 1px solid var(--highlight-border, var(--brand, #6366f1));
+	border-radius: 0.15em;
+	padding: 0.05em 0.1em;
+	box-decoration-break: clone;
+	-webkit-box-decoration-break: clone;
+	color: inherit;
+}
 `
+}
+
+function getSlideContentRange(
+	content: string,
+	blocks: VisualBlock[],
+): { start: number; end: number } | null {
+	if (blocks.length === 0) return null
+
+	let minLine = Math.min(...blocks.map(b => b.startLine))
+	let maxLine = Math.max(...blocks.map(b => b.endLine))
+
+	let lines = content.split("\n")
+	let start = 0
+	for (let i = 0; i < minLine && i < lines.length; i++) {
+		start += lines[i].length + 1
+	}
+
+	let end = start
+	for (let i = minLine; i <= maxLine && i < lines.length; i++) {
+		end += lines[i].length + 1
+	}
+
+	return { start, end }
+}
+
+function scopeHighlightToSlide(
+	highlightRange: HighlightRange,
+	slideRange: { start: number; end: number } | null,
+): ScopedHighlight | null {
+	if (!highlightRange || !slideRange) return null
+
+	let noOverlap =
+		highlightRange.end <= slideRange.start ||
+		highlightRange.start >= slideRange.end
+	if (noOverlap) return null
+
+	return { range: highlightRange, slideSearchStart: slideRange.start }
 }

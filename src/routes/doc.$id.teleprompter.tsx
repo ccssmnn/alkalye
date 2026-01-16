@@ -129,9 +129,13 @@ function TeleprompterPage() {
 			/>
 			<Teleprompter
 				items={items}
+				content={content}
 				wikilinks={wikilinks}
 				presentationIndex={doc.presentationLine}
 				onIndexChange={index => doc.$jazz.set("presentationLine", index)}
+				onHighlightChange={range =>
+					doc.$jazz.set("highlightRange", range ?? undefined)
+				}
 				onExit={() => navigate({ to: "/doc/$id", params: { id } })}
 			/>
 		</div>

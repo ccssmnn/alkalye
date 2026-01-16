@@ -100,6 +100,7 @@ function SlideshowPage() {
 			assets={assets}
 			wikilinks={wikilinks}
 			currentSlideNumber={currentSlideNumber}
+			highlightRange={doc.highlightRange ?? null}
 			onSlideChange={canEditDoc ? makeSlideChange(doc, items) : undefined}
 			onExit={
 				canEditDoc
