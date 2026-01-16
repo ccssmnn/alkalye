@@ -191,7 +191,7 @@ function SidebarAssets({
 									<DropdownMenuTrigger
 										disabled={readOnly}
 										render={
-											<SidebarMenuButton disabled={readOnly}>
+											<SidebarMenuButton disabled={readOnly} nativeButton>
 												<div className="bg-muted size-8 shrink-0 overflow-hidden rounded">
 													{asset.imageId ? (
 														<JazzImage

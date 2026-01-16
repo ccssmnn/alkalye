@@ -116,6 +116,7 @@ function EditorToolbar({
 									onClick={onSaveCopy}
 									disabled={saveCopyState !== "idle"}
 									className="shrink-0"
+									nativeButton
 								>
 									{saveCopyState === "saved" ? (
 										<>
@@ -164,7 +165,7 @@ function EditorToolbar({
 														size="icon"
 														aria-label="Heading"
 														className="shrink-0"
-														nativeButton={false}
+														nativeButton
 													>
 														<Heading />
 													</Button>
@@ -283,7 +284,6 @@ function ToolbarButton({
 						onClick={onClick}
 						aria-label={label}
 						className="shrink-0"
-						nativeButton={false}
 					>
 						{icon}
 					</Button>

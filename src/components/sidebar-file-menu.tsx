@@ -110,7 +110,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						render={
-							<SidebarMenuButton>
+							<SidebarMenuButton nativeButton>
 								<FileText className="size-4" />
 								<span>File</span>
 							</SidebarMenuButton>

@@ -65,7 +65,7 @@ function SidebarImportExport({
 						render={
 							<DropdownMenuTrigger
 								render={
-									<Button size="icon-sm" variant="ghost" nativeButton={false}>
+									<Button size="icon-sm" variant="ghost" nativeButton>
 										<MoreHorizontal className="size-4" />
 									</Button>
 								}

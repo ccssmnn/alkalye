@@ -424,12 +424,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				footer={
 					<HelpMenu
 						trigger={
-							<Button
-								variant="ghost"
-								size="sm"
-								className="w-full"
-								nativeButton={false}
-							>
+							<Button variant="ghost" size="sm" className="w-full" nativeButton>
 								<HelpCircle />
 								<span>Help</span>
 							</Button>

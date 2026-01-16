@@ -62,7 +62,7 @@ function SidebarFormatMenu({
 				<DropdownMenuTrigger
 					disabled={disabled}
 					render={
-						<SidebarMenuButton disabled={disabled}>
+						<SidebarMenuButton disabled={disabled} nativeButton>
 							<Type className="size-4" />
 							<span>Format</span>
 						</SidebarMenuButton>

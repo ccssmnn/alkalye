@@ -95,7 +95,7 @@ function SpaceSelector() {
 							<Button
 								variant="ghost"
 								className="flex-1 justify-between"
-								nativeButton={false}
+								nativeButton
 							>
 								<span className="inline-flex items-center gap-3">
 									{isInSpace && currentSpace.$isLoaded ? (

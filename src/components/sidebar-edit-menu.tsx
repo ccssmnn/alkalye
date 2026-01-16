@@ -47,7 +47,7 @@ function SidebarEditMenu({ editor, disabled, readOnly }: SidebarEditMenuProps) {
 				<DropdownMenuTrigger
 					disabled={disabled}
 					render={
-						<SidebarMenuButton disabled={disabled}>
+						<SidebarMenuButton disabled={disabled} nativeButton>
 							<Undo2 className="size-4" />
 							<span>Edit</span>
 						</SidebarMenuButton>

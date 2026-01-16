@@ -100,12 +100,12 @@ function ThemeToggle({ theme, setTheme, showLabel }: ThemeToggleProps) {
 		theme === "light" ? <Sun /> : theme === "dark" ? <Moon /> : <SunMoon />
 
 	let trigger = showLabel ? (
-		<Button variant="ghost" size="sm" aria-label="Theme" nativeButton={false}>
+		<Button variant="ghost" size="sm" aria-label="Theme" nativeButton>
 			{icon}
 			Theme
 		</Button>
 	) : (
-		<Button variant="ghost" size="icon" aria-label="Theme" nativeButton={false}>
+		<Button variant="ghost" size="icon" aria-label="Theme" nativeButton>
 			{icon}
 		</Button>
 	)

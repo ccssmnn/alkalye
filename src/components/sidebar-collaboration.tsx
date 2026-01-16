@@ -67,6 +67,7 @@ function SidebarCollaboration({
 							<SidebarMenuButton
 								onClick={() => setShareOpen(true)}
 								className="gap-2"
+								nativeButton
 							>
 								<Lock className="size-4" />
 								<span>Private</span>
@@ -79,6 +80,7 @@ function SidebarCollaboration({
 							<SidebarMenuButton
 								onClick={() => setShareOpen(true)}
 								className="gap-2"
+								nativeButton
 							>
 								<Users className="size-4" />
 								<span>Shared</span>
@@ -103,6 +105,7 @@ function SidebarCollaboration({
 							<SidebarMenuButton
 								onClick={() => setShareOpen(true)}
 								className="gap-2"
+								nativeButton
 							>
 								<Globe className="size-4 text-green-600 dark:text-green-400" />
 								<span>Public</span>
