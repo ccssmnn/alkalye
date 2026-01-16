@@ -495,7 +495,9 @@ function DocumentItem({
 				<ContextMenuTrigger
 					render={
 						<SidebarMenuButton
-							render={<Link {...docLinkProps} onClick={onClick} />}
+							render={
+								<Link {...docLinkProps} onClick={onClick} draggable={false} />
+							}
 							isActive={isActive}
 							className="h-auto py-2"
 							style={
