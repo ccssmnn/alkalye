@@ -723,6 +723,23 @@ As you can see here...`)
 		})
 	})
 
+	it("slide with image and indented text in same visual block", () => {
+		let items = parsePresentation(`![alt](image.png)
+  Hello World!`)
+
+		let blocks = getBlocks(items)
+
+		expect(blocks).toHaveLength(1)
+		expect(blocks[0].content).toEqual([
+			{ type: "image", alt: "alt", src: "image.png" },
+			{
+				type: "text",
+				text: "Hello World!",
+				segments: [{ type: "text", text: "Hello World!" }],
+			},
+		])
+	})
+
 	it("full presentation with frontmatter", () => {
 		let items = parsePresentation(`---
 mode: present

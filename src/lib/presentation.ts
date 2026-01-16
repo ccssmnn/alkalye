@@ -394,7 +394,24 @@ function tokenToContent(token: Token): SlideContent[] {
 			let p = token as Tokens.Paragraph
 			let imgMatch = p.raw.match(/^!\[([^\]]*)\]\(([^)]+)\)/)
 			if (imgMatch) {
-				return [{ type: "image", alt: imgMatch[1], src: imgMatch[2] }]
+				let content: SlideContent[] = [
+					{ type: "image", alt: imgMatch[1], src: imgMatch[2] },
+				]
+				// Check for indented text after the image (same visual block)
+				let afterImage = p.raw.slice(imgMatch[0].length)
+				let lines = afterImage.split("\n")
+				for (let line of lines) {
+					if (line.trim() === "") continue
+					if (/^(\t| {2})/.test(line)) {
+						let text = line.replace(/^(\t| {2,})/, "")
+						content.push({
+							type: "text",
+							text,
+							segments: parseTextSegments(text),
+						})
+					}
+				}
+				return content
 			}
 			let text = p.text.replace(/^(\t| {2})/, "")
 			return [{ type: "text", text, segments: parseTextSegments(text) }]
