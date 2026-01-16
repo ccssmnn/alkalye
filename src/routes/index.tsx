@@ -4,6 +4,10 @@ import { UserAccount, Document } from "@/schema"
 
 export { Route }
 
+let rootQuery = {
+	root: true,
+} as const satisfies ResolveQuery<typeof UserAccount>
+
 let documentsQuery = {
 	root: {
 		documents: { $each: true, $onError: "catch" },
@@ -15,6 +19,24 @@ let Route = createFileRoute("/")({
 		let { me } = context
 		if (!me) return null
 
+		// Fast path: check lastOpenedDocId from account root
+		let rootMe = await me.$jazz.ensureLoaded({ resolve: rootQuery })
+		let { lastOpenedDocId, lastOpenedSpaceId } = rootMe.root ?? {}
+
+		if (lastOpenedDocId && lastOpenedSpaceId) {
+			throw redirect({
+				to: "/spaces/$spaceId/doc/$id",
+				params: { spaceId: lastOpenedSpaceId, id: lastOpenedDocId },
+			})
+		}
+		if (lastOpenedDocId) {
+			throw redirect({
+				to: "/doc/$id",
+				params: { id: lastOpenedDocId },
+			})
+		}
+
+		// Fallback: load all docs and find most recent
 		let loadedMe = await me.$jazz.ensureLoaded({ resolve: documentsQuery })
 		let docs = loadedMe.root?.documents
 		if (!docs?.$isLoaded) return null

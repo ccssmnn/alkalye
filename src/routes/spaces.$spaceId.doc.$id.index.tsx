@@ -77,6 +77,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
+import { useTrackLastOpened } from "@/lib/use-track-last-opened"
 
 export { Route }
 
@@ -241,6 +242,7 @@ function SpaceEditorContent({
 
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly, { spaceId })
 	useEditorSettings(editorSettings)
+	useTrackLastOpened(me, doc)
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)

@@ -146,6 +146,8 @@ let UserRoot = co.map({
 	settings: co.optional(Settings),
 	themes: co.optional(co.list(Theme)),
 	migrationVersion: z.number().optional(),
+	lastOpenedDocId: z.string().optional(),
+	lastOpenedSpaceId: z.string().optional(),
 })
 
 let FALLBACK_WELCOME_CONTENT = `# Welcome to Alkalye
