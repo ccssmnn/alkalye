@@ -395,8 +395,8 @@ function VisualBlockView({
 	let ref = useScrollIntoView(isCurrent)
 
 	let baseClass = cn(
-		"cursor-pointer rounded-r px-4 py-2 transition-colors hover:bg-muted border-l-4 border-foreground",
-		isCurrent && "bg-brand text-white",
+		"cursor-pointer rounded-r px-4 py-2 transition-colors border-l-4 border-foreground",
+		isCurrent ? "bg-brand text-white hover:bg-brand/80" : "hover:bg-muted",
 	)
 
 	return (
@@ -427,8 +427,8 @@ function TeleprompterLineView({
 	let ref = useScrollIntoView(isCurrent)
 
 	let baseClass = cn(
-		"cursor-pointer rounded px-4 py-1 transition-colors hover:bg-muted text-muted-foreground",
-		isCurrent && "bg-brand text-white",
+		"cursor-pointer rounded px-4 py-1 transition-colors text-muted-foreground",
+		isCurrent ? "bg-brand text-white hover:bg-brand/80" : "hover:bg-muted",
 	)
 
 	return (
@@ -473,7 +473,7 @@ function RenderSegments({ segments }: { segments: TextSegment[] }) {
 							href={seg.href}
 							target="_blank"
 							rel="noopener noreferrer"
-							className="text-brand underline"
+							className="underline"
 							onClick={e => e.stopPropagation()}
 						>
 							{seg.text}
