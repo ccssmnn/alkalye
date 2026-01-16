@@ -581,6 +581,8 @@ interface TimeMachineBottomBarProps {
 	editHistory: EditHistoryItem[]
 }
 
+let HOLD_DELAY_MS = 1500
+
 function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 	let { id: docId } = Route.useParams()
 	let { edit: editParam, mode } = Route.useSearch()
@@ -590,6 +592,9 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 	let holdIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 	let holdDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let holdEditRef = useRef(0)
+	let [holdingDirection, setHoldingDirection] = useState<
+		"prev" | "next" | null
+	>(null)
 
 	let totalEdits = editHistory.length
 	let dayGroups = groupEditsByDay(editHistory)
@@ -741,7 +746,9 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 			navigateToEdit(idx)
 		}
 
+		setHoldingDirection(direction)
 		holdDelayRef.current = setTimeout(() => {
+			setHoldingDirection(null)
 			holdIntervalRef.current = setInterval(() => {
 				let nextIdx = getNext()
 				if (nextIdx !== null) {
@@ -751,10 +758,11 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 					stopHold()
 				}
 			}, 100)
-		}, 1500)
+		}, HOLD_DELAY_MS)
 	}
 
 	function stopHold() {
+		setHoldingDirection(null)
 		if (holdDelayRef.current) {
 			clearTimeout(holdDelayRef.current)
 			holdDelayRef.current = null
@@ -815,36 +823,20 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 
 			<div className="flex items-center justify-between gap-3 md:hidden">
 				<div className="flex items-center gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						onMouseDown={() => startHold("prev")}
-						onMouseUp={stopHold}
-						onMouseLeave={stopHold}
-						onTouchStart={() => startHold("prev")}
-						onTouchEnd={stopHold}
+					<HoldButton
+						direction="prev"
+						holdingDirection={holdingDirection}
+						onStartHold={startHold}
+						onStopHold={stopHold}
 						disabled={disabled || isAtStart || !hasHistory}
-						aria-label="Previous edit"
-						className="gap-1"
-					>
-						<ChevronLeft className="size-4" />
-						<span className="sr-only sm:not-sr-only">Previous</span>
-					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						onMouseDown={() => startHold("next")}
-						onMouseUp={stopHold}
-						onMouseLeave={stopHold}
-						onTouchStart={() => startHold("next")}
-						onTouchEnd={stopHold}
+					/>
+					<HoldButton
+						direction="next"
+						holdingDirection={holdingDirection}
+						onStartHold={startHold}
+						onStopHold={stopHold}
 						disabled={disabled || isAtEnd || !hasHistory}
-						aria-label="Next edit"
-						className="gap-1"
-					>
-						<span className="sr-only sm:not-sr-only">Next</span>
-						<ChevronRight className="size-4" />
-					</Button>
+					/>
 				</div>
 				<DateDropdown
 					dayGroups={dayGroups}
@@ -864,20 +856,15 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 					<Tooltip>
 						<TooltipTrigger
 							render={
-								<Button
-									variant="outline"
-									size="sm"
-									onMouseDown={() => startHold("prev")}
-									onMouseUp={stopHold}
-									onMouseLeave={stopHold}
+								<HoldButton
+									direction="prev"
+									holdingDirection={holdingDirection}
+									onStartHold={startHold}
+									onStopHold={stopHold}
 									disabled={disabled || isAtStart || !hasHistory}
-									aria-label="Previous edit"
+									showLabel
 									nativeButton={false}
-									className="gap-1"
-								>
-									<ChevronLeft className="size-4" />
-									Previous
-								</Button>
+								/>
 							}
 						/>
 						<TooltipContent side="top">
@@ -887,20 +874,15 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 					<Tooltip>
 						<TooltipTrigger
 							render={
-								<Button
-									variant="outline"
-									size="sm"
-									onMouseDown={() => startHold("next")}
-									onMouseUp={stopHold}
-									onMouseLeave={stopHold}
+								<HoldButton
+									direction="next"
+									holdingDirection={holdingDirection}
+									onStartHold={startHold}
+									onStopHold={stopHold}
 									disabled={disabled || isAtEnd || !hasHistory}
-									aria-label="Next edit"
+									showLabel
 									nativeButton={false}
-									className="gap-1"
-								>
-									Next
-									<ChevronRight className="size-4" />
-								</Button>
+								/>
 							}
 						/>
 						<TooltipContent side="top">
@@ -937,6 +919,62 @@ function TimeMachineBottomBar({ editHistory }: TimeMachineBottomBarProps) {
 				{statusText}
 			</div>
 		</div>
+	)
+}
+
+interface HoldButtonProps {
+	direction: "prev" | "next"
+	holdingDirection: "prev" | "next" | null
+	onStartHold: (direction: "prev" | "next") => void
+	onStopHold: () => void
+	disabled: boolean
+	showLabel?: boolean
+	nativeButton?: boolean
+}
+
+function HoldButton({
+	direction,
+	holdingDirection,
+	onStartHold,
+	onStopHold,
+	disabled,
+	showLabel,
+	nativeButton,
+}: HoldButtonProps) {
+	let isHolding = holdingDirection === direction
+	let Icon = direction === "prev" ? ChevronLeft : ChevronRight
+	let label = direction === "prev" ? "Previous" : "Next"
+
+	return (
+		<Button
+			variant="outline"
+			size="sm"
+			onMouseDown={() => onStartHold(direction)}
+			onMouseUp={onStopHold}
+			onMouseLeave={onStopHold}
+			onTouchStart={() => onStartHold(direction)}
+			onTouchEnd={onStopHold}
+			disabled={disabled}
+			aria-label={`${label} edit`}
+			nativeButton={nativeButton}
+			className="relative gap-1 overflow-hidden"
+		>
+			{isHolding && (
+				<span
+					className="bg-primary/20 absolute inset-0 origin-left"
+					style={{
+						animation: `hold-progress ${HOLD_DELAY_MS}ms linear forwards`,
+					}}
+				/>
+			)}
+			{direction === "prev" && <Icon className="relative size-4" />}
+			{showLabel ? (
+				<span className="relative">{label}</span>
+			) : (
+				<span className="sr-only sm:not-sr-only">{label}</span>
+			)}
+			{direction === "next" && <Icon className="relative size-4" />}
+		</Button>
 	)
 }
 

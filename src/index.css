@@ -178,3 +178,12 @@ input[type="search"]::-webkit-search-cancel-button {
 .wikilink-broken:hover {
 	background-color: color-mix(in oklch, var(--destructive) 20%, transparent);
 }
+
+@keyframes hold-progress {
+	from {
+		transform: scaleX(0);
+	}
+	to {
+		transform: scaleX(1);
+	}
+}
