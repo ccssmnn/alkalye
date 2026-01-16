@@ -1,3 +1,4 @@
+import { insertNewlineContinueMarkup } from "@codemirror/lang-markdown"
 import { EditorView } from "@codemirror/view"
 import { sortTaskLists } from "@/lib/sort-tasks"
 
@@ -7,6 +8,7 @@ export {
 	insertCodeBlock,
 	insertImage,
 	insertLink,
+	insertNewlineContinueMarkupTight,
 	moveLineDown,
 	moveLineUp,
 	setBody,
@@ -459,4 +461,39 @@ function toggleTaskCompleteWithSort(autoSort: boolean): Command {
 		})
 		return true
 	}
+}
+
+// Custom newline handler that forces tight lists (no blank lines between items)
+let insertNewlineContinueMarkupTight: Command = view => {
+	let { from } = view.state.selection.main
+	let line = view.state.doc.lineAt(from)
+
+	// Check if we're in a list item
+	let listMatch = line.text.match(/^(\s*)([-*+]|\d+\.)\s/)
+	if (!listMatch) {
+		return insertNewlineContinueMarkup(view)
+	}
+
+	let result = insertNewlineContinueMarkup(view)
+
+	if (!result) return false
+
+	// Check if a blank line was inserted before the new list marker
+	let cursorAfter = view.state.selection.main.head
+	let lineAfter = view.state.doc.lineAt(cursorAfter)
+
+	// Look for pattern: content + \n\n + marker (loose list continuation)
+	// We want: content + \n + marker (tight list)
+	if (lineAfter.number >= 2) {
+		let prevLine = view.state.doc.line(lineAfter.number - 1)
+		// If the line before cursor is empty, it was a loose list insertion
+		if (prevLine.text.trim() === "") {
+			// Remove the blank line
+			view.dispatch({
+				changes: { from: prevLine.from, to: prevLine.to + 1, insert: "" },
+			})
+		}
+	}
+
+	return true
 }

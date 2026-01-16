@@ -15,7 +15,11 @@ import {
 	placeholder as placeholderExt,
 	highlightActiveLine,
 } from "@codemirror/view"
-import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
+import {
+	deleteMarkupBackward,
+	markdown,
+	markdownLanguage,
+} from "@codemirror/lang-markdown"
 import { languages } from "@codemirror/language-data"
 import {
 	defaultKeymap,
@@ -35,6 +39,7 @@ import {
 	insertCodeBlock,
 	insertImage,
 	insertLink,
+	insertNewlineContinueMarkupTight,
 	moveLineDown,
 	moveLineUp,
 	setBody,
@@ -339,11 +344,20 @@ function MarkdownEditor(
 						run: indentLess,
 						preventDefault: true,
 					},
+					{
+						key: "Enter",
+						run: insertNewlineContinueMarkupTight,
+					},
+					{
+						key: "Backspace",
+						run: deleteMarkupBackward,
+					},
 				]),
 			),
 			markdown({
 				base: markdownLanguage,
 				codeLanguages: languages,
+				addKeymap: false,
 			}),
 			editorExtensions,
 			highlightActiveLine(),

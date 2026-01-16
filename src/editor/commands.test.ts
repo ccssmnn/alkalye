@@ -1,5 +1,7 @@
 import { indentLess, indentMore } from "@codemirror/commands"
 import { indentUnit } from "@codemirror/language"
+import { markdown, markdownLanguage } from "@codemirror/lang-markdown"
+import { insertNewlineContinueMarkupTight } from "./commands"
 import { EditorState } from "@codemirror/state"
 import { EditorView } from "@codemirror/view"
 import { afterEach, describe, expect, it } from "vitest"
@@ -151,5 +153,95 @@ describe("indentLess", () => {
 		indentLess(view)
 
 		expect(view.state.doc.toString()).toBe("- Item 1\n  - Item 2\n- Item 3")
+	})
+})
+
+function createMarkdownEditorView(
+	content: string,
+	cursorPos?: number,
+): EditorView {
+	let parent = document.createElement("div")
+	document.body.appendChild(parent)
+	let state = EditorState.create({
+		doc: content,
+		extensions: [
+			indentUnit.of("  "),
+			markdown({ base: markdownLanguage, addKeymap: false }),
+		],
+	})
+	let view = new EditorView({
+		state,
+		parent,
+	})
+	if (cursorPos !== undefined) {
+		view.dispatch({
+			selection: { anchor: cursorPos },
+		})
+	}
+	views.push(view)
+	return view
+}
+
+describe("insertNewlineContinueMarkupTight", () => {
+	it("single task item - should NOT add blank line", () => {
+		let content = "- [ ] First task"
+		let view = createMarkdownEditorView(content, content.length)
+		insertNewlineContinueMarkupTight(view)
+
+		expect(view.state.doc.toString()).toBe("- [ ] First task\n- [ ] ")
+	})
+
+	it("two task items (tight) - should NOT add blank line", () => {
+		let content = "- [ ] First task\n- [ ] Second task"
+		let view = createMarkdownEditorView(content, content.length)
+		insertNewlineContinueMarkupTight(view)
+
+		expect(view.state.doc.toString()).toBe(
+			"- [ ] First task\n- [ ] Second task\n- [ ] ",
+		)
+	})
+
+	it("loose list - should NOT add blank line (forced tight)", () => {
+		let content = "- [ ] First task\n\n- [ ] Second task"
+		let view = createMarkdownEditorView(content, content.length)
+		insertNewlineContinueMarkupTight(view)
+
+		// Now forced to be tight
+		expect(view.state.doc.toString()).toBe(
+			"- [ ] First task\n\n- [ ] Second task\n- [ ] ",
+		)
+	})
+
+	it("cursor at first item in loose list - should NOT add blank line", () => {
+		// User has a loose list (blank line between items)
+		// Cursor is at "Task" in first item
+		let content = "- [ ] Task\n\n- [ ] another task"
+		let cursorPos = 10 // end of "Task"
+		let view = createMarkdownEditorView(content, cursorPos)
+		insertNewlineContinueMarkupTight(view)
+
+		// With tight enforcement: no blank line before new marker
+		expect(view.state.doc.toString()).toBe(
+			"- [ ] Task\n- [ ] \n\n- [ ] another task",
+		)
+	})
+
+	it("bullet list - should NOT add blank line", () => {
+		let content = "- First item\n\n- Second item"
+		let view = createMarkdownEditorView(content, 12) // end of "First item"
+		insertNewlineContinueMarkupTight(view)
+
+		expect(view.state.doc.toString()).toBe("- First item\n- \n\n- Second item")
+	})
+
+	it("ordered list - should NOT add blank line", () => {
+		let content = "1. First item\n\n2. Second item"
+		let view = createMarkdownEditorView(content, 13) // end of "First item"
+		insertNewlineContinueMarkupTight(view)
+
+		// CodeMirror renumbers the list items
+		expect(view.state.doc.toString()).toBe(
+			"1. First item\n2. \n\n3. Second item",
+		)
 	})
 })
