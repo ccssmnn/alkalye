@@ -82,7 +82,13 @@ let themesResolve = {
 
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let navigate = useNavigate()
-	let { isMobile, setRightOpenMobile, setLeftOpenMobile } = useSidebar()
+	let {
+		isMobile,
+		setLeftOpen,
+		setRightOpen,
+		setLeftOpenMobile,
+		setRightOpenMobile,
+	} = useSidebar()
 
 	let focusMode = useFocusMode()
 	let [deleteOpen, setDeleteOpen] = useState(false)
@@ -128,6 +134,8 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 							onClick={makeOpenTimeMachine(
 								doc,
 								navigate,
+								setLeftOpen,
+								setRightOpen,
 								setLeftOpenMobile,
 								setRightOpenMobile,
 							)}
@@ -283,10 +291,14 @@ function makeToggleFocusMode(focusMode: boolean) {
 function makeOpenTimeMachine(
 	doc: LoadedDocument,
 	navigate: ReturnType<typeof useNavigate>,
+	setLeftOpen: (open: boolean) => void,
+	setRightOpen: (open: boolean) => void,
 	setLeftOpenMobile: (open: boolean) => void,
 	setRightOpenMobile: (open: boolean) => void,
 ) {
 	return function handleOpenTimeMachine() {
+		setLeftOpen(false)
+		setRightOpen(false)
 		setLeftOpenMobile(false)
 		setRightOpenMobile(false)
 		navigate({
