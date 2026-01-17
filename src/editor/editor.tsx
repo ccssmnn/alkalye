@@ -60,10 +60,7 @@ import { createLinkDecorations } from "./link-decorations"
 import { createWikilinkDecorations } from "./wikilink-decorations"
 import { createBacklinkDecorations } from "./backlink-decorations"
 import { createImageDecorations } from "./image-decorations"
-import {
-	createWikilinkAutocomplete,
-	type WikilinkDoc,
-} from "./wikilink-autocomplete"
+
 import { useIsMobile } from "@/lib/use-mobile"
 import {
 	Dialog,
@@ -77,11 +74,19 @@ import {
 	LinkAction,
 	ImageAction,
 	WikiLinkAction,
+	type FloatingActionsRef,
 } from "@/components/floating-actions"
 
 export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "./frontmatter"
 export type { MarkdownEditorProps, MarkdownEditorRef, WikilinkDoc }
+
+type WikilinkDoc = {
+	id: string
+	title: string
+	path?: string | null
+	tags?: string[]
+}
 
 type RemoteCursor = {
 	id: string
@@ -200,6 +205,7 @@ function MarkdownEditor(
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
 	let readOnlyCompartment = useRef(new Compartment())
+	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
 	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
@@ -352,6 +358,14 @@ function MarkdownEditor(
 						key: "Backspace",
 						run: deleteMarkupBackward,
 					},
+					{
+						key: "Ctrl-Space",
+						run: () => {
+							floatingActionsRef.current?.triggerContextAction()
+							return true
+						},
+						preventDefault: true,
+					},
 				]),
 			),
 			markdown({
@@ -394,15 +408,6 @@ function MarkdownEditor(
 			),
 			createImageDecorations(imageResolver, handleImagePreview),
 		]
-
-		if (!initRef.current.isMobile) {
-			extensions.push(
-				createWikilinkAutocomplete(
-					() => dataRef.current.documents ?? [],
-					onCreateDocument,
-				),
-			)
-		}
 
 		if (initRef.current.placeholder) {
 			extensions.push(placeholderExt(initRef.current.placeholder))
@@ -730,6 +735,8 @@ function MarkdownEditor(
 				editor={internalRef}
 				focused={isFocused}
 				readOnly={readOnly}
+				docs={documents}
+				actionsRef={floatingActionsRef}
 			>
 				{ctx => (
 					<>

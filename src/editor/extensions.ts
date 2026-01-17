@@ -21,10 +21,7 @@ export {
 }
 
 export { createWikilinkDecorations } from "./wikilink-decorations"
-export {
-	createWikilinkAutocomplete,
-	type WikilinkDoc,
-} from "./wikilink-autocomplete"
+
 export {
 	getWikilinkAtPosition,
 	removeWikilink,
