@@ -17,20 +17,43 @@ function createWikilinkExtension(
 					return src.indexOf("[[")
 				},
 				tokenizer(src) {
-					let match = /^\[\[([^\]]+)\]\]/.exec(src)
+					// Match [[id]], [[id|alias]], or [[id]]suffix
+					let match = /^\[\[([^\]]+)\]\](\w*)/.exec(src)
 					if (match) {
+						let inner = match[1]
+						let suffix = match[2]
+						let pipeIndex = inner.indexOf("|")
+						let docId: string
+						let alias: string | undefined
+
+						if (pipeIndex !== -1) {
+							docId = inner.slice(0, pipeIndex).trim()
+							alias = inner.slice(pipeIndex + 1).trim()
+						} else {
+							docId = inner.trim()
+						}
+
+						// Append suffix to alias
+						if (suffix) {
+							alias = (alias ?? "") + suffix
+						}
+
 						return {
 							type: "wikilink",
 							raw: match[0],
-							docId: match[1],
+							docId,
+							alias: alias || undefined,
 						}
 					}
 					return undefined
 				},
 				renderer(token) {
-					let docId = (token as unknown as { docId: string }).docId
+					let { docId, alias } = token as unknown as {
+						docId: string
+						alias?: string
+					}
 					let resolved = resolver(docId)
-					let title = resolved.title
+					let title = alias ?? resolved.title
 					let exists = resolved.exists
 
 					if (exists) {

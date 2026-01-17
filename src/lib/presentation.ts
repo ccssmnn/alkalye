@@ -556,7 +556,7 @@ function endsWithBlankLine(token: Token): boolean {
 type TextSegment =
 	| { type: "text"; text: string }
 	| { type: "link"; text: string; href: string }
-	| { type: "wikilink"; docId: string }
+	| { type: "wikilink"; docId: string; alias?: string }
 	| { type: "strong"; segments: TextSegment[] }
 	| { type: "em"; segments: TextSegment[] }
 	| { type: "codespan"; text: string }
@@ -577,9 +577,10 @@ type SlideContent =
 
 function parseTextSegments(text: string): TextSegment[] {
 	// Handle wikilinks before standard lexing
+	// Match [[id]], [[id|alias]], or [[id]]suffix
 	let segments: TextSegment[] = []
 	let lastIndex = 0
-	let regex = /\[\[([^\]]+)\]\]/g
+	let regex = /\[\[([^\]]+)\]\](\w*)/g
 	let match
 
 	while ((match = regex.exec(text)) !== null) {
@@ -589,8 +590,27 @@ function parseTextSegments(text: string): TextSegment[] {
 			let tokens = Lexer.lexInline(before)
 			segments.push(...tokensToSegments(tokens))
 		}
+
+		let inner = match[1]
+		let suffix = match[2]
+		let pipeIndex = inner.indexOf("|")
+		let docId: string
+		let alias: string | undefined
+
+		if (pipeIndex !== -1) {
+			docId = inner.slice(0, pipeIndex).trim()
+			alias = inner.slice(pipeIndex + 1).trim()
+		} else {
+			docId = inner.trim()
+		}
+
+		// Append suffix to alias
+		if (suffix) {
+			alias = (alias ?? "") + suffix
+		}
+
 		// Add wikilink segment
-		segments.push({ type: "wikilink", docId: match[1] })
+		segments.push({ type: "wikilink", docId, alias: alias || undefined })
 		lastIndex = match.index + match[0].length
 	}
 

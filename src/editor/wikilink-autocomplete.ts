@@ -31,9 +31,9 @@ function createWikilinkCompletionSource(
 		let textBefore = line.text.slice(0, context.pos - line.from)
 		let textAfter = line.text.slice(context.pos - line.from)
 
-		// Match [[ followed by optional text (not containing ] or [)
-		// This handles the auto-closed case: [[|]] where | is cursor
-		let match = textBefore.match(/\[\[([^\][]*)$/)
+		// Match [[ followed by optional text (not containing ] or [ or |)
+		// Don't match if we're after a pipe (user is typing alias)
+		let match = textBefore.match(/\[\[([^\][|]*)$/)
 		if (!match) return null
 
 		// Always activate inside [[ - don't require explicit trigger after space
@@ -64,12 +64,10 @@ function createWikilinkCompletionSource(
 				},
 			}))
 
-		// Add "Create new document" option - show even if no typed text
-		if (onCreateDoc) {
-			let exactMatch =
-				typed.length > 0 &&
-				docs.some(doc => doc.title.toLowerCase() === typedLower)
-			if (!exactMatch && typed.length > 0) {
+		// Add "Create new document" option when no exact match
+		if (onCreateDoc && typed.length > 0) {
+			let exactMatch = docs.some(doc => doc.title.toLowerCase() === typedLower)
+			if (!exactMatch) {
 				options.push({
 					label: `Create "${typed}"`,
 					detail: "new document",
@@ -91,18 +89,20 @@ function createWikilinkCompletionSource(
 			}
 		}
 
-		// If no docs and nothing typed, still return empty to show we matched
-		if (options.length === 0 && docs.length === 0) {
-			// Return a hint that there are no documents
-			return null
+		// Always return a result when inside [[ to keep autocomplete open
+		// Even with no matches, "Create" option should appear when typing
+		if (options.length === 0) {
+			// Return empty but valid result to keep autocomplete context alive
+			// This prevents flickering when filtering narrows to zero matches
+			return { from, options: [] }
 		}
-
-		if (options.length === 0) return null
 
 		return {
 			from,
 			options,
-			validFor: /^[^\][]*$/,
+			// validFor tells CM when to reuse results vs re-query
+			// Must match any text user might type (including spaces)
+			validFor: /^[^\][|]*$/,
 		}
 	}
 }
@@ -145,27 +145,27 @@ let autocompleteTheme = EditorView.baseTheme({
 	},
 })
 
-// Trigger autocomplete when user types inside [[
+// Trigger autocomplete only when user types the second [
+// After that, activateOnTyping handles subsequent keystrokes
 let wikilinkTrigger = ViewPlugin.fromClass(
 	class {
 		update(update: ViewUpdate) {
 			if (!update.docChanged) return
 
+			// Only trigger when "[" was just inserted
+			let insertedBracket = false
+			update.changes.iterChanges((_fromA, _toA, _fromB, _toB, inserted) => {
+				if (inserted.toString() === "[") insertedBracket = true
+			})
+			if (!insertedBracket) return
+
 			let pos = update.state.selection.main.head
 			let line = update.state.doc.lineAt(pos)
 			let textBefore = line.text.slice(0, pos - line.from)
 
-			// Check if we're inside [[ (not yet closed)
-			let match = textBefore.match(/\[\[([^\][]*)$/)
-			if (match) {
-				// Check this was a recent insertion (not just cursor movement)
-				let wasInsertion = false
-				update.changes.iterChanges((_fromA, _toA, _fromB, toB) => {
-					if (toB === pos) wasInsertion = true
-				})
-				if (wasInsertion) {
-					setTimeout(() => startCompletion(update.view), 0)
-				}
+			// Check if we just completed [[ (cursor right after second bracket)
+			if (textBefore.endsWith("[[")) {
+				setTimeout(() => startCompletion(update.view), 0)
 			}
 		}
 	},

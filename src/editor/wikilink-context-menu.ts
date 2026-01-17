@@ -6,6 +6,7 @@ export type { WikilinkAtPosition }
 
 type WikilinkAtPosition = {
 	id: string
+	alias?: string
 	from: number
 	to: number
 }
@@ -27,8 +28,26 @@ function getWikilinkAtPosition(
 		let end = match.index + match[0].length
 
 		if (offsetInLine >= start && offsetInLine <= end) {
+			let inner = match[1]
+			let suffix = match[2]
+			let pipeIndex = inner.indexOf("|")
+			let id: string
+			let alias: string | undefined
+
+			if (pipeIndex !== -1) {
+				id = inner.slice(0, pipeIndex).trim()
+				alias = inner.slice(pipeIndex + 1).trim()
+			} else {
+				id = inner.trim()
+			}
+
+			if (suffix) {
+				alias = (alias ?? "") + suffix
+			}
+
 			return {
-				id: match[1],
+				id,
+				alias: alias || undefined,
 				from: line.from + start,
 				to: line.from + end,
 			}
@@ -49,7 +68,10 @@ function replaceWikilink(
 	wikilink: WikilinkAtPosition,
 	newId: string,
 ): void {
-	let newText = `[[${newId}]]`
+	// Preserve alias if present
+	let newText = wikilink.alias
+		? `[[${newId}|${wikilink.alias}]]`
+		: `[[${newId}]]`
 	view.dispatch({
 		changes: { from: wikilink.from, to: wikilink.to, insert: newText },
 	})
