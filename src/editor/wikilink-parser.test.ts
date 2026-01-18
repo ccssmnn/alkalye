@@ -97,4 +97,61 @@ Line 3`
 
 		expect(result1).toEqual(result2)
 	})
+
+	describe("custom title support", () => {
+		it("parses pipe alias [[id|title]]", () => {
+			let result = parseWikiLinks("See [[abc123|My Title]] for more")
+			expect(result).toEqual([
+				{ id: "abc123", alias: "My Title", from: 4, to: 23 },
+			])
+		})
+
+		it("parses suffix [[id]]s", () => {
+			let result = parseWikiLinks("multiple [[doc]]s here")
+			expect(result).toEqual([{ id: "doc", alias: "s", from: 9, to: 17 }])
+		})
+
+		it("parses longer suffix", () => {
+			let result = parseWikiLinks("[[link]]ing words")
+			expect(result).toEqual([{ id: "link", alias: "ing", from: 0, to: 11 }])
+		})
+
+		it("combines alias and suffix [[id|title]]s", () => {
+			let result = parseWikiLinks("two [[doc|link]]s")
+			expect(result).toEqual([{ id: "doc", alias: "links", from: 4, to: 17 }])
+		})
+
+		it("trims whitespace around pipe", () => {
+			let result = parseWikiLinks("[[abc | spaced title ]]")
+			expect(result).toEqual([
+				{ id: "abc", alias: "spaced title", from: 0, to: 23 },
+			])
+		})
+
+		it("handles empty alias after pipe", () => {
+			let result = parseWikiLinks("[[abc|]]")
+			// empty alias = no alias
+			expect(result).toEqual([{ id: "abc", from: 0, to: 8 }])
+		})
+
+		it("returns no alias when none provided", () => {
+			let result = parseWikiLinks("[[abc123]]")
+			expect(result).toEqual([{ id: "abc123", from: 0, to: 10 }])
+			expect(result[0].alias).toBeUndefined()
+		})
+
+		it("suffix stops at non-word characters", () => {
+			let result = parseWikiLinks("[[doc]]! punctuation")
+			expect(result).toEqual([{ id: "doc", from: 0, to: 7 }])
+		})
+
+		it("handles multiple links with mixed formats", () => {
+			let result = parseWikiLinks("[[a]] [[b|B]] [[c]]s")
+			expect(result).toEqual([
+				{ id: "a", from: 0, to: 5 },
+				{ id: "b", alias: "B", from: 6, to: 13 },
+				{ id: "c", alias: "s", from: 14, to: 20 },
+			])
+		})
+	})
 })

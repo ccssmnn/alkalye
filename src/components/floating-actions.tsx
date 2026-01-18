@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState, useRef, useImperativeHandle } from "react"
 import { createPortal } from "react-dom"
 import { useSidebar } from "@/components/ui/sidebar"
 import { syntaxTree } from "@codemirror/language"
@@ -51,17 +51,23 @@ export {
 	WikiLinkAction,
 	WikiLinkDialog,
 }
-export type { FloatingActionsProps }
+export type { FloatingActionsProps, FloatingActionsRef }
 
 type Range = { from: number; to: number }
+
+interface FloatingActionsRef {
+	triggerContextAction: () => void
+}
 
 interface FloatingActionsProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
 	focused: boolean
 	readOnly?: boolean
 	assets?: { id: string; name: string }[]
+	docs?: { id: string; title: string }[]
 	onUploadAndInsert?: (file: File, replaceRange: Range) => Promise<void>
 	children: (ctx: FloatingActionsContext) => React.ReactNode
+	actionsRef?: React.RefObject<FloatingActionsRef | null>
 }
 
 interface FloatingActionsContext {
@@ -70,8 +76,8 @@ interface FloatingActionsContext {
 	image: {
 		isImage: boolean
 		imageRange: Range | null
-		imageMenuOpen: boolean
-		setImageMenuOpen: (open: boolean) => void
+		imageDialogOpen: boolean
+		setImageDialogOpen: (open: boolean) => void
 		imageRangeRef: React.RefObject<Range | null>
 	}
 	wikiLink: {
@@ -82,6 +88,8 @@ interface FloatingActionsContext {
 		wikiLinkDialogOpen: boolean
 		setWikiLinkDialogOpen: (open: boolean) => void
 		wikiLinkRangeRef: React.RefObject<Range | null>
+		wikilinkPrefill: string
+		setWikilinkPrefill: (value: string) => void
 	}
 }
 
@@ -103,7 +111,9 @@ function FloatingActions({
 	editor,
 	focused,
 	readOnly,
+	docs,
 	children,
+	actionsRef,
 }: FloatingActionsProps) {
 	let { rightOpen, isMobile } = useSidebar()
 	let [context, setContext] = useState<EditorContext>({
@@ -118,10 +128,11 @@ function FloatingActions({
 		wikiLinkRange: null,
 	})
 	let [bottomOffset, setBottomOffset] = useState(16)
-	let [imageMenuOpen, setImageMenuOpen] = useState(false)
+	let [imageDialogOpen, setImageDialogOpen] = useState(false)
 	let [wikiLinkMenuOpen, setWikiLinkMenuOpen] = useState(false)
 	let [wikiLinkDialogOpen, setWikiLinkDialogOpen] = useState(false)
 	let [isInteracting, setIsInteracting] = useState(false)
+	let [wikilinkPrefill, setWikilinkPrefill] = useState("")
 
 	let imageRangeRef = useRef<Range | null>(null)
 	let wikiLinkRangeRef = useRef<Range | null>(null)
@@ -152,7 +163,7 @@ function FloatingActions({
 	let shouldResetContext =
 		!focused &&
 		!isInteracting &&
-		!imageMenuOpen &&
+		!imageDialogOpen &&
 		!wikiLinkMenuOpen &&
 		!wikiLinkDialogOpen
 
@@ -312,11 +323,70 @@ function FloatingActions({
 		}
 	}, [editor, focused, shouldResetContext])
 
-	function handleImageMenuOpenChange(open: boolean) {
+	// Expose triggerContextAction to parent via ref
+	useImperativeHandle(actionsRef, () => ({
+		triggerContextAction: () => {
+			let view = editor.current?.getEditor()
+			if (!view) return
+
+			// Detect wikilink at cursor
+			let state = view.state
+			let pos = state.selection.main.head
+			let content = state.doc.toString()
+			let wikilinks = parseWikiLinks(content)
+
+			for (let link of wikilinks) {
+				if (pos >= link.from && pos <= link.to) {
+					wikiLinkRangeRef.current = { from: link.from, to: link.to }
+					// Check if link ID resolves to an existing doc
+					let isValidLink = docs?.some(d => d.id === link.id)
+					if (isValidLink) {
+						setWikiLinkMenuOpen(true)
+					} else {
+						setWikilinkPrefill(link.id)
+						setWikiLinkDialogOpen(true)
+					}
+					return
+				}
+			}
+
+			// Check for incomplete wikilink
+			let line = state.doc.lineAt(pos)
+			let textBefore = line.text.slice(0, pos - line.from)
+			let textAfter = line.text.slice(pos - line.from)
+			let match = textBefore.match(/\[\[([^\][]*)$/)
+			if (match) {
+				let from = line.from + textBefore.lastIndexOf("[[")
+				let closingMatch = textAfter.match(/^([^\][]*)]]/)
+				let to = closingMatch
+					? pos + closingMatch[0].length
+					: pos + (textAfter.match(/^[^\][]*/) ?? [""])[0].length
+				wikiLinkRangeRef.current = { from, to }
+				setWikilinkPrefill((match[1] ?? "").trim())
+				setWikiLinkDialogOpen(true)
+				return
+			}
+
+			// Check for image
+			let tree = syntaxTree(state)
+			let node = tree.resolveInner(pos, -1)
+			let current: typeof node | null = node
+			while (current) {
+				if (current.name === "Image") {
+					imageRangeRef.current = { from: current.from, to: current.to }
+					setImageDialogOpen(true)
+					return
+				}
+				current = current.parent
+			}
+		},
+	}))
+
+	function handleImageDialogOpenChange(open: boolean) {
 		if (open && context.imageRange) {
 			imageRangeRef.current = context.imageRange
 		}
-		setImageMenuOpen(open)
+		setImageDialogOpen(open)
 	}
 
 	function handlePointerDown() {
@@ -331,7 +401,7 @@ function FloatingActions({
 
 	let shouldShow =
 		focused ||
-		imageMenuOpen ||
+		imageDialogOpen ||
 		wikiLinkMenuOpen ||
 		wikiLinkDialogOpen ||
 		isInteracting
@@ -350,8 +420,8 @@ function FloatingActions({
 		image: {
 			isImage: context.isImage,
 			imageRange: context.imageRange,
-			imageMenuOpen,
-			setImageMenuOpen: handleImageMenuOpenChange,
+			imageDialogOpen,
+			setImageDialogOpen: handleImageDialogOpenChange,
 			imageRangeRef,
 		},
 		wikiLink: {
@@ -362,6 +432,8 @@ function FloatingActions({
 			wikiLinkDialogOpen,
 			setWikiLinkDialogOpen,
 			wikiLinkRangeRef,
+			wikilinkPrefill,
+			setWikilinkPrefill,
 		},
 	}
 
@@ -443,6 +515,8 @@ interface WikiLinkActionProps {
 	wikiLinkDialogOpen: boolean
 	setWikiLinkDialogOpen: (open: boolean) => void
 	wikiLinkRangeRef: React.RefObject<Range | null>
+	wikilinkPrefill: string
+	setWikilinkPrefill: (value: string) => void
 	docs: { id: string; title: string }[]
 	onCreateDoc?: (title: string) => Promise<string>
 }
@@ -455,16 +529,27 @@ function WikiLinkAction({
 	wikiLinkDialogOpen,
 	setWikiLinkDialogOpen,
 	wikiLinkRangeRef,
+	wikilinkPrefill,
+	setWikilinkPrefill,
 	docs,
 	onCreateDoc,
 }: WikiLinkActionProps) {
 	let navigate = useNavigate()
-	let [inputValue, setInputValue] = useState("")
+	let [inputValue, setInputValue] = useState(wikilinkPrefill)
+
+	// Sync inputValue with wikilinkPrefill when dialog opens via Ctrl+Space
+	let [prevPrefill, setPrevPrefill] = useState(wikilinkPrefill)
+	if (wikilinkPrefill !== prevPrefill) {
+		setPrevPrefill(wikilinkPrefill)
+		setInputValue(wikilinkPrefill)
+	}
 
 	if (wikiLinkId === null) return null
 
 	// Check if this is a valid existing doc (not empty/incomplete wikilink)
 	let isValidLink = wikiLinkId && docs.some(d => d.id === wikiLinkId)
+	// Extract text from incomplete wikilink to prefill search
+	let prefillText = !isValidLink ? wikiLinkId.trim() : ""
 
 	let filteredDocs = docs.filter(
 		doc =>
@@ -508,6 +593,7 @@ function WikiLinkAction({
 		})
 		setWikiLinkDialogOpen(false)
 		setInputValue("")
+		setWikilinkPrefill("")
 		view.focus()
 	}
 
@@ -523,6 +609,7 @@ function WikiLinkAction({
 		})
 		setWikiLinkDialogOpen(false)
 		setInputValue("")
+		setWikilinkPrefill("")
 		view.focus()
 	}
 
@@ -560,6 +647,7 @@ function WikiLinkAction({
 													return { from, to }
 												})()
 											: null
+									setInputValue(prefillText)
 									setWikiLinkDialogOpen(true)
 								}}
 							>
@@ -567,7 +655,10 @@ function WikiLinkAction({
 							</Button>
 						}
 					/>
-					<TooltipContent side="top">Select document</TooltipContent>
+					<TooltipContent side="top" className="flex items-center gap-2">
+						Select document
+						<Kbd>Ctrl Space</Kbd>
+					</TooltipContent>
 				</Tooltip>
 
 				<WikiLinkDialog
@@ -605,7 +696,10 @@ function WikiLinkAction({
 							/>
 						}
 					/>
-					<TooltipContent side="top">Wiki link</TooltipContent>
+					<TooltipContent side="top" className="flex items-center gap-2">
+						Wiki link
+						<Kbd>Ctrl Space</Kbd>
+					</TooltipContent>
 				</Tooltip>
 				<DropdownMenuContent align="end" side="top">
 					<DropdownMenuItem onClick={openLinkedDoc}>
@@ -676,6 +770,7 @@ function WikiLinkDialog({
 
 				<Combobox.Root
 					value={null}
+					inputValue={inputValue}
 					onValueChange={onSelectDoc}
 					onInputValueChange={onInputValueChange}
 				>
@@ -738,8 +833,8 @@ interface ImageActionProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
 	isImage: boolean
 	imageRange: Range | null
-	imageMenuOpen: boolean
-	setImageMenuOpen: (open: boolean) => void
+	imageDialogOpen: boolean
+	setImageDialogOpen: (open: boolean) => void
 	imageRangeRef: React.RefObject<Range | null>
 	assets: { id: string; name: string }[]
 	onUploadAndInsert?: (file: File, replaceRange: Range) => Promise<void>
@@ -748,34 +843,44 @@ interface ImageActionProps {
 function ImageAction({
 	editor,
 	isImage,
-	imageMenuOpen,
-	setImageMenuOpen,
+	imageDialogOpen,
+	setImageDialogOpen,
 	imageRangeRef,
 	assets,
 	onUploadAndInsert,
 }: ImageActionProps) {
 	let fileInputRef = useRef<HTMLInputElement>(null)
+	let [inputValue, setInputValue] = useState("")
 
 	if (!isImage) return null
 
-	function selectAsset(assetId: string, assetName: string) {
+	let filteredAssets = assets.filter(asset =>
+		asset.name.toLowerCase().includes(inputValue.toLowerCase()),
+	)
+
+	function handleSelectAsset(assetId: string | null) {
+		if (!assetId) return
+		let asset = assets.find(a => a.id === assetId)
+		if (!asset) return
+
 		let view = editor.current?.getEditor()
 		let range = imageRangeRef.current
 		if (!view || !range) return
 
-		let { from, to } = range
 		view.dispatch({
-			changes: { from, to, insert: `![${assetName}](asset:${assetId})` },
+			changes: {
+				from: range.from,
+				to: range.to,
+				insert: `![${asset.name}](asset:${assetId})`,
+			},
 		})
-		setImageMenuOpen(false)
+		setImageDialogOpen(false)
+		setInputValue("")
 		view.focus()
 	}
 
 	function handleUploadClick() {
-		setImageMenuOpen(false)
-		setTimeout(() => {
-			fileInputRef.current?.click()
-		}, 50)
+		fileInputRef.current?.click()
 	}
 
 	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -784,53 +889,110 @@ function ImageAction({
 		if (!file || !range || !onUploadAndInsert) return
 
 		e.target.value = ""
+		setImageDialogOpen(false)
+		setInputValue("")
 		await onUploadAndInsert(file, range)
 		editor.current?.focus()
 	}
 
 	return (
 		<>
-			<DropdownMenu open={imageMenuOpen} onOpenChange={setImageMenuOpen}>
-				<Tooltip>
-					<DropdownMenuTrigger
-						render={
-							<TooltipTrigger
-								render={
-									<Button
-										size="icon"
-										variant="brand"
-										className="shadow-md"
-										nativeButton={false}
-									>
-										<ImagePlus />
-									</Button>
+			<Tooltip>
+				<TooltipTrigger
+					render={
+						<Button
+							size="icon"
+							variant="brand"
+							className="shadow-md"
+							nativeButton={false}
+							onClick={() => {
+								if (editor.current?.getEditor()) {
+									imageRangeRef.current =
+										editor.current.getSelection() as Range | null
 								}
-							/>
-						}
-					/>
-					<TooltipContent side="top">Select image</TooltipContent>
-				</Tooltip>
-				<DropdownMenuContent align="end" side="top">
-					{assets.map(asset => (
-						<DropdownMenuItem
-							key={asset.id}
-							onClick={() => selectAsset(asset.id, asset.name)}
+								setImageDialogOpen(true)
+							}}
 						>
-							<ImageIcon className="mr-2 size-4" />
-							{asset.name}
-						</DropdownMenuItem>
-					))}
-					{onUploadAndInsert && (
-						<DropdownMenuItem onClick={handleUploadClick}>
-							<Upload className="mr-2 size-4" />
-							Upload new image...
-						</DropdownMenuItem>
-					)}
-					{assets.length === 0 && !onUploadAndInsert && (
-						<DropdownMenuItem disabled>No assets available</DropdownMenuItem>
-					)}
-				</DropdownMenuContent>
-			</DropdownMenu>
+							<ImagePlus />
+						</Button>
+					}
+				/>
+				<TooltipContent side="top" className="flex items-center gap-2">
+					Select image
+					<Kbd>Ctrl Space</Kbd>
+				</TooltipContent>
+			</Tooltip>
+
+			<Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>Select image</DialogTitle>
+						<DialogDescription>
+							Search for an existing image or upload a new one
+						</DialogDescription>
+					</DialogHeader>
+
+					<Combobox.Root
+						value={null}
+						inputValue={inputValue}
+						onValueChange={handleSelectAsset}
+						onInputValueChange={setInputValue}
+					>
+						<div className="relative">
+							<Combobox.Input
+								placeholder="Search images..."
+								className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
+							/>
+						</div>
+
+						<Combobox.Portal>
+							<Combobox.Positioner sideOffset={4} className="z-50">
+								<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
+									{filteredAssets.length === 0 && (
+										<div className="text-muted-foreground px-3 py-2 text-sm">
+											No images found
+										</div>
+									)}
+
+									{filteredAssets.map(asset => (
+										<Combobox.Item
+											key={asset.id}
+											value={asset.id}
+											className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
+										>
+											<ImageIcon className="text-muted-foreground size-4" />
+											<span className="flex-1 truncate">{asset.name}</span>
+										</Combobox.Item>
+									))}
+								</Combobox.Popup>
+							</Combobox.Positioner>
+						</Combobox.Portal>
+					</Combobox.Root>
+
+					<div className="flex justify-between gap-2 pt-2">
+						{onUploadAndInsert && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={handleUploadClick}
+								className="gap-2"
+							>
+								<Upload className="size-4" />
+								Upload
+							</Button>
+						)}
+						<div className="flex-1" />
+						<Button
+							variant="ghost"
+							size="sm"
+							onClick={() => setImageDialogOpen(false)}
+						>
+							Cancel
+						</Button>
+					</div>
+				</DialogContent>
+			</Dialog>
+
 			<input
 				ref={fileInputRef}
 				type="file"

@@ -112,6 +112,8 @@ Preview updates live as you type.
 
 Connect your notes with wikilinks. Type `[[` to search your documents, then select one to insert a link. The link displays as the document title and navigates on click.
 
+**Custom display text:** Use a pipe to show different text: `[[doc_id|custom title]]` displays as "custom title". Add text after the brackets for plurals: `[[doc_id]]s` displays as "Document Titles".
+
 **Create while linking:** If no matching document exists, select "Create [title]" to make a new one instantly.
 
 **Backlinks:** When you link to another document, it automatically tracks the reference. Open the linked document to see who's linking to it in the frontmatter (`backlinks: id1, id2`).

@@ -158,8 +158,9 @@ function createWikilinkDecorations(
 
 					// Always call resolver - it uses refs so returns fresh data
 					let resolved = this.resolver(link.id)
-					let title = resolved?.title ?? "Document Not Found"
 					let exists = resolved?.exists ?? false
+					// Use alias if provided, otherwise fall back to resolved title
+					let title = link.alias ?? resolved?.title ?? "Document Not Found"
 
 					let widget = Decoration.replace({
 						widget: new WikilinkWidget(link.id, title, exists, this.onNavigate),
