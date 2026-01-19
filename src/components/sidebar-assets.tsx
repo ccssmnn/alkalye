@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 import { Image as JazzImage } from "jazz-tools/react"
@@ -56,6 +56,7 @@ interface SidebarAsset {
 	name: string
 	type: "image" | "video"
 	imageId?: string
+	getVideoBlob?: () => Blob | undefined
 	muteAudio?: boolean
 }
 
@@ -258,6 +259,11 @@ function SidebarAssets({
 															imageId={asset.imageId}
 															className="size-full object-cover"
 														/>
+													) : asset.type === "video" && asset.getVideoBlob ? (
+														<VideoThumbnail
+															assetId={asset.id}
+															getBlob={asset.getVideoBlob}
+														/>
 													) : (
 														<div className="flex size-full items-center justify-center">
 															{asset.type === "video" ? (
@@ -362,6 +368,76 @@ function SidebarAssets({
 			)}
 		</div>
 	)
+}
+
+let thumbnailCache = new Map<string, string>()
+
+function VideoThumbnail({
+	assetId,
+	getBlob,
+}: {
+	assetId: string
+	getBlob: () => Blob | undefined
+}) {
+	let cached = thumbnailCache.get(assetId)
+	let [thumbnailUrl, setThumbnailUrl] = useState<string | null>(cached ?? null)
+
+	useEffect(() => {
+		if (thumbnailCache.has(assetId)) {
+			setThumbnailUrl(thumbnailCache.get(assetId)!)
+			return
+		}
+
+		let blob = getBlob()
+		if (!blob) return
+
+		let videoUrl = URL.createObjectURL(blob)
+		let video = document.createElement("video")
+		video.src = videoUrl
+		video.muted = true
+		video.preload = "metadata"
+
+		let cancelled = false
+
+		video.onloadeddata = () => {
+			if (cancelled) return
+			video.currentTime = 0
+		}
+
+		video.onseeked = () => {
+			if (cancelled) return
+			let canvas = document.createElement("canvas")
+			canvas.width = video.videoWidth
+			canvas.height = video.videoHeight
+			let ctx = canvas.getContext("2d")
+			if (ctx) {
+				ctx.drawImage(video, 0, 0)
+				let dataUrl = canvas.toDataURL("image/jpeg", 0.7)
+				thumbnailCache.set(assetId, dataUrl)
+				setThumbnailUrl(dataUrl)
+			}
+			URL.revokeObjectURL(videoUrl)
+		}
+
+		video.onerror = () => {
+			URL.revokeObjectURL(videoUrl)
+		}
+
+		return () => {
+			cancelled = true
+			URL.revokeObjectURL(videoUrl)
+		}
+	}, [assetId, getBlob])
+
+	if (!thumbnailUrl) {
+		return (
+			<div className="flex size-full items-center justify-center">
+				<Film className="text-muted-foreground size-4" />
+			</div>
+		)
+	}
+
+	return <img src={thumbnailUrl} className="size-full object-cover" alt="" />
 }
 
 let assetNameSchema = z.object({

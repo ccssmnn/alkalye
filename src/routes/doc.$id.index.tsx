@@ -267,6 +267,10 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				name: a.name,
 				type: a.type,
 				imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+				getVideoBlob:
+					a.type === "video" && a.video?.$isLoaded
+						? () => a.video?.toBlob()
+						: undefined,
 				muteAudio: a.type === "video" ? a.muteAudio : undefined,
 			})) ?? []
 
