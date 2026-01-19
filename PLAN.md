@@ -96,8 +96,8 @@ let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
 1. ~~Schema + `bun add mediabunny`~~ ✓
 2. ~~`video-conversion.ts`~~ ✓
 3. ~~`upload-progress-dialog.tsx`~~ ✓
-4. `editor-utils.ts` upload handlers
-5. `sidebar-assets.tsx` (upload flow e2e)
+4. ~~`editor-utils.ts` upload handlers~~ ✓
+5. ~~`sidebar-assets.tsx` (upload flow e2e)~~ ✓
 6. `preview.tsx` + `slideshow.tsx` (playback)
 7. `floating-actions.tsx` + `editor.tsx` (polish)
 8. `image-decorations.ts`

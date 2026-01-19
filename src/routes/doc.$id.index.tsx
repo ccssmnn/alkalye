@@ -11,6 +11,7 @@ import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import {
 	makeUploadImage,
+	makeUploadVideo,
 	makeUploadAssets,
 	makeRenameAsset,
 	makeIsAssetUsed,
@@ -19,6 +20,7 @@ import {
 	handleSaveCopy,
 	setupKeyboardShortcuts,
 	resolve,
+	canEncodeVideo,
 	type LoadedDocument,
 } from "@/lib/editor-utils"
 import {
@@ -198,6 +200,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		isDocumentPublic(doc) &&
 		getDocumentGroup(doc)?.myRole() !== "admin"
 
+	let [canUploadVideo, setCanUploadVideo] = useState(false)
+	useEffect(() => {
+		canEncodeVideo().then(setCanUploadVideo)
+	}, [])
+
 	let { updateCursor, remoteCursors } = usePresence({ doc })
 	let assets =
 		doc.assets?.map(a => ({
@@ -255,7 +262,9 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 			.map(a => ({
 				id: a.$jazz.id,
 				name: a.name,
+				type: a.type,
 				imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+				muteAudio: a.type === "video" ? a.muteAudio : undefined,
 			})) ?? []
 
 	// Get documents for wikilink insertion menu - personal docs only
@@ -473,14 +482,24 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					<SidebarAssets
 						assets={sidebarAssets}
 						readOnly={readOnly}
-						onUpload={makeUploadAssets(doc)}
+						onUploadImages={makeUploadAssets(doc)}
+						onUploadVideo={async (file, opts) => {
+							await makeUploadVideo(doc)(file, opts)
+						}}
 						onRename={makeRenameAsset(doc)}
 						onDelete={makeDeleteAsset(doc, docWithContent)}
 						onDownload={makeDownloadAsset(doc)}
 						onInsert={(assetId, name) => {
 							editor.current?.insertText(`![${name}](asset:${assetId})`)
 						}}
+						onToggleMute={assetId => {
+							let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+							if (asset?.$isLoaded && asset.type === "video") {
+								asset.$jazz.applyDiff({ muteAudio: !asset.muteAudio })
+							}
+						}}
 						isAssetUsed={makeIsAssetUsed(docWithContent)}
+						canUploadVideo={canUploadVideo}
 					/>
 				</SidebarGroup>
 			</DocumentSidebar>

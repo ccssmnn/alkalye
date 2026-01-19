@@ -100,6 +100,7 @@ async function compressVideo(
 		? {
 				width: Math.min(videoTrack.displayWidth, MAX_WIDTH),
 				height: Math.min(videoTrack.displayHeight, MAX_HEIGHT),
+				fit: "contain" as const,
 				frameRate: MAX_FRAME_RATE,
 				codec: "avc" as const,
 				bitrate: VIDEO_BITRATE,
