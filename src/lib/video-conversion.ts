@@ -24,8 +24,8 @@ type CompressionOptions = {
 
 // defaults from PLAN.md
 let MAX_INPUT_SIZE = 500 * 1024 * 1024 // 500MB
-let MAX_WIDTH = 1280
-let MAX_HEIGHT = 720
+let MAX_WIDTH = 1920
+let MAX_HEIGHT = 1080
 let MAX_FRAME_RATE = 30
 let VIDEO_BITRATE = 2_000_000 // 2Mbps
 let AUDIO_BITRATE = 128_000 // 128kbps
@@ -97,14 +97,19 @@ async function compressVideo(
 
 	let videoTrack = await input.getPrimaryVideoTrack()
 	let videoOptions = videoTrack
-		? {
-				width: Math.min(videoTrack.displayWidth, MAX_WIDTH),
-				height: Math.min(videoTrack.displayHeight, MAX_HEIGHT),
-				fit: "contain" as const,
-				frameRate: MAX_FRAME_RATE,
-				codec: "avc" as const,
-				bitrate: VIDEO_BITRATE,
-			}
+		? (() => {
+				let isPortrait = videoTrack.displayHeight > videoTrack.displayWidth
+				let maxW = isPortrait ? MAX_HEIGHT : MAX_WIDTH
+				let maxH = isPortrait ? MAX_WIDTH : MAX_HEIGHT
+				return {
+					width: Math.min(videoTrack.displayWidth, maxW),
+					height: Math.min(videoTrack.displayHeight, maxH),
+					fit: "contain" as const,
+					frameRate: MAX_FRAME_RATE,
+					codec: "avc" as const,
+					bitrate: VIDEO_BITRATE,
+				}
+			})()
 		: { discard: true as const }
 
 	let conversion = await Conversion.init({

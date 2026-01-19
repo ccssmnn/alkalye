@@ -44,6 +44,11 @@ function UploadProgressDialog({
 					<p className="text-muted-foreground text-center text-xs">
 						{percent}%
 					</p>
+					{phase === "compressing" && (
+						<p className="text-muted-foreground text-center text-xs">
+							Videos are compressed to reduce storage and sync faster.
+						</p>
+					)}
 				</div>
 
 				{phase !== "done" && (

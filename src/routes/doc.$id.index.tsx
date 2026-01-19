@@ -210,7 +210,10 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		doc.assets?.map(a => ({
 			id: a.$jazz.id,
 			name: a.name,
+			type: a.type,
 			imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+			video: a.type === "video" ? a.video : undefined,
+			muteAudio: a.type === "video" ? a.muteAudio : undefined,
 		})) ?? []
 
 	// Get documents for wikilink autocomplete - personal docs only

@@ -100,7 +100,10 @@ type RemoteCursor = {
 type Asset = {
 	id: string
 	name: string
+	type: "image" | "video"
 	imageId?: string
+	video?: { $isLoaded?: boolean; toBlob?: () => Blob | undefined }
+	muteAudio?: boolean
 }
 
 interface MarkdownEditorProps {
@@ -208,11 +211,11 @@ function MarkdownEditor(
 	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
-	let [imagePreviewOpen, setImagePreviewOpen] = useState(false)
-	let [imagePreview, setImagePreview] = useState<{
+	let [mediaPreviewOpen, setMediaPreviewOpen] = useState(false)
+	let [mediaPreview, setMediaPreview] = useState<{
 		url: string
 		alt: string
-		imageId: string | null
+		assetId: string | null
 	} | null>(null)
 
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
@@ -266,12 +269,12 @@ function MarkdownEditor(
 	}
 
 	let handleImagePreview = (url: string, alt: string) => {
-		let imageId: string | null = null
+		let assetId: string | null = null
 		if (url.startsWith("asset:")) {
-			imageId = url.slice(6)
+			assetId = url.slice(6)
 		}
-		setImagePreview({ url, alt, imageId })
-		setImagePreviewOpen(true)
+		setMediaPreview({ url, alt, assetId })
+		setMediaPreviewOpen(true)
 	}
 
 	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
@@ -761,44 +764,135 @@ function MarkdownEditor(
 			</FloatingActions>
 
 			<Dialog
-				open={imagePreviewOpen}
-				onOpenChange={setImagePreviewOpen}
+				open={mediaPreviewOpen}
+				onOpenChange={setMediaPreviewOpen}
 				onOpenChangeComplete={open => {
-					if (!open) setImagePreview(null)
+					if (!open) setMediaPreview(null)
 				}}
 			>
-				<DialogContent className="max-w-3xl">
+				<DialogContent className="max-w-5xl">
 					<DialogHeader>
-						<DialogTitle>{imagePreview?.alt ?? "Image"}</DialogTitle>
+						<DialogTitle>{mediaPreview?.alt ?? "Media"}</DialogTitle>
 					</DialogHeader>
-					{imagePreview &&
-						(imagePreview.imageId ? (
-							(() => {
-								let asset = assets?.find(a => a.id === imagePreview.imageId)
-								if (!asset?.imageId) {
-									return (
-										<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
-											<ImageOff className="size-12 opacity-50" />
-											<p className="text-sm">Image not available</p>
-										</div>
-									)
-								}
-								return (
-									<JazzImage
-										imageId={asset.imageId}
-										className="max-h-[70vh] w-full object-contain"
-									/>
-								)
-							})()
-						) : (
-							<img
-								src={imagePreview.url}
-								alt={imagePreview.alt}
-								className="max-h-[70vh] w-full object-contain"
-							/>
-						))}
+					{mediaPreview && (
+						<MediaPreviewContent preview={mediaPreview} assets={assets} />
+					)}
 				</DialogContent>
 			</Dialog>
 		</>
+	)
+}
+
+function MediaPreviewContent({
+	preview,
+	assets,
+}: {
+	preview: { url: string; alt: string; assetId: string | null }
+	assets?: Asset[]
+}) {
+	let asset = preview.assetId
+		? assets?.find(a => a.id === preview.assetId)
+		: null
+
+	// External URL (not asset)
+	if (!preview.assetId) {
+		return (
+			<img
+				src={preview.url}
+				alt={preview.alt}
+				className="max-h-[70vh] w-full object-contain"
+			/>
+		)
+	}
+
+	// Asset not found
+	if (!asset) {
+		return (
+			<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
+				<ImageOff className="size-12 opacity-50" />
+				<p className="text-sm">Media not available</p>
+			</div>
+		)
+	}
+
+	// Image asset
+	if (asset.type === "image" && asset.imageId) {
+		return (
+			<JazzImage
+				imageId={asset.imageId}
+				className="max-h-[70vh] w-full object-contain"
+			/>
+		)
+	}
+
+	// Video asset
+	if (asset.type === "video" && asset.video) {
+		return <VideoPreview asset={asset} />
+	}
+
+	return (
+		<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
+			<ImageOff className="size-12 opacity-50" />
+			<p className="text-sm">Media not available</p>
+		</div>
+	)
+}
+
+function VideoPreview({ asset }: { asset: Asset }) {
+	let [url, setUrl] = useState<string | null>(null)
+	let [trackedVideo, setTrackedVideo] = useState(asset.video)
+
+	// Reset when video changes
+	if (trackedVideo !== asset.video) {
+		setTrackedVideo(asset.video)
+		if (url) {
+			URL.revokeObjectURL(url)
+			setUrl(null)
+		}
+	}
+
+	// Load URL
+	useEffect(() => {
+		if (url) return
+		let video = asset.video
+		if (!video?.$isLoaded || !video.toBlob) return
+
+		let cancelled = false
+		requestAnimationFrame(() => {
+			if (cancelled) return
+			let blob = video.toBlob?.()
+			if (!blob) return
+			let objectUrl = URL.createObjectURL(blob)
+			setUrl(objectUrl)
+		})
+
+		return () => {
+			cancelled = true
+		}
+	}, [asset.video, url])
+
+	// Cleanup
+	useEffect(() => {
+		return () => {
+			if (url) URL.revokeObjectURL(url)
+		}
+	}, [url])
+
+	if (!url) {
+		return (
+			<div className="bg-muted flex aspect-video w-full items-center justify-center rounded-lg">
+				<span className="text-muted-foreground text-sm">Loading video...</span>
+			</div>
+		)
+	}
+
+	return (
+		<video
+			src={url}
+			controls
+			autoPlay
+			muted={asset.muteAudio}
+			className="max-h-[70vh] w-full object-contain"
+		/>
 	)
 }

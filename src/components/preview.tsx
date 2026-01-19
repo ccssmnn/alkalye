@@ -24,7 +24,10 @@ export { Preview }
 type Asset = {
 	$jazz: { id: string }
 	$isLoaded?: boolean
+	type?: "image" | "video"
 	image?: { $jazz: { id: string } }
+	video?: { $isLoaded?: boolean; toBlob?: () => Blob | undefined }
+	muteAudio?: boolean
 }
 
 interface PreviewProps {
@@ -61,6 +64,7 @@ function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 type Segment =
 	| { type: "text"; html: string }
 	| { type: "image"; imageId: string; alt: string }
+	| { type: "video"; asset: Asset; alt: string }
 
 function PreviewContent({
 	content,
@@ -221,13 +225,25 @@ function PreviewContent({
 									/>
 								)
 							}
+							if (segment.type === "image") {
+								return (
+									<figure key={i} className="my-4">
+										<JazzImage
+											imageId={segment.imageId}
+											alt={segment.alt}
+											className="w-full rounded-lg"
+										/>
+										{segment.alt && (
+											<figcaption className="text-muted-foreground mt-2 text-center text-sm">
+												{segment.alt}
+											</figcaption>
+										)}
+									</figure>
+								)
+							}
 							return (
 								<figure key={i} className="my-4">
-									<JazzImage
-										imageId={segment.imageId}
-										alt={segment.alt}
-										className="w-full rounded-lg"
-									/>
+									<VideoPlayer asset={segment.asset} />
 									{segment.alt && (
 										<figcaption className="text-muted-foreground mt-2 text-center text-sm">
 											{segment.alt}
@@ -392,6 +408,7 @@ function createMarkedInstance(
 type RawSegment =
 	| { type: "text"; content: string }
 	| { type: "image"; imageId: string; alt: string }
+	| { type: "video"; asset: Asset; alt: string }
 
 async function parseSegments(
 	content: string,
@@ -415,10 +432,16 @@ async function parseSegments(
 		let assetId = match[2]
 		let asset = assets?.find(a => a?.$jazz.id === assetId)
 
-		if (asset?.$isLoaded && asset.image) {
+		if (asset?.$isLoaded && asset.type === "image" && asset.image) {
 			rawSegments.push({
 				type: "image",
 				imageId: asset.image.$jazz.id,
+				alt,
+			})
+		} else if (asset?.$isLoaded && asset.type === "video" && asset.video) {
+			rawSegments.push({
+				type: "video",
+				asset,
 				alt,
 			})
 		} else {
@@ -441,8 +464,75 @@ async function parseSegments(
 	return Promise.all(
 		rawSegments.map(async seg => {
 			if (seg.type === "image") return seg
+			if (seg.type === "video") return seg
 			let html = await marked.parse(seg.content)
 			return { type: "text" as const, html }
 		}),
 	)
+}
+
+function VideoPlayer({ asset }: { asset: Asset }) {
+	let video = asset.video
+	let url = useVideoUrl(video)
+
+	if (!url) {
+		return (
+			<div className="bg-muted flex aspect-video w-full items-center justify-center rounded-lg">
+				<span className="text-muted-foreground text-sm">Loading video...</span>
+			</div>
+		)
+	}
+
+	return (
+		<video
+			src={url}
+			controls
+			muted={asset.muteAudio}
+			className="w-full rounded-lg"
+		/>
+	)
+}
+
+function useVideoUrl(
+	video: { $isLoaded?: boolean; toBlob?: () => Blob | undefined } | undefined,
+): string | null {
+	let [url, setUrl] = useState<string | null>(null)
+	let [trackedVideo, setTrackedVideo] = useState(video)
+
+	// Reset when video changes (adjust state during render)
+	if (trackedVideo !== video) {
+		setTrackedVideo(video)
+		if (url) {
+			URL.revokeObjectURL(url)
+			setUrl(null)
+		}
+	}
+
+	// Load URL - schedule via rAF to avoid lint error
+	useEffect(() => {
+		if (url) return
+		if (!video?.$isLoaded || !video.toBlob) return
+
+		let cancelled = false
+		requestAnimationFrame(() => {
+			if (cancelled) return
+			let blob = video.toBlob?.()
+			if (!blob) return
+			let objectUrl = URL.createObjectURL(blob)
+			setUrl(objectUrl)
+		})
+
+		return () => {
+			cancelled = true
+		}
+	}, [video, url])
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (url) URL.revokeObjectURL(url)
+		}
+	}, [url])
+
+	return url
 }
