@@ -44,6 +44,7 @@ let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
 - `compressVideo(file, { onProgress })` → Blob
 - Check `canEncode('avc')`, throw if unavailable
 - Mediabunny Conversion API: MP4, H.264, AAC
+- Docs: https://mediabunny.dev/llms.txt
 
 ### `src/components/upload-progress-dialog.tsx`
 
@@ -93,7 +94,7 @@ let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
 ## Implementation Order
 
 1. ~~Schema + `bun add mediabunny`~~ ✓
-2. `video-conversion.ts`
+2. ~~`video-conversion.ts`~~ ✓
 3. `upload-progress-dialog.tsx`
 4. `editor-utils.ts` upload handlers
 5. `sidebar-assets.tsx` (upload flow e2e)
