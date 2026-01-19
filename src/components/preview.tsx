@@ -242,7 +242,7 @@ function PreviewContent({
 								)
 							}
 							return (
-								<figure key={i} className="my-4">
+								<figure key={i} className="my-4 flex flex-col items-center">
 									<VideoPlayer asset={segment.asset} />
 									{segment.alt && (
 										<figcaption className="text-muted-foreground mt-2 text-center text-sm">
@@ -488,7 +488,7 @@ function VideoPlayer({ asset }: { asset: Asset }) {
 			src={url}
 			controls
 			muted={asset.muteAudio}
-			className="w-full rounded-lg"
+			className="max-h-[70vh] w-auto max-w-full rounded-lg"
 		/>
 	)
 }

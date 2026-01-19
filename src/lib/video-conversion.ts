@@ -98,12 +98,13 @@ async function compressVideo(
 	let videoTrack = await input.getPrimaryVideoTrack()
 	let videoOptions = videoTrack
 		? (() => {
-				let isPortrait = videoTrack.displayHeight > videoTrack.displayWidth
-				let maxW = isPortrait ? MAX_HEIGHT : MAX_WIDTH
-				let maxH = isPortrait ? MAX_WIDTH : MAX_HEIGHT
+				// Scale down if needed, preserving aspect ratio
+				let w = videoTrack.displayWidth
+				let h = videoTrack.displayHeight
+				let scale = Math.min(1, MAX_WIDTH / w, MAX_HEIGHT / h)
 				return {
-					width: Math.min(videoTrack.displayWidth, maxW),
-					height: Math.min(videoTrack.displayHeight, maxH),
+					width: Math.round(w * scale),
+					height: Math.round(h * scale),
 					fit: "contain" as const,
 					frameRate: MAX_FRAME_RATE,
 					codec: "avc" as const,
