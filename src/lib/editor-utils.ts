@@ -1,7 +1,7 @@
 import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useNavigate } from "@tanstack/react-router"
-import { Asset, Document, UserAccount } from "@/schema"
+import { Asset, ImageAsset, Document, UserAccount } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { copyDocumentToMyList } from "@/lib/documents"
 import { saveDocumentAs } from "@/lib/export"
@@ -68,7 +68,7 @@ function makeUploadImage(doc: LoadedDocument) {
 			doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
 		}
 
-		let asset = Asset.create(
+		let asset = ImageAsset.create(
 			{
 				type: "image",
 				name: file.name.replace(/\.[^.]+$/, ""),
@@ -99,7 +99,7 @@ function makeUploadAssets(doc: LoadedDocument) {
 				doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
 			}
 
-			let asset = Asset.create(
+			let asset = ImageAsset.create(
 				{
 					type: "image",
 					name: file.name.replace(/\.[^.]+$/, ""),
@@ -120,7 +120,7 @@ function makeRenameAsset(doc: LoadedDocument) {
 	return function handleRenameAsset(assetId: string, newName: string) {
 		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
 		if (asset?.$isLoaded) {
-			asset.$jazz.set("name", newName)
+			asset.$jazz.applyDiff({ name: newName })
 			doc.$jazz.set("updatedAt", new Date())
 		}
 	}
@@ -160,14 +160,20 @@ function makeDeleteAsset(
 }
 
 function makeDownloadAsset(doc: LoadedDocument) {
-	return function handleDownloadAsset(assetId: string, name: string) {
+	return async function handleDownloadAsset(assetId: string, name: string) {
 		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
-		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return
+		if (!asset?.$isLoaded) return
 
-		let original = asset.image.original
-		if (!original?.$isLoaded) return
+		let blob: Blob | undefined
+		if (asset.type === "image" && asset.image?.$isLoaded) {
+			let original = asset.image.original
+			if (original?.$isLoaded) {
+				blob = original.toBlob()
+			}
+		} else if (asset.type === "video" && asset.video?.$isLoaded) {
+			blob = await asset.video.toBlob()
+		}
 
-		let blob = original.toBlob()
 		if (!blob) return
 
 		let url = URL.createObjectURL(blob)

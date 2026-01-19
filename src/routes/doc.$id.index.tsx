@@ -203,7 +203,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		doc.assets?.map(a => ({
 			id: a.$jazz.id,
 			name: a.name,
-			imageId: a.image?.$jazz.id,
+			imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
 		})) ?? []
 
 	// Get documents for wikilink autocomplete - personal docs only
@@ -255,7 +255,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 			.map(a => ({
 				id: a.$jazz.id,
 				name: a.name,
-				imageId: a.image?.$jazz.id,
+				imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
 			})) ?? []
 
 	// Get documents for wikilink insertion menu - personal docs only

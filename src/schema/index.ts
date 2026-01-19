@@ -1,6 +1,8 @@
 import { Group, co, z } from "jazz-tools"
 
 export {
+	ImageAsset,
+	VideoAsset,
 	Asset,
 	Document,
 	Space,
@@ -106,12 +108,23 @@ let Theme = co.map({
 	updatedAt: z.date(),
 })
 
-let Asset = co.map({
+let ImageAsset = co.map({
 	type: z.literal("image"),
 	name: z.string(),
 	image: co.image(),
 	createdAt: z.date(),
 })
+
+let VideoAsset = co.map({
+	type: z.literal("video"),
+	name: z.string(),
+	video: co.fileStream(),
+	mimeType: z.string(),
+	muteAudio: z.boolean().optional(),
+	createdAt: z.date(),
+})
+
+let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
 
 let HighlightRange = z.object({
 	// 0-indexed character offset in the full document content

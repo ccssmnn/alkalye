@@ -12,7 +12,7 @@ import {
 	ChevronDown,
 } from "lucide-react"
 import { toast } from "sonner"
-import { Document, UserAccount, Asset, Space } from "@/schema"
+import { Document, UserAccount, Asset, ImageAsset, Space } from "@/schema"
 import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
@@ -414,7 +414,12 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 		let assets = doc.assets ?? []
 
 		for (let asset of [...assets]) {
-			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
+			if (
+				!asset?.$isLoaded ||
+				asset.type !== "image" ||
+				!asset.image?.$isLoaded
+			)
+				continue
 
 			let original = asset.image.original
 			if (!original?.$isLoaded) continue
@@ -428,7 +433,7 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 					maxSize: 2048,
 				})
 
-				let newAsset = Asset.create(
+				let newAsset = ImageAsset.create(
 					{
 						type: "image",
 						name: asset.name,

@@ -1,7 +1,7 @@
 import { useRef } from "react"
 import { Group, co } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
-import { Document, Asset } from "@/schema"
+import { Document, Asset, ImageAsset } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
@@ -133,7 +133,7 @@ async function handleImportFiles(
 				owner: docGroup,
 				maxSize: 2048,
 			})
-			let asset = Asset.create(
+			let asset = ImageAsset.create(
 				{ type: "image", name: importedAsset.name, image, createdAt: now },
 				docGroup,
 			)
@@ -243,7 +243,12 @@ async function loadDocumentAssets(
 
 	if (loaded.assets?.$isLoaded) {
 		for (let asset of [...loaded.assets]) {
-			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
+			if (
+				!asset?.$isLoaded ||
+				asset.type !== "image" ||
+				!asset.image?.$isLoaded
+			)
+				continue
 			let original = asset.image.original
 			if (!original?.$isLoaded) continue
 			let blob = original.toBlob()

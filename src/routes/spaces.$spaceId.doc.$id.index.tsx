@@ -221,7 +221,7 @@ function SpaceEditorContent({
 		doc.assets?.map(a => ({
 			id: a.$jazz.id,
 			name: a.name,
-			imageId: a.image?.$jazz.id,
+			imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
 		})) ?? []
 
 	// Get documents from the space for wikilinks
@@ -273,7 +273,7 @@ function SpaceEditorContent({
 			.map(a => ({
 				id: a.$jazz.id,
 				name: a.name,
-				imageId: a.image?.$jazz.id,
+				imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
 			})) ?? []
 
 	let wikiLinkDocs: { id: string; title: string }[] = []

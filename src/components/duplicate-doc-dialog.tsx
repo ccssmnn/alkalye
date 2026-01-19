@@ -24,7 +24,7 @@ import {
 } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
 import { SpaceInitials } from "@/components/space-selector"
-import { Asset, Document, Space, UserAccount } from "@/schema"
+import { Asset, ImageAsset, Document, Space, UserAccount } from "@/schema"
 import { getSpaceGroup } from "@/lib/spaces"
 
 export { DuplicateDocDialog, duplicateDocument }
@@ -233,7 +233,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 	let content = doc.content?.toString() ?? ""
 	let assets = doc.assets ?? []
 	let totalAssets = assets.filter(
-		a => a?.$isLoaded && a.image?.$isLoaded,
+		a => a?.$isLoaded && a.type === "image" && a.image?.$isLoaded,
 	).length
 	let progress: DuplicateProgress = {
 		total: totalAssets,
@@ -272,9 +272,10 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 	// Create the new assets list
 	let newAssets = co.list(Asset).create([], owner)
 
-	// Deep copy each asset
+	// Deep copy each image asset (video assets not yet supported for duplication)
 	for (let asset of [...assets]) {
-		if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
+		if (!asset?.$isLoaded || asset.type !== "image" || !asset.image?.$isLoaded)
+			continue
 
 		let original = asset.image.original
 		if (!original?.$isLoaded) continue
@@ -290,7 +291,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			})
 
 			// Create a new asset with the copied image
-			let newAsset = Asset.create(
+			let newAsset = ImageAsset.create(
 				{
 					type: "image",
 					name: asset.name,

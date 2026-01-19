@@ -18,15 +18,23 @@ Add video assets to Alkalye using Mediabunny for client-side compression and Jaz
 
 ```ts
 // src/schema/index.ts
-let Asset = co.map({
-	type: z.enum(["image", "video"]),
+let ImageAsset = co.map({
+	type: z.literal("image"),
 	name: z.string(),
-	image: co.optional(co.image()),
-	video: co.optional(co.fileStream()),
-	videoMimeType: z.string().optional(),
-	muteAudio: z.boolean().optional(), // mute in preview/slideshow
+	image: co.image(),
 	createdAt: z.date(),
 })
+
+let VideoAsset = co.map({
+	type: z.literal("video"),
+	name: z.string(),
+	video: co.fileStream(),
+	mimeType: z.string(),
+	muteAudio: z.boolean().optional(),
+	createdAt: z.date(),
+})
+
+let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
 ```
 
 ## New Files
@@ -84,7 +92,7 @@ let Asset = co.map({
 
 ## Implementation Order
 
-1. Schema + `bun add mediabunny`
+1. ~~Schema + `bun add mediabunny`~~ ✓
 2. `video-conversion.ts`
 3. `upload-progress-dialog.tsx`
 4. `editor-utils.ts` upload handlers
