@@ -265,7 +265,7 @@ function MarkdownEditor(
 	let imageResolver = (assetId: string) => {
 		let asset = dataRef.current.assets?.find(a => a.id === assetId)
 		if (!asset) return undefined
-		return `asset:${assetId}`
+		return { url: `asset:${assetId}`, type: asset.type }
 	}
 
 	let handleImagePreview = (url: string, alt: string) => {

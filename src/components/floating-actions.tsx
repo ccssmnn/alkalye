@@ -23,6 +23,7 @@ import {
 	ImagePlus,
 	Upload,
 	Image as ImageIcon,
+	Film,
 	Command,
 	FileText,
 	Link2,
@@ -836,7 +837,7 @@ interface ImageActionProps {
 	imageDialogOpen: boolean
 	setImageDialogOpen: (open: boolean) => void
 	imageRangeRef: React.RefObject<Range | null>
-	assets: { id: string; name: string }[]
+	assets: { id: string; name: string; type: "image" | "video" }[]
 	onUploadAndInsert?: (file: File, replaceRange: Range) => Promise<void>
 }
 
@@ -918,7 +919,7 @@ function ImageAction({
 					}
 				/>
 				<TooltipContent side="top" className="flex items-center gap-2">
-					Select image
+					Select media
 					<Kbd>Ctrl Space</Kbd>
 				</TooltipContent>
 			</Tooltip>
@@ -926,9 +927,9 @@ function ImageAction({
 			<Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
 				<DialogContent className="max-w-sm">
 					<DialogHeader>
-						<DialogTitle>Select image</DialogTitle>
+						<DialogTitle>Select media</DialogTitle>
 						<DialogDescription>
-							Search for an existing image or upload a new one
+							Search for an existing image or video
 						</DialogDescription>
 					</DialogHeader>
 
@@ -940,7 +941,7 @@ function ImageAction({
 					>
 						<div className="relative">
 							<Combobox.Input
-								placeholder="Search images..."
+								placeholder="Search media..."
 								className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
 							/>
 						</div>
@@ -950,7 +951,7 @@ function ImageAction({
 								<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
 									{filteredAssets.length === 0 && (
 										<div className="text-muted-foreground px-3 py-2 text-sm">
-											No images found
+											No media found
 										</div>
 									)}
 
@@ -960,7 +961,11 @@ function ImageAction({
 											value={asset.id}
 											className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
 										>
-											<ImageIcon className="text-muted-foreground size-4" />
+											{asset.type === "video" ? (
+												<Film className="text-muted-foreground size-4" />
+											) : (
+												<ImageIcon className="text-muted-foreground size-4" />
+											)}
 											<span className="flex-1 truncate">{asset.name}</span>
 										</Combobox.Item>
 									))}
