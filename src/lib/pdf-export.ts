@@ -237,26 +237,6 @@ async function buildPrintableHtml(params: {
 	return html
 }
 
-function renderTemplateWithContent(
-	template: string,
-	content: string,
-): string | null {
-	let parser = new DOMParser()
-	let doc = parser.parseFromString(template, "text/html")
-
-	let placeholder = doc.querySelector("[data-document]")
-	if (!placeholder) return null
-
-	placeholder.innerHTML = content
-
-	let headStyles = Array.from(doc.head.querySelectorAll("style"))
-		.map(s => s.outerHTML)
-		.join("\n")
-
-	let bodyHtml = doc.body.innerHTML
-	return headStyles ? bodyHtml + "\n" + headStyles : bodyHtml
-}
-
 function openPrintWindow(html: string): void {
 	let printWindow = window.open("", "_blank")
 	if (!printWindow) {
@@ -276,6 +256,30 @@ function openPrintWindow(html: string): void {
 		}
 		printWindow.print()
 	}
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+function renderTemplateWithContent(
+	template: string,
+	content: string,
+): string | null {
+	let parser = new DOMParser()
+	let doc = parser.parseFromString(template, "text/html")
+
+	let placeholder = doc.querySelector("[data-document]")
+	if (!placeholder) return null
+
+	placeholder.innerHTML = content
+
+	let headStyles = Array.from(doc.head.querySelectorAll("style"))
+		.map(s => s.outerHTML)
+		.join("\n")
+
+	let bodyHtml = doc.body.innerHTML
+	return headStyles ? bodyHtml + "\n" + headStyles : bodyHtml
 }
 
 async function buildFontFaceRulesBase64(theme: LoadedTheme): Promise<string> {

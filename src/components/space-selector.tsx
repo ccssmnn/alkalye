@@ -184,6 +184,27 @@ function SpaceSelector() {
 	)
 }
 
+function SpaceInitials({
+	name,
+	size = "sm",
+}: {
+	name: string
+	size?: "sm" | "md"
+}) {
+	let initials = getInitials(name)
+	let sizeClasses = size === "sm" ? "size-4 text-[8px]" : "size-12 text-base"
+
+	return (
+		<div
+			className={`bg-muted text-muted-foreground flex shrink-0 items-center justify-center rounded font-medium ${sizeClasses}`}
+		>
+			{initials}
+		</div>
+	)
+}
+
+// --- Helpers ---
+
 type MaybeLoadedSpace = ReturnType<
 	typeof useCoState<typeof Space, typeof currentSpaceQuery>
 >
@@ -320,25 +341,6 @@ function SpaceAvatar({ space }: { space: LoadedSpaceWithAvatar }) {
 	}
 
 	return <SpaceInitials name={space.name} size="sm" />
-}
-
-function SpaceInitials({
-	name,
-	size = "sm",
-}: {
-	name: string
-	size?: "sm" | "md"
-}) {
-	let initials = getInitials(name)
-	let sizeClasses = size === "sm" ? "size-4 text-[8px]" : "size-12 text-base"
-
-	return (
-		<div
-			className={`bg-muted text-muted-foreground flex shrink-0 items-center justify-center rounded font-medium ${sizeClasses}`}
-		>
-			{initials}
-		</div>
-	)
 }
 
 function getInitials(name: string): string {

@@ -157,38 +157,6 @@ let UserRoot = co.map({
 	lastOpenedSpaceId: z.string().optional(),
 })
 
-let FALLBACK_WELCOME_CONTENT = `# Welcome to Alkalye
-
-A beautiful markdown editor. Private by design.
-
-Your words are end-to-end encrypted. Collaborate in real-time. Works on any device.
-
-**Get started:** Edit this document, create a new one, or open a tutor from the Help menu.
-`
-
-function getSpaceWelcomeContent(spaceName: string): string {
-	return `# Welcome to ${spaceName}
-
-This is your new shared space. Documents here are shared with all space members.
-
-**Get started:** Edit this document or create a new one.
-`
-}
-
-async function fetchWelcomeContent(): Promise<string> {
-	try {
-		let response = await fetch("/docs/welcome.md")
-		if (!response.ok) return FALLBACK_WELCOME_CONTENT
-		return await response.text()
-	} catch {
-		return FALLBACK_WELCOME_CONTENT
-	}
-}
-
-function isWelcomeDoc(content: string): boolean {
-	return content.startsWith("# Welcome to Alkalye")
-}
-
 let UserAccount = co
 	.account({
 		profile: UserProfile,
@@ -257,62 +225,6 @@ let UserAccount = co
 			)
 		}
 	})
-
-let adjectives = [
-	"Wandering",
-	"Dreaming",
-	"Curious",
-	"Pensive",
-	"Restless",
-	"Eloquent",
-	"Brooding",
-	"Whimsical",
-	"Melancholy",
-	"Luminous",
-	"Wistful",
-	"Serene",
-	"Fierce",
-	"Gentle",
-	"Bold",
-	"Quiet",
-	"Wild",
-	"Tender",
-	"Radiant",
-	"Somber",
-]
-
-let writerNames = [
-	"Hemingway",
-	"Woolf",
-	"Borges",
-	"Austen",
-	"Kafka",
-	"Tolstoy",
-	"Dickinson",
-	"Márquez",
-	"Plath",
-	"Orwell",
-	"Dostoevsky",
-	"Brontë",
-	"Neruda",
-	"Camus",
-	"Sappho",
-	"Rumi",
-	"Murasaki",
-	"Cervantes",
-	"Poe",
-	"Whitman",
-	"Yeats",
-	"Rilke",
-	"Tagore",
-	"Pessoa",
-	"Lispector",
-	"Baldwin",
-	"Achebe",
-	"Atwood",
-	"Morrison",
-	"Rushdie",
-]
 
 function getRandomWriterName(): string {
 	let adjIndex = Math.floor(Math.random() * adjectives.length)
@@ -428,4 +340,96 @@ async function migrateAnonymousData(
 		}
 		me.root.inactiveDocuments!.$jazz.push(doc)
 	}
+}
+
+// =============================================================================
+// Helper data (used by exported functions above)
+// =============================================================================
+
+let adjectives = [
+	"Wandering",
+	"Dreaming",
+	"Curious",
+	"Pensive",
+	"Restless",
+	"Eloquent",
+	"Brooding",
+	"Whimsical",
+	"Melancholy",
+	"Luminous",
+	"Wistful",
+	"Serene",
+	"Fierce",
+	"Gentle",
+	"Bold",
+	"Quiet",
+	"Wild",
+	"Tender",
+	"Radiant",
+	"Somber",
+]
+
+let writerNames = [
+	"Hemingway",
+	"Woolf",
+	"Borges",
+	"Austen",
+	"Kafka",
+	"Tolstoy",
+	"Dickinson",
+	"Márquez",
+	"Plath",
+	"Orwell",
+	"Dostoevsky",
+	"Brontë",
+	"Neruda",
+	"Camus",
+	"Sappho",
+	"Rumi",
+	"Murasaki",
+	"Cervantes",
+	"Poe",
+	"Whitman",
+	"Yeats",
+	"Rilke",
+	"Tagore",
+	"Pessoa",
+	"Lispector",
+	"Baldwin",
+	"Achebe",
+	"Atwood",
+	"Morrison",
+	"Rushdie",
+]
+
+let FALLBACK_WELCOME_CONTENT = `# Welcome to Alkalye
+
+A beautiful markdown editor. Private by design.
+
+Your words are end-to-end encrypted. Collaborate in real-time. Works on any device.
+
+**Get started:** Edit this document, create a new one, or open a tutor from the Help menu.
+`
+
+function getSpaceWelcomeContent(spaceName: string): string {
+	return `# Welcome to ${spaceName}
+
+This is your new shared space. Documents here are shared with all space members.
+
+**Get started:** Edit this document or create a new one.
+`
+}
+
+async function fetchWelcomeContent(): Promise<string> {
+	try {
+		let response = await fetch("/docs/welcome.md")
+		if (!response.ok) return FALLBACK_WELCOME_CONTENT
+		return await response.text()
+	} catch {
+		return FALLBACK_WELCOME_CONTENT
+	}
+}
+
+function isWelcomeDoc(content: string): boolean {
+	return content.startsWith("# Welcome to Alkalye")
 }

@@ -2,6 +2,16 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+export {
+	Card,
+	CardHeader,
+	CardFooter,
+	CardTitle,
+	CardAction,
+	CardDescription,
+	CardContent,
+}
+
 function Card({
 	className,
 	size = "default",
@@ -90,14 +100,4 @@ function CardFooter({ className, ...props }: React.ComponentProps<"div">) {
 			{...props}
 		/>
 	)
-}
-
-export {
-	Card,
-	CardHeader,
-	CardFooter,
-	CardTitle,
-	CardAction,
-	CardDescription,
-	CardContent,
 }

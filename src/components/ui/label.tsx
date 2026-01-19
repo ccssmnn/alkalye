@@ -2,6 +2,8 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+export { Label }
+
 function Label({ className, ...props }: React.ComponentProps<"label">) {
 	return (
 		<label
@@ -14,5 +16,3 @@ function Label({ className, ...props }: React.ComponentProps<"label">) {
 		/>
 	)
 }
-
-export { Label }

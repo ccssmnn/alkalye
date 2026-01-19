@@ -125,6 +125,20 @@ function Teleprompter({
 	)
 }
 
+function groupBySlide(items: PresentationItem[]): SlideGroup[] {
+	let slideMap = new Map<number, PresentationItem[]>()
+	for (let item of items) {
+		let arr = slideMap.get(item.slideNumber) ?? []
+		arr.push(item)
+		slideMap.set(item.slideNumber, arr)
+	}
+	return Array.from(slideMap.entries())
+		.sort((a, b) => a[0] - b[0])
+		.map(([slideNumber, items]) => ({ slideNumber, items }))
+}
+
+// --- Helpers ---
+
 function useSelectionHighlight(
 	content: string,
 	onHighlightChange?: (range: HighlightRange) => void,
@@ -738,16 +752,4 @@ function PresentationTimer() {
 			<TooltipContent>Click to reset timer</TooltipContent>
 		</Tooltip>
 	)
-}
-
-function groupBySlide(items: PresentationItem[]): SlideGroup[] {
-	let slideMap = new Map<number, PresentationItem[]>()
-	for (let item of items) {
-		let arr = slideMap.get(item.slideNumber) ?? []
-		arr.push(item)
-		slideMap.set(item.slideNumber, arr)
-	}
-	return Array.from(slideMap.entries())
-		.sort((a, b) => a[0] - b[0])
-		.map(([slideNumber, items]) => ({ slideNumber, items }))
 }

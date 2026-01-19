@@ -40,15 +40,6 @@ let CURSOR_COLORS = [
 	"#0891b2", // cyan-600
 ]
 
-function getColorForId(id: string): string {
-	let hash = 0
-	for (let i = 0; i < id.length; i++) {
-		hash = (hash << 5) - hash + id.charCodeAt(i)
-		hash = hash & hash
-	}
-	return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length]
-}
-
 let STALE_CURSOR_MS = 10_000
 
 type CursorDoc = {
@@ -69,61 +60,6 @@ type CursorDoc = {
 		>
 	}
 } | null
-
-function computeRemoteCursors(
-	doc: CursorDoc,
-	mySessionId: string | null,
-): RemoteCursor[] {
-	if (!doc?.$isLoaded || !doc.cursors || !doc.cursors.$isLoaded || !mySessionId)
-		return []
-
-	let now = Date.now()
-
-	// Group by user ID, keeping only the most recent cursor per user
-	let latestByUser = new Map<
-		string,
-		{
-			sessionId: string
-			entry: NonNullable<(typeof doc.cursors.perSession)[string]>
-		}
-	>()
-
-	let entries = Object.entries(doc.cursors.perSession)
-	for (let [sessionId, entry] of entries) {
-		if (sessionId === mySessionId) continue
-		if (!entry || !entry.value) continue
-
-		let age = now - entry.madeAt.getTime()
-		if (age > STALE_CURSOR_MS) continue
-
-		let userId = entry.by?.$jazz.id ?? sessionId
-
-		let existing = latestByUser.get(userId)
-		if (!existing || entry.madeAt.getTime() > existing.entry.madeAt.getTime()) {
-			latestByUser.set(userId, { sessionId, entry })
-		}
-	}
-
-	let cursors: RemoteCursor[] = []
-	for (let [userId, { sessionId, entry }] of latestByUser) {
-		let name = "Anonymous"
-		let by = entry.by
-		if (by?.profile?.$isLoaded) {
-			name = by.profile.name
-		}
-
-		cursors.push({
-			id: userId,
-			sessionId,
-			name,
-			color: getColorForId(userId),
-			position: entry.value!.position,
-			selectionEnd: entry.value!.selectionEnd,
-		})
-	}
-
-	return cursors
-}
 
 type UsePresenceOptions = {
 	doc: co.loaded<typeof Document, { content: true; cursors: true }> | null
@@ -197,39 +133,6 @@ function usePresence({ doc, enabled = true }: UsePresenceOptions) {
 	}
 }
 
-class CursorWidget extends WidgetType {
-	name: string
-	color: string
-
-	constructor(name: string, color: string) {
-		super()
-		this.name = name
-		this.color = color
-	}
-
-	toDOM() {
-		let wrapper = document.createElement("span")
-		wrapper.className = "cm-remote-cursor"
-		wrapper.style.setProperty("--cursor-color", this.color)
-
-		let cursor = document.createElement("span")
-		cursor.className = "cm-remote-cursor-caret"
-
-		let label = document.createElement("span")
-		label.className = "cm-remote-cursor-label"
-		label.textContent = this.name
-
-		wrapper.appendChild(cursor)
-		wrapper.appendChild(label)
-
-		return wrapper
-	}
-
-	eq(other: CursorWidget) {
-		return this.name === other.name && this.color === other.color
-	}
-}
-
 let remoteCursorsField = StateField.define<RemoteCursor[]>({
 	create() {
 		return []
@@ -245,53 +148,6 @@ let remoteCursorsField = StateField.define<RemoteCursor[]>({
 })
 
 let setRemoteCursorsEffect = StateEffect.define<RemoteCursor[]>()
-
-function buildCursorDecorations(
-	cursors: RemoteCursor[],
-	docLength: number,
-): DecorationSet {
-	let decorations: { from: number; to: number; deco: Decoration }[] = []
-
-	for (let cursor of cursors) {
-		let pos = Math.min(cursor.position, docLength)
-		let selEnd = cursor.selectionEnd
-			? Math.min(cursor.selectionEnd, docLength)
-			: undefined
-
-		if (selEnd !== undefined && selEnd !== pos) {
-			let from = Math.min(pos, selEnd)
-			let to = Math.max(pos, selEnd)
-			decorations.push({
-				from,
-				to,
-				deco: Decoration.mark({
-					class: "cm-remote-selection",
-					attributes: {
-						style: `background-color: ${cursor.color}20;`,
-					},
-				}),
-			})
-		}
-
-		decorations.push({
-			from: pos,
-			to: pos,
-			deco: Decoration.widget({
-				widget: new CursorWidget(cursor.name, cursor.color),
-				side: 1,
-			}),
-		})
-	}
-
-	decorations.sort((a, b) => a.from - b.from || a.to - b.to)
-
-	let builder = new RangeSetBuilder<Decoration>()
-	for (let { from, to, deco } of decorations) {
-		builder.add(from, to, deco)
-	}
-
-	return builder.finish()
-}
 
 let cursorDecorationPlugin = ViewPlugin.fromClass(
 	class {
@@ -372,4 +228,152 @@ function dispatchRemoteCursors(view: EditorView, cursors: RemoteCursor[]) {
 	view.dispatch({
 		effects: setRemoteCursorsEffect.of(cursors),
 	})
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+function getColorForId(id: string): string {
+	let hash = 0
+	for (let i = 0; i < id.length; i++) {
+		hash = (hash << 5) - hash + id.charCodeAt(i)
+		hash = hash & hash
+	}
+	return CURSOR_COLORS[Math.abs(hash) % CURSOR_COLORS.length]
+}
+
+function computeRemoteCursors(
+	doc: CursorDoc,
+	mySessionId: string | null,
+): RemoteCursor[] {
+	if (!doc?.$isLoaded || !doc.cursors || !doc.cursors.$isLoaded || !mySessionId)
+		return []
+
+	let now = Date.now()
+
+	// Group by user ID, keeping only the most recent cursor per user
+	let latestByUser = new Map<
+		string,
+		{
+			sessionId: string
+			entry: NonNullable<(typeof doc.cursors.perSession)[string]>
+		}
+	>()
+
+	let entries = Object.entries(doc.cursors.perSession)
+	for (let [sessionId, entry] of entries) {
+		if (sessionId === mySessionId) continue
+		if (!entry || !entry.value) continue
+
+		let age = now - entry.madeAt.getTime()
+		if (age > STALE_CURSOR_MS) continue
+
+		let userId = entry.by?.$jazz.id ?? sessionId
+
+		let existing = latestByUser.get(userId)
+		if (!existing || entry.madeAt.getTime() > existing.entry.madeAt.getTime()) {
+			latestByUser.set(userId, { sessionId, entry })
+		}
+	}
+
+	let cursors: RemoteCursor[] = []
+	for (let [userId, { sessionId, entry }] of latestByUser) {
+		let name = "Anonymous"
+		let by = entry.by
+		if (by?.profile?.$isLoaded) {
+			name = by.profile.name
+		}
+
+		cursors.push({
+			id: userId,
+			sessionId,
+			name,
+			color: getColorForId(userId),
+			position: entry.value!.position,
+			selectionEnd: entry.value!.selectionEnd,
+		})
+	}
+
+	return cursors
+}
+
+class CursorWidget extends WidgetType {
+	name: string
+	color: string
+
+	constructor(name: string, color: string) {
+		super()
+		this.name = name
+		this.color = color
+	}
+
+	toDOM() {
+		let wrapper = document.createElement("span")
+		wrapper.className = "cm-remote-cursor"
+		wrapper.style.setProperty("--cursor-color", this.color)
+
+		let cursor = document.createElement("span")
+		cursor.className = "cm-remote-cursor-caret"
+
+		let label = document.createElement("span")
+		label.className = "cm-remote-cursor-label"
+		label.textContent = this.name
+
+		wrapper.appendChild(cursor)
+		wrapper.appendChild(label)
+
+		return wrapper
+	}
+
+	eq(other: CursorWidget) {
+		return this.name === other.name && this.color === other.color
+	}
+}
+
+function buildCursorDecorations(
+	cursors: RemoteCursor[],
+	docLength: number,
+): DecorationSet {
+	let decorations: { from: number; to: number; deco: Decoration }[] = []
+
+	for (let cursor of cursors) {
+		let pos = Math.min(cursor.position, docLength)
+		let selEnd = cursor.selectionEnd
+			? Math.min(cursor.selectionEnd, docLength)
+			: undefined
+
+		if (selEnd !== undefined && selEnd !== pos) {
+			let from = Math.min(pos, selEnd)
+			let to = Math.max(pos, selEnd)
+			decorations.push({
+				from,
+				to,
+				deco: Decoration.mark({
+					class: "cm-remote-selection",
+					attributes: {
+						style: `background-color: ${cursor.color}20;`,
+					},
+				}),
+			})
+		}
+
+		decorations.push({
+			from: pos,
+			to: pos,
+			deco: Decoration.widget({
+				widget: new CursorWidget(cursor.name, cursor.color),
+				side: 1,
+			}),
+		})
+	}
+
+	decorations.sort((a, b) => a.from - b.from || a.to - b.to)
+
+	let builder = new RangeSetBuilder<Decoration>()
+	for (let { from, to, deco } of decorations) {
+		builder.add(from, to, deco)
+	}
+
+	return builder.finish()
 }

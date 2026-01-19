@@ -38,9 +38,9 @@ import {
 	type Collaborator,
 } from "@/lib/documents"
 
-type InviteRole = "writer" | "reader"
-
 export { ShareDialog }
+
+type InviteRole = "writer" | "reader"
 
 type LoadedDocument = co.loaded<typeof Document, { content: true }>
 
@@ -439,6 +439,8 @@ function ShareDialog({
 		</Dialog>
 	)
 }
+
+// --- Helpers ---
 
 async function handleLeaveDocument(
 	doc: LoadedDocument,

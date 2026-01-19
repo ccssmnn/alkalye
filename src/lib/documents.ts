@@ -11,6 +11,7 @@ export {
 	acceptDocumentInvite,
 	leavePersonalDocument,
 	parseInviteLink,
+	changeCollaboratorRole,
 	getDocumentGroup,
 	canEdit,
 	getMyRole,
@@ -305,7 +306,7 @@ function parseInviteLink(link: string): DocInviteData {
 	return { docId, inviteGroupId, inviteSecret }
 }
 
-export async function changeCollaboratorRole(
+async function changeCollaboratorRole(
 	doc: co.loaded<typeof Document>,
 	inviteGroupId: string,
 	newRole: "writer" | "reader",

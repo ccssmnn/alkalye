@@ -31,6 +31,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Document } from "@/schema"
 import { parseFrontmatter, getPath } from "@/editor/frontmatter"
+
 export { FolderRow, useFolderStore }
 export type { FolderState }
 
@@ -50,20 +51,6 @@ interface FolderState {
 interface PersistedFolderState {
 	viewMode?: ViewMode
 	collapsedFolders?: string[]
-}
-
-function parsePersistedFolderState(persisted: unknown): PersistedFolderState {
-	if (!persisted || typeof persisted !== "object") return {}
-	let p = persisted as Record<string, unknown>
-	return {
-		viewMode:
-			p.viewMode === "folders" || p.viewMode === "flat"
-				? p.viewMode
-				: undefined,
-		collapsedFolders: Array.isArray(p.collapsedFolders)
-			? p.collapsedFolders
-			: undefined,
-	}
 }
 
 let useFolderStore = create<FolderState>()(
@@ -228,6 +215,22 @@ function FolderRow({
 			/>
 		</>
 	)
+}
+
+// --- Helpers ---
+
+function parsePersistedFolderState(persisted: unknown): PersistedFolderState {
+	if (!persisted || typeof persisted !== "object") return {}
+	let p = persisted as Record<string, unknown>
+	return {
+		viewMode:
+			p.viewMode === "folders" || p.viewMode === "flat"
+				? p.viewMode
+				: undefined,
+		collapsedFolders: Array.isArray(p.collapsedFolders)
+			? p.collapsedFolders
+			: undefined,
+	}
 }
 
 // Dialogs

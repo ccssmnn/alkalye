@@ -272,25 +272,6 @@ function MoveToSpaceDialog({
 	)
 }
 
-type LoadedSpaceWithAvatar = NonNullable<
-	NonNullable<LoadedSpaces["root"]["spaces"]>[number]
->
-
-function getSortedSpaces(
-	spaces: LoadedSpaces["root"]["spaces"],
-): LoadedSpaceWithAvatar[] {
-	if (!spaces) return []
-
-	return [...spaces.values()]
-		.filter((s): s is LoadedSpaceWithAvatar => {
-			if (!s?.$isLoaded || s.deletedAt) return false
-			let spaceGroup = getSpaceGroup(s)
-			let role = spaceGroup?.myRole()
-			return role === "admin" || role === "writer"
-		})
-		.sort((a, b) => a.name.localeCompare(b.name))
-}
-
 type MoveUser = co.loaded<
 	typeof UserAccount,
 	{ root: { documents: true; spaces: { $each: { documents: true } } } }
@@ -369,4 +350,25 @@ async function moveDocumentToSpace(opts: MoveOptions): Promise<void> {
 	}
 
 	doc.$jazz.set("updatedAt", new Date())
+}
+
+// --- Helpers ---
+
+type LoadedSpaceWithAvatar = NonNullable<
+	NonNullable<LoadedSpaces["root"]["spaces"]>[number]
+>
+
+function getSortedSpaces(
+	spaces: LoadedSpaces["root"]["spaces"],
+): LoadedSpaceWithAvatar[] {
+	if (!spaces) return []
+
+	return [...spaces.values()]
+		.filter((s): s is LoadedSpaceWithAvatar => {
+			if (!s?.$isLoaded || s.deletedAt) return false
+			let spaceGroup = getSpaceGroup(s)
+			let role = spaceGroup?.myRole()
+			return role === "admin" || role === "writer"
+		})
+		.sort((a, b) => a.name.localeCompare(b.name))
 }

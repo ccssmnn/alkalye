@@ -22,24 +22,6 @@ export type { Theme }
 
 type Theme = "light" | "dark" | "system"
 
-function getStoredTheme(): Theme {
-	let stored = localStorage.getItem("theme")
-	if (stored === "light" || stored === "dark" || stored === "system") {
-		return stored
-	}
-	return "system"
-}
-
-function applyTheme(theme: Theme) {
-	let root = document.documentElement
-	if (theme === "system") {
-		let prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
-		root.classList.toggle("dark", prefersDark)
-	} else {
-		root.classList.toggle("dark", theme === "dark")
-	}
-}
-
 // Apply theme immediately on load to prevent flash
 applyTheme(getStoredTheme())
 
@@ -63,16 +45,6 @@ function useTheme() {
 	}, [theme])
 
 	return { theme, setTheme }
-}
-
-function subscribeToSystemTheme(callback: () => void) {
-	let mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
-	mediaQuery.addEventListener("change", callback)
-	return () => mediaQuery.removeEventListener("change", callback)
-}
-
-function getSystemThemeSnapshot() {
-	return window.matchMedia("(prefers-color-scheme: dark)").matches
 }
 
 function useResolvedTheme(): "light" | "dark" {
@@ -164,4 +136,36 @@ function ThemeMenuItems({ theme, setTheme }: ThemeToggleProps) {
 			</DropdownMenuRadioItem>
 		</DropdownMenuRadioGroup>
 	)
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+function getStoredTheme(): Theme {
+	let stored = localStorage.getItem("theme")
+	if (stored === "light" || stored === "dark" || stored === "system") {
+		return stored
+	}
+	return "system"
+}
+
+function applyTheme(theme: Theme) {
+	let root = document.documentElement
+	if (theme === "system") {
+		let prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches
+		root.classList.toggle("dark", prefersDark)
+	} else {
+		root.classList.toggle("dark", theme === "dark")
+	}
+}
+
+function subscribeToSystemTheme(callback: () => void) {
+	let mediaQuery = window.matchMedia("(prefers-color-scheme: dark)")
+	mediaQuery.addEventListener("change", callback)
+	return () => mediaQuery.removeEventListener("change", callback)
+}
+
+function getSystemThemeSnapshot() {
+	return window.matchMedia("(prefers-color-scheme: dark)").matches
 }

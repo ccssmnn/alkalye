@@ -218,30 +218,6 @@ function DuplicateDocDialog({
 	)
 }
 
-type LoadedSpaceWithAvatar = NonNullable<
-	NonNullable<LoadedSpaces["root"]["spaces"]>[number]
->
-
-function getSortedSpaces(
-	spaces: LoadedSpaces["root"]["spaces"],
-): LoadedSpaceWithAvatar[] {
-	if (!spaces) return []
-
-	return Array.from(spaces)
-		.filter(
-			(s): s is LoadedSpaceWithAvatar =>
-				s != null && s.$isLoaded && !s.deletedAt,
-		)
-		.sort((a, b) => a.name.localeCompare(b.name))
-}
-
-function getDocName(doc: LoadedDocument): string {
-	let content = doc.content?.toString() ?? ""
-	let firstLine = content.split("\n")[0] ?? ""
-	let title = firstLine.replace(/^#\s*/, "").trim()
-	return title || "Untitled"
-}
-
 type DuplicateOptions = {
 	doc: LoadedDocument
 	newName: string
@@ -380,4 +356,30 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 	onProgress?.(progress)
 
 	return newDoc.$jazz.id
+}
+
+// --- Helpers ---
+
+type LoadedSpaceWithAvatar = NonNullable<
+	NonNullable<LoadedSpaces["root"]["spaces"]>[number]
+>
+
+function getSortedSpaces(
+	spaces: LoadedSpaces["root"]["spaces"],
+): LoadedSpaceWithAvatar[] {
+	if (!spaces) return []
+
+	return Array.from(spaces)
+		.filter(
+			(s): s is LoadedSpaceWithAvatar =>
+				s != null && s.$isLoaded && !s.deletedAt,
+		)
+		.sort((a, b) => a.name.localeCompare(b.name))
+}
+
+function getDocName(doc: LoadedDocument): string {
+	let content = doc.content?.toString() ?? ""
+	let firstLine = content.split("\n")[0] ?? ""
+	let title = firstLine.replace(/^#\s*/, "").trim()
+	return title || "Untitled"
 }

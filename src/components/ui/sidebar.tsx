@@ -11,9 +11,7 @@ import {
 	PanelLeftClose,
 } from "lucide-react"
 
-type SidebarSide = "left" | "right"
 export type { SidebarSide }
-
 export {
 	Sidebar,
 	SidebarContent,
@@ -34,29 +32,7 @@ export {
 	useSidebar,
 }
 
-let SIDEBAR_WIDTH = "14rem"
-let SIDEBAR_WIDTH_MOBILE = "18rem"
-
-let STORAGE_KEY_LEFT = "sidebar-left-open"
-let STORAGE_KEY_RIGHT = "sidebar-right-open"
-
-type SidebarContextValue = {
-	leftOpen: boolean
-	setLeftOpen: (open: boolean) => void
-	leftOpenMobile: boolean
-	setLeftOpenMobile: (open: boolean, onComplete?: () => void) => void
-	rightOpen: boolean
-	setRightOpen: (open: boolean) => void
-	rightOpenMobile: boolean
-	setRightOpenMobile: (open: boolean, onComplete?: () => void) => void
-	fireLeftMobileComplete: () => void
-	fireRightMobileComplete: () => void
-	isMobile: boolean
-	toggleLeft: () => void
-	toggleRight: () => void
-}
-
-let SidebarContext = React.createContext<SidebarContextValue | null>(null)
+type SidebarSide = "left" | "right"
 
 function useSidebar() {
 	let context = React.useContext(SidebarContext)
@@ -64,13 +40,6 @@ function useSidebar() {
 		throw new Error("useSidebar must be used within a SidebarProvider.")
 	}
 	return context
-}
-
-function getStoredState(key: string, defaultValue: boolean): boolean {
-	if (typeof window === "undefined") return defaultValue
-	let stored = localStorage.getItem(key)
-	if (stored === null) return defaultValue
-	return stored === "true"
 }
 
 interface SidebarProviderProps extends React.ComponentProps<"div"> {
@@ -514,4 +483,37 @@ function SidebarMenuAction({
 			{...props}
 		/>
 	)
+}
+
+// Non-exported helpers below
+
+let SIDEBAR_WIDTH = "14rem"
+let SIDEBAR_WIDTH_MOBILE = "18rem"
+
+let STORAGE_KEY_LEFT = "sidebar-left-open"
+let STORAGE_KEY_RIGHT = "sidebar-right-open"
+
+type SidebarContextValue = {
+	leftOpen: boolean
+	setLeftOpen: (open: boolean) => void
+	leftOpenMobile: boolean
+	setLeftOpenMobile: (open: boolean, onComplete?: () => void) => void
+	rightOpen: boolean
+	setRightOpen: (open: boolean) => void
+	rightOpenMobile: boolean
+	setRightOpenMobile: (open: boolean, onComplete?: () => void) => void
+	fireLeftMobileComplete: () => void
+	fireRightMobileComplete: () => void
+	isMobile: boolean
+	toggleLeft: () => void
+	toggleRight: () => void
+}
+
+let SidebarContext = React.createContext<SidebarContextValue | null>(null)
+
+function getStoredState(key: string, defaultValue: boolean): boolean {
+	if (typeof window === "undefined") return defaultValue
+	let stored = localStorage.getItem(key)
+	if (stored === null) return defaultValue
+	return stored === "true"
 }

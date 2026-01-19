@@ -4,8 +4,6 @@ import { parseFrontmatter } from "@/editor/frontmatter"
 import { type Theme, ThemePreset, UserAccount } from "@/schema"
 import { type co } from "jazz-tools"
 
-type ThemePresetType = z.infer<typeof ThemePreset>
-
 export {
 	getThemeName,
 	getPresetName,
@@ -17,6 +15,8 @@ export {
 }
 
 export type { ResolvedTheme, ThemesQuery, LoadedThemes, ThemePresetType }
+
+type ThemePresetType = z.infer<typeof ThemePreset>
 
 type ResolvedTheme = {
 	theme: co.loaded<typeof Theme, ThemesQuery["$each"]> | null
@@ -102,31 +102,6 @@ function findPresetByName(
 	return null
 }
 
-let themesQuery = {
-	root: {
-		settings: true,
-		themes: {
-			$each: { css: true, template: true, assets: { $each: { data: true } } },
-		},
-	},
-} as const
-
-type ThemeMode = "preview" | "slideshow"
-type Appearance = "light" | "dark"
-
-function findPresetByAppearance(
-	theme: { presets?: string | null },
-	appearance: Appearance,
-): ThemePresetType | null {
-	let presets = getThemePresets(theme)
-	for (let preset of presets) {
-		if (preset.appearance === appearance) {
-			return preset
-		}
-	}
-	return null
-}
-
 function useDocumentTheme(
 	content: string,
 	mode: ThemeMode = "preview",
@@ -196,4 +171,33 @@ function useDocumentTheme(
 	}
 
 	return { theme, preset, warning, isLoading: false }
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+let themesQuery = {
+	root: {
+		settings: true,
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
+	},
+} as const
+
+type ThemeMode = "preview" | "slideshow"
+type Appearance = "light" | "dark"
+
+function findPresetByAppearance(
+	theme: { presets?: string | null },
+	appearance: Appearance,
+): ThemePresetType | null {
+	let presets = getThemePresets(theme)
+	for (let preset of presets) {
+		if (preset.appearance === appearance) {
+			return preset
+		}
+	}
+	return null
 }

@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
 
+export { MarkdownView }
+
 interface MarkdownViewProps {
 	src: string
 }
-
-export { MarkdownView }
 
 function MarkdownView({ src }: MarkdownViewProps) {
 	let [content, setContent] = useState("")
