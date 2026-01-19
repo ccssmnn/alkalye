@@ -5,6 +5,18 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { XIcon } from "lucide-react"
 
+export {
+	Sheet,
+	SheetClose,
+	SheetContent,
+	SheetDescription,
+	SheetHeader,
+	SheetOverlay,
+	SheetPortal,
+	SheetTitle,
+	SheetTrigger,
+}
+
 function Sheet({ ...props }: DialogPrimitive.Root.Props) {
 	return <DialogPrimitive.Root data-slot="sheet" {...props} />
 }
@@ -132,16 +144,4 @@ function SheetDescription({
 			{...props}
 		/>
 	)
-}
-
-export {
-	Sheet,
-	SheetClose,
-	SheetContent,
-	SheetDescription,
-	SheetHeader,
-	SheetOverlay,
-	SheetPortal,
-	SheetTitle,
-	SheetTrigger,
 }

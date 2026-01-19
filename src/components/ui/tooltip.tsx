@@ -2,6 +2,8 @@ import { Tooltip as TooltipPrimitive } from "@base-ui/react/tooltip"
 
 import { cn } from "@/lib/utils"
 
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+
 function TooltipProvider({
 	delay = 500,
 	...props
@@ -60,5 +62,3 @@ function TooltipContent({
 		</TooltipPrimitive.Portal>
 	)
 }
-
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }

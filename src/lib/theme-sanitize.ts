@@ -8,6 +8,70 @@ type SanitizeResult = {
 	removedPatterns: string[]
 }
 
+function sanitizeCss(css: string): SanitizeResult {
+	let sanitized = css
+	let removedPatterns: string[] = []
+
+	for (let { pattern, name } of dangerousPatterns) {
+		if (pattern.test(sanitized)) {
+			removedPatterns.push(name)
+			sanitized = sanitized.replace(pattern, "/* removed: " + name + " */")
+		}
+		pattern.lastIndex = 0
+	}
+
+	return {
+		sanitized,
+		removedCount: removedPatterns.length,
+		removedPatterns,
+	}
+}
+
+function sanitizeHtml(html: string): SanitizeResult {
+	let removedPatterns: string[] = []
+	let removedCount = 0
+
+	DOMPurify.addHook("uponSanitizeElement", (_node, data) => {
+		if (data.tagName && purifyConfig.FORBID_TAGS?.includes(data.tagName)) {
+			removedPatterns.push(`<${data.tagName}>`)
+			removedCount++
+		}
+	})
+
+	DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
+		if (data.attrName) {
+			if (
+				(data.attrName === "href" || data.attrName === "src") &&
+				data.attrValue?.toLowerCase().trim().startsWith("javascript:")
+			) {
+				removedPatterns.push(`${data.attrName}="javascript:..."`)
+				removedCount++
+			}
+			if (data.attrName.startsWith("on")) {
+				removedPatterns.push(`${data.attrName}`)
+				removedCount++
+			}
+		}
+	})
+
+	let sanitized: string = DOMPurify.sanitize(html, purifyConfig)
+
+	DOMPurify.removeHooks("uponSanitizeElement")
+	DOMPurify.removeHooks("uponSanitizeAttribute")
+
+	let uniquePatterns = [...new Set(removedPatterns)]
+
+	return {
+		sanitized,
+		removedCount,
+		removedPatterns: uniquePatterns,
+	}
+}
+
+// =============================================================================
+// Helper functions and constants (used by exported functions above)
+// =============================================================================
+
 let trustedFontDomains = [
 	"fonts.googleapis.com",
 	"fonts.gstatic.com",
@@ -49,25 +113,6 @@ let dangerousPatterns: { pattern: RegExp; name: string }[] = [
 		name: "data:text/html URL",
 	},
 ]
-
-function sanitizeCss(css: string): SanitizeResult {
-	let sanitized = css
-	let removedPatterns: string[] = []
-
-	for (let { pattern, name } of dangerousPatterns) {
-		if (pattern.test(sanitized)) {
-			removedPatterns.push(name)
-			sanitized = sanitized.replace(pattern, "/* removed: " + name + " */")
-		}
-		pattern.lastIndex = 0
-	}
-
-	return {
-		sanitized,
-		removedCount: removedPatterns.length,
-		removedPatterns,
-	}
-}
 
 let purifyConfig: Config = {
 	ALLOWED_TAGS: [
@@ -292,45 +337,4 @@ let purifyConfig: Config = {
 	RETURN_DOM: false,
 	RETURN_DOM_FRAGMENT: false,
 	WHOLE_DOCUMENT: false,
-}
-
-function sanitizeHtml(html: string): SanitizeResult {
-	let removedPatterns: string[] = []
-	let removedCount = 0
-
-	DOMPurify.addHook("uponSanitizeElement", (_node, data) => {
-		if (data.tagName && purifyConfig.FORBID_TAGS?.includes(data.tagName)) {
-			removedPatterns.push(`<${data.tagName}>`)
-			removedCount++
-		}
-	})
-
-	DOMPurify.addHook("uponSanitizeAttribute", (_node, data) => {
-		if (data.attrName) {
-			if (
-				(data.attrName === "href" || data.attrName === "src") &&
-				data.attrValue?.toLowerCase().trim().startsWith("javascript:")
-			) {
-				removedPatterns.push(`${data.attrName}="javascript:..."`)
-				removedCount++
-			}
-			if (data.attrName.startsWith("on")) {
-				removedPatterns.push(`${data.attrName}`)
-				removedCount++
-			}
-		}
-	})
-
-	let sanitized: string = DOMPurify.sanitize(html, purifyConfig)
-
-	DOMPurify.removeHooks("uponSanitizeElement")
-	DOMPurify.removeHooks("uponSanitizeAttribute")
-
-	let uniquePatterns = [...new Set(removedPatterns)]
-
-	return {
-		sanitized,
-		removedCount,
-		removedPatterns: uniquePatterns,
-	}
 }

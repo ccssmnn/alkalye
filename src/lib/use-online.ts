@@ -2,6 +2,14 @@ import { useSyncExternalStore } from "react"
 
 export { useIsOnline }
 
+function useIsOnline() {
+	return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
 function getSnapshot() {
 	return navigator.onLine
 }
@@ -17,8 +25,4 @@ function subscribe(callback: () => void) {
 		window.removeEventListener("online", callback)
 		window.removeEventListener("offline", callback)
 	}
-}
-
-function useIsOnline() {
-	return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }

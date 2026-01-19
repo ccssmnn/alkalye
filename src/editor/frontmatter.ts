@@ -166,10 +166,6 @@ function getBacklinksWithRange(content: string): BacklinksWithRange | null {
 	return null
 }
 
-function removeEmptyFrontmatter(content: string): string {
-	return content.replace(/^---\r?\n\s*---\r?\n?/, "")
-}
-
 function setBacklinks(content: string, ids: string[]): string {
 	let { frontmatter } = parseFrontmatter(content)
 	let newBacklinks = ids.filter(Boolean).join(", ")
@@ -282,4 +278,10 @@ function getFrontmatterRange(
 		}
 	}
 	return null
+}
+
+// Helpers
+
+function removeEmptyFrontmatter(content: string): string {
+	return content.replace(/^---\r?\n\s*---\r?\n?/, "")
 }

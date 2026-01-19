@@ -2,8 +2,6 @@ import { insertNewlineContinueMarkup } from "@codemirror/lang-markdown"
 import { EditorView } from "@codemirror/view"
 import { sortTaskLists } from "@/lib/sort-tasks"
 
-type Command = (view: EditorView) => boolean
-
 export {
 	insertCodeBlock,
 	insertImage,
@@ -28,6 +26,8 @@ export {
 	wrapSelection,
 }
 export type { Command }
+
+type Command = (view: EditorView) => boolean
 
 function wrapSelection(marker: string): Command {
 	return view => {
@@ -396,16 +396,6 @@ let setBody: Command = view => {
 	return true
 }
 
-function getIndentAndText(lineText: string): {
-	indent: string
-	textAfterIndent: string
-} {
-	let indentMatch = lineText.match(/^(\s*)/)
-	let indent = indentMatch ? indentMatch[1] : ""
-	let textAfterIndent = lineText.slice(indent.length)
-	return { indent, textAfterIndent }
-}
-
 let toggleBold = wrapSelection("**")
 let toggleItalic = wrapSelection("*")
 let toggleStrikethrough = wrapSelection("~~")
@@ -496,4 +486,16 @@ let insertNewlineContinueMarkupTight: Command = view => {
 	}
 
 	return true
+}
+
+// Helpers
+
+function getIndentAndText(lineText: string): {
+	indent: string
+	textAfterIndent: string
+} {
+	let indentMatch = lineText.match(/^(\s*)/)
+	let indent = indentMatch ? indentMatch[1] : ""
+	let textAfterIndent = lineText.slice(indent.length)
+	return { indent, textAfterIndent }
 }

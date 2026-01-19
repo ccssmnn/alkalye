@@ -52,116 +52,6 @@ async function importMarkdownFiles(
 	return results
 }
 
-async function importZipFile(file: File): Promise<ImportedFile[]> {
-	let zip = await JSZip.loadAsync(file)
-	let results: ImportedFile[] = []
-
-	let mdFiles: { path: string; name: string }[] = []
-	let assetFiles: { path: string; file: JSZip.JSZipObject }[] = []
-
-	zip.forEach((relativePath, zipEntry) => {
-		if (zipEntry.dir) return
-
-		let fileName = relativePath.split("/").pop() || ""
-		if (fileName.startsWith(".")) return
-
-		if (
-			relativePath.endsWith(".md") ||
-			relativePath.endsWith(".markdown") ||
-			relativePath.endsWith(".txt")
-		) {
-			mdFiles.push({ path: relativePath, name: fileName })
-		} else if (isImageFile(fileName)) {
-			assetFiles.push({ path: relativePath, file: zipEntry })
-		}
-	})
-
-	for (let mdFile of mdFiles) {
-		let content = await zip.file(mdFile.path)!.async("string")
-		let name = mdFile.name.replace(/\.(md|markdown|txt)$/, "")
-
-		let docDir = mdFile.path.includes("/")
-			? mdFile.path.substring(0, mdFile.path.lastIndexOf("/") + 1)
-			: ""
-
-		let assets: ImportedAsset[] = []
-		let usedAssetPaths = new Set<string>()
-		let assetRefRegex = /!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g
-		let match
-
-		while ((match = assetRefRegex.exec(content)) !== null) {
-			let refPath = match[2]
-			if (refPath.startsWith("asset:")) continue
-
-			let normalizedRef = refPath.startsWith("./") ? refPath.slice(2) : refPath
-			let fullPath = docDir + normalizedRef
-
-			let assetEntry = assetFiles.find(
-				a =>
-					a.path === fullPath ||
-					a.path === normalizedRef ||
-					a.path.endsWith("/" + normalizedRef) ||
-					a.path.endsWith(normalizedRef),
-			)
-
-			if (assetEntry) {
-				usedAssetPaths.add(assetEntry.path)
-				let blob = await assetEntry.file.async("blob")
-				let fileName = assetEntry.path.split("/").pop() || "image"
-				let assetFile = new File([blob], fileName, {
-					type: getMimeType(fileName),
-				})
-
-				assets.push({
-					name: fileName.replace(/\.[^.]+$/, ""),
-					file: assetFile,
-					refName: match[2],
-				})
-			}
-		}
-
-		// Import all assets in the same directory tree (e.g. assets/ folder)
-		for (let assetFile of assetFiles) {
-			if (usedAssetPaths.has(assetFile.path)) continue
-			if (docDir && assetFile.path.startsWith(docDir)) {
-				let blob = await assetFile.file.async("blob")
-				let fileName = assetFile.path.split("/").pop() || "image"
-				let file = new File([blob], fileName, {
-					type: getMimeType(fileName),
-				})
-				assets.push({
-					name: fileName.replace(/\.[^.]+$/, ""),
-					file,
-					refName: "",
-				})
-			}
-		}
-
-		// Determine path, accounting for doc-with-assets folder structure
-		// If md file is in a folder with same name as the file, that's a doc folder not a path
-		// e.g. "My Doc/My Doc.md" -> path: null, "some/path/My Doc/My Doc.md" -> path: "some/path"
-		let path: string | null = null
-		if (mdFile.path.includes("/")) {
-			let dir = mdFile.path.substring(0, mdFile.path.lastIndexOf("/"))
-			let parentFolderName = dir.split("/").pop() ?? ""
-			// Check if parent folder name matches the doc name (doc-with-assets structure)
-			if (parentFolderName.toLowerCase() === name.toLowerCase()) {
-				// Strip the doc folder from path
-				let parentDir = dir.includes("/")
-					? dir.substring(0, dir.lastIndexOf("/"))
-					: ""
-				path = parentDir || null
-			} else {
-				path = dir || null
-			}
-		}
-
-		results.push({ name, content, assets, path })
-	}
-
-	return results
-}
-
 async function readFolderEntries(
 	dataTransfer: DataTransfer,
 ): Promise<FileWithPath[]> {
@@ -314,25 +204,6 @@ async function importFolderFiles(
 	return results
 }
 
-function isImageFile(filename: string): boolean {
-	let ext = filename.toLowerCase().split(".").pop()
-	return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext || "")
-}
-
-function getMimeType(filename: string): string {
-	let ext = filename.toLowerCase().split(".").pop()
-	let mimeTypes: Record<string, string> = {
-		png: "image/png",
-		jpg: "image/jpeg",
-		jpeg: "image/jpeg",
-		gif: "image/gif",
-		webp: "image/webp",
-		svg: "image/svg+xml",
-		bmp: "image/bmp",
-	}
-	return mimeTypes[ext || ""] || "image/png"
-}
-
 // =============================================================================
 // Wikilink resolution for import
 // =============================================================================
@@ -369,6 +240,139 @@ function resolveWikilinksForImport(
 		// No match - keep as-is (will show as broken link with text)
 		return match
 	})
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+async function importZipFile(file: File): Promise<ImportedFile[]> {
+	let zip = await JSZip.loadAsync(file)
+	let results: ImportedFile[] = []
+
+	let mdFiles: { path: string; name: string }[] = []
+	let assetFiles: { path: string; file: JSZip.JSZipObject }[] = []
+
+	zip.forEach((relativePath, zipEntry) => {
+		if (zipEntry.dir) return
+
+		let fileName = relativePath.split("/").pop() || ""
+		if (fileName.startsWith(".")) return
+
+		if (
+			relativePath.endsWith(".md") ||
+			relativePath.endsWith(".markdown") ||
+			relativePath.endsWith(".txt")
+		) {
+			mdFiles.push({ path: relativePath, name: fileName })
+		} else if (isImageFile(fileName)) {
+			assetFiles.push({ path: relativePath, file: zipEntry })
+		}
+	})
+
+	for (let mdFile of mdFiles) {
+		let content = await zip.file(mdFile.path)!.async("string")
+		let name = mdFile.name.replace(/\.(md|markdown|txt)$/, "")
+
+		let docDir = mdFile.path.includes("/")
+			? mdFile.path.substring(0, mdFile.path.lastIndexOf("/") + 1)
+			: ""
+
+		let assets: ImportedAsset[] = []
+		let usedAssetPaths = new Set<string>()
+		let assetRefRegex = /!\[([^\]]*)\]\((?!https?:\/\/)([^)]+)\)/g
+		let match
+
+		while ((match = assetRefRegex.exec(content)) !== null) {
+			let refPath = match[2]
+			if (refPath.startsWith("asset:")) continue
+
+			let normalizedRef = refPath.startsWith("./") ? refPath.slice(2) : refPath
+			let fullPath = docDir + normalizedRef
+
+			let assetEntry = assetFiles.find(
+				a =>
+					a.path === fullPath ||
+					a.path === normalizedRef ||
+					a.path.endsWith("/" + normalizedRef) ||
+					a.path.endsWith(normalizedRef),
+			)
+
+			if (assetEntry) {
+				usedAssetPaths.add(assetEntry.path)
+				let blob = await assetEntry.file.async("blob")
+				let fileName = assetEntry.path.split("/").pop() || "image"
+				let assetFile = new File([blob], fileName, {
+					type: getMimeType(fileName),
+				})
+
+				assets.push({
+					name: fileName.replace(/\.[^.]+$/, ""),
+					file: assetFile,
+					refName: match[2],
+				})
+			}
+		}
+
+		// Import all assets in the same directory tree (e.g. assets/ folder)
+		for (let assetFile of assetFiles) {
+			if (usedAssetPaths.has(assetFile.path)) continue
+			if (docDir && assetFile.path.startsWith(docDir)) {
+				let blob = await assetFile.file.async("blob")
+				let fileName = assetFile.path.split("/").pop() || "image"
+				let file = new File([blob], fileName, {
+					type: getMimeType(fileName),
+				})
+				assets.push({
+					name: fileName.replace(/\.[^.]+$/, ""),
+					file,
+					refName: "",
+				})
+			}
+		}
+
+		// Determine path, accounting for doc-with-assets folder structure
+		// If md file is in a folder with same name as the file, that's a doc folder not a path
+		// e.g. "My Doc/My Doc.md" -> path: null, "some/path/My Doc/My Doc.md" -> path: "some/path"
+		let path: string | null = null
+		if (mdFile.path.includes("/")) {
+			let dir = mdFile.path.substring(0, mdFile.path.lastIndexOf("/"))
+			let parentFolderName = dir.split("/").pop() ?? ""
+			// Check if parent folder name matches the doc name (doc-with-assets structure)
+			if (parentFolderName.toLowerCase() === name.toLowerCase()) {
+				// Strip the doc folder from path
+				let parentDir = dir.includes("/")
+					? dir.substring(0, dir.lastIndexOf("/"))
+					: ""
+				path = parentDir || null
+			} else {
+				path = dir || null
+			}
+		}
+
+		results.push({ name, content, assets, path })
+	}
+
+	return results
+}
+
+function isImageFile(filename: string): boolean {
+	let ext = filename.toLowerCase().split(".").pop()
+	return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext || "")
+}
+
+function getMimeType(filename: string): string {
+	let ext = filename.toLowerCase().split(".").pop()
+	let mimeTypes: Record<string, string> = {
+		png: "image/png",
+		jpg: "image/jpeg",
+		jpeg: "image/jpeg",
+		gif: "image/gif",
+		webp: "image/webp",
+		svg: "image/svg+xml",
+		bmp: "image/bmp",
+	}
+	return mimeTypes[ext || ""] || "image/png"
 }
 
 function resolveWikilinkPath(

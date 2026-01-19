@@ -102,19 +102,6 @@ function usePWAProvider(): PWAContextValue {
 
 // Detection hooks and helpers
 
-function subscribeToPWAInstalled(callback: () => void) {
-	let mediaQuery = window.matchMedia("(display-mode: standalone)")
-	mediaQuery.addEventListener("change", callback)
-	return () => mediaQuery.removeEventListener("change", callback)
-}
-
-function getPWAInstalledSnapshot() {
-	let isStandalone = window.matchMedia("(display-mode: standalone)").matches
-	let isIOSStandalone =
-		(window.navigator as unknown as { standalone: boolean }).standalone === true
-	return isStandalone || isIOSStandalone
-}
-
 function useIsPWAInstalled(): boolean {
 	return useSyncExternalStore(
 		subscribeToPWAInstalled,
@@ -146,76 +133,7 @@ interface BeforeInstallPromptEvent extends Event {
 	userChoice: Promise<{ outcome: "accepted" | "dismissed" }>
 }
 
-function usePWAInstallPrompt() {
-	let [deferredPrompt, setDeferredPrompt] =
-		useState<BeforeInstallPromptEvent | null>(null)
-	let [canInstall, setCanInstall] = useState(false)
-
-	useEffect(() => {
-		function handleBeforeInstallPrompt(e: Event) {
-			e.preventDefault()
-			setDeferredPrompt(e as BeforeInstallPromptEvent)
-			setCanInstall(true)
-		}
-
-		function handleAppInstalled() {
-			setDeferredPrompt(null)
-			setCanInstall(false)
-		}
-
-		window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
-		window.addEventListener("appinstalled", handleAppInstalled)
-
-		return () => {
-			window.removeEventListener(
-				"beforeinstallprompt",
-				handleBeforeInstallPrompt,
-			)
-			window.removeEventListener("appinstalled", handleAppInstalled)
-		}
-	}, [])
-
-	async function promptInstall(): Promise<"accepted" | "dismissed" | null> {
-		if (!deferredPrompt) return null
-
-		await deferredPrompt.prompt()
-		let choiceResult = await deferredPrompt.userChoice
-
-		setDeferredPrompt(null)
-		setCanInstall(false)
-
-		return choiceResult.outcome
-	}
-
-	return { canInstall, promptInstall }
-}
-
 let INSTALL_HINT_DISMISSED_KEY = "pwa-install-hint-dismissed"
-
-function usePWAInstallHintDismissed() {
-	let [dismissed, setDismissedState] = useState(() => {
-		try {
-			return localStorage.getItem(INSTALL_HINT_DISMISSED_KEY) === "true"
-		} catch {
-			return false
-		}
-	})
-
-	function setDismissed(value: boolean) {
-		setDismissedState(value)
-		try {
-			if (value) {
-				localStorage.setItem(INSTALL_HINT_DISMISSED_KEY, "true")
-			} else {
-				localStorage.removeItem(INSTALL_HINT_DISMISSED_KEY)
-			}
-		} catch {
-			// Ignore localStorage errors (e.g. in private browsing)
-		}
-	}
-
-	return { dismissed, setDismissed }
-}
 
 // Components
 
@@ -462,4 +380,90 @@ function GenericInstructions() {
 			</ol>
 		</div>
 	)
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+function subscribeToPWAInstalled(callback: () => void) {
+	let mediaQuery = window.matchMedia("(display-mode: standalone)")
+	mediaQuery.addEventListener("change", callback)
+	return () => mediaQuery.removeEventListener("change", callback)
+}
+
+function getPWAInstalledSnapshot() {
+	let isStandalone = window.matchMedia("(display-mode: standalone)").matches
+	let isIOSStandalone =
+		(window.navigator as unknown as { standalone: boolean }).standalone === true
+	return isStandalone || isIOSStandalone
+}
+
+function usePWAInstallPrompt() {
+	let [deferredPrompt, setDeferredPrompt] =
+		useState<BeforeInstallPromptEvent | null>(null)
+	let [canInstall, setCanInstall] = useState(false)
+
+	useEffect(() => {
+		function handleBeforeInstallPrompt(e: Event) {
+			e.preventDefault()
+			setDeferredPrompt(e as BeforeInstallPromptEvent)
+			setCanInstall(true)
+		}
+
+		function handleAppInstalled() {
+			setDeferredPrompt(null)
+			setCanInstall(false)
+		}
+
+		window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt)
+		window.addEventListener("appinstalled", handleAppInstalled)
+
+		return () => {
+			window.removeEventListener(
+				"beforeinstallprompt",
+				handleBeforeInstallPrompt,
+			)
+			window.removeEventListener("appinstalled", handleAppInstalled)
+		}
+	}, [])
+
+	async function promptInstall(): Promise<"accepted" | "dismissed" | null> {
+		if (!deferredPrompt) return null
+
+		await deferredPrompt.prompt()
+		let choiceResult = await deferredPrompt.userChoice
+
+		setDeferredPrompt(null)
+		setCanInstall(false)
+
+		return choiceResult.outcome
+	}
+
+	return { canInstall, promptInstall }
+}
+
+function usePWAInstallHintDismissed() {
+	let [dismissed, setDismissedState] = useState(() => {
+		try {
+			return localStorage.getItem(INSTALL_HINT_DISMISSED_KEY) === "true"
+		} catch {
+			return false
+		}
+	})
+
+	function setDismissed(value: boolean) {
+		setDismissedState(value)
+		try {
+			if (value) {
+				localStorage.setItem(INSTALL_HINT_DISMISSED_KEY, "true")
+			} else {
+				localStorage.removeItem(INSTALL_HINT_DISMISSED_KEY)
+			}
+		} catch {
+			// Ignore localStorage errors (e.g. in private browsing)
+		}
+	}
+
+	return { dismissed, setDismissed }
 }

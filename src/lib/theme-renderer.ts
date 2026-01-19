@@ -34,9 +34,9 @@ type CacheEntry = {
 
 let themeStylesCache = new Map<string, CacheEntry>()
 
-function getCacheKey(themeId: string, presetName: string | null): string {
-	return `${themeId}:${presetName ?? "__default__"}`
-}
+type ThemeRenderResult =
+	| { ok: true; styles: ThemeStyles }
+	| { ok: false; error: string }
 
 function getCachedThemeStyles(
 	theme: LoadedTheme,
@@ -74,10 +74,6 @@ function cleanupThemeCache(themeId: string): void {
 		}
 	}
 }
-
-type ThemeRenderResult =
-	| { ok: true; styles: ThemeStyles }
-	| { ok: false; error: string }
 
 function buildThemeStyles(
 	theme: LoadedTheme,
@@ -150,16 +146,6 @@ function buildThemeStyles(
 		presetVariables,
 		blobUrls,
 	}
-}
-
-function getFontFormat(mimeType: string): string {
-	let formats: Record<string, string> = {
-		"font/woff2": "woff2",
-		"font/woff": "woff",
-		"font/ttf": "truetype",
-		"font/otf": "opentype",
-	}
-	return formats[mimeType] ?? "woff2"
 }
 
 function tryBuildThemeStyles(
@@ -276,44 +262,6 @@ async function buildThemeStylesAsync(
 	}
 }
 
-function yieldToMain(): Promise<void> {
-	return new Promise(resolve => {
-		setTimeout(resolve, 0)
-	})
-}
-
-function buildPresetVariables(preset: ThemePresetType): string {
-	let vars: string[] = []
-	let { colors, fonts } = preset
-
-	vars.push(`--preset-background: ${colors.background}`)
-	vars.push(`--preset-foreground: ${colors.foreground}`)
-	vars.push(`--preset-accent: ${colors.accent}`)
-
-	vars.push(`--preset-accent-1: ${colors.accent}`)
-	if (colors.accents) {
-		for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
-			vars.push(`--preset-accent-${i + 2}: ${colors.accents[i]}`)
-		}
-	}
-
-	if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
-	if (colors.link) vars.push(`--preset-link: ${colors.link}`)
-	if (colors.codeBackground)
-		vars.push(`--preset-code-background: ${colors.codeBackground}`)
-
-	if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
-	if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
-
-	vars.push(`--preset-appearance: ${preset.appearance}`)
-
-	vars.push(`--theme-background: ${colors.background}`)
-	vars.push(`--theme-foreground: ${colors.foreground}`)
-	vars.push(`--theme-accent: ${colors.accent}`)
-
-	return `:root {\n\t${vars.join(";\n\t")};\n}`
-}
-
 async function tryCachedThemeStylesAsync(
 	theme: LoadedTheme,
 	preset: ThemePresetType | null,
@@ -384,4 +332,60 @@ function tryRenderTemplateWithContent(
 		)
 		return { ok: false, error: errorMessage }
 	}
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+function getCacheKey(themeId: string, presetName: string | null): string {
+	return `${themeId}:${presetName ?? "__default__"}`
+}
+
+function getFontFormat(mimeType: string): string {
+	let formats: Record<string, string> = {
+		"font/woff2": "woff2",
+		"font/woff": "woff",
+		"font/ttf": "truetype",
+		"font/otf": "opentype",
+	}
+	return formats[mimeType] ?? "woff2"
+}
+
+function yieldToMain(): Promise<void> {
+	return new Promise(resolve => {
+		setTimeout(resolve, 0)
+	})
+}
+
+function buildPresetVariables(preset: ThemePresetType): string {
+	let vars: string[] = []
+	let { colors, fonts } = preset
+
+	vars.push(`--preset-background: ${colors.background}`)
+	vars.push(`--preset-foreground: ${colors.foreground}`)
+	vars.push(`--preset-accent: ${colors.accent}`)
+
+	vars.push(`--preset-accent-1: ${colors.accent}`)
+	if (colors.accents) {
+		for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
+			vars.push(`--preset-accent-${i + 2}: ${colors.accents[i]}`)
+		}
+	}
+
+	if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
+	if (colors.link) vars.push(`--preset-link: ${colors.link}`)
+	if (colors.codeBackground)
+		vars.push(`--preset-code-background: ${colors.codeBackground}`)
+
+	if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
+	if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
+
+	vars.push(`--preset-appearance: ${preset.appearance}`)
+
+	vars.push(`--theme-background: ${colors.background}`)
+	vars.push(`--theme-foreground: ${colors.foreground}`)
+	vars.push(`--theme-accent: ${colors.accent}`)
+
+	return `:root {\n\t${vars.join(";\n\t")};\n}`
 }

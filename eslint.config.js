@@ -4,6 +4,7 @@ import tsparser from "@typescript-eslint/parser"
 import reactHooks from "eslint-plugin-react-hooks"
 import react from "eslint-plugin-react"
 import globals from "globals"
+import { plugin as localPlugin } from "./eslint-local-rules/index.js"
 
 let commonRules = {
 	"@typescript-eslint/no-unused-vars": ["error", { argsIgnorePattern: "^_" }],
@@ -35,11 +36,13 @@ export default [
 			"@typescript-eslint": tseslint,
 			"react-hooks": reactHooks,
 			react,
+			local: localPlugin,
 		},
 		rules: {
 			...tseslint.configs.recommended.rules,
 			...reactRules,
 			...commonRules,
+			"local/exported-top-down": "warn",
 		},
 		settings: { react: { version: "detect" } },
 	},
@@ -51,6 +54,7 @@ export default [
 			".reference/",
 			"*.config.{js,mjs,ts}",
 			"src/routeTree.gen.ts",
+			"eslint-local-rules/",
 		],
 	},
 ]

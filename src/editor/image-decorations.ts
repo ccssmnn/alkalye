@@ -14,6 +14,82 @@ export type { ImageResolver }
 
 type ImageResolver = (assetId: string) => string | undefined
 
+function createImageDecorations(
+	resolver: ImageResolver,
+	onPreview: (url: string, alt: string) => void,
+): Extension {
+	let decorationPlugin = ViewPlugin.fromClass(
+		class {
+			decorations: DecorationSet
+			resolver: ImageResolver
+			onPreview: (url: string, alt: string) => void
+
+			constructor(view: EditorView) {
+				this.resolver = resolver
+				this.onPreview = onPreview
+				this.decorations = this.buildDecorations(view)
+			}
+
+			update(update: ViewUpdate) {
+				if (
+					update.docChanged ||
+					update.viewportChanged ||
+					update.selectionSet
+				) {
+					this.decorations = this.buildDecorations(update.view)
+				}
+			}
+
+			buildDecorations(view: EditorView): DecorationSet {
+				let builder = new RangeSetBuilder<Decoration>()
+				let images = parseImages(view, this.resolver)
+				let selection = view.state.selection.main
+
+				for (let img of images) {
+					// Don't decorate if cursor is inside the image syntax
+					if (selection.from >= img.from && selection.to <= img.to) {
+						continue
+					}
+
+					let widget = Decoration.replace({
+						widget: new ImageWidget(img.alt, img.url, this.onPreview),
+					})
+					builder.add(img.from, img.to, widget)
+				}
+
+				return builder.finish()
+			}
+		},
+		{
+			decorations: v => v.decorations,
+		},
+	)
+
+	let theme = EditorView.baseTheme({
+		".cm-md-image": {
+			cursor: "pointer",
+			textDecoration: "underline",
+			textDecorationColor: "var(--muted-foreground)",
+			display: "inline-flex",
+			alignItems: "center",
+			gap: "2px",
+			verticalAlign: "baseline",
+		},
+		".cm-md-image:hover": {
+			textDecorationColor: "currentColor",
+		},
+		".cm-md-image-icon": {
+			flexShrink: "0",
+			verticalAlign: "middle",
+			opacity: "0.5",
+		},
+	})
+
+	return [decorationPlugin, theme]
+}
+
+// Helpers
+
 class ImageWidget extends WidgetType {
 	text: string
 	url: string
@@ -119,78 +195,4 @@ function parseImages(view: EditorView, resolver: ImageResolver): ImageMatch[] {
 	})
 
 	return images
-}
-
-function createImageDecorations(
-	resolver: ImageResolver,
-	onPreview: (url: string, alt: string) => void,
-): Extension {
-	let decorationPlugin = ViewPlugin.fromClass(
-		class {
-			decorations: DecorationSet
-			resolver: ImageResolver
-			onPreview: (url: string, alt: string) => void
-
-			constructor(view: EditorView) {
-				this.resolver = resolver
-				this.onPreview = onPreview
-				this.decorations = this.buildDecorations(view)
-			}
-
-			update(update: ViewUpdate) {
-				if (
-					update.docChanged ||
-					update.viewportChanged ||
-					update.selectionSet
-				) {
-					this.decorations = this.buildDecorations(update.view)
-				}
-			}
-
-			buildDecorations(view: EditorView): DecorationSet {
-				let builder = new RangeSetBuilder<Decoration>()
-				let images = parseImages(view, this.resolver)
-				let selection = view.state.selection.main
-
-				for (let img of images) {
-					// Don't decorate if cursor is inside the image syntax
-					if (selection.from >= img.from && selection.to <= img.to) {
-						continue
-					}
-
-					let widget = Decoration.replace({
-						widget: new ImageWidget(img.alt, img.url, this.onPreview),
-					})
-					builder.add(img.from, img.to, widget)
-				}
-
-				return builder.finish()
-			}
-		},
-		{
-			decorations: v => v.decorations,
-		},
-	)
-
-	let theme = EditorView.baseTheme({
-		".cm-md-image": {
-			cursor: "pointer",
-			textDecoration: "underline",
-			textDecorationColor: "var(--muted-foreground)",
-			display: "inline-flex",
-			alignItems: "center",
-			gap: "2px",
-			verticalAlign: "baseline",
-		},
-		".cm-md-image:hover": {
-			textDecorationColor: "currentColor",
-		},
-		".cm-md-image-icon": {
-			flexShrink: "0",
-			verticalAlign: "middle",
-			opacity: "0.5",
-		},
-	})
-
-	return [decorationPlugin, theme]
 }

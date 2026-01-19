@@ -32,6 +32,8 @@ import type { LoadedDocument } from "@/components/sidebar-document-list"
 
 export { SidebarImportExport, handleImportFiles }
 
+type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
+
 function SidebarImportExport({
 	docs: activeDocs,
 	onImport,
@@ -89,49 +91,6 @@ function SidebarImportExport({
 			</DropdownMenu>
 		</>
 	)
-}
-
-async function handleExportDocs(docs: LoadedDocument[]) {
-	if (docs.length === 0) return
-
-	// Build doc info map for wikilink transformation
-	let docPathInfo = docs.map(d => ({
-		id: d.$jazz.id,
-		title: getDocumentTitle(d),
-		path: getPath(d.content?.toString() ?? ""),
-	}))
-
-	let exportDocs: {
-		title: string
-		content: string
-		assets?: ExportAsset[]
-		path?: string | null
-	}[] = []
-
-	for (let d of docs) {
-		let content = d.content?.toString() ?? ""
-		let docPath = getPath(content)
-
-		// Transform wikilinks and strip backlinks
-		let transformedContent = transformWikilinksForExport(
-			content,
-			docPath,
-			docPathInfo,
-		)
-		transformedContent = stripBacklinksFrontmatter(transformedContent)
-
-		let docAssets = await loadDocumentAssets(d)
-		exportDocs.push({
-			title: getDocumentTitle(d),
-			content: transformedContent,
-			assets: docAssets.length > 0 ? docAssets : undefined,
-			path: docPath,
-		})
-	}
-
-	if (exportDocs.length > 0) {
-		await exportDocumentsAsZip(exportDocs)
-	}
 }
 
 async function handleImportFiles(
@@ -229,9 +188,50 @@ async function handleImportFiles(
 	}
 }
 
-type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
+// --- Helpers ---
 
-// --- Utilities ---
+async function handleExportDocs(docs: LoadedDocument[]) {
+	if (docs.length === 0) return
+
+	// Build doc info map for wikilink transformation
+	let docPathInfo = docs.map(d => ({
+		id: d.$jazz.id,
+		title: getDocumentTitle(d),
+		path: getPath(d.content?.toString() ?? ""),
+	}))
+
+	let exportDocs: {
+		title: string
+		content: string
+		assets?: ExportAsset[]
+		path?: string | null
+	}[] = []
+
+	for (let d of docs) {
+		let content = d.content?.toString() ?? ""
+		let docPath = getPath(content)
+
+		// Transform wikilinks and strip backlinks
+		let transformedContent = transformWikilinksForExport(
+			content,
+			docPath,
+			docPathInfo,
+		)
+		transformedContent = stripBacklinksFrontmatter(transformedContent)
+
+		let docAssets = await loadDocumentAssets(d)
+		exportDocs.push({
+			title: getDocumentTitle(d),
+			content: transformedContent,
+			assets: docAssets.length > 0 ? docAssets : undefined,
+			path: docPath,
+		})
+	}
+
+	if (exportDocs.length > 0) {
+		await exportDocumentsAsZip(exportDocs)
+	}
+}
 
 async function loadDocumentAssets(
 	doc: co.loaded<typeof Document>,

@@ -53,18 +53,6 @@ function formatRelativeDate(date: Date): string {
 	return new Date(date).toLocaleDateString()
 }
 
-function countMatches(text: string, query: string): number {
-	let q = query.toLowerCase()
-	let t = text.toLowerCase()
-	let count = 0
-	let idx = 0
-	while ((idx = t.indexOf(q, idx)) !== -1) {
-		count++
-		idx += q.length
-	}
-	return count
-}
-
 function countContentMatches(content: string, query: string): number {
 	let { body } = parseFrontmatter(content)
 	let terms = parseSearchTerms(query)
@@ -111,4 +99,20 @@ function addCopyToTitle(content: string): string {
 	// No heading found, prepend one with the inferred title
 	let title = getDocumentTitle(content)
 	return `# ${title} (copy)\n\n${content}`
+}
+
+// =============================================================================
+// Helper functions (used by exported functions above)
+// =============================================================================
+
+function countMatches(text: string, query: string): number {
+	let q = query.toLowerCase()
+	let t = text.toLowerCase()
+	let count = 0
+	let idx = 0
+	while ((idx = t.indexOf(q, idx)) !== -1) {
+		count++
+		idx += q.length
+	}
+	return count
 }

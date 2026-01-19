@@ -11,6 +11,75 @@ import { syntaxTree } from "@codemirror/language"
 
 export { createLinkDecorations }
 
+function createLinkDecorations(): Extension {
+	let decorationPlugin = ViewPlugin.fromClass(
+		class {
+			decorations: DecorationSet
+
+			constructor(view: EditorView) {
+				this.decorations = this.buildDecorations(view)
+			}
+
+			update(update: ViewUpdate) {
+				if (
+					update.docChanged ||
+					update.viewportChanged ||
+					update.selectionSet
+				) {
+					this.decorations = this.buildDecorations(update.view)
+				}
+			}
+
+			buildDecorations(view: EditorView): DecorationSet {
+				let builder = new RangeSetBuilder<Decoration>()
+				let links = parseLinks(view)
+				let selection = view.state.selection.main
+
+				for (let link of links) {
+					// Don't decorate if cursor is inside the link
+					if (selection.from >= link.from && selection.to <= link.to) {
+						continue
+					}
+
+					let widget = Decoration.replace({
+						widget: new LinkWidget(link.text, link.url),
+					})
+					builder.add(link.from, link.to, widget)
+				}
+
+				return builder.finish()
+			}
+		},
+		{
+			decorations: v => v.decorations,
+		},
+	)
+
+	let theme = EditorView.baseTheme({
+		".cm-md-link": {
+			cursor: "pointer",
+			textDecoration: "underline",
+			textDecorationColor: "var(--muted-foreground)",
+			display: "inline-flex",
+			alignItems: "center",
+			gap: "2px",
+			verticalAlign: "baseline",
+		},
+		".cm-md-link:hover": {
+			textDecorationColor: "currentColor",
+		},
+		".cm-md-link-icon": {
+			flexShrink: "0",
+			verticalAlign: "middle",
+			opacity: "0.5",
+		},
+	})
+
+	return [decorationPlugin, theme]
+}
+
+// Helpers
+
 class LinkWidget extends WidgetType {
 	text: string
 	url: string
@@ -99,71 +168,4 @@ function parseLinks(view: EditorView): LinkMatch[] {
 	})
 
 	return links
-}
-
-function createLinkDecorations(): Extension {
-	let decorationPlugin = ViewPlugin.fromClass(
-		class {
-			decorations: DecorationSet
-
-			constructor(view: EditorView) {
-				this.decorations = this.buildDecorations(view)
-			}
-
-			update(update: ViewUpdate) {
-				if (
-					update.docChanged ||
-					update.viewportChanged ||
-					update.selectionSet
-				) {
-					this.decorations = this.buildDecorations(update.view)
-				}
-			}
-
-			buildDecorations(view: EditorView): DecorationSet {
-				let builder = new RangeSetBuilder<Decoration>()
-				let links = parseLinks(view)
-				let selection = view.state.selection.main
-
-				for (let link of links) {
-					// Don't decorate if cursor is inside the link
-					if (selection.from >= link.from && selection.to <= link.to) {
-						continue
-					}
-
-					let widget = Decoration.replace({
-						widget: new LinkWidget(link.text, link.url),
-					})
-					builder.add(link.from, link.to, widget)
-				}
-
-				return builder.finish()
-			}
-		},
-		{
-			decorations: v => v.decorations,
-		},
-	)
-
-	let theme = EditorView.baseTheme({
-		".cm-md-link": {
-			cursor: "pointer",
-			textDecoration: "underline",
-			textDecorationColor: "var(--muted-foreground)",
-			display: "inline-flex",
-			alignItems: "center",
-			gap: "2px",
-			verticalAlign: "baseline",
-		},
-		".cm-md-link:hover": {
-			textDecorationColor: "currentColor",
-		},
-		".cm-md-link-icon": {
-			flexShrink: "0",
-			verticalAlign: "middle",
-			opacity: "0.5",
-		},
-	})
-
-	return [decorationPlugin, theme]
 }
