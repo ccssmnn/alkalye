@@ -892,7 +892,12 @@ async function loadDocumentAssets(
 
 	if (loaded.assets?.$isLoaded) {
 		for (let asset of [...loaded.assets]) {
-			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
+			if (
+				!asset?.$isLoaded ||
+				asset.type !== "image" ||
+				!asset.image?.$isLoaded
+			)
+				continue
 			let original = asset.image.original
 			if (!original?.$isLoaded) continue
 			let blob = original.toBlob()

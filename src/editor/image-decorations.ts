@@ -12,7 +12,8 @@ import { syntaxTree } from "@codemirror/language"
 export { createImageDecorations }
 export type { ImageResolver }
 
-type ImageResolver = (assetId: string) => string | undefined
+type ResolvedAsset = { url: string; type: "image" | "video" }
+type ImageResolver = (assetId: string) => ResolvedAsset | undefined
 
 function createImageDecorations(
 	resolver: ImageResolver,
@@ -52,7 +53,12 @@ function createImageDecorations(
 					}
 
 					let widget = Decoration.replace({
-						widget: new ImageWidget(img.alt, img.url, this.onPreview),
+						widget: new ImageWidget(
+							img.alt,
+							img.url,
+							img.assetType,
+							this.onPreview,
+						),
 					})
 					builder.add(img.from, img.to, widget)
 				}
@@ -93,16 +99,19 @@ function createImageDecorations(
 class ImageWidget extends WidgetType {
 	text: string
 	url: string
+	assetType: "image" | "video"
 	onPreview: (url: string, alt: string) => void
 
 	constructor(
 		text: string,
 		url: string,
+		assetType: "image" | "video",
 		onPreview: (url: string, alt: string) => void,
 	) {
 		super()
 		this.text = text
 		this.url = url
+		this.assetType = assetType
 		this.onPreview = onPreview
 	}
 
@@ -110,7 +119,6 @@ class ImageWidget extends WidgetType {
 		let span = document.createElement("span")
 		span.className = "cm-md-image"
 
-		// Add icon (image from lucide)
 		let icon = document.createElementNS("http://www.w3.org/2000/svg", "svg")
 		icon.setAttribute("width", "14")
 		icon.setAttribute("height", "14")
@@ -121,7 +129,14 @@ class ImageWidget extends WidgetType {
 		icon.setAttribute("stroke-linecap", "round")
 		icon.setAttribute("stroke-linejoin", "round")
 		icon.classList.add("cm-md-image-icon")
-		icon.innerHTML = `<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>`
+
+		if (this.assetType === "video") {
+			// Film icon from lucide
+			icon.innerHTML = `<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>`
+		} else {
+			// Image icon from lucide
+			icon.innerHTML = `<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>`
+		}
 
 		span.appendChild(icon)
 		span.appendChild(document.createTextNode(this.text))
@@ -141,7 +156,11 @@ class ImageWidget extends WidgetType {
 	}
 
 	eq(other: ImageWidget) {
-		return this.text === other.text && this.url === other.url
+		return (
+			this.text === other.text &&
+			this.url === other.url &&
+			this.assetType === other.assetType
+		)
 	}
 
 	ignoreEvent(e: Event) {
@@ -154,6 +173,7 @@ interface ImageMatch {
 	to: number
 	alt: string
 	url: string
+	assetType: "image" | "video"
 }
 
 function parseImages(view: EditorView, resolver: ImageResolver): ImageMatch[] {
@@ -172,15 +192,17 @@ function parseImages(view: EditorView, resolver: ImageResolver): ImageMatch[] {
 				// Format: ![alt](url) - alt is between ![ and ]
 				let imageContent = view.state.sliceDoc(node.from, node.to)
 				let match = imageContent.match(/^!\[([^\]]*)\]/)
-				let alt = match?.[1] || "Image"
+				let alt = match?.[1] || "Media"
 
 				// Resolve asset: URLs
 				let url = rawUrl
+				let assetType: "image" | "video" = "image"
 				if (rawUrl.startsWith("asset:")) {
 					let assetId = rawUrl.slice(6)
 					let resolved = resolver(assetId)
 					if (resolved) {
-						url = resolved
+						url = resolved.url
+						assetType = resolved.type
 					}
 				}
 
@@ -189,6 +211,7 @@ function parseImages(view: EditorView, resolver: ImageResolver): ImageMatch[] {
 					to: node.to,
 					alt,
 					url,
+					assetType,
 				})
 			}
 		},

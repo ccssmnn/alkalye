@@ -89,13 +89,13 @@ let useBackupStore = create<BackupState>()(
 
 type LoadedDocument = co.loaded<
 	typeof Document,
-	{ content: true; assets: { $each: { image: true } } }
+	{ content: true; assets: { $each: { image: true; video: true } } }
 >
 
 let backupQuery = {
 	root: {
 		documents: {
-			$each: { content: true, assets: { $each: { image: true } } },
+			$each: { content: true, assets: { $each: { image: true, video: true } } },
 			$onError: "catch",
 		},
 	},
@@ -620,10 +620,18 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 	let assets: BackupDoc["assets"] = []
 	if (doc.assets?.$isLoaded) {
 		for (let asset of [...doc.assets]) {
-			if (!asset?.$isLoaded || !asset.image?.$isLoaded) continue
-			let original = asset.image.original
-			if (!original?.$isLoaded) continue
-			let blob = original.toBlob()
+			if (!asset?.$isLoaded) continue
+
+			let blob: Blob | undefined
+			if (asset.type === "image" && asset.image?.$isLoaded) {
+				let original = asset.image.original
+				if (original?.$isLoaded) {
+					blob = original.toBlob()
+				}
+			} else if (asset.type === "video" && asset.video?.$isLoaded) {
+				blob = await asset.video.toBlob()
+			}
+
 			if (blob) {
 				assets.push({ id: asset.$jazz.id, name: asset.name, blob })
 			}

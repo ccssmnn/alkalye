@@ -58,7 +58,10 @@ let ContentContext = createContext<string>("")
 type Asset = {
 	$jazz: { id: string }
 	$isLoaded?: boolean
+	type?: "image" | "video"
 	image?: { $jazz: { id: string } }
+	video?: { $isLoaded?: boolean; toBlob?: () => Blob | undefined }
+	muteAudio?: boolean
 }
 
 let AssetContext = createContext<Asset[] | undefined>(undefined)
@@ -863,6 +866,10 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 			)
 		}
 
+		if (asset?.$isLoaded && asset.video) {
+			return <SlideVideo asset={asset} />
+		}
+
 		return (
 			<div className="slideshow-image-placeholder flex aspect-video items-center justify-center">
 				<span className="text-sm opacity-60">Loading...</span>
@@ -871,6 +878,73 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 	}
 
 	return <img src={src} alt={alt} className="slideshow-image" />
+}
+
+function SlideVideo({ asset }: { asset: Asset }) {
+	let video = asset.video
+	let url = useVideoUrl(video)
+
+	if (!url) {
+		return (
+			<div className="slideshow-image-placeholder flex aspect-video items-center justify-center">
+				<span className="text-sm opacity-60">Loading video...</span>
+			</div>
+		)
+	}
+
+	return (
+		<video
+			src={url}
+			controls
+			muted={asset.muteAudio}
+			className="slideshow-image"
+			onClick={e => e.stopPropagation()}
+		/>
+	)
+}
+
+function useVideoUrl(
+	video: { $isLoaded?: boolean; toBlob?: () => Blob | undefined } | undefined,
+): string | null {
+	let [url, setUrl] = useState<string | null>(null)
+	let [trackedVideo, setTrackedVideo] = useState(video)
+
+	// Reset when video changes (adjust state during render)
+	if (trackedVideo !== video) {
+		setTrackedVideo(video)
+		if (url) {
+			URL.revokeObjectURL(url)
+			setUrl(null)
+		}
+	}
+
+	// Load URL - schedule via rAF to avoid lint error
+	useEffect(() => {
+		if (url) return
+		if (!video?.$isLoaded || !video.toBlob) return
+
+		let cancelled = false
+		requestAnimationFrame(() => {
+			if (cancelled) return
+			let blob = video.toBlob?.()
+			if (!blob) return
+			let objectUrl = URL.createObjectURL(blob)
+			setUrl(objectUrl)
+		})
+
+		return () => {
+			cancelled = true
+		}
+	}, [video, url])
+
+	// Cleanup on unmount
+	useEffect(() => {
+		return () => {
+			if (url) URL.revokeObjectURL(url)
+		}
+	}, [url])
+
+	return url
 }
 
 function HighlightedCode({
@@ -1226,11 +1300,13 @@ function getSlideshowBaseCss(): string {
 }
 
 :where([data-mode="slideshow"] .slideshow-image-container) {
-	flex: 1;
+	flex: 1 1 auto;
 	width: 100%;
+	min-height: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	overflow: hidden;
 }
 
 :where([data-mode="slideshow"] .slideshow-image-placeholder) {
@@ -1240,7 +1316,14 @@ function getSlideshowBaseCss(): string {
 :where([data-mode="slideshow"] .slideshow-image) {
 	max-width: 100%;
 	max-height: 100%;
+	width: auto;
+	height: auto;
 	object-fit: contain;
+}
+
+:where([data-mode="slideshow"] video.slideshow-image) {
+	width: 100%;
+	height: 100%;
 }
 
 :where([data-mode="slideshow"] .highlighted),

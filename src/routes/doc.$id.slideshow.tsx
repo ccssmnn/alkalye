@@ -22,7 +22,7 @@ export { Route }
 
 let resolve = {
 	content: true,
-	assets: { $each: { image: true } },
+	assets: { $each: { image: true, video: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
 let Route = createFileRoute("/doc/$id/slideshow")({

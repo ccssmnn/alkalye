@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useRef, useState, useEffect } from "react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 import { Image as JazzImage } from "jazz-tools/react"
@@ -33,12 +33,19 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
+	UploadProgressDialog,
+	type UploadPhase,
+} from "@/components/upload-progress-dialog"
+import {
 	Image as ImageIcon,
 	Pencil,
 	Trash2,
 	Plus,
 	Download,
 	Upload,
+	Film,
+	VolumeX,
+	Volume2,
 } from "lucide-react"
 
 export { SidebarAssets }
@@ -47,29 +54,51 @@ export type { SidebarAsset }
 interface SidebarAsset {
 	id: string
 	name: string
+	type: "image" | "video"
 	imageId?: string
+	getVideoBlob?: () => Blob | undefined
+	muteAudio?: boolean
+}
+
+interface VideoUploadState {
+	fileName: string
+	phase: UploadPhase
+	progress: number
+	abortController: AbortController
 }
 
 interface SidebarAssetsProps {
 	assets: SidebarAsset[]
 	readOnly?: boolean
-	onUpload?: (files: FileList) => void
+	onUploadImages?: (files: FileList) => void
+	onUploadVideo?: (
+		file: File,
+		options: {
+			onProgress: (p: { phase: UploadPhase; progress: number }) => void
+			signal: AbortSignal
+		},
+	) => Promise<void>
 	onRename?: (assetId: string, newName: string) => void
 	onDelete?: (assetId: string) => void
 	onDownload?: (assetId: string, name: string) => void
 	onInsert?: (assetId: string, name: string) => void
+	onToggleMute?: (assetId: string) => void
 	isAssetUsed?: (assetId: string) => boolean
+	canUploadVideo?: boolean
 }
 
 function SidebarAssets({
 	assets,
 	readOnly,
-	onUpload,
+	onUploadImages,
+	onUploadVideo,
 	onRename,
 	onDelete,
 	onDownload,
 	onInsert,
+	onToggleMute,
 	isAssetUsed,
+	canUploadVideo,
 }: SidebarAssetsProps) {
 	let { isMobile } = useSidebar()
 	let fileInputRef = useRef<HTMLInputElement>(null)
@@ -78,23 +107,55 @@ function SidebarAssets({
 	let [deleteOpen, setDeleteOpen] = useState(false)
 	let [deletingAssetId, setDeletingAssetId] = useState<string | null>(null)
 	let [isDragging, setIsDragging] = useState(false)
+	let [videoUpload, setVideoUpload] = useState<VideoUploadState | null>(null)
 
-	function handleDrop(e: React.DragEvent) {
+	async function handleDrop(e: React.DragEvent) {
 		e.preventDefault()
 		setIsDragging(false)
-		if (readOnly || !onUpload) return
+		if (readOnly) return
 
-		let files = e.dataTransfer.files
-		if (files.length > 0) {
-			let imageFiles = Array.from(files).filter(f =>
-				f.type.startsWith("image/"),
-			)
-			if (imageFiles.length > 0) {
-				let dt = new DataTransfer()
-				imageFiles.forEach(f => dt.items.add(f))
-				onUpload(dt.files)
+		let files = Array.from(e.dataTransfer.files)
+		await handleFiles(files)
+	}
+
+	async function handleFiles(files: File[]) {
+		let imageFiles = files.filter(f => f.type.startsWith("image/"))
+		let videoFiles = files.filter(f => f.type.startsWith("video/"))
+
+		if (imageFiles.length > 0 && onUploadImages) {
+			let dt = new DataTransfer()
+			imageFiles.forEach(f => dt.items.add(f))
+			onUploadImages(dt.files)
+		}
+
+		for (let file of videoFiles) {
+			if (!onUploadVideo) continue
+			let abortController = new AbortController()
+			setVideoUpload({
+				fileName: file.name,
+				phase: "compressing",
+				progress: 0,
+				abortController,
+			})
+			try {
+				await onUploadVideo(file, {
+					onProgress: p =>
+						setVideoUpload(prev =>
+							prev ? { ...prev, phase: p.phase, progress: p.progress } : null,
+						),
+					signal: abortController.signal,
+				})
+			} catch (err) {
+				console.error("Video upload failed:", err)
+			} finally {
+				setVideoUpload(null)
 			}
 		}
+	}
+
+	function handleCancelUpload() {
+		videoUpload?.abortController.abort()
+		setVideoUpload(null)
 	}
 
 	function handleRename(asset: SidebarAsset) {
@@ -144,7 +205,7 @@ function SidebarAssets({
 				<div className="bg-background/90 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
 					<div className="text-center">
 						<Upload className="text-primary mx-auto mb-2 size-8" />
-						<p className="text-sm font-medium">Drop images here</p>
+						<p className="text-sm font-medium">Drop media here</p>
 					</div>
 				</div>
 			)}
@@ -168,12 +229,12 @@ function SidebarAssets({
 			<input
 				ref={fileInputRef}
 				type="file"
-				accept="image/*"
+				accept={canUploadVideo ? "image/*,video/*" : "image/*"}
 				multiple
 				className="hidden"
 				onChange={e => {
-					if (e.target.files && onUpload) {
-						onUpload(e.target.files)
+					if (e.target.files) {
+						handleFiles(Array.from(e.target.files))
 					}
 				}}
 			/>
@@ -193,14 +254,23 @@ function SidebarAssets({
 										render={
 											<SidebarMenuButton disabled={readOnly} nativeButton>
 												<div className="bg-muted size-8 shrink-0 overflow-hidden rounded">
-													{asset.imageId ? (
+													{asset.type === "image" && asset.imageId ? (
 														<JazzImage
 															imageId={asset.imageId}
 															className="size-full object-cover"
 														/>
+													) : asset.type === "video" && asset.getVideoBlob ? (
+														<VideoThumbnail
+															assetId={asset.id}
+															getBlob={asset.getVideoBlob}
+														/>
 													) : (
 														<div className="flex size-full items-center justify-center">
-															<ImageIcon className="text-muted-foreground size-4" />
+															{asset.type === "video" ? (
+																<Film className="text-muted-foreground size-4" />
+															) : (
+																<ImageIcon className="text-muted-foreground size-4" />
+															)}
 														</div>
 													)}
 												</div>
@@ -232,6 +302,21 @@ function SidebarAssets({
 											<DropdownMenuItem onClick={() => handleRename(asset)}>
 												<Pencil className="size-4" />
 												Rename
+											</DropdownMenuItem>
+										)}
+										{asset.type === "video" && onToggleMute && (
+											<DropdownMenuItem onClick={() => onToggleMute(asset.id)}>
+												{asset.muteAudio ? (
+													<>
+														<Volume2 className="size-4" />
+														Unmute audio
+													</>
+												) : (
+													<>
+														<VolumeX className="size-4" />
+														Mute audio
+													</>
+												)}
 											</DropdownMenuItem>
 										)}
 										{onDelete && (
@@ -272,8 +357,86 @@ function SidebarAssets({
 				variant="destructive"
 				onConfirm={handleConfirmDelete}
 			/>
+			{videoUpload && (
+				<UploadProgressDialog
+					open={true}
+					fileName={videoUpload.fileName}
+					phase={videoUpload.phase}
+					progress={videoUpload.progress}
+					onCancel={handleCancelUpload}
+				/>
+			)}
 		</div>
 	)
+}
+
+let thumbnailCache = new Map<string, string>()
+
+function VideoThumbnail({
+	assetId,
+	getBlob,
+}: {
+	assetId: string
+	getBlob: () => Blob | undefined
+}) {
+	let [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
+		() => thumbnailCache.get(assetId) ?? null,
+	)
+
+	useEffect(() => {
+		// Already have thumbnail
+		if (thumbnailUrl) return
+
+		let blob = getBlob()
+		if (!blob) return
+
+		let videoUrl = URL.createObjectURL(blob)
+		let video = document.createElement("video")
+		video.src = videoUrl
+		video.muted = true
+		video.preload = "metadata"
+
+		let cancelled = false
+
+		video.onloadeddata = () => {
+			if (cancelled) return
+			video.currentTime = 0
+		}
+
+		video.onseeked = () => {
+			if (cancelled) return
+			let canvas = document.createElement("canvas")
+			canvas.width = video.videoWidth
+			canvas.height = video.videoHeight
+			let ctx = canvas.getContext("2d")
+			if (ctx) {
+				ctx.drawImage(video, 0, 0)
+				let dataUrl = canvas.toDataURL("image/jpeg", 0.7)
+				thumbnailCache.set(assetId, dataUrl)
+				setThumbnailUrl(dataUrl)
+			}
+			URL.revokeObjectURL(videoUrl)
+		}
+
+		video.onerror = () => {
+			URL.revokeObjectURL(videoUrl)
+		}
+
+		return () => {
+			cancelled = true
+			URL.revokeObjectURL(videoUrl)
+		}
+	}, [assetId, getBlob, thumbnailUrl])
+
+	if (!thumbnailUrl) {
+		return (
+			<div className="flex size-full items-center justify-center">
+				<Film className="text-muted-foreground size-4" />
+			</div>
+		)
+	}
+
+	return <img src={thumbnailUrl} className="size-full object-cover" alt="" />
 }
 
 let assetNameSchema = z.object({

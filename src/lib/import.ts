@@ -121,7 +121,7 @@ async function importFolderFiles(
 			fileName.endsWith(".txt")
 		) {
 			mdFiles.push({ path, file })
-		} else if (isImageFile(fileName)) {
+		} else if (isMediaFile(fileName)) {
 			assetFiles.push({ path, file })
 		}
 	}
@@ -265,7 +265,7 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 			relativePath.endsWith(".txt")
 		) {
 			mdFiles.push({ path: relativePath, name: fileName })
-		} else if (isImageFile(fileName)) {
+		} else if (isMediaFile(fileName)) {
 			assetFiles.push({ path: relativePath, file: zipEntry })
 		}
 	})
@@ -361,6 +361,15 @@ function isImageFile(filename: string): boolean {
 	return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext || "")
 }
 
+function isVideoFile(filename: string): boolean {
+	let ext = filename.toLowerCase().split(".").pop()
+	return ["mp4", "webm", "mov"].includes(ext || "")
+}
+
+function isMediaFile(filename: string): boolean {
+	return isImageFile(filename) || isVideoFile(filename)
+}
+
 function getMimeType(filename: string): string {
 	let ext = filename.toLowerCase().split(".").pop()
 	let mimeTypes: Record<string, string> = {
@@ -371,8 +380,11 @@ function getMimeType(filename: string): string {
 		webp: "image/webp",
 		svg: "image/svg+xml",
 		bmp: "image/bmp",
+		mp4: "video/mp4",
+		webm: "video/webm",
+		mov: "video/quicktime",
 	}
-	return mimeTypes[ext || ""] || "image/png"
+	return mimeTypes[ext || ""] || "application/octet-stream"
 }
 
 function resolveWikilinkPath(

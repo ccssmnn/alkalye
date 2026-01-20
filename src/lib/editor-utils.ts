@@ -1,7 +1,12 @@
-import { co, type ResolveQuery } from "jazz-tools"
+import { co, FileStream, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useNavigate } from "@tanstack/react-router"
-import { Asset, Document, UserAccount } from "@/schema"
+import { Asset, ImageAsset, VideoAsset, Document, UserAccount } from "@/schema"
+import {
+	compressVideo,
+	canEncodeVideo,
+	VideoCompressionError,
+} from "@/lib/video-conversion"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { copyDocumentToMyList } from "@/lib/documents"
 import { saveDocumentAs } from "@/lib/export"
@@ -9,6 +14,7 @@ import { useCoState, useAccount } from "jazz-tools/react"
 
 export {
 	makeUploadImage,
+	makeUploadVideo,
 	makeUploadAssets,
 	makeRenameAsset,
 	makeIsAssetUsed,
@@ -20,8 +26,15 @@ export {
 	resolve,
 	settingsResolve,
 	meResolve,
+	canEncodeVideo,
+	VideoCompressionError,
 }
-export type { LoadedDocument, MaybeDocWithContent, LoadedMe }
+export type {
+	LoadedDocument,
+	MaybeDocWithContent,
+	LoadedMe,
+	VideoUploadProgress,
+}
 
 type LoadedDocument = co.loaded<typeof Document, typeof resolve>
 type MaybeDocWithContent = ReturnType<
@@ -40,7 +53,7 @@ let loaderResolve = {
 let resolve = {
 	content: true,
 	cursors: true,
-	assets: { $each: { image: true } },
+	assets: { $each: { image: true, video: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
 let settingsResolve = {
@@ -68,7 +81,7 @@ function makeUploadImage(doc: LoadedDocument) {
 			doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
 		}
 
-		let asset = Asset.create(
+		let asset = ImageAsset.create(
 			{
 				type: "image",
 				name: file.name.replace(/\.[^.]+$/, ""),
@@ -81,6 +94,58 @@ function makeUploadImage(doc: LoadedDocument) {
 		doc.assets!.$jazz.push(asset)
 		doc.$jazz.set("updatedAt", new Date())
 
+		return { id: asset.$jazz.id, name: asset.name }
+	}
+}
+
+type VideoUploadProgress = {
+	phase: "compressing" | "uploading" | "done"
+	progress: number
+}
+
+function makeUploadVideo(doc: LoadedDocument) {
+	return async function handleUploadVideo(
+		file: File,
+		options: {
+			onProgress?: (progress: VideoUploadProgress) => void
+			signal?: AbortSignal
+		} = {},
+	): Promise<{ id: string; name: string }> {
+		let { onProgress, signal } = options
+
+		// Compress video
+		let compressed = await compressVideo(file, {
+			onProgress: p =>
+				onProgress?.({ phase: "compressing", progress: p.progress }),
+			signal,
+		})
+
+		// Upload to Jazz FileStream
+		onProgress?.({ phase: "uploading", progress: 0 })
+		let video = await FileStream.createFromBlob(compressed, {
+			owner: doc.$jazz.owner,
+			onProgress: p => onProgress?.({ phase: "uploading", progress: p }),
+		})
+
+		if (!doc.assets) {
+			doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
+		}
+
+		let asset = VideoAsset.create(
+			{
+				type: "video",
+				name: file.name.replace(/\.[^.]+$/, ""),
+				video,
+				mimeType: "video/mp4",
+				createdAt: new Date(),
+			},
+			doc.$jazz.owner,
+		)
+
+		doc.assets!.$jazz.push(asset)
+		doc.$jazz.set("updatedAt", new Date())
+
+		onProgress?.({ phase: "done", progress: 1 })
 		return { id: asset.$jazz.id, name: asset.name }
 	}
 }
@@ -99,7 +164,7 @@ function makeUploadAssets(doc: LoadedDocument) {
 				doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
 			}
 
-			let asset = Asset.create(
+			let asset = ImageAsset.create(
 				{
 					type: "image",
 					name: file.name.replace(/\.[^.]+$/, ""),
@@ -120,7 +185,7 @@ function makeRenameAsset(doc: LoadedDocument) {
 	return function handleRenameAsset(assetId: string, newName: string) {
 		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
 		if (asset?.$isLoaded) {
-			asset.$jazz.set("name", newName)
+			asset.$jazz.applyDiff({ name: newName })
 			doc.$jazz.set("updatedAt", new Date())
 		}
 	}
@@ -160,14 +225,20 @@ function makeDeleteAsset(
 }
 
 function makeDownloadAsset(doc: LoadedDocument) {
-	return function handleDownloadAsset(assetId: string, name: string) {
+	return async function handleDownloadAsset(assetId: string, name: string) {
 		let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
-		if (!asset?.$isLoaded || !asset.image?.$isLoaded) return
+		if (!asset?.$isLoaded) return
 
-		let original = asset.image.original
-		if (!original?.$isLoaded) return
+		let blob: Blob | undefined
+		if (asset.type === "image" && asset.image?.$isLoaded) {
+			let original = asset.image.original
+			if (original?.$isLoaded) {
+				blob = original.toBlob()
+			}
+		} else if (asset.type === "video" && asset.video?.$isLoaded) {
+			blob = await asset.video.toBlob()
+		}
 
-		let blob = original.toBlob()
 		if (!blob) return
 
 		let url = URL.createObjectURL(blob)
