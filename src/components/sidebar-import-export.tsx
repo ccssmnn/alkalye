@@ -1,4 +1,4 @@
-import { useRef } from "react"
+import { useRef, useState } from "react"
 import { Group, co, FileStream } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
@@ -29,27 +29,77 @@ import {
 	stripBacklinksFrontmatter,
 	type ExportAsset,
 } from "@/lib/export"
+import {
+	ImportProgressDialog,
+	type ImportProgress,
+} from "@/components/import-progress-dialog"
 import type { LoadedDocument } from "@/components/sidebar-document-list"
 
 export { SidebarImportExport, handleImportFiles }
+export type { ImportOptions }
 
 type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
+
+type ImportOptions = {
+	onProgress?: (progress: ImportProgress) => void
+	signal?: AbortSignal
+}
 
 function SidebarImportExport({
 	docs: activeDocs,
 	onImport,
 }: {
 	docs: LoadedDocument[]
-	onImport: (files: ImportedFile[]) => Promise<void>
+	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 }) {
 	let fileInputRef = useRef<HTMLInputElement>(null)
+	let [importProgress, setImportProgress] = useState<ImportProgress | null>(
+		null,
+	)
+	let [abortController, setAbortController] = useState<AbortController | null>(
+		null,
+	)
 
 	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-		if (e.target.files) {
-			let imported = await importMarkdownFiles(e.target.files)
-			await onImport(imported)
+		if (e.target.files && e.target.files.length > 0) {
+			let controller = new AbortController()
+			setAbortController(controller)
+			setImportProgress({
+				phase: "reading",
+				currentFile: "Reading files...",
+				fileIndex: 0,
+				totalFiles: 1,
+				assetIndex: 0,
+				totalAssets: 0,
+				compressionProgress: 0,
+			})
+
+			try {
+				let imported = await importMarkdownFiles(e.target.files)
+				if (controller.signal.aborted) return
+
+				await onImport(imported, {
+					onProgress: setImportProgress,
+					signal: controller.signal,
+				})
+			} catch (err) {
+				if (err instanceof Error && err.name === "AbortError") {
+					// Cancelled
+				} else {
+					console.error("Import failed:", err)
+				}
+			} finally {
+				setImportProgress(null)
+				setAbortController(null)
+			}
 		}
 		e.target.value = ""
+	}
+
+	function handleCancelImport() {
+		abortController?.abort()
+		setImportProgress(null)
+		setAbortController(null)
 	}
 
 	return (
@@ -90,6 +140,13 @@ function SidebarImportExport({
 					)}
 				</DropdownMenuContent>
 			</DropdownMenu>
+			{importProgress && (
+				<ImportProgressDialog
+					open={true}
+					progress={importProgress}
+					onCancel={handleCancelImport}
+				/>
+			)}
 		</>
 	)
 }
@@ -97,7 +154,9 @@ function SidebarImportExport({
 async function handleImportFiles(
 	imported: ImportedFile[],
 	targetDocs: DocumentList,
+	options: ImportOptions = {},
 ) {
+	let { onProgress, signal } = options
 	let listOwner = targetDocs.$jazz.owner
 
 	// Phase 1: Create all documents and collect their info for wikilink resolution
@@ -107,12 +166,25 @@ async function handleImportFiles(
 		path: string | null
 	}[] = []
 
-	for (let { name, content, assets: importedAssets, path } of imported) {
+	for (let fileIndex = 0; fileIndex < imported.length; fileIndex++) {
+		if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+
+		let { name, content, assets: importedAssets, path } = imported[fileIndex]
 		let now = new Date()
+		let title = name.replace(/\.(md|markdown|txt)$/i, "")
+
+		onProgress?.({
+			phase: "creating",
+			currentFile: title,
+			fileIndex,
+			totalFiles: imported.length,
+			assetIndex: 0,
+			totalAssets: importedAssets.length,
+			compressionProgress: 0,
+		})
 
 		let processedContent = content
 		let hasFrontmatter = content.trimStart().startsWith("---")
-		let title = name.replace(/\.(md|markdown|txt)$/i, "")
 
 		if (!hasFrontmatter) {
 			let pathLine = path ? `path: ${path}\n` : ""
@@ -129,7 +201,10 @@ async function handleImportFiles(
 		docGroup.addMember(listOwner)
 
 		let docAssets: co.loaded<typeof Asset>[] = []
-		for (let importedAsset of importedAssets) {
+		for (let assetIndex = 0; assetIndex < importedAssets.length; assetIndex++) {
+			if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
+
+			let importedAsset = importedAssets[assetIndex]
 			let isVideo = importedAsset.file.type.startsWith("video/")
 			let asset: co.loaded<typeof Asset>
 
@@ -137,10 +212,32 @@ async function handleImportFiles(
 				// Compress video if supported, otherwise use original
 				let videoBlob: Blob = importedAsset.file
 				if (await canEncodeVideo()) {
+					onProgress?.({
+						phase: "compressing",
+						currentFile: importedAsset.name,
+						fileIndex,
+						totalFiles: imported.length,
+						assetIndex,
+						totalAssets: importedAssets.length,
+						compressionProgress: 0,
+					})
 					try {
-						videoBlob = await compressVideo(importedAsset.file)
+						videoBlob = await compressVideo(importedAsset.file, {
+							onProgress: p =>
+								onProgress?.({
+									phase: "compressing",
+									currentFile: importedAsset.name,
+									fileIndex,
+									totalFiles: imported.length,
+									assetIndex,
+									totalAssets: importedAssets.length,
+									compressionProgress: p.progress,
+								}),
+							signal,
+						})
 					} catch {
-						// Fall back to original if compression fails
+						// Fall back to original if compression fails (but not if cancelled)
+						if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
 					}
 				}
 				let video = await FileStream.createFromBlob(videoBlob, {
