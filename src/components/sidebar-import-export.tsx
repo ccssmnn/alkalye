@@ -2,6 +2,7 @@ import { useRef } from "react"
 import { Group, co, FileStream } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
+import { compressVideo, canEncodeVideo } from "@/lib/video-conversion"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
@@ -133,7 +134,16 @@ async function handleImportFiles(
 			let asset: co.loaded<typeof Asset>
 
 			if (isVideo) {
-				let video = await FileStream.createFromBlob(importedAsset.file, {
+				// Compress video if supported, otherwise use original
+				let videoBlob: Blob = importedAsset.file
+				if (await canEncodeVideo()) {
+					try {
+						videoBlob = await compressVideo(importedAsset.file)
+					} catch {
+						// Fall back to original if compression fails
+					}
+				}
+				let video = await FileStream.createFromBlob(videoBlob, {
 					owner: docGroup,
 				})
 				asset = VideoAsset.create(
@@ -141,7 +151,7 @@ async function handleImportFiles(
 						type: "video",
 						name: importedAsset.name,
 						video,
-						mimeType: importedAsset.file.type || "video/mp4",
+						mimeType: "video/mp4",
 						createdAt: now,
 					},
 					docGroup,
