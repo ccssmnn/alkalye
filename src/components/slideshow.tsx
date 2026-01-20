@@ -624,13 +624,6 @@ function ScaledSlideContainer({
 			: undefined,
 	}
 
-	console.log("[ScaledSlideContainer] effectiveVisible:", effectiveVisible)
-	console.log("[ScaledSlideContainer] effectiveScale:", effectiveScale)
-	console.log(
-		"[ScaledSlideContainer] effectiveMaxDimensions:",
-		effectiveMaxDimensions,
-	)
-
 	return (
 		<div
 			ref={containerRef}
@@ -863,20 +856,7 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 		let assetId = assetMatch[1]
 		let asset = assets?.find(a => a?.$jazz.id === assetId)
 
-		console.log("[SlideImage] src:", src)
-		console.log("[SlideImage] assetId:", assetId)
-		console.log("[SlideImage] assets count:", assets?.length)
-		console.log("[SlideImage] asset found:", asset)
-		console.log("[SlideImage] asset.$isLoaded:", asset?.$isLoaded)
-		console.log("[SlideImage] asset.type:", asset?.type)
-		console.log("[SlideImage] asset.image:", asset?.image)
-		console.log("[SlideImage] asset.video:", asset?.video)
-
 		if (asset?.$isLoaded && asset.image) {
-			console.log(
-				"[SlideImage] rendering JazzImage with id:",
-				asset.image.$jazz.id,
-			)
 			return (
 				<JazzImage
 					imageId={asset.image.$jazz.id}
@@ -887,11 +867,9 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 		}
 
 		if (asset?.$isLoaded && asset.video) {
-			console.log("[SlideImage] rendering SlideVideo")
 			return <SlideVideo asset={asset} />
 		}
 
-		console.log("[SlideImage] rendering placeholder")
 		return (
 			<div className="slideshow-image-placeholder flex aspect-video items-center justify-center">
 				<span className="text-sm opacity-60">Loading...</span>
@@ -905,11 +883,6 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 function SlideVideo({ asset }: { asset: Asset }) {
 	let video = asset.video
 	let url = useVideoUrl(video)
-
-	console.log("[SlideVideo] video:", video)
-	console.log("[SlideVideo] video.$isLoaded:", video?.$isLoaded)
-	console.log("[SlideVideo] video.toBlob:", video?.toBlob)
-	console.log("[SlideVideo] url:", url)
 
 	if (!url) {
 		return (

@@ -379,14 +379,13 @@ function VideoThumbnail({
 	assetId: string
 	getBlob: () => Blob | undefined
 }) {
-	let cached = thumbnailCache.get(assetId)
-	let [thumbnailUrl, setThumbnailUrl] = useState<string | null>(cached ?? null)
+	let [thumbnailUrl, setThumbnailUrl] = useState<string | null>(
+		() => thumbnailCache.get(assetId) ?? null,
+	)
 
 	useEffect(() => {
-		if (thumbnailCache.has(assetId)) {
-			setThumbnailUrl(thumbnailCache.get(assetId)!)
-			return
-		}
+		// Already have thumbnail
+		if (thumbnailUrl) return
 
 		let blob = getBlob()
 		if (!blob) return
@@ -427,7 +426,7 @@ function VideoThumbnail({
 			cancelled = true
 			URL.revokeObjectURL(videoUrl)
 		}
-	}, [assetId, getBlob])
+	}, [assetId, getBlob, thumbnailUrl])
 
 	if (!thumbnailUrl) {
 		return (

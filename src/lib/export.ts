@@ -150,6 +150,9 @@ function getExtensionFromBlob(blob: Blob): string {
 		"image/webp": ".webp",
 		"image/svg+xml": ".svg",
 		"image/bmp": ".bmp",
+		"video/mp4": ".mp4",
+		"video/webm": ".webm",
+		"video/quicktime": ".mov",
 	}
 	return mimeToExt[blob.type] || ".png"
 }

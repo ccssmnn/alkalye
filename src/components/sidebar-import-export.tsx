@@ -1,7 +1,7 @@
 import { useRef } from "react"
-import { Group, co } from "jazz-tools"
+import { Group, co, FileStream } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
-import { Document, Asset, ImageAsset } from "@/schema"
+import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
@@ -129,24 +129,45 @@ async function handleImportFiles(
 
 		let docAssets: co.loaded<typeof Asset>[] = []
 		for (let importedAsset of importedAssets) {
-			let image = await createImage(importedAsset.file, {
-				owner: docGroup,
-				maxSize: 2048,
-			})
-			let asset = ImageAsset.create(
-				{ type: "image", name: importedAsset.name, image, createdAt: now },
-				docGroup,
-			)
+			let isVideo = importedAsset.file.type.startsWith("video/")
+			let asset: co.loaded<typeof Asset>
+
+			if (isVideo) {
+				let video = await FileStream.createFromBlob(importedAsset.file, {
+					owner: docGroup,
+				})
+				asset = VideoAsset.create(
+					{
+						type: "video",
+						name: importedAsset.name,
+						video,
+						mimeType: importedAsset.file.type || "video/mp4",
+						createdAt: now,
+					},
+					docGroup,
+				)
+			} else {
+				let image = await createImage(importedAsset.file, {
+					owner: docGroup,
+					maxSize: 2048,
+				})
+				asset = ImageAsset.create(
+					{ type: "image", name: importedAsset.name, image, createdAt: now },
+					docGroup,
+				)
+			}
 			docAssets.push(asset)
 
-			let escapedRef = importedAsset.refName.replace(
-				/[.*+?^${}()|[\]\\]/g,
-				"\\$&",
-			)
-			processedContent = processedContent.replace(
-				new RegExp(`!\\[([^\\]]*)\\]\\(${escapedRef}\\)`, "g"),
-				`![$1](asset:${asset.$jazz.id})`,
-			)
+			if (importedAsset.refName) {
+				let escapedRef = importedAsset.refName.replace(
+					/[.*+?^${}()|[\]\\]/g,
+					"\\$&",
+				)
+				processedContent = processedContent.replace(
+					new RegExp(`!\\[([^\\]]*)\\]\\(${escapedRef}\\)`, "g"),
+					`![$1](asset:${asset.$jazz.id})`,
+				)
+			}
 		}
 
 		let newDoc = Document.create(
@@ -237,23 +258,26 @@ async function loadDocumentAssets(
 	doc: co.loaded<typeof Document>,
 ): Promise<ExportAsset[]> {
 	let loaded = await doc.$jazz.ensureLoaded({
-		resolve: { assets: { $each: { image: true } } },
+		resolve: { assets: { $each: { image: true, video: true } } },
 	})
 	let docAssets: ExportAsset[] = []
 
 	if (loaded.assets?.$isLoaded) {
 		for (let asset of [...loaded.assets]) {
-			if (
-				!asset?.$isLoaded ||
-				asset.type !== "image" ||
-				!asset.image?.$isLoaded
-			)
-				continue
-			let original = asset.image.original
-			if (!original?.$isLoaded) continue
-			let blob = original.toBlob()
-			if (blob) {
-				docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
+			if (!asset?.$isLoaded) continue
+
+			if (asset.type === "image" && asset.image?.$isLoaded) {
+				let original = asset.image.original
+				if (!original?.$isLoaded) continue
+				let blob = original.toBlob()
+				if (blob) {
+					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
+				}
+			} else if (asset.type === "video" && asset.video?.$isLoaded) {
+				let blob = await asset.video.toBlob()
+				if (blob) {
+					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
+				}
 			}
 		}
 	}
