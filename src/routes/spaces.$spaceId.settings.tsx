@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Loader2, Trash2, Upload, UserRoundPlus } from "lucide-react"
 import Cropper from "react-easy-crop"
 import { Space, UserAccount } from "@/schema"
-import { deleteSpace } from "@/lib/spaces"
+import { permanentlyDeleteSpace } from "@/lib/spaces"
 import { SpaceShareDialog } from "@/components/space-share-dialog"
 import { SpaceInitials } from "@/components/space-selector"
 import { Button } from "@/components/ui/button"
@@ -761,9 +761,10 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 		}
 	}
 
-	function handleDelete() {
+	async function handleDelete() {
+		if (!me?.$isLoaded) return
 		try {
-			deleteSpace(space)
+			await permanentlyDeleteSpace(space, me)
 			navigate({ to: "/" })
 		} catch (e) {
 			console.error("Failed to delete space:", e)

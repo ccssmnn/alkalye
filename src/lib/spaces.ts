@@ -1,5 +1,6 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Space, UserAccount } from "@/schema"
+import { permanentlyDeleteSpace as deleteSpaceCoValue } from "@/lib/delete-covalue"
 
 export {
 	createSpaceInvite,
@@ -16,6 +17,7 @@ export {
 	makeSpacePublic,
 	makeSpacePrivate,
 	deleteSpace,
+	permanentlyDeleteSpace,
 	getSpaceGroup,
 }
 
@@ -387,4 +389,56 @@ function deleteSpace(space: co.loaded<typeof Space>): void {
 
 	space.$jazz.set("deletedAt", new Date())
 	space.$jazz.set("updatedAt", new Date())
+}
+
+/**
+ * Permanently delete a space and all its documents.
+ * Removes from user's spaces list first, then calls deleteCoValues.
+ */
+async function permanentlyDeleteSpace(
+	space: co.loaded<typeof Space>,
+	account: co.loaded<typeof UserAccount>,
+): Promise<void> {
+	let spaceGroup = getSpaceGroup(space)
+	if (!spaceGroup) {
+		throw new Error("Space is not group-owned")
+	}
+
+	if (spaceGroup.myRole() !== "admin") {
+		throw new Error("Only admins can permanently delete spaces")
+	}
+
+	// Remove invite groups first
+	for (let inviteGroup of spaceGroup.getParentGroups()) {
+		spaceGroup.removeMember(inviteGroup)
+	}
+
+	// Remove from spaces list BEFORE deletion (critical - can't access after)
+	let loadedAccount = await account.$jazz.ensureLoaded({
+		resolve: { root: { spaces: true, inactiveSpaces: true } },
+	})
+	if (loadedAccount.root?.spaces?.$isLoaded) {
+		let idx = loadedAccount.root.spaces.findIndex(
+			s => s?.$jazz.id === space.$jazz.id,
+		)
+		if (idx !== -1) {
+			loadedAccount.root.spaces.$jazz.splice(idx, 1)
+		}
+	}
+	// Also check inactive spaces list
+	if (loadedAccount.root?.inactiveSpaces?.$isLoaded) {
+		let idx = loadedAccount.root.inactiveSpaces.findIndex(
+			s => s?.$jazz.id === space.$jazz.id,
+		)
+		if (idx !== -1) {
+			loadedAccount.root.inactiveSpaces.$jazz.splice(idx, 1)
+		}
+	}
+
+	// Actually delete the CoValue with all nested data
+	try {
+		await deleteSpaceCoValue(space)
+	} catch {
+		// May fail if not accessible, but we've already removed from list
+	}
 }

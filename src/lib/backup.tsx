@@ -115,9 +115,7 @@ function BackupSubscriber() {
 		if (!docs?.$isLoaded) return
 
 		// Compute content hash to detect changes
-		let activeDocs = [...docs].filter(
-			d => d?.$isLoaded && !d.deletedAt && !d.permanentlyDeletedAt,
-		)
+		let activeDocs = [...docs].filter(d => d?.$isLoaded && !d.deletedAt)
 		let contentHash = activeDocs
 			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
 			.sort()
@@ -515,9 +513,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		if (space.deletedAt) return
 
 		let docs = space.documents
-		let activeDocs = [...docs].filter(
-			d => d?.$isLoaded && !d.deletedAt && !d.permanentlyDeletedAt,
-		)
+		let activeDocs = [...docs].filter(d => d?.$isLoaded && !d.deletedAt)
 
 		// Compute content hash to detect changes
 		let contentHash = activeDocs

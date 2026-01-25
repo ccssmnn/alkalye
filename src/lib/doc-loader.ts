@@ -23,11 +23,7 @@ async function loadOrCreateDoc(
 	let content = await fetchContent(contentUrl)
 
 	let existingDoc = docs.find(
-		d =>
-			d?.$isLoaded &&
-			!d.deletedAt &&
-			!d.permanentlyDeletedAt &&
-			d.content?.toString() === content,
+		d => d?.$isLoaded && !d.deletedAt && d.content?.toString() === content,
 	)
 
 	if (existingDoc) {

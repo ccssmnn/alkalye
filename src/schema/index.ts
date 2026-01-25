@@ -138,7 +138,6 @@ let Document = co.map({
 	assets: co.optional(co.list(Asset)),
 	cursors: co.optional(CursorFeed),
 	deletedAt: z.date().optional(),
-	permanentlyDeletedAt: z.date().optional(),
 	presentationLine: z.number().optional(),
 	highlightRange: HighlightRange.optional(),
 	spaceId: z.string().optional(),
@@ -163,6 +162,7 @@ let UserRoot = co.map({
 	documents: co.list(Document),
 	inactiveDocuments: co.optional(co.list(Document)),
 	spaces: co.optional(co.list(Space)),
+	inactiveSpaces: co.optional(co.list(Space)),
 	settings: co.optional(Settings),
 	themes: co.optional(co.list(Theme)),
 	migrationVersion: z.number().optional(),
@@ -219,6 +219,22 @@ let UserAccount = co
 		// Initialize empty spaces list if not present
 		if (root && !root.$jazz.has("spaces")) {
 			root.$jazz.set("spaces", co.list(Space).create([], root.$jazz.owner))
+		}
+
+		// Initialize inactive spaces list if not present
+		if (root && !root.$jazz.has("inactiveSpaces")) {
+			root.$jazz.set(
+				"inactiveSpaces",
+				co.list(Space).create([], root.$jazz.owner),
+			)
+		}
+
+		// Initialize inactive documents list if not present
+		if (root && !root.$jazz.has("inactiveDocuments")) {
+			root.$jazz.set(
+				"inactiveDocuments",
+				co.list(Document).create([], root.$jazz.owner),
+			)
 		}
 
 		// Initialize empty themes list if not present

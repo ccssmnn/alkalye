@@ -1,5 +1,6 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Document, UserAccount } from "@/schema"
+import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
 
 export {
 	createPersonalDocument,
@@ -106,14 +107,14 @@ async function permanentlyDeletePersonalDocument(
 		}
 	}
 
+	// Remove invite groups first
 	for (let inviteGroup of docGroup.getParentGroups()) {
 		docGroup.removeMember(inviteGroup)
 	}
 
-	doc.$jazz.set("permanentlyDeletedAt", new Date())
-
+	// Remove from documents list BEFORE deletion (critical - can't access after)
 	let loadedAccount = await account.$jazz.ensureLoaded({
-		resolve: { root: { documents: true } },
+		resolve: { root: { documents: true, inactiveDocuments: true } },
 	})
 	if (loadedAccount.root?.documents?.$isLoaded) {
 		let idx = loadedAccount.root.documents.findIndex(
@@ -122,6 +123,22 @@ async function permanentlyDeletePersonalDocument(
 		if (idx !== -1) {
 			loadedAccount.root.documents.$jazz.splice(idx, 1)
 		}
+	}
+	// Also check inactive documents list
+	if (loadedAccount.root?.inactiveDocuments?.$isLoaded) {
+		let idx = loadedAccount.root.inactiveDocuments.findIndex(
+			d => d?.$jazz.id === doc.$jazz.id,
+		)
+		if (idx !== -1) {
+			loadedAccount.root.inactiveDocuments.$jazz.splice(idx, 1)
+		}
+	}
+
+	// Actually delete the CoValue
+	try {
+		await permanentlyDeleteDocument(doc)
+	} catch {
+		// May fail if not accessible, but we've already removed from list
 	}
 
 	return { type: "success" }
@@ -442,7 +459,6 @@ async function migrateDocumentToGroup(
 			version: 1,
 			content: co.plainText().create(doc.content?.toString() ?? "", group),
 			deletedAt: doc.deletedAt,
-			permanentlyDeletedAt: doc.permanentlyDeletedAt,
 			createdAt: doc.createdAt,
 			updatedAt: new Date(),
 		},

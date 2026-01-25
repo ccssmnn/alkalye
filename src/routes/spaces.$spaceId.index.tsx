@@ -23,7 +23,7 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 
 		// Find most recent non-deleted doc
 		let mostRecentDoc = [...space.documents]
-			.filter(d => d?.$isLoaded && !d.deletedAt && !d.permanentlyDeletedAt)
+			.filter(d => d?.$isLoaded && !d.deletedAt)
 			.sort(
 				(a, b) =>
 					new Date(b!.updatedAt).getTime() - new Date(a!.updatedAt).getTime(),

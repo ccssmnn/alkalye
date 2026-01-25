@@ -710,8 +710,6 @@ function DeletedDocumentItem({
 	async function handlePermanentDelete() {
 		if (me.$isLoaded) {
 			await permanentlyDeletePersonalDocument(doc, me)
-		} else {
-			doc.$jazz.set("permanentlyDeletedAt", new Date())
 		}
 	}
 

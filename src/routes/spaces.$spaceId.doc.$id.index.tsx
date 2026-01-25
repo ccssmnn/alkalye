@@ -619,7 +619,5 @@ function getSpaceDocs(
 	space: LoadedSpace,
 ): co.loaded<typeof Document, { content: true }>[] {
 	if (!space.documents?.$isLoaded) return []
-	return [...space.documents].filter(
-		d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
-	)
+	return [...space.documents].filter(d => d?.$isLoaded === true)
 }

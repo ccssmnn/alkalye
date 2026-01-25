@@ -608,7 +608,5 @@ function getPersonalDocs(
 	me: LoadedMe,
 ): co.loaded<typeof Document, { content: true }>[] {
 	if (!me.$isLoaded) return []
-	return [...me.root.documents].filter(
-		d => d?.$isLoaded === true && !d.permanentlyDeletedAt,
-	)
+	return [...me.root.documents].filter(d => d?.$isLoaded === true)
 }

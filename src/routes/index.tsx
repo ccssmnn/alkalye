@@ -42,7 +42,7 @@ let Route = createFileRoute("/")({
 		if (!docs?.$isLoaded) return null
 
 		let mostRecentDoc = docs
-			.filter(d => !d.deletedAt && !d.permanentlyDeletedAt)
+			.filter(d => !d.deletedAt)
 			.sort(
 				(a, b) =>
 					new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
