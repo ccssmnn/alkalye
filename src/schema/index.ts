@@ -138,7 +138,6 @@ let Document = co.map({
 	assets: co.optional(co.list(Asset)),
 	cursors: co.optional(CursorFeed),
 	deletedAt: z.date().optional(),
-	permanentlyDeletedAt: z.date().optional(),
 	presentationLine: z.number().optional(),
 	highlightRange: HighlightRange.optional(),
 	spaceId: z.string().optional(),
@@ -152,7 +151,6 @@ let Space = co.map({
 	documents: co.list(Document),
 	createdAt: z.date(),
 	updatedAt: z.date(),
-	deletedAt: z.date().optional(),
 })
 
 let UserProfile = co.profile({
@@ -185,14 +183,24 @@ let UserAccount = co
 		}
 
 		let { root } = await account.$jazz.ensureLoaded({
-			resolve: { root: { documents: true } },
+			resolve: { root: true },
 		})
+
+		// Initialize documents list if not present
 		if (root && !root.$jazz.has("documents")) {
 			root.$jazz.set("documents", co.list(Document).create([]))
 		}
 
+		// Re-load with documents to check if welcome doc needed
+		let { root: rootWithDocs } = await account.$jazz.ensureLoaded({
+			resolve: { root: { documents: true } },
+		})
+
 		// Create welcome doc for new accounts with no documents
-		if (root?.documents?.$isLoaded && root.documents.length === 0) {
+		if (
+			rootWithDocs?.documents?.$isLoaded &&
+			rootWithDocs.documents.length === 0
+		) {
 			let welcomeContent = await fetchWelcomeContent()
 			let now = new Date()
 			let group = Group.create()
@@ -205,7 +213,7 @@ let UserAccount = co
 				},
 				group,
 			)
-			root.documents.$jazz.push(welcomeDoc)
+			rootWithDocs.documents.$jazz.push(welcomeDoc)
 		}
 
 		// Initialize settings with defaults if not present
@@ -219,6 +227,14 @@ let UserAccount = co
 		// Initialize empty spaces list if not present
 		if (root && !root.$jazz.has("spaces")) {
 			root.$jazz.set("spaces", co.list(Space).create([], root.$jazz.owner))
+		}
+
+		// Initialize inactive documents list if not present
+		if (root && !root.$jazz.has("inactiveDocuments")) {
+			root.$jazz.set(
+				"inactiveDocuments",
+				co.list(Document).create([], root.$jazz.owner),
+			)
 		}
 
 		// Initialize empty themes list if not present

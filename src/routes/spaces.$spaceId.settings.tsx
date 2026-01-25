@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Loader2, Trash2, Upload, UserRoundPlus } from "lucide-react"
 import Cropper from "react-easy-crop"
 import { Space, UserAccount } from "@/schema"
-import { deleteSpace } from "@/lib/spaces"
+import { permanentlyDeleteSpace } from "@/lib/spaces"
 import { SpaceShareDialog } from "@/components/space-share-dialog"
 import { SpaceInitials } from "@/components/space-selector"
 import { Button } from "@/components/ui/button"
@@ -30,7 +30,6 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import {
-	SpaceDeleted,
 	SpaceNotFound,
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
@@ -74,11 +73,6 @@ function SpaceSettingsPage() {
 	if (!data.space) {
 		if (data.loadingState === "unauthorized") return <SpaceUnauthorized />
 		return <SpaceNotFound />
-	}
-
-	// Space deleted
-	if (space.$isLoaded && space.deletedAt) {
-		return <SpaceDeleted />
 	}
 
 	// Loading
@@ -747,7 +741,7 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 	let canDelete = isLastAdmin
 
 	let leaveDialog = useConfirmDialog()
-	let deleteDialog = useConfirmDialog()
+	let [deleteDialogOpen, setDeleteDialogOpen] = useState(false)
 	let [loading, setLoading] = useState(false)
 
 	async function handleLeave() {
@@ -761,9 +755,10 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 		}
 	}
 
-	function handleDelete() {
+	async function handleDelete() {
+		if (!me?.$isLoaded) return
 		try {
-			deleteSpace(space)
+			await permanentlyDeleteSpace(space, me)
 			navigate({ to: "/" })
 		} catch (e) {
 			console.error("Failed to delete space:", e)
@@ -808,7 +803,7 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 							variant="destructive"
 							size="sm"
 							disabled={!canDelete}
-							onClick={() => deleteDialog.setOpen(true)}
+							onClick={() => setDeleteDialogOpen(true)}
 						>
 							Delete
 						</Button>
@@ -824,15 +819,105 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 				variant="destructive"
 				onConfirm={handleLeave}
 			/>
-			<ConfirmDialog
-				open={deleteDialog.open}
-				onOpenChange={deleteDialog.onOpenChange}
-				title="Delete space?"
-				description={`This will permanently delete "${space.name}" and all documents within it. This action cannot be undone.`}
-				confirmLabel="Delete"
-				variant="destructive"
+			<PermanentDeleteSpaceDialog
+				open={deleteDialogOpen}
+				onOpenChange={setDeleteDialogOpen}
+				spaceName={space.name}
 				onConfirm={handleDelete}
 			/>
 		</section>
+	)
+}
+
+let CONFIRM_PHRASE = "yes, delete permanently"
+
+function PermanentDeleteSpaceDialog({
+	open,
+	onOpenChange,
+	spaceName,
+	onConfirm,
+}: {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	spaceName: string
+	onConfirm: () => void
+}) {
+	let [nameInput, setNameInput] = useState("")
+	let [confirmInput, setConfirmInput] = useState("")
+
+	let nameMatches = nameInput === spaceName
+	let confirmMatches = confirmInput.toLowerCase() === CONFIRM_PHRASE
+	let canDelete = nameMatches && confirmMatches
+
+	function handleOpenChangeComplete(nextOpen: boolean) {
+		if (!nextOpen) {
+			setNameInput("")
+			setConfirmInput("")
+		}
+	}
+
+	function handleConfirm() {
+		if (!canDelete) return
+		onConfirm()
+		onOpenChange(false)
+	}
+
+	return (
+		<Dialog
+			open={open}
+			onOpenChange={onOpenChange}
+			onOpenChangeComplete={handleOpenChangeComplete}
+		>
+			<DialogContent showCloseButton={false}>
+				<DialogHeader>
+					<DialogTitle>Delete space permanently</DialogTitle>
+					<DialogDescription>
+						This action is irreversible. All documents in this space will be
+						permanently deleted and cannot be recovered.
+					</DialogDescription>
+				</DialogHeader>
+				<div className="space-y-4 py-2">
+					<div>
+						<label className="text-muted-foreground mb-1 block text-xs">
+							Type the space name to confirm:{" "}
+							<span className="text-foreground font-medium">{spaceName}</span>
+						</label>
+						<Input
+							value={nameInput}
+							onChange={e => setNameInput(e.target.value)}
+							placeholder={spaceName}
+							autoComplete="off"
+						/>
+					</div>
+					<div>
+						<label className="text-muted-foreground mb-1 block text-xs">
+							Type{" "}
+							<span className="text-foreground font-medium">
+								{CONFIRM_PHRASE}
+							</span>{" "}
+							to confirm:
+						</label>
+						<Input
+							value={confirmInput}
+							onChange={e => setConfirmInput(e.target.value)}
+							placeholder={CONFIRM_PHRASE}
+							autoComplete="off"
+						/>
+					</div>
+				</div>
+				<DialogFooter>
+					<Button variant="outline" onClick={() => onOpenChange(false)}>
+						Cancel
+					</Button>
+					<Button
+						variant="destructive"
+						onClick={handleConfirm}
+						disabled={!canDelete}
+					>
+						Delete permanently
+					</Button>
+				</DialogFooter>
+			</DialogContent>
+		</Dialog>
 	)
 }

@@ -404,6 +404,9 @@ function DocumentListContent({
 									onToggle={() => toggleFolder(item.path)}
 									docsInFolder={getDocsInFolder(docs, item.path)}
 									existingFolders={existingFolders}
+									onDeleteDocs={deletedDocs => {
+										for (let d of deletedDocs) onDelete(d)
+									}}
 								/>
 							) : typeFilter === "deleted" ? (
 								<DeletedDocumentItem doc={item.doc} searchQuery={searchQuery} />
@@ -710,8 +713,6 @@ function DeletedDocumentItem({
 	async function handlePermanentDelete() {
 		if (me.$isLoaded) {
 			await permanentlyDeletePersonalDocument(doc, me)
-		} else {
-			doc.$jazz.set("permanentlyDeletedAt", new Date())
 		}
 	}
 

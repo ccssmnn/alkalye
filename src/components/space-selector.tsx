@@ -49,12 +49,13 @@ let currentSpaceQuery = { avatar: true } as const satisfies ResolveQuery<
 function SpaceSelector() {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let isAuthenticated = useIsAuthenticated()
+	let navigate = useNavigate()
 	let params = useParams({ strict: false })
 	let spaceId = params.spaceId ?? null
 	let [dialogOpen, setDialogOpen] = useState(false)
 
 	// Load current space directly (for public spaces not in user's list)
-	let currentSpaceFromUrl = useCoState(Space, spaceId ?? "", {
+	let currentSpaceFromUrl = useCoState(Space, spaceId ?? undefined, {
 		resolve: currentSpaceQuery,
 	})
 
@@ -65,24 +66,17 @@ function SpaceSelector() {
 
 	// Use current space from list if available, otherwise from URL (for public spaces)
 	let currentSpace = currentSpaceInList ?? currentSpaceFromUrl
-	let displayName =
-		currentSpace?.$isLoaded && !currentSpace.deletedAt
-			? currentSpace.name
-			: "Personal"
-	let isInSpace = currentSpace?.$isLoaded && !currentSpace.deletedAt
+	let displayName = currentSpace?.$isLoaded ? currentSpace.name : "Personal"
+	let isInSpace = currentSpace?.$isLoaded
 
 	// Check if current space is not in user's list (public space they're viewing)
 	let isViewingPublicSpace =
-		spaceId &&
-		currentSpaceFromUrl?.$isLoaded &&
-		!currentSpaceInList &&
-		!currentSpaceFromUrl.deletedAt
+		spaceId && currentSpaceFromUrl?.$isLoaded && !currentSpaceInList
 
 	// Check if user can add this space to their list
-	let spaceGroup =
-		currentSpaceFromUrl?.$isLoaded && !currentSpaceFromUrl.deletedAt
-			? getSpaceGroup(currentSpaceFromUrl)
-			: null
+	let spaceGroup = currentSpaceFromUrl?.$isLoaded
+		? getSpaceGroup(currentSpaceFromUrl)
+		: null
 	let canAddToSpaces =
 		isViewingPublicSpace && isAuthenticated && spaceGroup?.myRole()
 
@@ -126,7 +120,9 @@ function SpaceSelector() {
 					)}
 				</div>
 				<DropdownMenuContent align="center" sideOffset={4}>
-					<DropdownMenuItem render={<Link to="/" />}>
+					<DropdownMenuItem
+						onClick={() => navigate({ to: "/", search: { personal: true } })}
+					>
 						<User className="size-4" />
 						<span>Personal</span>
 						{!spaceId && <Check className="ml-auto size-4" />}
@@ -318,10 +314,7 @@ function getSortedSpaces(
 	if (!spaces) return []
 
 	return Array.from(spaces)
-		.filter(
-			(s): s is LoadedSpaceWithAvatar =>
-				s != null && s.$isLoaded && !s.deletedAt,
-		)
+		.filter((s): s is LoadedSpaceWithAvatar => s != null && s.$isLoaded)
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 

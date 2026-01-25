@@ -1,9 +1,11 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Document, UserAccount } from "@/schema"
+import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
 
 export {
 	createPersonalDocument,
 	deletePersonalDocument,
+	restorePersonalDocument,
 	permanentlyDeletePersonalDocument,
 	createDocumentInvite,
 	revokeDocumentInvite,
@@ -93,6 +95,43 @@ async function deletePersonalDocument(
 	return { type: "success" }
 }
 
+async function restorePersonalDocument(
+	doc: co.loaded<typeof Document>,
+	account: co.loaded<typeof UserAccount>,
+): Promise<PersonalDocumentOperation> {
+	let docGroup = doc.$jazz.owner
+
+	let role = docGroup.myRole()
+	if (role !== "admin") {
+		return { type: "error", error: "Only admins can restore documents" }
+	}
+
+	if (!doc.deletedAt) {
+		return { type: "error", error: "Document is not deleted" }
+	}
+
+	// Clear deletedAt to restore
+	doc.$jazz.set("deletedAt", undefined)
+	doc.$jazz.set("updatedAt", new Date())
+
+	// Move from inactiveDocuments back to documents if needed
+	let loadedAccount = await account.$jazz.ensureLoaded({
+		resolve: { root: { documents: true, inactiveDocuments: true } },
+	})
+
+	if (loadedAccount.root?.inactiveDocuments?.$isLoaded) {
+		let idx = loadedAccount.root.inactiveDocuments.findIndex(
+			d => d?.$jazz.id === doc.$jazz.id,
+		)
+		if (idx !== -1) {
+			loadedAccount.root.inactiveDocuments.$jazz.splice(idx, 1)
+			loadedAccount.root.documents.$jazz.push(doc)
+		}
+	}
+
+	return { type: "success" }
+}
+
 async function permanentlyDeletePersonalDocument(
 	doc: co.loaded<typeof Document>,
 	account: co.loaded<typeof UserAccount>,
@@ -106,14 +145,14 @@ async function permanentlyDeletePersonalDocument(
 		}
 	}
 
+	// Remove invite groups first
 	for (let inviteGroup of docGroup.getParentGroups()) {
 		docGroup.removeMember(inviteGroup)
 	}
 
-	doc.$jazz.set("permanentlyDeletedAt", new Date())
-
+	// Remove from documents list BEFORE deletion (critical - can't access after)
 	let loadedAccount = await account.$jazz.ensureLoaded({
-		resolve: { root: { documents: true } },
+		resolve: { root: { documents: true, inactiveDocuments: true } },
 	})
 	if (loadedAccount.root?.documents?.$isLoaded) {
 		let idx = loadedAccount.root.documents.findIndex(
@@ -122,6 +161,22 @@ async function permanentlyDeletePersonalDocument(
 		if (idx !== -1) {
 			loadedAccount.root.documents.$jazz.splice(idx, 1)
 		}
+	}
+	// Also check inactive documents list
+	if (loadedAccount.root?.inactiveDocuments?.$isLoaded) {
+		let idx = loadedAccount.root.inactiveDocuments.findIndex(
+			d => d?.$jazz.id === doc.$jazz.id,
+		)
+		if (idx !== -1) {
+			loadedAccount.root.inactiveDocuments.$jazz.splice(idx, 1)
+		}
+	}
+
+	// Actually delete the CoValue
+	try {
+		await permanentlyDeleteDocument(doc)
+	} catch {
+		// May fail if not accessible, but we've already removed from list
 	}
 
 	return { type: "success" }
@@ -442,7 +497,6 @@ async function migrateDocumentToGroup(
 			version: 1,
 			content: co.plainText().create(doc.content?.toString() ?? "", group),
 			deletedAt: doc.deletedAt,
-			permanentlyDeletedAt: doc.permanentlyDeletedAt,
 			createdAt: doc.createdAt,
 			updatedAt: new Date(),
 		},

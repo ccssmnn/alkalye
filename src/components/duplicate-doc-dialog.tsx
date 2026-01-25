@@ -404,10 +404,7 @@ function getSortedSpaces(
 	if (!spaces) return []
 
 	return Array.from(spaces)
-		.filter(
-			(s): s is LoadedSpaceWithAvatar =>
-				s != null && s.$isLoaded && !s.deletedAt,
-		)
+		.filter((s): s is LoadedSpaceWithAvatar => s != null && s.$isLoaded)
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 

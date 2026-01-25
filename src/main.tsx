@@ -13,6 +13,7 @@ import {
 } from "./components/splash-screen"
 import { PWAContext, usePWAProvider, PWAInstallHint } from "./lib/pwa"
 import { BackupSubscriber, SpacesBackupSubscriber } from "./lib/backup"
+import { useCleanupDeleted } from "./lib/use-cleanup-deleted"
 import { init } from "@plausible-analytics/tracker"
 
 import "@fontsource-variable/geist-mono/index.css"
@@ -23,6 +24,9 @@ init({ domain: "alkalye.com" })
 let router = createRouter({
 	routeTree,
 	context: { me: null },
+	defaultPreload: false,
+	defaultStaleTime: 0,
+	defaultGcTime: 0,
 })
 
 declare module "@tanstack/react-router" {
@@ -40,6 +44,9 @@ function RouterWithJazz() {
 	let me = useAccount(UserAccount)
 	let splashReady = useSplashDelay(700)
 	let showSplash = me.$jazz.loadingState === "loading" || !splashReady
+
+	// Background cleanup of deleted items
+	useCleanupDeleted()
 
 	return (
 		<PWAProvider>

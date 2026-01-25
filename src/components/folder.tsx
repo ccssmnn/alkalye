@@ -121,6 +121,7 @@ interface FolderRowProps {
 	onToggle: () => void
 	docsInFolder: LoadedDocument[]
 	existingFolders: string[]
+	onDeleteDocs?: (docs: LoadedDocument[]) => void
 }
 
 function FolderRow({
@@ -131,6 +132,7 @@ function FolderRow({
 	onToggle,
 	docsInFolder,
 	existingFolders,
+	onDeleteDocs,
 }: FolderRowProps) {
 	let folderName = path.split("/").pop() || path
 	let { renameFolder, removeFolder } = useFolderStore()
@@ -209,7 +211,14 @@ function FolderRow({
 				path={path}
 				docCount={docCount}
 				onDelete={deleteDocuments => {
-					handleDeleteFolder(docsInFolder, path, deleteDocuments)
+					if (deleteDocuments && onDeleteDocs) {
+						// Let parent handle deletion (sets deletedAt + navigates if needed)
+						let docsToDelete = getDocsToDeleteInFolder(docsInFolder, path)
+						onDeleteDocs(docsToDelete)
+					} else {
+						// Fallback: handle deletion/path-removal directly
+						handleDeleteFolder(docsInFolder, path, deleteDocuments)
+					}
 					removeFolder(path)
 				}}
 			/>
@@ -549,6 +558,18 @@ function handleMoveFolder(
 ) {
 	// Same logic as rename - just updating paths
 	handleRenameFolder(docs, oldPath, newPath)
+}
+
+function getDocsToDeleteInFolder(
+	docs: LoadedDocument[],
+	path: string,
+): LoadedDocument[] {
+	return docs.filter(doc => {
+		if (!doc.content) return false
+		let docPath = getPath(doc.content.toString())
+		if (!docPath) return false
+		return docPath === path || docPath.startsWith(path + "/")
+	})
 }
 
 function handleDeleteFolder(

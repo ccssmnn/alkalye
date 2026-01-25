@@ -115,9 +115,7 @@ function BackupSubscriber() {
 		if (!docs?.$isLoaded) return
 
 		// Compute content hash to detect changes
-		let activeDocs = [...docs].filter(
-			d => d?.$isLoaded && !d.deletedAt && !d.permanentlyDeletedAt,
-		)
+		let activeDocs = [...docs].filter(d => d?.$isLoaded && !d.deletedAt)
 		let contentHash = activeDocs
 			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
 			.sort()
@@ -511,13 +509,9 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		if (!directoryName) return
 		// Skip if space not loaded
 		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
-		// Skip deleted spaces
-		if (space.deletedAt) return
 
 		let docs = space.documents
-		let activeDocs = [...docs].filter(
-			d => d?.$isLoaded && !d.deletedAt && !d.permanentlyDeletedAt,
-		)
+		let activeDocs = [...docs].filter(d => d?.$isLoaded && !d.deletedAt)
 
 		// Compute content hash to detect changes
 		let contentHash = activeDocs
@@ -817,7 +811,7 @@ function getSpacesWithBackup(
 
 	let spaceIds: string[] = []
 	for (let space of Array.from(me.root.spaces)) {
-		if (!space?.$isLoaded || space.deletedAt) continue
+		if (!space?.$isLoaded) continue
 		let backupPath = getSpaceBackupPath(space.$jazz.id)
 		if (backupPath) {
 			spaceIds.push(space.$jazz.id)

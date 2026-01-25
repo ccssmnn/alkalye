@@ -24,7 +24,6 @@ import {
 	isSpacePublic,
 	makeSpacePublic,
 	makeSpacePrivate,
-	deleteSpace,
 	getSpaceGroup,
 } from "@/lib/spaces"
 import {
@@ -258,35 +257,6 @@ describe("Space Collaboration", () => {
 		await expect(createSpaceInvite(loadedSpace, "reader")).rejects.toThrow(
 			"Only admins can create invite links",
 		)
-	})
-
-	test("non-admin cannot delete space", async () => {
-		let { link: inviteLink } = await createSpaceInvite(space, "writer")
-		let inviteData = parseSpaceInviteLink(inviteLink)
-
-		await acceptSpaceInvite(otherAccount, inviteData)
-		await otherAccount.$jazz.waitForAllCoValuesSync()
-
-		setActiveAccount(otherAccount)
-		let loadedSpace = await Space.load(space.$jazz.id, {
-			resolve: { documents: true },
-		})
-		if (!loadedSpace?.$isLoaded) throw new Error("Space not loaded")
-
-		expect(() => deleteSpace(loadedSpace)).toThrow(
-			"Only admins can delete spaces",
-		)
-		expect(loadedSpace.deletedAt).toBeUndefined()
-	})
-
-	test("admin can soft delete space", async () => {
-		deleteSpace(space)
-		expect(space.deletedAt).toBeInstanceOf(Date)
-
-		let loadedSpace = await Space.load(space.$jazz.id, {
-			resolve: { documents: true },
-		})
-		expect(loadedSpace?.$isLoaded).toBe(true)
 	})
 
 	test("admin cannot leave their own space", async () => {
