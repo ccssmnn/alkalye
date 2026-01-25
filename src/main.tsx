@@ -24,6 +24,9 @@ init({ domain: "alkalye.com" })
 let router = createRouter({
 	routeTree,
 	context: { me: null },
+	defaultPreload: false,
+	defaultStaleTime: 0,
+	defaultGcTime: 0,
 })
 
 declare module "@tanstack/react-router" {

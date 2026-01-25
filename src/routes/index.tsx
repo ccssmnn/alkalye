@@ -1,10 +1,11 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
+import { z } from "zod"
 import { UserAccount, Document } from "@/schema"
 
 export { Route }
 
-let rootQuery = {
+let lastOpenedQuery = {
 	root: true,
 } as const satisfies ResolveQuery<typeof UserAccount>
 
@@ -14,32 +15,40 @@ let documentsQuery = {
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
+let searchSchema = z.object({
+	personal: z.boolean().optional(),
+})
+
 let Route = createFileRoute("/")({
-	loader: async ({ context }) => {
+	validateSearch: searchSchema,
+	loaderDeps: ({ search }) => ({ personal: search.personal }),
+	loader: async ({ context, deps }) => {
 		let { me } = context
 		if (!me) return null
 
-		// Fast path: try last opened doc first
-		let rootMe = await me.$jazz.ensureLoaded({ resolve: rootQuery })
-		let { lastOpenedDocId, lastOpenedSpaceId } = rootMe.root ?? {}
+		// Fast path: try last opened doc (skip if personal=true)
+		if (!deps.personal) {
+			let loaded = await me.$jazz.ensureLoaded({ resolve: lastOpenedQuery })
+			let { lastOpenedDocId, lastOpenedSpaceId } = loaded.root ?? {}
 
-		if (lastOpenedDocId) {
-			let doc = await Document.load(lastOpenedDocId)
-			if (doc.$isLoaded && !doc.deletedAt) {
-				if (lastOpenedSpaceId) {
+			if (lastOpenedDocId) {
+				let doc = await Document.load(lastOpenedDocId)
+				if (doc.$isLoaded && !doc.deletedAt) {
+					if (lastOpenedSpaceId) {
+						throw redirect({
+							to: "/spaces/$spaceId/doc/$id",
+							params: { spaceId: lastOpenedSpaceId, id: lastOpenedDocId },
+						})
+					}
 					throw redirect({
-						to: "/spaces/$spaceId/doc/$id",
-						params: { spaceId: lastOpenedSpaceId, id: lastOpenedDocId },
+						to: "/doc/$id",
+						params: { id: lastOpenedDocId },
 					})
 				}
-				throw redirect({
-					to: "/doc/$id",
-					params: { id: lastOpenedDocId },
-				})
 			}
 		}
 
-		// Fallback: load all docs and find most recent
+		// Fallback: load all personal docs and find most recent
 		let loadedMe = await me.$jazz.ensureLoaded({ resolve: documentsQuery })
 		let docs = loadedMe.root?.documents
 		if (!docs?.$isLoaded) return null

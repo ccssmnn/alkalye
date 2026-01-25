@@ -121,14 +121,7 @@ function SpaceSelector() {
 				</div>
 				<DropdownMenuContent align="center" sideOffset={4}>
 					<DropdownMenuItem
-						onClick={() => {
-							// Clear last opened so index route picks most recent personal doc
-							if (me.$isLoaded && me.root) {
-								me.root.$jazz.set("lastOpenedDocId", undefined)
-								me.root.$jazz.set("lastOpenedSpaceId", undefined)
-							}
-							navigate({ to: "/" })
-						}}
+						onClick={() => navigate({ to: "/", search: { personal: true } })}
 					>
 						<User className="size-4" />
 						<span>Personal</span>
