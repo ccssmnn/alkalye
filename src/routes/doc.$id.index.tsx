@@ -102,6 +102,8 @@ function EditorPage() {
 		? subscribedDoc.spaceId
 		: data.doc?.spaceId
 
+	let isDeleted = subscribedDoc.$jazz.loadingState === "deleted"
+
 	// Redirect space docs to their proper route (must call useEffect unconditionally)
 	useEffect(() => {
 		if (spaceId) {
@@ -113,19 +115,30 @@ function EditorPage() {
 		}
 	}, [spaceId, id, navigate])
 
+	// Navigate away when document is deleted
+	useEffect(() => {
+		if (isDeleted) {
+			navigate({ to: "/", replace: true })
+		}
+	}, [isDeleted, navigate])
+
 	// Error states from loader
 	if (!data.doc) {
 		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
 		return <DocumentNotFound />
 	}
 
-	// Handle live access revocation
+	// Handle live access revocation or deletion
 	if (
 		!subscribedDoc.$isLoaded &&
 		subscribedDoc.$jazz.loadingState !== "loading"
 	) {
 		if (subscribedDoc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
+		if (isDeleted) {
+			// Show nothing while navigating away
+			return null
+		}
 		return <DocumentNotFound />
 	}
 

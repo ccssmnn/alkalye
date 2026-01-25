@@ -120,9 +120,27 @@ let Route = createFileRoute("/spaces/$spaceId/doc/$id/")({
 function SpaceEditorPage() {
 	let { spaceId, id } = Route.useParams()
 	let data = Route.useLoaderData()
+	let navigate = useNavigate()
 
 	let space = useCoState(Space, spaceId, { resolve: spaceResolve })
 	let doc = useCoState(Document, id, { resolve })
+
+	let isSpaceDeleted = space.$jazz.loadingState === "deleted"
+	let isDocDeleted = doc.$jazz.loadingState === "deleted"
+
+	// Navigate away when space is deleted
+	useEffect(() => {
+		if (isSpaceDeleted) {
+			navigate({ to: "/", replace: true })
+		}
+	}, [isSpaceDeleted, navigate])
+
+	// Navigate away when doc is deleted
+	useEffect(() => {
+		if (isDocDeleted) {
+			navigate({ to: `/spaces/${spaceId}`, replace: true })
+		}
+	}, [isDocDeleted, spaceId, navigate])
 
 	// Space not found or unauthorized (from loader)
 	if (!data.space) {
@@ -130,10 +148,11 @@ function SpaceEditorPage() {
 		return <SpaceNotFound />
 	}
 
-	// Handle live access revocation (ignore "loading" state - use loader data as fallback)
+	// Handle live access revocation or deletion (ignore "loading" state - use loader data as fallback)
 	if (!space.$isLoaded && space.$jazz.loadingState !== "loading") {
 		if (space.$jazz.loadingState === "unauthorized")
 			return <SpaceUnauthorized />
+		if (isSpaceDeleted) return null
 		return <SpaceNotFound />
 	}
 
@@ -143,10 +162,11 @@ function SpaceEditorPage() {
 		return <DocumentNotFound />
 	}
 
-	// Handle live access revocation for doc
+	// Handle live access revocation or deletion for doc
 	if (!doc.$isLoaded && doc.$jazz.loadingState !== "loading") {
 		if (doc.$jazz.loadingState === "unauthorized")
 			return <DocumentUnauthorized />
+		if (isDocDeleted) return null
 		return <DocumentNotFound />
 	}
 

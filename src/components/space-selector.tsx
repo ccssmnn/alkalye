@@ -54,7 +54,7 @@ function SpaceSelector() {
 	let [dialogOpen, setDialogOpen] = useState(false)
 
 	// Load current space directly (for public spaces not in user's list)
-	let currentSpaceFromUrl = useCoState(Space, spaceId ?? "", {
+	let currentSpaceFromUrl = useCoState(Space, spaceId ?? undefined, {
 		resolve: currentSpaceQuery,
 	})
 

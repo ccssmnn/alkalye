@@ -185,14 +185,24 @@ let UserAccount = co
 		}
 
 		let { root } = await account.$jazz.ensureLoaded({
-			resolve: { root: { documents: true } },
+			resolve: { root: true },
 		})
+
+		// Initialize documents list if not present
 		if (root && !root.$jazz.has("documents")) {
 			root.$jazz.set("documents", co.list(Document).create([]))
 		}
 
+		// Re-load with documents to check if welcome doc needed
+		let { root: rootWithDocs } = await account.$jazz.ensureLoaded({
+			resolve: { root: { documents: true } },
+		})
+
 		// Create welcome doc for new accounts with no documents
-		if (root?.documents?.$isLoaded && root.documents.length === 0) {
+		if (
+			rootWithDocs?.documents?.$isLoaded &&
+			rootWithDocs.documents.length === 0
+		) {
 			let welcomeContent = await fetchWelcomeContent()
 			let now = new Date()
 			let group = Group.create()
@@ -205,7 +215,7 @@ let UserAccount = co
 				},
 				group,
 			)
-			root.documents.$jazz.push(welcomeDoc)
+			rootWithDocs.documents.$jazz.push(welcomeDoc)
 		}
 
 		// Initialize settings with defaults if not present

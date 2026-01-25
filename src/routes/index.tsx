@@ -19,21 +19,24 @@ let Route = createFileRoute("/")({
 		let { me } = context
 		if (!me) return null
 
-		// Fast path: check lastOpenedDocId from account root
+		// Fast path: try last opened doc first
 		let rootMe = await me.$jazz.ensureLoaded({ resolve: rootQuery })
 		let { lastOpenedDocId, lastOpenedSpaceId } = rootMe.root ?? {}
 
-		if (lastOpenedDocId && lastOpenedSpaceId) {
-			throw redirect({
-				to: "/spaces/$spaceId/doc/$id",
-				params: { spaceId: lastOpenedSpaceId, id: lastOpenedDocId },
-			})
-		}
 		if (lastOpenedDocId) {
-			throw redirect({
-				to: "/doc/$id",
-				params: { id: lastOpenedDocId },
-			})
+			let doc = await Document.load(lastOpenedDocId)
+			if (doc.$isLoaded && !doc.deletedAt) {
+				if (lastOpenedSpaceId) {
+					throw redirect({
+						to: "/spaces/$spaceId/doc/$id",
+						params: { spaceId: lastOpenedSpaceId, id: lastOpenedDocId },
+					})
+				}
+				throw redirect({
+					to: "/doc/$id",
+					params: { id: lastOpenedDocId },
+				})
+			}
 		}
 
 		// Fallback: load all docs and find most recent
