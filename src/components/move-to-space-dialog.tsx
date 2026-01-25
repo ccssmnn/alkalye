@@ -365,7 +365,7 @@ function getSortedSpaces(
 
 	return [...spaces.values()]
 		.filter((s): s is LoadedSpaceWithAvatar => {
-			if (!s?.$isLoaded || s.deletedAt) return false
+			if (!s?.$isLoaded) return false
 			let spaceGroup = getSpaceGroup(s)
 			let role = spaceGroup?.myRole()
 			return role === "admin" || role === "writer"

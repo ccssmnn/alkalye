@@ -16,8 +16,6 @@ export {
 	isSpaceMember,
 	makeSpacePublic,
 	makeSpacePrivate,
-	deleteSpace,
-	restoreSpace,
 	permanentlyDeleteSpace,
 	getSpaceGroup,
 }
@@ -378,61 +376,6 @@ function makeSpacePrivate(space: co.loaded<typeof Space>): void {
 	space.$jazz.set("updatedAt", new Date())
 }
 
-function deleteSpace(space: co.loaded<typeof Space>): void {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) {
-		throw new Error("Space is not group-owned")
-	}
-
-	if (spaceGroup.myRole() !== "admin") {
-		throw new Error("Only admins can delete spaces")
-	}
-
-	space.$jazz.set("deletedAt", new Date())
-	space.$jazz.set("updatedAt", new Date())
-}
-
-/**
- * Restore a soft-deleted space.
- * Clears deletedAt and moves from inactiveSpaces back to spaces if needed.
- */
-async function restoreSpace(
-	space: co.loaded<typeof Space>,
-	account: co.loaded<typeof UserAccount>,
-): Promise<void> {
-	let spaceGroup = getSpaceGroup(space)
-	if (!spaceGroup) {
-		throw new Error("Space is not group-owned")
-	}
-
-	if (spaceGroup.myRole() !== "admin") {
-		throw new Error("Only admins can restore spaces")
-	}
-
-	if (!space.deletedAt) {
-		throw new Error("Space is not deleted")
-	}
-
-	// Clear deletedAt to restore
-	space.$jazz.set("deletedAt", undefined)
-	space.$jazz.set("updatedAt", new Date())
-
-	// Move from inactiveSpaces back to spaces if needed
-	let loadedAccount = await account.$jazz.ensureLoaded({
-		resolve: { root: { spaces: true, inactiveSpaces: true } },
-	})
-
-	if (loadedAccount.root?.inactiveSpaces?.$isLoaded) {
-		let idx = loadedAccount.root.inactiveSpaces.findIndex(
-			s => s?.$jazz.id === space.$jazz.id,
-		)
-		if (idx !== -1) {
-			loadedAccount.root.inactiveSpaces.$jazz.splice(idx, 1)
-			loadedAccount.root.spaces!.$jazz.push(space)
-		}
-	}
-}
-
 /**
  * Permanently delete a space and all its documents.
  * Removes from user's spaces list first, then calls deleteCoValues.
@@ -457,7 +400,7 @@ async function permanentlyDeleteSpace(
 
 	// Remove from spaces list BEFORE deletion (critical - can't access after)
 	let loadedAccount = await account.$jazz.ensureLoaded({
-		resolve: { root: { spaces: true, inactiveSpaces: true } },
+		resolve: { root: { spaces: true } },
 	})
 	if (loadedAccount.root?.spaces?.$isLoaded) {
 		let idx = loadedAccount.root.spaces.findIndex(
@@ -465,15 +408,6 @@ async function permanentlyDeleteSpace(
 		)
 		if (idx !== -1) {
 			loadedAccount.root.spaces.$jazz.splice(idx, 1)
-		}
-	}
-	// Also check inactive spaces list
-	if (loadedAccount.root?.inactiveSpaces?.$isLoaded) {
-		let idx = loadedAccount.root.inactiveSpaces.findIndex(
-			s => s?.$jazz.id === space.$jazz.id,
-		)
-		if (idx !== -1) {
-			loadedAccount.root.inactiveSpaces.$jazz.splice(idx, 1)
 		}
 	}
 

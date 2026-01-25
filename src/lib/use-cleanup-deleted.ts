@@ -1,11 +1,8 @@
 import { useEffect, useRef } from "react"
 import { useAccount } from "jazz-tools/react"
 import { type co, type ResolveQuery } from "jazz-tools"
-import { Document, Space, UserAccount } from "@/schema"
-import {
-	permanentlyDeleteDocument,
-	permanentlyDeleteSpace,
-} from "@/lib/delete-covalue"
+import { Document, UserAccount } from "@/schema"
+import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
 import { PERMANENT_DELETE_DAYS } from "@/lib/document-utils"
 
 export { useCleanupDeleted }
@@ -17,17 +14,15 @@ let cleanupQuery = {
 	root: {
 		documents: true,
 		inactiveDocuments: true,
-		spaces: true,
-		inactiveSpaces: true,
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
 type LoadedUser = co.loaded<typeof UserAccount, typeof cleanupQuery>
 
 /**
- * Background cleanup hook that runs once per day.
- * - Moves soft-deleted items to inactive lists
- * - Permanently deletes items older than 30 days from inactive lists
+ * Background cleanup hook that runs periodically.
+ * - Moves soft-deleted documents to inactive list
+ * - Permanently deletes documents older than 30 days from inactive list
  */
 function useCleanupDeleted(): void {
 	let cleanupRan = useRef(false)
@@ -53,7 +48,7 @@ function useCleanupDeleted(): void {
 }
 
 async function cleanupDeletedItems(me: LoadedUser): Promise<void> {
-	let { documents, inactiveDocuments, spaces, inactiveSpaces } = me.root
+	let { documents, inactiveDocuments } = me.root
 
 	// Process documents - move deleted to inactive
 	if (documents && inactiveDocuments) {
@@ -96,52 +91,6 @@ async function cleanupDeletedItems(me: LoadedUser): Promise<void> {
 			inactiveDocuments.$jazz.splice(idx, 1)
 			try {
 				await permanentlyDeleteDocument(doc)
-			} catch {
-				// May fail if not accessible, skip
-			}
-		}
-	}
-
-	// Process spaces - move deleted to inactive
-	if (spaces && inactiveSpaces) {
-		let spacesToMove: Array<{ idx: number; space: co.loaded<typeof Space> }> =
-			[]
-
-		for (let i = 0; i < spaces.length; i++) {
-			let ref = spaces[i]
-			if (!ref) continue
-			let space = await Space.load(ref.$jazz.id)
-			if (space?.$isLoaded && space.deletedAt) {
-				spacesToMove.push({ idx: i, space })
-			}
-		}
-
-		for (let i = spacesToMove.length - 1; i >= 0; i--) {
-			let { idx, space } = spacesToMove[i]
-			inactiveSpaces.$jazz.push(space)
-			spaces.$jazz.splice(idx, 1)
-		}
-	}
-
-	// Delete stale inactive spaces
-	if (inactiveSpaces) {
-		let spacesToDelete: Array<{ idx: number; space: co.loaded<typeof Space> }> =
-			[]
-
-		for (let i = 0; i < inactiveSpaces.length; i++) {
-			let ref = inactiveSpaces[i]
-			if (!ref) continue
-			let space = await Space.load(ref.$jazz.id)
-			if (space?.$isLoaded && space.deletedAt && isStale(space.deletedAt)) {
-				spacesToDelete.push({ idx: i, space })
-			}
-		}
-
-		for (let i = spacesToDelete.length - 1; i >= 0; i--) {
-			let { idx, space } = spacesToDelete[i]
-			inactiveSpaces.$jazz.splice(idx, 1)
-			try {
-				await permanentlyDeleteSpace(space)
 			} catch {
 				// May fail if not accessible, skip
 			}

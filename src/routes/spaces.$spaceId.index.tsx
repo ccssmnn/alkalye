@@ -16,11 +16,6 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 			throw redirect({ to: "/" })
 		}
 
-		// Space deleted
-		if (space.deletedAt) {
-			throw redirect({ to: "/" })
-		}
-
 		// Find most recent non-deleted doc
 		let mostRecentDoc = [...space.documents]
 			.filter(d => d?.$isLoaded && !d.deletedAt)

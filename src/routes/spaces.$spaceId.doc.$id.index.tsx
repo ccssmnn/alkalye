@@ -47,7 +47,6 @@ import {
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-	SpaceDeleted,
 	SpaceNotFound,
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
@@ -168,11 +167,6 @@ function SpaceEditorPage() {
 			return <DocumentUnauthorized />
 		if (isDocDeleted) return null
 		return <DocumentNotFound />
-	}
-
-	// Space deleted
-	if (space.$isLoaded && space.deletedAt) {
-		return <SpaceDeleted />
 	}
 
 	// Use loader data as fallback while subscription is loading
