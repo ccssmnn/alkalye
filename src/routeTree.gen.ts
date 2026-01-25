@@ -121,9 +121,9 @@ export interface FileRoutesByFullPath {
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
   '/doc/$id/timemachine': typeof DocIdTimemachineRoute
   '/spaces/$spaceId/settings': typeof SpacesSpaceIdSettingsRoute
-  '/doc/$id': typeof DocIdIndexRoute
-  '/spaces/$spaceId': typeof SpacesSpaceIdIndexRoute
-  '/spaces/$spaceId/doc/$id': typeof SpacesSpaceIdDocIdIndexRoute
+  '/doc/$id/': typeof DocIdIndexRoute
+  '/spaces/$spaceId/': typeof SpacesSpaceIdIndexRoute
+  '/spaces/$spaceId/doc/$id/': typeof SpacesSpaceIdDocIdIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -178,9 +178,9 @@ export interface FileRouteTypes {
     | '/doc/$id/teleprompter'
     | '/doc/$id/timemachine'
     | '/spaces/$spaceId/settings'
-    | '/doc/$id'
-    | '/spaces/$spaceId'
-    | '/spaces/$spaceId/doc/$id'
+    | '/doc/$id/'
+    | '/spaces/$spaceId/'
+    | '/spaces/$spaceId/doc/$id/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -299,14 +299,14 @@ declare module '@tanstack/react-router' {
     '/spaces/$spaceId/': {
       id: '/spaces/$spaceId/'
       path: '/spaces/$spaceId'
-      fullPath: '/spaces/$spaceId'
+      fullPath: '/spaces/$spaceId/'
       preLoaderRoute: typeof SpacesSpaceIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/doc/$id/': {
       id: '/doc/$id/'
       path: '/doc/$id'
-      fullPath: '/doc/$id'
+      fullPath: '/doc/$id/'
       preLoaderRoute: typeof DocIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -348,7 +348,7 @@ declare module '@tanstack/react-router' {
     '/spaces/$spaceId/doc/$id/': {
       id: '/spaces/$spaceId/doc/$id/'
       path: '/spaces/$spaceId/doc/$id'
-      fullPath: '/spaces/$spaceId/doc/$id'
+      fullPath: '/spaces/$spaceId/doc/$id/'
       preLoaderRoute: typeof SpacesSpaceIdDocIdIndexRouteImport
       parentRoute: typeof rootRouteImport
     }

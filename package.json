@@ -64,7 +64,8 @@
 		"zustand": "^5.0.10"
 	},
 	"overrides": {
-		"@codemirror/view": "^6.39.8",
+		"@codemirror/state": "^6.5.4",
+		"@codemirror/view": "^6.39.11",
 		"cojson-core-rn": "npm:cojson@*"
 	},
 	"devDependencies": {

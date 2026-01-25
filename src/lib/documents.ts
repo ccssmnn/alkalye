@@ -5,6 +5,7 @@ import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
 export {
 	createPersonalDocument,
 	deletePersonalDocument,
+	restorePersonalDocument,
 	permanentlyDeletePersonalDocument,
 	createDocumentInvite,
 	revokeDocumentInvite,
@@ -91,6 +92,43 @@ async function deletePersonalDocument(
 
 	doc.$jazz.set("deletedAt", new Date())
 	doc.$jazz.set("updatedAt", new Date())
+	return { type: "success" }
+}
+
+async function restorePersonalDocument(
+	doc: co.loaded<typeof Document>,
+	account: co.loaded<typeof UserAccount>,
+): Promise<PersonalDocumentOperation> {
+	let docGroup = doc.$jazz.owner
+
+	let role = docGroup.myRole()
+	if (role !== "admin") {
+		return { type: "error", error: "Only admins can restore documents" }
+	}
+
+	if (!doc.deletedAt) {
+		return { type: "error", error: "Document is not deleted" }
+	}
+
+	// Clear deletedAt to restore
+	doc.$jazz.set("deletedAt", undefined)
+	doc.$jazz.set("updatedAt", new Date())
+
+	// Move from inactiveDocuments back to documents if needed
+	let loadedAccount = await account.$jazz.ensureLoaded({
+		resolve: { root: { documents: true, inactiveDocuments: true } },
+	})
+
+	if (loadedAccount.root?.inactiveDocuments?.$isLoaded) {
+		let idx = loadedAccount.root.inactiveDocuments.findIndex(
+			d => d?.$jazz.id === doc.$jazz.id,
+		)
+		if (idx !== -1) {
+			loadedAccount.root.inactiveDocuments.$jazz.splice(idx, 1)
+			loadedAccount.root.documents.$jazz.push(doc)
+		}
+	}
+
 	return { type: "success" }
 }
 
