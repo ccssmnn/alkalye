@@ -55,13 +55,15 @@ import {
 	SidebarGroup,
 	SidebarGroupContent,
 	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { canEdit, isDocumentPublic, getDocumentGroup } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
-import { HelpCircle, Settings, Plus } from "lucide-react"
+import { HelpCircle, Search, Settings, Plus } from "lucide-react"
 
 import { SidebarViewLinks } from "@/components/sidebar-view-links"
 import { SidebarFileMenu } from "@/components/sidebar-file-menu"
@@ -453,7 +455,6 @@ function SpaceEditorContent({
 					containerRef={containerRef}
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
-					onOpenFind={() => editor.current?.openFind()}
 					onSaveCopy={
 						canSaveCopy && me.$isLoaded
 							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
@@ -493,6 +494,18 @@ function SpaceEditorContent({
 				<SidebarGroup>
 					<SidebarGroupContent>
 						<SidebarMenu>
+							<SidebarMenuItem>
+								<SidebarMenuButton
+									onClick={() =>
+										setRightOpenMobile(false, () => editor.current?.openFind())
+									}
+									nativeButton
+								>
+									<Search className="size-4" />
+									Find
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+							<SidebarSeparator />
 							<SidebarViewLinks doc={doc} />
 							<SidebarSeparator />
 							<SidebarFileMenu
