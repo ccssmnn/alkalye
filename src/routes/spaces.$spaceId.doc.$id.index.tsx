@@ -452,6 +452,7 @@ function SpaceEditorContent({
 					containerRef={containerRef}
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
+					onOpenFind={() => editor.current?.openFind()}
 					onSaveCopy={
 						canSaveCopy && me.$isLoaded
 							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)

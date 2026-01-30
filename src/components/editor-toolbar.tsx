@@ -27,6 +27,7 @@ import {
 	Check,
 	ListIcon,
 	Wrench,
+	Search,
 } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 import { isMac, altModKey } from "@/lib/platform"
@@ -41,6 +42,7 @@ interface EditorToolbarProps {
 	containerRef?: React.RefObject<HTMLDivElement | null>
 	onToggleLeftSidebar: () => void
 	onToggleRightSidebar: () => void
+	onOpenFind?: () => void
 	onSaveCopy?: () => Promise<void>
 	saveCopyState?: "idle" | "saving" | "saved"
 	content?: string
@@ -53,6 +55,7 @@ function EditorToolbar({
 	containerRef,
 	onToggleLeftSidebar,
 	onToggleRightSidebar,
+	onOpenFind,
 	onSaveCopy,
 	saveCopyState = "idle",
 	content,
@@ -244,6 +247,14 @@ function EditorToolbar({
 			</div>
 
 			<div className="border-border flex shrink-0 items-center gap-1 border-l p-2 md:border-l-0">
+				{onOpenFind && (
+					<ToolbarButton
+						icon={<Search />}
+						label="Find"
+						shortcut="F"
+						onClick={onOpenFind}
+					/>
+				)}
 				<ToolbarButton
 					icon={<Wrench />}
 					label="Document tools"

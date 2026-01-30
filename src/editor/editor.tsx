@@ -60,6 +60,8 @@ import { createLinkDecorations } from "./link-decorations"
 import { createWikilinkDecorations } from "./wikilink-decorations"
 import { createBacklinkDecorations } from "./backlink-decorations"
 import { createImageDecorations } from "./image-decorations"
+import { findExtension, selectMatch } from "./find-extension"
+import { FindPanel } from "./find-panel"
 
 import { useIsMobile } from "@/lib/use-mobile"
 import {
@@ -175,6 +177,9 @@ interface MarkdownEditorRef {
 	getLinkAtCursor(): string | null
 	getEditor(): EditorView | null
 	refreshDecorations(): void
+
+	openFind(): void
+	closeFind(): void
 }
 
 function useMarkdownEditorRef() {
@@ -211,6 +216,8 @@ function MarkdownEditor(
 	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
+	let [findPanelOpen, setFindPanelOpen] = useState(false)
+	let findPanelOpenRef = useRef(false)
 	let [mediaPreviewOpen, setMediaPreviewOpen] = useState(false)
 	let [mediaPreview, setMediaPreview] = useState<{
 		url: string
@@ -219,6 +226,7 @@ function MarkdownEditor(
 	} | null>(null)
 
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
+	findPanelOpenRef.current = findPanelOpen
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
 
@@ -369,6 +377,36 @@ function MarkdownEditor(
 						},
 						preventDefault: true,
 					},
+					{
+						key: "Mod-f",
+						run: () => {
+							setFindPanelOpen(true)
+							return true
+						},
+						preventDefault: true,
+					},
+					{
+						key: "F3",
+						run: view => {
+							if (findPanelOpenRef.current) {
+								selectMatch(view, "next")
+								return true
+							}
+							return false
+						},
+						preventDefault: true,
+					},
+					{
+						key: "Shift-F3",
+						run: view => {
+							if (findPanelOpenRef.current) {
+								selectMatch(view, "prev")
+								return true
+							}
+							return false
+						},
+						preventDefault: true,
+					},
 				]),
 			),
 			markdown({
@@ -410,6 +448,7 @@ function MarkdownEditor(
 				handleWikilinkNavigate,
 			),
 			createImageDecorations(imageResolver, handleImagePreview),
+			findExtension,
 		]
 
 		if (initRef.current.placeholder) {
@@ -678,6 +717,8 @@ function MarkdownEditor(
 		getLinkAtCursor,
 		getEditor: () => view,
 		refreshDecorations,
+		openFind: () => setFindPanelOpen(true),
+		closeFind: () => setFindPanelOpen(false),
 	}))
 
 	let internalRef = useRef<MarkdownEditorRef | null>(null)
@@ -727,12 +768,19 @@ function MarkdownEditor(
 			getLinkAtCursor,
 			getEditor: () => view,
 			refreshDecorations,
+			openFind: () => setFindPanelOpen(true),
+			closeFind: () => setFindPanelOpen(false),
 		}
 	})
 
 	return (
 		<>
-			<div ref={containerRef} className={className} />
+			<div className="flex flex-col">
+				{findPanelOpen && (
+					<FindPanel view={view} onClose={() => setFindPanelOpen(false)} />
+				)}
+				<div ref={containerRef} className={className} />
+			</div>
 
 			<FloatingActions
 				editor={internalRef}
