@@ -17,7 +17,8 @@ import {
 	TooltipContent,
 	TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { Download, MoreHorizontal, Upload } from "lucide-react"
+import { Download, FileUp, MoreHorizontal, Upload } from "lucide-react"
+import { Link } from "@tanstack/react-router"
 import {
 	importMarkdownFiles,
 	resolveWikilinksForImport,
@@ -128,6 +129,10 @@ function SidebarImportExport({
 					<TooltipContent side="bottom">Import & Export</TooltipContent>
 				</Tooltip>
 				<DropdownMenuContent align="end">
+					<DropdownMenuItem render={<Link to="/local" />}>
+						<FileUp />
+						Open Local File
+					</DropdownMenuItem>
 					<DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
 						<Download />
 						Import

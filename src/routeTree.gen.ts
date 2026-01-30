@@ -16,7 +16,9 @@ import { Route as NewRouteImport } from './routes/new'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ImprintRouteImport } from './routes/imprint'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as LocalIndexRouteImport } from './routes/local.index'
 import { Route as TutorSlugRouteImport } from './routes/tutor.$slug'
+import { Route as LocalPreviewRouteImport } from './routes/local.preview'
 import { Route as SpacesSpaceIdIndexRouteImport } from './routes/spaces.$spaceId.index'
 import { Route as DocIdIndexRouteImport } from './routes/doc.$id.index'
 import { Route as SpacesSpaceIdSettingsRouteImport } from './routes/spaces.$spaceId.settings'
@@ -61,9 +63,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LocalIndexRoute = LocalIndexRouteImport.update({
+  id: '/local/',
+  path: '/local/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TutorSlugRoute = TutorSlugRouteImport.update({
   id: '/tutor/$slug',
   path: '/tutor/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocalPreviewRoute = LocalPreviewRouteImport.update({
+  id: '/local/preview',
+  path: '/local/preview',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SpacesSpaceIdIndexRoute = SpacesSpaceIdIndexRouteImport.update({
@@ -115,7 +127,9 @@ export interface FileRoutesByFullPath {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/welcome': typeof WelcomeRoute
+  '/local/preview': typeof LocalPreviewRoute
   '/tutor/$slug': typeof TutorSlugRoute
+  '/local/': typeof LocalIndexRoute
   '/doc/$id/preview': typeof DocIdPreviewRoute
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
@@ -133,7 +147,9 @@ export interface FileRoutesByTo {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/welcome': typeof WelcomeRoute
+  '/local/preview': typeof LocalPreviewRoute
   '/tutor/$slug': typeof TutorSlugRoute
+  '/local': typeof LocalIndexRoute
   '/doc/$id/preview': typeof DocIdPreviewRoute
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
@@ -152,7 +168,9 @@ export interface FileRoutesById {
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/welcome': typeof WelcomeRoute
+  '/local/preview': typeof LocalPreviewRoute
   '/tutor/$slug': typeof TutorSlugRoute
+  '/local/': typeof LocalIndexRoute
   '/doc/$id/preview': typeof DocIdPreviewRoute
   '/doc/$id/slideshow': typeof DocIdSlideshowRoute
   '/doc/$id/teleprompter': typeof DocIdTeleprompterRoute
@@ -172,7 +190,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/welcome'
+    | '/local/preview'
     | '/tutor/$slug'
+    | '/local/'
     | '/doc/$id/preview'
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
@@ -190,7 +210,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/welcome'
+    | '/local/preview'
     | '/tutor/$slug'
+    | '/local'
     | '/doc/$id/preview'
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
@@ -208,7 +230,9 @@ export interface FileRouteTypes {
     | '/privacy'
     | '/settings'
     | '/welcome'
+    | '/local/preview'
     | '/tutor/$slug'
+    | '/local/'
     | '/doc/$id/preview'
     | '/doc/$id/slideshow'
     | '/doc/$id/teleprompter'
@@ -227,7 +251,9 @@ export interface RootRouteChildren {
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   WelcomeRoute: typeof WelcomeRoute
+  LocalPreviewRoute: typeof LocalPreviewRoute
   TutorSlugRoute: typeof TutorSlugRoute
+  LocalIndexRoute: typeof LocalIndexRoute
   DocIdPreviewRoute: typeof DocIdPreviewRoute
   DocIdSlideshowRoute: typeof DocIdSlideshowRoute
   DocIdTeleprompterRoute: typeof DocIdTeleprompterRoute
@@ -289,11 +315,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/local/': {
+      id: '/local/'
+      path: '/local'
+      fullPath: '/local/'
+      preLoaderRoute: typeof LocalIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tutor/$slug': {
       id: '/tutor/$slug'
       path: '/tutor/$slug'
       fullPath: '/tutor/$slug'
       preLoaderRoute: typeof TutorSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/local/preview': {
+      id: '/local/preview'
+      path: '/local/preview'
+      fullPath: '/local/preview'
+      preLoaderRoute: typeof LocalPreviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/spaces/$spaceId/': {
@@ -363,7 +403,9 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   WelcomeRoute: WelcomeRoute,
+  LocalPreviewRoute: LocalPreviewRoute,
   TutorSlugRoute: TutorSlugRoute,
+  LocalIndexRoute: LocalIndexRoute,
   DocIdPreviewRoute: DocIdPreviewRoute,
   DocIdSlideshowRoute: DocIdSlideshowRoute,
   DocIdTeleprompterRoute: DocIdTeleprompterRoute,
