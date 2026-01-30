@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 import { EditorView } from "@codemirror/view"
 import { X, ChevronUp, ChevronDown, CaseSensitive } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -9,26 +10,54 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Kbd } from "@/components/ui/kbd"
+import { useSidebar } from "@/components/ui/sidebar"
 import { setFindQuery, selectMatch, getFindState } from "./find-extension"
 
 export { FindPanel }
 
 interface FindPanelProps {
 	view: EditorView | null
+	initialQuery?: string
 	onClose: () => void
 }
 
-function FindPanel({ view, onClose }: FindPanelProps) {
+function FindPanel({ view, initialQuery, onClose }: FindPanelProps) {
+	let { rightOpen, isMobile } = useSidebar()
 	let inputRef = useRef<HTMLInputElement>(null)
-	let [query, setQuery] = useState(lastQuery)
+	let [query, setQuery] = useState(initialQuery ?? lastQuery)
 	let [caseSensitive, setCaseSensitive] = useState(lastCaseSensitive)
 	let [fuzzy, setFuzzy] = useState(lastFuzzy)
 	let [matchInfo, setMatchInfo] = useState({ current: 0, total: 0 })
+
+	let closeRef = useRef(onClose)
+	let viewRef = useRef(view)
+
+	useEffect(() => {
+		closeRef.current = onClose
+		viewRef.current = view
+	})
 
 	// Focus input on mount
 	useEffect(() => {
 		inputRef.current?.focus()
 		inputRef.current?.select()
+	}, [])
+
+	// Global Escape handler
+	useEffect(() => {
+		function handleGlobalKeyDown(e: KeyboardEvent) {
+			if (e.key === "Escape") {
+				e.preventDefault()
+				if (viewRef.current) {
+					setFindQuery(viewRef.current, "", false, false)
+					viewRef.current.focus()
+				}
+				closeRef.current()
+			}
+		}
+
+		document.addEventListener("keydown", handleGlobalKeyDown)
+		return () => document.removeEventListener("keydown", handleGlobalKeyDown)
 	}, [])
 
 	// Sync query to editor
@@ -103,8 +132,16 @@ function FindPanel({ view, onClose }: FindPanelProps) {
 		if (view) selectMatch(view, "prev")
 	}
 
-	return (
-		<div className="find-panel bg-background border-border absolute top-3 right-3 z-10 flex items-center gap-1.5 rounded border px-2 py-1.5 shadow-md">
+	let sidebarWidth = rightOpen && !isMobile ? "14rem" : "0px"
+
+	let panel = (
+		<div
+			className="find-panel bg-background border-border fixed z-50 flex items-center gap-1.5 rounded border px-2 py-1.5 shadow-md transition-[right] duration-200 ease-in"
+			style={{
+				top: "calc(48px + env(safe-area-inset-top) + 0.75rem)",
+				right: `calc(${sidebarWidth} + 0.75rem)`,
+			}}
+		>
 			<div className="relative">
 				<input
 					ref={inputRef}
@@ -213,6 +250,8 @@ function FindPanel({ view, onClose }: FindPanelProps) {
 			</Tooltip>
 		</div>
 	)
+
+	return createPortal(panel, document.body)
 }
 
 // Module-level state for persistence across panel open/close

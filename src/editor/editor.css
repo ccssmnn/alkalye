@@ -85,14 +85,6 @@
 	.group\/sidebar-wrapper[data-right-sidebar-open="true"] .editor-toolbar {
 		right: var(--sidebar-width);
 	}
-
-	.find-panel {
-		transition: right 200ms ease-in;
-	}
-
-	.group\/sidebar-wrapper[data-right-sidebar-open="true"] .find-panel {
-		right: calc(var(--sidebar-width) + 0.75rem);
-	}
 }
 
 /* ========================================

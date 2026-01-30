@@ -319,6 +319,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				let current = document.documentElement.dataset.focusMode === "true"
 				document.documentElement.dataset.focusMode = String(!current)
 			},
+			openFind: () => editor.current?.openFind(),
 			docWithContent,
 		})
 	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
