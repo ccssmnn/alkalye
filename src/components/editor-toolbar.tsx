@@ -41,6 +41,7 @@ interface EditorToolbarProps {
 	containerRef?: React.RefObject<HTMLDivElement | null>
 	onToggleLeftSidebar: () => void
 	onToggleRightSidebar: () => void
+
 	onSaveCopy?: () => Promise<void>
 	saveCopyState?: "idle" | "saving" | "saved"
 	content?: string
@@ -53,6 +54,7 @@ function EditorToolbar({
 	containerRef,
 	onToggleLeftSidebar,
 	onToggleRightSidebar,
+
 	onSaveCopy,
 	saveCopyState = "idle",
 	content,

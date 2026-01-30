@@ -60,6 +60,8 @@ import { createLinkDecorations } from "./link-decorations"
 import { createWikilinkDecorations } from "./wikilink-decorations"
 import { createBacklinkDecorations } from "./backlink-decorations"
 import { createImageDecorations } from "./image-decorations"
+import { findExtension, selectMatch } from "./find-extension"
+import { FindPanel } from "./find-panel"
 
 import { useIsMobile } from "@/lib/use-mobile"
 import {
@@ -139,6 +141,7 @@ interface MarkdownEditorRef {
 	insertText(text: string): void
 
 	getSelection(): { from: number; to: number } | null
+	getSelectedText(): string
 	restoreSelection(selection: { from: number; to: number }): void
 
 	getScrollPosition(): { top: number; left: number }
@@ -175,6 +178,9 @@ interface MarkdownEditorRef {
 	getLinkAtCursor(): string | null
 	getEditor(): EditorView | null
 	refreshDecorations(): void
+
+	openFind(initialQuery?: string): void
+	closeFind(): void
 }
 
 function useMarkdownEditorRef() {
@@ -211,6 +217,10 @@ function MarkdownEditor(
 	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
+	let [findPanelOpen, setFindPanelOpen] = useState(false)
+	let [findInitialQuery, setFindInitialQuery] = useState<string | undefined>()
+	let [findPanelHeight, setFindPanelHeight] = useState(0)
+	let findPanelOpenRef = useRef(false)
 	let [mediaPreviewOpen, setMediaPreviewOpen] = useState(false)
 	let [mediaPreview, setMediaPreview] = useState<{
 		url: string
@@ -219,6 +229,7 @@ function MarkdownEditor(
 	} | null>(null)
 
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
+	findPanelOpenRef.current = findPanelOpen
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
 
@@ -233,6 +244,18 @@ function MarkdownEditor(
 	useEffect(() => {
 		dataRef.current = { assets, documents }
 	})
+
+	// Set CSS variable on parent .markdown-editor for find panel padding
+	useEffect(() => {
+		let parent = containerRef.current?.closest(".markdown-editor")
+		if (parent instanceof HTMLElement) {
+			parent.dataset.findPanelOpen = String(findPanelOpen)
+			parent.style.setProperty(
+				"--find-panel-height",
+				findPanelOpen ? `${findPanelHeight}px` : "0px",
+			)
+		}
+	}, [findPanelOpen, findPanelHeight])
 
 	let titleCache = new Map<string, { title: string; exists: boolean }>()
 	if (documents) {
@@ -369,6 +392,36 @@ function MarkdownEditor(
 						},
 						preventDefault: true,
 					},
+					{
+						key: "Mod-f",
+						run: () => {
+							setFindPanelOpen(true)
+							return true
+						},
+						preventDefault: true,
+					},
+					{
+						key: "F3",
+						run: view => {
+							if (findPanelOpenRef.current) {
+								selectMatch(view, "next")
+								return true
+							}
+							return false
+						},
+						preventDefault: true,
+					},
+					{
+						key: "Shift-F3",
+						run: view => {
+							if (findPanelOpenRef.current) {
+								selectMatch(view, "prev")
+								return true
+							}
+							return false
+						},
+						preventDefault: true,
+					},
 				]),
 			),
 			markdown({
@@ -410,6 +463,7 @@ function MarkdownEditor(
 				handleWikilinkNavigate,
 			),
 			createImageDecorations(imageResolver, handleImagePreview),
+			findExtension,
 		]
 
 		if (initRef.current.placeholder) {
@@ -573,6 +627,28 @@ function MarkdownEditor(
 		})
 	}
 
+	function getSelectedText() {
+		if (!view) return ""
+		let { from, to } = view.state.selection.main
+		if (from === to) return ""
+		return view.state.sliceDoc(from, to)
+	}
+
+	function openFind(initialQuery?: string) {
+		if (initialQuery === undefined && view) {
+			let { from, to } = view.state.selection.main
+			if (from !== to) {
+				initialQuery = view.state.sliceDoc(from, to)
+			}
+		}
+		setFindInitialQuery(initialQuery)
+		setFindPanelOpen(true)
+	}
+
+	function closeFind() {
+		setFindPanelOpen(false)
+	}
+
 	useImperativeHandle(ref, () => ({
 		getContent,
 		setContent,
@@ -583,6 +659,7 @@ function MarkdownEditor(
 			let { from, to } = view.state.selection.main
 			return { from, to }
 		},
+		getSelectedText,
 		restoreSelection: (selection: { from: number; to: number }) => {
 			if (!view) return
 			view.focus()
@@ -678,6 +755,8 @@ function MarkdownEditor(
 		getLinkAtCursor,
 		getEditor: () => view,
 		refreshDecorations,
+		openFind,
+		closeFind,
 	}))
 
 	let internalRef = useRef<MarkdownEditorRef | null>(null)
@@ -692,6 +771,7 @@ function MarkdownEditor(
 				let { from, to } = view.state.selection.main
 				return { from, to }
 			},
+			getSelectedText,
 			restoreSelection: () => {},
 			getScrollPosition: () => ({ top: 0, left: 0 }),
 			setScrollPosition: () => {},
@@ -727,11 +807,22 @@ function MarkdownEditor(
 			getLinkAtCursor,
 			getEditor: () => view,
 			refreshDecorations,
+			openFind,
+			closeFind,
 		}
 	})
 
 	return (
 		<>
+			{findPanelOpen && (
+				<FindPanel
+					key={findInitialQuery}
+					view={view}
+					initialQuery={findInitialQuery}
+					onClose={() => setFindPanelOpen(false)}
+					onHeightChange={setFindPanelHeight}
+				/>
+			)}
 			<div ref={containerRef} className={className} />
 
 			<FloatingActions

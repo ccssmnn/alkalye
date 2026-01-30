@@ -279,6 +279,7 @@ function setupKeyboardShortcuts(opts: {
 	toggleLeft: () => void
 	toggleRight: () => void
 	toggleFocusMode: () => void
+	openFind?: () => void
 	docWithContent: MaybeDocWithContent
 }) {
 	function handleKeyDown(e: KeyboardEvent) {
@@ -308,6 +309,15 @@ function setupKeyboardShortcuts(opts: {
 		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "f") {
 			e.preventDefault()
 			opts.toggleFocusMode()
+			return
+		}
+		if (
+			(e.metaKey || e.ctrlKey) &&
+			!e.shiftKey &&
+			e.key.toLowerCase() === "f"
+		) {
+			e.preventDefault()
+			opts.openFind?.()
 			return
 		}
 		if ((e.metaKey || e.ctrlKey) && e.key === "s") {

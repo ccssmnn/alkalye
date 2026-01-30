@@ -52,6 +52,8 @@ import {
 	SidebarGroup,
 	SidebarGroupContent,
 	SidebarMenu,
+	SidebarMenuButton,
+	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/components/ui/sidebar"
 import { canEdit, isDocumentPublic, getDocumentGroup } from "@/lib/documents"
@@ -59,7 +61,7 @@ import { deletePersonalDocument } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
 import { usePresence } from "@/lib/presence"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
-import { HelpCircle, Loader2, Settings, Plus } from "lucide-react"
+import { HelpCircle, Loader2, Search, Settings, Plus } from "lucide-react"
 
 import { SidebarViewLinks } from "@/components/sidebar-view-links"
 import { SidebarFileMenu } from "@/components/sidebar-file-menu"
@@ -319,9 +321,10 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				let current = document.documentElement.dataset.focusMode === "true"
 				document.documentElement.dataset.focusMode = String(!current)
 			},
+			openFind: () => editor.current?.openFind(),
 			docWithContent,
 		})
-	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
+	}, [navigate, docId, toggleLeft, toggleRight, docWithContent, editor])
 
 	let allDocs = getPersonalDocs(me)
 
@@ -467,6 +470,18 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				<SidebarGroup>
 					<SidebarGroupContent>
 						<SidebarMenu>
+							<SidebarMenuItem>
+								<SidebarMenuButton
+									onClick={() =>
+										setRightOpenMobile(false, () => editor.current?.openFind())
+									}
+									nativeButton
+								>
+									<Search className="size-4" />
+									Find
+								</SidebarMenuButton>
+							</SidebarMenuItem>
+							<SidebarSeparator />
 							<SidebarViewLinks doc={doc} />
 							<SidebarSeparator />
 							<SidebarFileMenu
