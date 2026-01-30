@@ -19,11 +19,18 @@ interface FindPanelProps {
 	view: EditorView | null
 	initialQuery?: string
 	onClose: () => void
+	onHeightChange?: (height: number) => void
 }
 
-function FindPanel({ view, initialQuery, onClose }: FindPanelProps) {
+function FindPanel({
+	view,
+	initialQuery,
+	onClose,
+	onHeightChange,
+}: FindPanelProps) {
 	let { rightOpen, isMobile } = useSidebar()
 	let inputRef = useRef<HTMLInputElement>(null)
+	let panelRef = useRef<HTMLDivElement>(null)
 	let [query, setQuery] = useState(initialQuery ?? lastQuery)
 	let [caseSensitive, setCaseSensitive] = useState(lastCaseSensitive)
 	let [fuzzy, setFuzzy] = useState(lastFuzzy)
@@ -42,6 +49,23 @@ function FindPanel({ view, initialQuery, onClose }: FindPanelProps) {
 		inputRef.current?.focus()
 		inputRef.current?.select()
 	}, [])
+
+	// Report height changes
+	useEffect(() => {
+		if (!panelRef.current || !onHeightChange) return
+
+		let observer = new ResizeObserver(entries => {
+			let entry = entries[0]
+			if (entry) {
+				onHeightChange(entry.contentRect.height + 16) // +16 for padding
+			}
+		})
+
+		observer.observe(panelRef.current)
+		onHeightChange(panelRef.current.offsetHeight + 16)
+
+		return () => observer.disconnect()
+	}, [onHeightChange])
 
 	// Global Escape handler
 	useEffect(() => {
@@ -136,13 +160,16 @@ function FindPanel({ view, initialQuery, onClose }: FindPanelProps) {
 
 	let panel = (
 		<div
-			className="find-panel bg-background border-border fixed z-50 flex items-center gap-1.5 rounded border px-2 py-1.5 shadow-md transition-[right] duration-200 ease-in"
+			ref={panelRef}
+			className="find-panel bg-background border-border fixed z-50 flex flex-col gap-1.5 rounded border p-2 shadow-md transition-[right] duration-200 ease-in md:flex-row md:items-center md:py-1.5"
 			style={{
 				top: "calc(48px + env(safe-area-inset-top) + 0.75rem)",
 				right: `calc(${sidebarWidth} + 0.75rem)`,
+				left: isMobile ? "0.75rem" : "auto",
 			}}
 		>
-			<div className="relative">
+			{/* Row 1: Input + Close */}
+			<div className="flex items-center gap-1.5">
 				<input
 					ref={inputRef}
 					type="text"
@@ -150,104 +177,106 @@ function FindPanel({ view, initialQuery, onClose }: FindPanelProps) {
 					onChange={e => setQuery(e.target.value)}
 					onKeyDown={handleKeyDown}
 					placeholder="Find..."
-					className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-7 w-48 rounded-none border bg-transparent px-2 text-xs outline-none focus-visible:ring-1"
+					className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-7 flex-1 rounded-none border bg-transparent px-2 text-xs outline-none focus-visible:ring-1 md:w-48 md:flex-none"
 				/>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button size="icon-xs" variant="ghost" onClick={handleClose}>
+								<X className="size-3.5" />
+							</Button>
+						}
+					/>
+					<TooltipContent side="bottom">
+						Close <Kbd>Esc</Kbd>
+					</TooltipContent>
+				</Tooltip>
 			</div>
 
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							size="icon-xs"
-							variant={caseSensitive ? "secondary" : "ghost"}
-							onClick={() => setCaseSensitive(!caseSensitive)}
-						>
-							<CaseSensitive className="size-3.5" />
-						</Button>
-					}
-				/>
-				<TooltipContent side="bottom">Case sensitive</TooltipContent>
-			</Tooltip>
+			{/* Row 2: Controls */}
+			<div className="flex items-center gap-1.5">
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								size="icon-xs"
+								variant={caseSensitive ? "secondary" : "ghost"}
+								onClick={() => setCaseSensitive(!caseSensitive)}
+							>
+								<CaseSensitive className="size-3.5" />
+							</Button>
+						}
+					/>
+					<TooltipContent side="bottom">Case sensitive</TooltipContent>
+				</Tooltip>
 
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							size="xs"
-							variant={fuzzy ? "secondary" : "ghost"}
-							onClick={() => setFuzzy(!fuzzy)}
-							className="px-1.5 font-mono"
-						>
-							.*
-						</Button>
-					}
-				/>
-				<TooltipContent side="bottom">Fuzzy matching</TooltipContent>
-			</Tooltip>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								size="xs"
+								variant={fuzzy ? "secondary" : "ghost"}
+								onClick={() => setFuzzy(!fuzzy)}
+								className="px-1.5 font-mono"
+							>
+								.*
+							</Button>
+						}
+					/>
+					<TooltipContent side="bottom">Fuzzy matching</TooltipContent>
+				</Tooltip>
 
-			<span
-				className={cn(
-					"text-muted-foreground min-w-[4rem] text-center text-xs tabular-nums",
-					matchInfo.total === 0 && query && "text-destructive",
-				)}
-			>
-				{query
-					? matchInfo.total > 0
-						? `${matchInfo.current} of ${matchInfo.total}`
-						: "No results"
-					: ""}
-			</span>
+				<span
+					className={cn(
+						"text-muted-foreground flex-1 text-center text-xs tabular-nums md:min-w-[4rem] md:flex-none",
+						matchInfo.total === 0 && query && "text-destructive",
+					)}
+				>
+					{query
+						? matchInfo.total > 0
+							? `${matchInfo.current} of ${matchInfo.total}`
+							: "No results"
+						: ""}
+				</span>
 
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							size="icon-xs"
-							variant="ghost"
-							onClick={handlePrev}
-							disabled={matchInfo.total === 0}
-						>
-							<ChevronUp className="size-3.5" />
-						</Button>
-					}
-				/>
-				<TooltipContent side="bottom">
-					Previous <Kbd>Shift</Kbd>
-					<Kbd>F3</Kbd> or <Kbd>Shift</Kbd>
-					<Kbd>Enter</Kbd>
-				</TooltipContent>
-			</Tooltip>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								size="icon-xs"
+								variant="ghost"
+								onClick={handlePrev}
+								disabled={matchInfo.total === 0}
+							>
+								<ChevronUp className="size-3.5" />
+							</Button>
+						}
+					/>
+					<TooltipContent side="bottom">
+						Previous <Kbd>Shift</Kbd>
+						<Kbd>F3</Kbd> or <Kbd>Shift</Kbd>
+						<Kbd>Enter</Kbd>
+					</TooltipContent>
+				</Tooltip>
 
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							size="icon-xs"
-							variant="ghost"
-							onClick={handleNext}
-							disabled={matchInfo.total === 0}
-						>
-							<ChevronDown className="size-3.5" />
-						</Button>
-					}
-				/>
-				<TooltipContent side="bottom">
-					Next <Kbd>F3</Kbd> or <Kbd>Enter</Kbd>
-				</TooltipContent>
-			</Tooltip>
-
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button size="icon-xs" variant="ghost" onClick={handleClose}>
-							<X className="size-3.5" />
-						</Button>
-					}
-				/>
-				<TooltipContent side="bottom">
-					Close <Kbd>Esc</Kbd>
-				</TooltipContent>
-			</Tooltip>
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								size="icon-xs"
+								variant="ghost"
+								onClick={handleNext}
+								disabled={matchInfo.total === 0}
+							>
+								<ChevronDown className="size-3.5" />
+							</Button>
+						}
+					/>
+					<TooltipContent side="bottom">
+						Next <Kbd>F3</Kbd> or <Kbd>Enter</Kbd>
+					</TooltipContent>
+				</Tooltip>
+			</div>
 		</div>
 	)
 

@@ -219,6 +219,7 @@ function MarkdownEditor(
 	let [isFocused, setIsFocused] = useState(false)
 	let [findPanelOpen, setFindPanelOpen] = useState(false)
 	let [findInitialQuery, setFindInitialQuery] = useState<string | undefined>()
+	let [findPanelHeight, setFindPanelHeight] = useState(0)
 	let findPanelOpenRef = useRef(false)
 	let [mediaPreviewOpen, setMediaPreviewOpen] = useState(false)
 	let [mediaPreview, setMediaPreview] = useState<{
@@ -243,6 +244,18 @@ function MarkdownEditor(
 	useEffect(() => {
 		dataRef.current = { assets, documents }
 	})
+
+	// Set CSS variable on parent .markdown-editor for find panel padding
+	useEffect(() => {
+		let parent = containerRef.current?.closest(".markdown-editor")
+		if (parent instanceof HTMLElement) {
+			parent.dataset.findPanelOpen = String(findPanelOpen)
+			parent.style.setProperty(
+				"--find-panel-height",
+				findPanelOpen ? `${findPanelHeight}px` : "0px",
+			)
+		}
+	}, [findPanelOpen, findPanelHeight])
 
 	let titleCache = new Map<string, { title: string; exists: boolean }>()
 	if (documents) {
@@ -813,6 +826,7 @@ function MarkdownEditor(
 					view={view}
 					initialQuery={findInitialQuery}
 					onClose={() => setFindPanelOpen(false)}
+					onHeightChange={setFindPanelHeight}
 				/>
 			)}
 			<div ref={containerRef} className={className} />
