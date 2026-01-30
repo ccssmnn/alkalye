@@ -339,7 +339,7 @@ function SpaceEditorContent({
 			openFind: () => editor.current?.openFind(),
 			docWithContent,
 		})
-	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
+	}, [navigate, docId, toggleLeft, toggleRight, docWithContent, editor])
 
 	let allDocs = getSpaceDocs(space)
 	let spaceDocs = space.documents?.$isLoaded ? space.documents : null

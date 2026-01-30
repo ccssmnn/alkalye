@@ -322,7 +322,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 			openFind: () => editor.current?.openFind(),
 			docWithContent,
 		})
-	}, [navigate, docId, toggleLeft, toggleRight, docWithContent])
+	}, [navigate, docId, toggleLeft, toggleRight, docWithContent, editor])
 
 	let allDocs = getPersonalDocs(me)
 
