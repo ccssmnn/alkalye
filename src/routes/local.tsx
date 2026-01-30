@@ -30,7 +30,6 @@ import {
 	FileUp,
 	Search,
 	Settings,
-	Save,
 	Check,
 	AlertCircle,
 	FileText,
@@ -39,8 +38,16 @@ import {
 	Cloud,
 	ChevronRight,
 	Eye,
+	Pencil,
+	EllipsisIcon,
 } from "lucide-react"
-import { ThemeToggle, useTheme } from "@/lib/theme"
+import {
+	ThemeToggle,
+	useTheme,
+	type Theme,
+	useResolvedTheme,
+	ThemeSubmenu,
+} from "@/lib/theme"
 import {
 	Tooltip,
 	TooltipContent,
@@ -57,6 +64,7 @@ import {
 	consumeLaunchQueue,
 	isFileSystemAccessSupported,
 } from "@/lib/local-file"
+import { CopyToSyncedDialog } from "@/components/copy-to-synced-dialog"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -65,17 +73,21 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { modKey } from "@/lib/platform"
+import { modKey, altModKey } from "@/lib/platform"
+import { Preview } from "@/components/preview"
+import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { useDocTitles, type ResolvedDoc } from "@/lib/doc-resolver"
 
 export { Route }
 
-let Route = createFileRoute("/local/")({
+let Route = createFileRoute("/local")({
 	component: LocalFilePage,
 })
 
 function LocalFilePage() {
 	let store = useLocalFileStore()
 	let [initialized, setInitialized] = useState(false)
+	let [isPreview, setIsPreview] = useState(false)
 
 	useEffect(() => {
 		consumeLaunchQueue().then(result => {
@@ -87,7 +99,6 @@ function LocalFilePage() {
 			}
 			setInitialized(true)
 		})
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
 	if (!initialized) {
@@ -106,7 +117,7 @@ function LocalFilePage() {
 
 	return (
 		<SidebarProvider>
-			<LocalEditorContent />
+			<LocalEditorContent isPreview={isPreview} setIsPreview={setIsPreview} />
 		</SidebarProvider>
 	)
 }
@@ -132,7 +143,6 @@ function LocalFileEmptyState() {
 		store.setFilename(file.name)
 		store.setContent(content)
 		store.setLastSavedContent(content)
-		// No handle - user will need to "Save As" or download
 	}
 
 	let supportsFileSystem = isFileSystemAccessSupported()
@@ -144,7 +154,7 @@ function LocalFileEmptyState() {
 				<EmptyTitle>Open a Local File</EmptyTitle>
 			</EmptyHeader>
 			<p className="text-muted-foreground max-w-md text-center text-sm">
-				Edit a markdown file from your computer without syncing it to the cloud.
+				Edit a markdown file from your computer without syncing it to cloud.
 				Changes are saved directly to the file.
 			</p>
 			<div className="mt-6 flex flex-col gap-3">
@@ -156,7 +166,7 @@ function LocalFileEmptyState() {
 				) : (
 					<>
 						<label className="cursor-pointer">
-							<span className="focus-visible:border-ring focus-visible:ring-ring/50 bg-primary text-primary-foreground inline-flex h-11 items-center justify-center gap-1.5 rounded-none border border-transparent px-3 text-sm font-medium transition-all active:scale-97 md:h-9 md:px-2.5 md:text-xs">
+							<span className="bg-primary text-primary-foreground inline-flex h-11 items-center justify-center gap-1.5 rounded-none border border-transparent px-3 text-sm font-medium transition-all active:scale-97 md:h-9 md:px-2.5 md:text-xs">
 								<FileUp className="mr-2 size-4" />
 								Upload File
 							</span>
@@ -195,13 +205,20 @@ let meResolve = {
 	},
 } as const
 
-function LocalEditorContent() {
+function LocalEditorContent({
+	isPreview,
+	setIsPreview,
+}: {
+	isPreview: boolean
+	setIsPreview: (value: boolean) => void
+}) {
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
 	let saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
 	let store = useLocalFileStore()
 	let { theme, setTheme } = useTheme()
+	let resolvedTheme = useResolvedTheme()
 	let {
 		toggleLeft,
 		toggleRight,
@@ -209,6 +226,7 @@ function LocalEditorContent() {
 		setLeftOpenMobile,
 		setRightOpenMobile,
 	} = useSidebar()
+	let [copyDialogOpen, setCopyDialogOpen] = useState(false)
 
 	let me = useAccount(UserAccount, { resolve: meResolve })
 	let editorSettings =
@@ -220,7 +238,6 @@ function LocalEditorContent() {
 	let isDirty = content !== store.lastSavedContent
 	let docTitle = getDocumentTitle(content) || store.filename || "Untitled"
 
-	// Wikilink documents from synced docs (if user is logged in)
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
 		documents = [...me.root.documents]
@@ -231,13 +248,11 @@ function LocalEditorContent() {
 			}))
 	}
 
-	// Block navigation with unsaved changes
 	useBlocker({
 		shouldBlockFn: () => isDirty,
 		enableBeforeUnload: isDirty,
 	})
 
-	// Auto-save with debounce
 	let fileHandle = store.fileHandle
 	useEffect(() => {
 		if (!fileHandle || !isDirty) return
@@ -271,6 +286,51 @@ function LocalEditorContent() {
 		}
 	}, [content, fileHandle, isDirty])
 
+	async function handleSaveAs() {
+		let suggestedName = store.filename || docTitle + ".md"
+		let newHandle = await saveLocalFileAs(content, suggestedName)
+		if (newHandle) {
+			store.setFileHandle(newHandle)
+			store.setFilename(suggestedName)
+			store.setLastSavedContent(content)
+			store.setSaveStatus("saved")
+			setTimeout(() => store.setSaveStatus("idle"), 1500)
+		}
+	}
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent) {
+			let isMod = e.metaKey || e.ctrlKey
+
+			if (isMod && e.key === "s") {
+				e.preventDefault()
+				handleSaveAs()
+			}
+
+			if (isMod && e.shiftKey && e.key.toLowerCase() === "e") {
+				e.preventDefault()
+				toggleLeft()
+			}
+
+			if (isMod && e.key === ".") {
+				e.preventDefault()
+				toggleRight()
+			}
+
+			if (
+				isMod &&
+				e.altKey &&
+				(e.key.toLowerCase() === "r" || e.code === "KeyR")
+			) {
+				e.preventDefault()
+				setIsPreview(!isPreview)
+			}
+		}
+
+		document.addEventListener("keydown", handleKeyDown)
+		return () => document.removeEventListener("keydown", handleKeyDown)
+	}, [handleSaveAs, toggleLeft, toggleRight, isPreview, setIsPreview])
+
 	function handleChange(newContent: string) {
 		store.setContent(newContent)
 	}
@@ -294,32 +354,8 @@ function LocalEditorContent() {
 		}
 	}
 
-	async function handleNewLocalFile() {
-		if (isDirty) {
-			let confirmed = window.confirm(
-				"You have unsaved changes. Create new file anyway?",
-			)
-			if (!confirmed) return
-		}
-
-		useLocalFileStore.getState().reset()
-		editor.current?.setContent("")
-	}
-
-	async function handleSaveAs() {
-		let suggestedName = store.filename || `${docTitle}.md`
-		let newHandle = await saveLocalFileAs(content, suggestedName)
-		if (newHandle) {
-			store.setFileHandle(newHandle)
-			store.setFilename(suggestedName)
-			store.setLastSavedContent(content)
-			store.setSaveStatus("saved")
-			setTimeout(() => store.setSaveStatus("idle"), 1500)
-		}
-	}
-
 	function handleDownload() {
-		let filename = store.filename || `${docTitle}.md`
+		let filename = store.filename || docTitle + ".md"
 		let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
 		let url = URL.createObjectURL(blob)
 		let a = document.createElement("a")
@@ -329,60 +365,37 @@ function LocalEditorContent() {
 		URL.revokeObjectURL(url)
 	}
 
-	// Keyboard shortcuts
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			let isMod = e.metaKey || e.ctrlKey
+	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
+	let wikilinkCache = useDocTitles(wikilinkIds)
 
-			// Cmd+S - Save
-			if (isMod && e.key === "s") {
-				e.preventDefault()
-				handleSaveAs()
-			}
-
-			// Cmd+Shift+E - Toggle left sidebar
-			if (isMod && e.shiftKey && e.key.toLowerCase() === "e") {
-				e.preventDefault()
-				toggleLeft()
-			}
-
-			// Cmd+. - Toggle right sidebar
-			if (isMod && e.key === ".") {
-				e.preventDefault()
-				toggleRight()
-			}
-		}
-
-		document.addEventListener("keydown", handleKeyDown)
-		return () => document.removeEventListener("keydown", handleKeyDown)
-	}, [handleSaveAs, toggleLeft, toggleRight])
+	if (isPreview) {
+		return (
+			<LocalPreviewView
+				filename={store.filename}
+				docTitle={docTitle}
+				content={content}
+				wikilinks={wikilinkCache}
+				theme={resolvedTheme}
+				setTheme={setTheme}
+				onExit={() => setIsPreview(false)}
+			/>
+		)
+	}
 
 	return (
 		<>
 			<title>{isDirty ? `* ${docTitle}` : docTitle}</title>
 			<ListSidebar
 				header={
-					<>
-						<Tooltip>
-							<TooltipTrigger
-								render={
-									<Button
-										size="icon-sm"
-										variant="ghost"
-										onClick={handleOpenFile}
-										nativeButton
-									>
-										<FileUp className="size-4" />
-									</Button>
-								}
-							/>
-							<TooltipContent>Open Local File</TooltipContent>
-						</Tooltip>
-						<Button size="sm" onClick={handleNewLocalFile} nativeButton>
-							<Plus />
-							New
-						</Button>
-					</>
+					<Button
+						size="sm"
+						variant="ghost"
+						nativeButton={false}
+						render={<Link to="/local" />}
+					>
+						<Plus className="size-4" />
+						New Local File
+					</Button>
 				}
 				footer={<SidebarSyncStatus />}
 			>
@@ -472,8 +485,8 @@ function LocalEditorContent() {
 							<SidebarSeparator />
 							<SidebarMenuItem>
 								<SidebarMenuButton
-									nativeButton={false}
-									render={<a href="/local/preview" />}
+									onClick={() => setIsPreview(true)}
+									nativeButton
 								>
 									<Eye className="size-4" />
 									Preview
@@ -484,6 +497,7 @@ function LocalEditorContent() {
 								onOpen={handleOpenFile}
 								onSaveAs={handleSaveAs}
 								onDownload={handleDownload}
+								onCopyToSynced={() => setCopyDialogOpen(true)}
 								isMobile={isMobile}
 							/>
 							<SidebarEditMenu
@@ -509,7 +523,92 @@ function LocalEditorContent() {
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</DocumentSidebar>
+			<CopyToSyncedDialog
+				content={content}
+				filename={store.filename}
+				open={copyDialogOpen}
+				onOpenChange={setCopyDialogOpen}
+			/>
 		</>
+	)
+}
+
+function LocalPreviewView({
+	filename,
+	docTitle,
+	content,
+	wikilinks,
+	theme,
+	setTheme,
+	onExit,
+}: {
+	filename: string | null
+	docTitle: string
+	content: string
+	wikilinks: Map<string, ResolvedDoc>
+	theme: "light" | "dark"
+	setTheme: (theme: Theme) => void
+	onExit: () => void
+}) {
+	return (
+		<div className="bg-background fixed inset-0 flex flex-col">
+			<LocalPreviewTopBar
+				filename={filename}
+				docTitle={docTitle}
+				theme={theme}
+				setTheme={setTheme}
+				onExit={onExit}
+			/>
+			<Preview content={content} wikilinks={wikilinks} />
+		</div>
+	)
+}
+
+function LocalPreviewTopBar({
+	filename,
+	docTitle,
+	theme,
+	setTheme,
+	onExit,
+}: {
+	filename: string | null
+	docTitle: string
+	theme: "light" | "dark"
+	setTheme: (theme: Theme) => void
+	onExit: () => void
+}) {
+	return (
+		<div
+			className="border-border relative flex shrink-0 items-center justify-between border-b px-4 py-2"
+			style={{
+				paddingTop: "max(0.5rem, env(safe-area-inset-top))",
+				paddingLeft: "max(1rem, env(safe-area-inset-left))",
+				paddingRight: "max(1rem, env(safe-area-inset-right))",
+			}}
+		>
+			<span className="text-muted-foreground">{filename || "Local File"}</span>
+			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 truncate text-sm font-medium">
+				{docTitle}
+			</span>
+			<DropdownMenu>
+				<DropdownMenuTrigger
+					render={
+						<Button variant="ghost" size="icon" nativeButton={false}>
+							<EllipsisIcon className="size-4" />
+						</Button>
+					}
+				/>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={onExit}>
+						<Pencil className="size-4" />
+						Editor
+						<DropdownMenuShortcut>{altModKey}R</DropdownMenuShortcut>
+					</DropdownMenuItem>
+					<DropdownMenuSeparator />
+					<ThemeSubmenu theme={theme} setTheme={setTheme} />
+				</DropdownMenuContent>
+			</DropdownMenu>
+		</div>
 	)
 }
 
@@ -526,7 +625,7 @@ function LocalFileSaveStatus() {
 			<div className="flex items-center gap-2">
 				{store.saveStatus === "saving" && (
 					<>
-						<Save className="text-muted-foreground size-4 animate-pulse" />
+						<Check className="text-muted-foreground size-4 animate-pulse" />
 						<span className="text-muted-foreground text-sm">Saving...</span>
 					</>
 				)}
@@ -571,11 +670,13 @@ function LocalFileMenu({
 	onOpen,
 	onSaveAs,
 	onDownload,
+	onCopyToSynced,
 	isMobile,
 }: {
 	onOpen: () => void
 	onSaveAs: () => void
 	onDownload: () => void
+	onCopyToSynced: () => void
 	isMobile: boolean
 }) {
 	let supportsFileSystem = isFileSystemAccessSupported()
@@ -602,7 +703,7 @@ function LocalFileMenu({
 					<DropdownMenuSeparator />
 					{supportsFileSystem && (
 						<DropdownMenuItem onClick={onSaveAs}>
-							<Save className="size-4" />
+							<Check className="size-4" />
 							Save As...
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
 						</DropdownMenuItem>
@@ -612,9 +713,9 @@ function LocalFileMenu({
 						Download
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
-					<DropdownMenuItem render={<Link to="/new" />}>
+					<DropdownMenuItem onClick={onCopyToSynced}>
 						<Cloud className="size-4" />
-						New Synced Document
+						Copy to Synced Documents
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
