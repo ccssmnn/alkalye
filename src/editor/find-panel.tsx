@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { EditorView } from "@codemirror/view"
-import { X, ChevronUp, ChevronDown, CaseSensitive } from "lucide-react"
+import { X, ChevronUp, ChevronDown, CaseSensitive, Command } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import {
@@ -10,6 +10,7 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { Kbd } from "@/components/ui/kbd"
+import { isMac } from "@/lib/platform"
 import { useSidebar } from "@/components/ui/sidebar"
 import { setFindQuery, selectMatch, getFindState } from "./find-extension"
 
@@ -134,6 +135,9 @@ function FindPanel({
 			e.preventDefault()
 			if (view) {
 				selectMatch(view, e.shiftKey ? "prev" : "next")
+				if (e.metaKey || e.ctrlKey) {
+					view.focus()
+				}
 			}
 		}
 	}
@@ -272,7 +276,13 @@ function FindPanel({
 						}
 					/>
 					<TooltipContent side="bottom">
-						Next <Kbd>F3</Kbd> or <Kbd>Enter</Kbd>
+						<p>
+							Next <Kbd>F3</Kbd> or <Kbd>Enter</Kbd>
+						</p>
+						<p>
+							Go to match{" "}
+							<Kbd>{isMac ? <Command className="size-3" /> : "Ctrl+"}Enter</Kbd>
+						</p>
 					</TooltipContent>
 				</Tooltip>
 			</div>
