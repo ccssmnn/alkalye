@@ -70,14 +70,22 @@ function SidebarProvider({
 
 	function setLeftOpenMobile(open: boolean, onComplete?: () => void) {
 		if (onComplete && !open) {
-			leftMobileCompleteRef.current = onComplete
+			if (!leftOpenMobile) {
+				onComplete()
+			} else {
+				leftMobileCompleteRef.current = onComplete
+			}
 		}
 		_setLeftOpenMobile(open)
 	}
 
 	function setRightOpenMobile(open: boolean, onComplete?: () => void) {
 		if (onComplete && !open) {
-			rightMobileCompleteRef.current = onComplete
+			if (!rightOpenMobile) {
+				onComplete()
+			} else {
+				rightMobileCompleteRef.current = onComplete
+			}
 		}
 		_setRightOpenMobile(open)
 	}
