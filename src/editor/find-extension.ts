@@ -82,11 +82,6 @@ function selectMatch(view: EditorView, direction: "next" | "prev") {
 		selection: { anchor: match.from, head: match.to },
 		scrollIntoView: true,
 	})
-
-	// Ensure scroll happens
-	requestAnimationFrame(() => {
-		view.dispatch({ effects: EditorView.scrollIntoView(match.from) })
-	})
 }
 
 function getFindState(view: EditorView): FindState {
