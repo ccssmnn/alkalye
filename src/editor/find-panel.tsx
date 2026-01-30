@@ -128,10 +128,8 @@ function FindPanel({
 	}, [view])
 
 	function handleKeyDown(e: React.KeyboardEvent) {
-		if (e.key === "Escape") {
-			e.preventDefault()
-			handleClose()
-		} else if (e.key === "Enter") {
+		if (e.key === "Escape") return
+		if (e.key === "Enter") {
 			e.preventDefault()
 			if (view) {
 				selectMatch(view, e.shiftKey ? "prev" : "next")
