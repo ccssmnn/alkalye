@@ -39,6 +39,7 @@ function FindPanel({
 	let closeRef = useRef(onClose)
 	let viewRef = useRef(view)
 
+	// Keep refs in sync on every render to avoid stale closures in event handlers
 	useEffect(() => {
 		closeRef.current = onClose
 		viewRef.current = view

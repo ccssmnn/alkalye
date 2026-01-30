@@ -220,11 +220,10 @@ let findDecorations = ViewPlugin.fromClass(
 		}
 
 		update(update: ViewUpdate) {
-			// Rebuild if state changed or doc changed
 			let oldState = update.startState.field(findStateField, false)
 			let newState = update.state.field(findStateField, false)
 
-			if (oldState !== newState || update.docChanged || update.selectionSet) {
+			if (oldState !== newState || update.docChanged) {
 				this.decorations = this.buildDecorations(update.view)
 			}
 		}

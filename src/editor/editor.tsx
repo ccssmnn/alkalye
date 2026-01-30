@@ -627,6 +627,28 @@ function MarkdownEditor(
 		})
 	}
 
+	function getSelectedText() {
+		if (!view) return ""
+		let { from, to } = view.state.selection.main
+		if (from === to) return ""
+		return view.state.sliceDoc(from, to)
+	}
+
+	function openFind(initialQuery?: string) {
+		if (initialQuery === undefined && view) {
+			let { from, to } = view.state.selection.main
+			if (from !== to) {
+				initialQuery = view.state.sliceDoc(from, to)
+			}
+		}
+		setFindInitialQuery(initialQuery)
+		setFindPanelOpen(true)
+	}
+
+	function closeFind() {
+		setFindPanelOpen(false)
+	}
+
 	useImperativeHandle(ref, () => ({
 		getContent,
 		setContent,
@@ -637,12 +659,7 @@ function MarkdownEditor(
 			let { from, to } = view.state.selection.main
 			return { from, to }
 		},
-		getSelectedText: () => {
-			if (!view) return ""
-			let { from, to } = view.state.selection.main
-			if (from === to) return ""
-			return view.state.sliceDoc(from, to)
-		},
+		getSelectedText,
 		restoreSelection: (selection: { from: number; to: number }) => {
 			if (!view) return
 			view.focus()
@@ -738,17 +755,8 @@ function MarkdownEditor(
 		getLinkAtCursor,
 		getEditor: () => view,
 		refreshDecorations,
-		openFind: (initialQuery?: string) => {
-			if (initialQuery === undefined && view) {
-				let { from, to } = view.state.selection.main
-				if (from !== to) {
-					initialQuery = view.state.sliceDoc(from, to)
-				}
-			}
-			setFindInitialQuery(initialQuery)
-			setFindPanelOpen(true)
-		},
-		closeFind: () => setFindPanelOpen(false),
+		openFind,
+		closeFind,
 	}))
 
 	let internalRef = useRef<MarkdownEditorRef | null>(null)
@@ -763,12 +771,7 @@ function MarkdownEditor(
 				let { from, to } = view.state.selection.main
 				return { from, to }
 			},
-			getSelectedText: () => {
-				if (!view) return ""
-				let { from, to } = view.state.selection.main
-				if (from === to) return ""
-				return view.state.sliceDoc(from, to)
-			},
+			getSelectedText,
 			restoreSelection: () => {},
 			getScrollPosition: () => ({ top: 0, left: 0 }),
 			setScrollPosition: () => {},
@@ -804,17 +807,8 @@ function MarkdownEditor(
 			getLinkAtCursor,
 			getEditor: () => view,
 			refreshDecorations,
-			openFind: (initialQuery?: string) => {
-				if (initialQuery === undefined && view) {
-					let { from, to } = view.state.selection.main
-					if (from !== to) {
-						initialQuery = view.state.sliceDoc(from, to)
-					}
-				}
-				setFindInitialQuery(initialQuery)
-				setFindPanelOpen(true)
-			},
-			closeFind: () => setFindPanelOpen(false),
+			openFind,
+			closeFind,
 		}
 	})
 
