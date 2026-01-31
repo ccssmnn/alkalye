@@ -34,6 +34,7 @@ import {
 	type ImportProgress,
 } from "@/components/import-progress-dialog"
 import type { LoadedDocument } from "@/components/sidebar-document-list"
+import { Link } from "@tanstack/react-router"
 
 export { SidebarImportExport, handleImportFiles }
 export type { ImportOptions }
@@ -128,7 +129,7 @@ function SidebarImportExport({
 					<TooltipContent side="bottom">Import & Export</TooltipContent>
 				</Tooltip>
 				<DropdownMenuContent align="end">
-					<DropdownMenuItem render={<a href="/local" />}>
+					<DropdownMenuItem render={<Link to="/local" />}>
 						<FileUp />
 						Open Local File
 					</DropdownMenuItem>

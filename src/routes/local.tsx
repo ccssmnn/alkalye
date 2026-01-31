@@ -215,6 +215,10 @@ function LocalEditorContent({
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
 	let saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	let contentRef = useRef<string>("")
+	let storeRef = useRef<ReturnType<typeof useLocalFileStore.getState> | null>(
+		null,
+	)
 
 	let store = useLocalFileStore()
 	let { theme, setTheme } = useTheme()
@@ -237,6 +241,10 @@ function LocalEditorContent({
 	let content = store.content
 	let isDirty = content !== store.lastSavedContent
 	let docTitle = getDocumentTitle(content) || store.filename || "Untitled"
+
+	// Keep refs in sync for stable callbacks
+	contentRef.current = content
+	storeRef.current = store
 
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
@@ -286,17 +294,40 @@ function LocalEditorContent({
 		}
 	}, [content, fileHandle, isDirty])
 
-	async function handleSaveAs() {
-		let suggestedName = store.filename || docTitle + ".md"
-		let newHandle = await saveLocalFileAs(content, suggestedName)
+	let handleSaveAsRef = useRef(async () => {
+		let currentContent = contentRef.current
+		let currentStore = storeRef.current
+		if (!currentStore) return
+
+		let suggestedName = currentStore.filename || docTitle + ".md"
+		let newHandle = await saveLocalFileAs(currentContent, suggestedName)
 		if (newHandle) {
-			store.setFileHandle(newHandle)
-			store.setFilename(suggestedName)
-			store.setLastSavedContent(content)
-			store.setSaveStatus("saved")
-			setTimeout(() => store.setSaveStatus("idle"), 1500)
+			currentStore.setFileHandle(newHandle)
+			currentStore.setFilename(suggestedName)
+			currentStore.setLastSavedContent(currentContent)
+			currentStore.setSaveStatus("saved")
+			setTimeout(() => currentStore.setSaveStatus("idle"), 1500)
 		}
-	}
+	})
+
+	// Update ref when docTitle changes (rare - only when title in content changes)
+	useEffect(() => {
+		handleSaveAsRef.current = async () => {
+			let currentContent = contentRef.current
+			let currentStore = storeRef.current
+			if (!currentStore) return
+
+			let suggestedName = currentStore.filename || docTitle + ".md"
+			let newHandle = await saveLocalFileAs(currentContent, suggestedName)
+			if (newHandle) {
+				currentStore.setFileHandle(newHandle)
+				currentStore.setFilename(suggestedName)
+				currentStore.setLastSavedContent(currentContent)
+				currentStore.setSaveStatus("saved")
+				setTimeout(() => currentStore.setSaveStatus("idle"), 1500)
+			}
+		}
+	}, [docTitle])
 
 	useEffect(() => {
 		function handleKeyDown(e: KeyboardEvent) {
@@ -304,7 +335,7 @@ function LocalEditorContent({
 
 			if (isMod && e.key === "s") {
 				e.preventDefault()
-				handleSaveAs()
+				void handleSaveAsRef.current()
 			}
 
 			if (isMod && e.shiftKey && e.key.toLowerCase() === "e") {
@@ -329,7 +360,7 @@ function LocalEditorContent({
 
 		document.addEventListener("keydown", handleKeyDown)
 		return () => document.removeEventListener("keydown", handleKeyDown)
-	}, [handleSaveAs, toggleLeft, toggleRight, isPreview, setIsPreview])
+	}, [toggleLeft, toggleRight, isPreview, setIsPreview])
 
 	function handleChange(newContent: string) {
 		store.setContent(newContent)
@@ -495,7 +526,7 @@ function LocalEditorContent({
 							<SidebarSeparator />
 							<LocalFileMenu
 								onOpen={handleOpenFile}
-								onSaveAs={handleSaveAs}
+								onSaveAs={() => void handleSaveAsRef.current()}
 								onDownload={handleDownload}
 								onCopyToSynced={() => setCopyDialogOpen(true)}
 								isMobile={isMobile}
