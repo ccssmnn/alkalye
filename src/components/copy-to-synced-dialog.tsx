@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
@@ -63,13 +63,14 @@ function CopyToSyncedDialog({
 	onCopy,
 }: CopyToSyncedDialogProps) {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
-	let [destination, setDestination] = useState("")
 	let [newSpaceName, setNewSpaceName] = useState("")
 	let [isSubmitting, setIsSubmitting] = useState(false)
 	let navigate = useNavigate()
+	let lastOpenRef = useRef(false)
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let defaultDestination = spaces[0]?.$jazz.id ?? "personal"
+	let [destination, setDestination] = useState(defaultDestination)
 
 	let form = useForm({
 		defaultValues: {
@@ -145,6 +146,16 @@ function CopyToSyncedDialog({
 			}
 		},
 	})
+
+	useEffect(() => {
+		if (open && !lastOpenRef.current) {
+			form.reset({ destination: defaultDestination, newSpaceName: "" })
+			setDestination(defaultDestination)
+			setNewSpaceName("")
+			setIsSubmitting(false)
+		}
+		lastOpenRef.current = open
+	}, [open, defaultDestination, form])
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
