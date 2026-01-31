@@ -13,6 +13,7 @@ import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewRouteImport } from './routes/new'
+import { Route as LocalRouteImport } from './routes/local'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ImprintRouteImport } from './routes/imprint'
 import { Route as IndexRouteImport } from './routes/index'
@@ -44,6 +45,11 @@ const PrivacyRoute = PrivacyRouteImport.update({
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LocalRoute = LocalRouteImport.update({
+  id: '/local',
+  path: '/local',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InviteRoute = InviteRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
+  '/local': typeof LocalRoute
   '/new': typeof NewRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
+  '/local': typeof LocalRoute
   '/new': typeof NewRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
+  '/local': typeof LocalRoute
   '/new': typeof NewRoute
   '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/imprint'
     | '/invite'
+    | '/local'
     | '/new'
     | '/privacy'
     | '/settings'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/imprint'
     | '/invite'
+    | '/local'
     | '/new'
     | '/privacy'
     | '/settings'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/imprint'
     | '/invite'
+    | '/local'
     | '/new'
     | '/privacy'
     | '/settings'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ImprintRoute: typeof ImprintRoute
   InviteRoute: typeof InviteRoute
+  LocalRoute: typeof LocalRoute
   NewRoute: typeof NewRoute
   PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
@@ -266,6 +279,13 @@ declare module '@tanstack/react-router' {
       path: '/new'
       fullPath: '/new'
       preLoaderRoute: typeof NewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/local': {
+      id: '/local'
+      path: '/local'
+      fullPath: '/local'
+      preLoaderRoute: typeof LocalRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/invite': {
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ImprintRoute: ImprintRoute,
   InviteRoute: InviteRoute,
+  LocalRoute: LocalRoute,
   NewRoute: NewRoute,
   PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,

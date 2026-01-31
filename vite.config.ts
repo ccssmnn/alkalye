@@ -41,6 +41,15 @@ export default defineConfig({
 						purpose: "maskable",
 					},
 				],
+				file_handlers: [
+					{
+						action: "/local",
+						accept: {
+							"text/markdown": [".md", ".markdown"],
+							"text/plain": [".txt"],
+						},
+					},
+				],
 			},
 			workbox: {
 				globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
