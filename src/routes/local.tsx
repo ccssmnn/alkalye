@@ -99,7 +99,7 @@ function LocalFilePage() {
 			}
 			setInitialized(true)
 		})
-	}, [])
+	}, [store])
 
 	if (!initialized) {
 		return (
@@ -242,9 +242,11 @@ function LocalEditorContent({
 	let isDirty = content !== store.lastSavedContent
 	let docTitle = getDocumentTitle(content) || store.filename || "Untitled"
 
-	// Keep refs in sync for stable callbacks
-	contentRef.current = content
-	storeRef.current = store
+	// Keep refs in sync for stable callbacks (must be in effect, not render)
+	useEffect(() => {
+		contentRef.current = content
+		storeRef.current = store
+	}, [content, store])
 
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
