@@ -63,14 +63,12 @@ function CopyToSyncedDialog({
 	onCopy,
 }: CopyToSyncedDialogProps) {
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
-	let [newSpaceName, setNewSpaceName] = useState("")
 	let [isSubmitting, setIsSubmitting] = useState(false)
 	let navigate = useNavigate()
 	let lastOpenRef = useRef(false)
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let defaultDestination = spaces[0]?.$jazz.id ?? "personal"
-	let [destination, setDestination] = useState(defaultDestination)
 
 	let form = useForm({
 		defaultValues: {
@@ -116,7 +114,12 @@ function CopyToSyncedDialog({
 						},
 						me.$jazz.owner,
 					)
-					me.root.documents?.$jazz.push(newDoc)
+
+					// Ensure documents list exists before pushing
+					if (!me.root.documents) {
+						me.root.$jazz.set("documents", co.list(Document).create([]))
+					}
+					me.root.documents.$jazz.push(newDoc)
 
 					onCopy?.({ id: "personal", name: "Personal" })
 					onOpenChange(false)
@@ -150,8 +153,6 @@ function CopyToSyncedDialog({
 	useEffect(() => {
 		if (open && !lastOpenRef.current) {
 			form.reset({ destination: defaultDestination, newSpaceName: "" })
-			setDestination(defaultDestination)
-			setNewSpaceName("")
 			setIsSubmitting(false)
 		}
 		lastOpenRef.current = open
@@ -184,7 +185,6 @@ function CopyToSyncedDialog({
 									onValueChange={v => {
 										if (!v) return
 										field.handleChange(v)
-										setDestination(v)
 									}}
 								>
 									<SelectTrigger>
@@ -211,23 +211,24 @@ function CopyToSyncedDialog({
 						)}
 					</form.Field>
 
-					{destination === "__new__" && (
-						<form.Field name="newSpaceName">
-							{field => (
-								<Field>
-									<FieldLabel>New Space Name</FieldLabel>
-									<Input
-										value={field.state.value}
-										onChange={e => {
-											field.handleChange(e.target.value)
-											setNewSpaceName(e.target.value)
-										}}
-										placeholder="Enter space name"
-									/>
-								</Field>
-							)}
-						</form.Field>
-					)}
+					<form.Subscribe selector={s => s.values.destination}>
+						{destination =>
+							destination === "__new__" ? (
+								<form.Field name="newSpaceName">
+									{field => (
+										<Field>
+											<FieldLabel>New Space Name</FieldLabel>
+											<Input
+												value={field.state.value}
+												onChange={e => field.handleChange(e.target.value)}
+												placeholder="Enter space name"
+											/>
+										</Field>
+									)}
+								</form.Field>
+							) : null
+						}
+					</form.Subscribe>
 
 					<DialogFooter>
 						<Button
@@ -238,23 +239,32 @@ function CopyToSyncedDialog({
 						>
 							Cancel
 						</Button>
-						<Button
-							type="submit"
-							disabled={
-								isSubmitting ||
-								(destination === "__new__" && !newSpaceName.trim())
-							}
-							nativeButton
+						<form.Subscribe
+							selector={s => ({
+								destination: s.values.destination,
+								newSpaceName: s.values.newSpaceName,
+							})}
 						>
-							{isSubmitting ? (
-								<>Copying...</>
-							) : (
-								<>
-									<Copy className="mr-2 size-4" />
-									Copy Document
-								</>
+							{({ destination, newSpaceName }) => (
+								<Button
+									type="submit"
+									disabled={
+										isSubmitting ||
+										(destination === "__new__" && !newSpaceName.trim())
+									}
+									nativeButton
+								>
+									{isSubmitting ? (
+										<>Copying...</>
+									) : (
+										<>
+											<Copy className="mr-2 size-4" />
+											Copy Document
+										</>
+									)}
+								</Button>
 							)}
-						</Button>
+						</form.Subscribe>
 					</DialogFooter>
 				</form>
 			</DialogContent>

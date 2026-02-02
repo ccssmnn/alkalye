@@ -287,19 +287,33 @@ function LocalEditorContent({
 		}
 	}, [content, fileHandle, isDirty])
 
-	let handleSaveAsRef = useRef(async () => {
-		let currentStore = useLocalFileStore.getState()
-		let currentContent = currentStore.content
-		let title =
-			getDocumentTitle(currentContent) || currentStore.filename || "Untitled"
-		let suggestedName = currentStore.filename || title + ".md"
-		let newHandle = await saveLocalFileAs(currentContent, suggestedName)
-		if (newHandle) {
-			currentStore.setFileHandle(newHandle)
-			currentStore.setFilename(suggestedName)
-			currentStore.setLastSavedContent(currentContent)
-			currentStore.setSaveStatus("saved")
-			setTimeout(() => currentStore.setSaveStatus("idle"), 1500)
+	let handlersRef = useRef({
+		handleSaveAs: async () => {
+			let currentStore = useLocalFileStore.getState()
+			let currentContent = currentStore.content
+			let title =
+				getDocumentTitle(currentContent) || currentStore.filename || "Untitled"
+			let suggestedName = currentStore.filename || title + ".md"
+			let newHandle = await saveLocalFileAs(currentContent, suggestedName)
+			if (newHandle) {
+				currentStore.setFileHandle(newHandle)
+				currentStore.setFilename(suggestedName)
+				currentStore.setLastSavedContent(currentContent)
+				currentStore.setSaveStatus("saved")
+				setTimeout(() => currentStore.setSaveStatus("idle"), 1500)
+			}
+		},
+		toggleLeft,
+		toggleRight,
+		togglePreview: () => setIsPreview(!isPreview),
+	})
+
+	useEffect(() => {
+		handlersRef.current = {
+			handleSaveAs: handlersRef.current.handleSaveAs,
+			toggleLeft,
+			toggleRight,
+			togglePreview: () => setIsPreview(!isPreview),
 		}
 	})
 
@@ -309,17 +323,17 @@ function LocalEditorContent({
 
 			if (isMod && e.key === "s") {
 				e.preventDefault()
-				void handleSaveAsRef.current()
+				void handlersRef.current.handleSaveAs()
 			}
 
 			if (isMod && e.shiftKey && e.key.toLowerCase() === "e") {
 				e.preventDefault()
-				toggleLeft()
+				handlersRef.current.toggleLeft()
 			}
 
 			if (isMod && e.key === ".") {
 				e.preventDefault()
-				toggleRight()
+				handlersRef.current.toggleRight()
 			}
 
 			if (
@@ -328,13 +342,13 @@ function LocalEditorContent({
 				(e.key.toLowerCase() === "r" || e.code === "KeyR")
 			) {
 				e.preventDefault()
-				setIsPreview(!isPreview)
+				handlersRef.current.togglePreview()
 			}
 		}
 
 		document.addEventListener("keydown", handleKeyDown)
 		return () => document.removeEventListener("keydown", handleKeyDown)
-	}, [toggleLeft, toggleRight, isPreview, setIsPreview])
+	}, [])
 
 	function handleChange(newContent: string) {
 		store.setContent(newContent)
@@ -500,7 +514,7 @@ function LocalEditorContent({
 							<SidebarSeparator />
 							<LocalFileMenu
 								onOpen={handleOpenFile}
-								onSaveAs={() => void handleSaveAsRef.current()}
+								onSaveAs={() => void handlersRef.current.handleSaveAs()}
 								onDownload={handleDownload}
 								onCopyToSynced={() => setCopyDialogOpen(true)}
 								isMobile={isMobile}
@@ -551,7 +565,7 @@ function LocalPreviewView({
 	docTitle: string
 	content: string
 	wikilinks: Map<string, ResolvedDoc>
-	theme: "light" | "dark"
+	theme: Theme
 	setTheme: (theme: Theme) => void
 	onExit: () => void
 }) {
@@ -578,7 +592,7 @@ function LocalPreviewTopBar({
 }: {
 	filename: string | null
 	docTitle: string
-	theme: "light" | "dark"
+	theme: Theme
 	setTheme: (theme: Theme) => void
 	onExit: () => void
 }) {
