@@ -31,6 +31,12 @@ import {
 } from "@/components/ui/sidebar"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import {
+	ContextMenu,
+	ContextMenuContent,
+	ContextMenuItem,
+	ContextMenuTrigger,
+} from "@/components/ui/context-menu"
+import {
 	HelpCircle,
 	FileUp,
 	Search,
@@ -45,6 +51,7 @@ import {
 	Eye,
 	Pencil,
 	EllipsisIcon,
+	X,
 } from "lucide-react"
 import {
 	ThemeToggle,
@@ -66,8 +73,12 @@ import {
 	openLocalFile,
 	saveLocalFile,
 	saveLocalFileAs,
+	readFileFromHandle,
 	consumeLaunchQueue,
 	isFileSystemAccessSupported,
+	closeLocalFile,
+	type LocalFileEntry,
+	getHandleFromDB,
 } from "@/lib/local-file"
 import { CopyToSyncedDialog } from "@/components/copy-to-synced-dialog"
 import {
@@ -105,11 +116,32 @@ function LocalFilePage() {
 				return
 			}
 			if (result.value) {
-				let currentStore = useLocalFileStore.getState()
-				currentStore.setFileHandle(result.value.handle)
-				currentStore.setFilename(result.value.filename)
-				currentStore.setContent(result.value.content)
-				currentStore.setLastSavedContent(result.value.content)
+				let currentState = useLocalFileStore.getState()
+				let activeFile = currentState.getActiveFile()
+
+				if (activeFile && activeFile.hasUnsavedChanges) {
+					let confirmed = window.confirm(
+						"You have unsaved changes. Open the launched file anyway?",
+					)
+					if (!confirmed) {
+						setInitialized(true)
+						return
+					}
+				}
+
+				if (activeFile) {
+					await saveCurrentFile(activeFile.id)
+				}
+
+				currentState.addFile({
+					id: result.value.id,
+					filename: result.value.filename,
+					lastOpened: Date.now(),
+					content: result.value.content,
+					lastSavedContent: result.value.content,
+					hasUnsavedChanges: false,
+					isActive: true,
+				})
 			}
 			setInitialized(true)
 		}
@@ -126,27 +158,73 @@ function LocalFilePage() {
 		)
 	}
 
-	if (!store.fileHandle && !store.content) {
+	let activeFile = store.getActiveFile()
+
+	if (!activeFile) {
 		return <LocalFileEmptyState />
 	}
 
 	return (
 		<SidebarProvider>
-			<LocalEditorContent isPreview={isPreview} setIsPreview={setIsPreview} />
+			<LocalEditorContent
+				isPreview={isPreview}
+				setIsPreview={setIsPreview}
+				activeFile={activeFile}
+			/>
 		</SidebarProvider>
 	)
 }
 
-function LocalFileEmptyState() {
-	let store = useLocalFileStore()
+async function saveCurrentFile(fileId: string): Promise<boolean> {
+	let state = useLocalFileStore.getState()
+	let file = state.getFileById(fileId)
+	if (!file) return false
 
+	if (!file.hasUnsavedChanges) return true
+
+	let handle = await getHandleFromDB(fileId)
+	if (!handle) return false
+
+	state.setSaveStatus("saving")
+	let success = await saveLocalFile(fileId, file.content)
+	if (success) {
+		state.setFileSavedContent(fileId, file.content)
+		state.setSaveStatus("saved")
+		setTimeout(() => state.setSaveStatus("idle"), 1500)
+	} else {
+		state.setSaveStatus("error")
+		state.setErrorMessage("Failed to save. Check file permissions.")
+	}
+	return success
+}
+
+function LocalFileEmptyState() {
 	async function handleOpenFile() {
 		let result = await openLocalFile()
 		if (result) {
-			store.setFileHandle(result.handle)
-			store.setFilename(result.filename)
-			store.setContent(result.content)
-			store.setLastSavedContent(result.content)
+			let state = useLocalFileStore.getState()
+			let activeFile = state.getActiveFile()
+
+			if (activeFile && activeFile.hasUnsavedChanges) {
+				let confirmed = window.confirm(
+					"You have unsaved changes. Open a new file anyway?",
+				)
+				if (!confirmed) return
+			}
+
+			if (activeFile) {
+				await saveCurrentFile(activeFile.id)
+			}
+
+			state.addFile({
+				id: result.id,
+				filename: result.filename,
+				lastOpened: Date.now(),
+				content: result.content,
+				lastSavedContent: result.content,
+				hasUnsavedChanges: false,
+				isActive: true,
+			})
 		}
 	}
 
@@ -154,14 +232,35 @@ function LocalFileEmptyState() {
 		let file = e.target.files?.[0]
 		if (!file) return
 
+		let state = useLocalFileStore.getState()
+		let activeFile = state.getActiveFile()
+
+		if (activeFile && activeFile.hasUnsavedChanges) {
+			let confirmed = window.confirm(
+				"You have unsaved changes. Open a new file anyway?",
+			)
+			if (!confirmed) return
+		}
+
+		if (activeFile) {
+			await saveCurrentFile(activeFile.id)
+		}
+
 		let contentResult = await tryCatch(file.text())
 		if (!contentResult.ok) {
-			toast.error("Failed to read file: " + contentResult.error.message)
+			toast.error("Failed to read file. Please try again.")
 			return
 		}
-		store.setFilename(file.name)
-		store.setContent(contentResult.value)
-		store.setLastSavedContent(contentResult.value)
+
+		state.addFile({
+			id: crypto.randomUUID(),
+			filename: file.name,
+			lastOpened: Date.now(),
+			content: contentResult.value,
+			lastSavedContent: contentResult.value,
+			hasUnsavedChanges: false,
+			isActive: true,
+		})
 	}
 
 	let supportsFileSystem = isFileSystemAccessSupported()
@@ -227,9 +326,11 @@ let meResolve = {
 function LocalEditorContent({
 	isPreview,
 	setIsPreview,
+	activeFile,
 }: {
 	isPreview: boolean
 	setIsPreview: (value: boolean) => void
+	activeFile: LocalFileEntry
 }) {
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
@@ -253,9 +354,9 @@ function LocalEditorContent({
 
 	useEditorSettings(editorSettings)
 
-	let content = store.content
-	let isDirty = content !== store.lastSavedContent
-	let docTitle = getDocumentTitle(content) || store.filename || "Untitled"
+	let content = activeFile.content
+	let isDirty = activeFile.hasUnsavedChanges
+	let docTitle = getDocumentTitle(content) || activeFile.filename || "Untitled"
 
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
@@ -273,35 +374,32 @@ function LocalEditorContent({
 	})
 
 	function handleChange(newContent: string) {
-		store.setContent(newContent)
+		store.setFileContent(activeFile.id, newContent)
 
-		if (!store.fileHandle || !isDirty) return
+		let handle = getHandleFromDB(activeFile.id)
+		if (!handle) return
 
 		if (saveTimeoutRef.current) {
 			clearTimeout(saveTimeoutRef.current)
 		}
 
 		saveTimeoutRef.current = setTimeout(async () => {
-			let currentStore = useLocalFileStore.getState()
-			let currentContent = currentStore.content
-			let currentHandle = currentStore.fileHandle
+			let currentState = useLocalFileStore.getState()
+			let currentFile = currentState.getFileById(activeFile.id)
+			if (!currentFile || !currentFile.hasUnsavedChanges) return
 
+			let currentHandle = await getHandleFromDB(activeFile.id)
 			if (!currentHandle) return
 
-			useLocalFileStore.getState().setSaveStatus("saving")
-			let success = await saveLocalFile(currentHandle, currentContent)
+			currentState.setSaveStatus("saving")
+			let success = await saveLocalFile(activeFile.id, currentFile.content)
 			if (success) {
-				useLocalFileStore.getState().setLastSavedContent(currentContent)
-				useLocalFileStore.getState().setSaveStatus("saved")
-				setTimeout(
-					() => useLocalFileStore.getState().setSaveStatus("idle"),
-					1500,
-				)
+				currentState.setFileSavedContent(activeFile.id, currentFile.content)
+				currentState.setSaveStatus("saved")
+				setTimeout(() => currentState.setSaveStatus("idle"), 1500)
 			} else {
-				useLocalFileStore.getState().setSaveStatus("error")
-				useLocalFileStore
-					.getState()
-					.setErrorMessage("Failed to save. Check file permissions.")
+				currentState.setSaveStatus("error")
+				currentState.setErrorMessage("Failed to save. Check file permissions.")
 			}
 		}, 1000)
 	}
@@ -316,18 +414,26 @@ function LocalEditorContent({
 
 	let handlersRef = useRef({
 		handleSaveAs: async () => {
-			let currentStore = useLocalFileStore.getState()
-			let currentContent = currentStore.content
+			let currentState = useLocalFileStore.getState()
+			let currentFile = currentState.getActiveFile()
+			if (!currentFile) return
+
 			let title =
-				getDocumentTitle(currentContent) || currentStore.filename || "Untitled"
-			let suggestedName = currentStore.filename || title + ".md"
-			let newHandle = await saveLocalFileAs(currentContent, suggestedName)
-			if (newHandle) {
-				currentStore.setFileHandle(newHandle)
-				currentStore.setFilename(suggestedName)
-				currentStore.setLastSavedContent(currentContent)
-				currentStore.setSaveStatus("saved")
-				setTimeout(() => currentStore.setSaveStatus("idle"), 1500)
+				getDocumentTitle(currentFile.content) ||
+				currentFile.filename ||
+				"Untitled"
+			let suggestedName = currentFile.filename || title + ".md"
+			let result = await saveLocalFileAs(currentFile.content, suggestedName)
+			if (result) {
+				currentState.addFile({
+					id: result.id,
+					filename: suggestedName,
+					lastOpened: Date.now(),
+					content: currentFile.content,
+					lastSavedContent: currentFile.content,
+					hasUnsavedChanges: false,
+					isActive: true,
+				})
 			}
 		},
 		toggleLeft,
@@ -385,19 +491,24 @@ function LocalEditorContent({
 			if (!confirmed) return
 		}
 
+		await saveCurrentFile(activeFile.id)
+
 		let result = await openLocalFile()
 		if (result) {
-			useLocalFileStore.getState().setFileHandle(result.handle)
-			useLocalFileStore.getState().setFilename(result.filename)
-			useLocalFileStore.getState().setContent(result.content)
-			useLocalFileStore.getState().setLastSavedContent(result.content)
-			useLocalFileStore.getState().setSaveStatus("idle")
-			useLocalFileStore.getState().setErrorMessage(null)
+			useLocalFileStore.getState().addFile({
+				id: result.id,
+				filename: result.filename,
+				lastOpened: Date.now(),
+				content: result.content,
+				lastSavedContent: result.content,
+				hasUnsavedChanges: false,
+				isActive: true,
+			})
 		}
 	}
 
 	async function handleDownload() {
-		let filename = store.filename || docTitle + ".md"
+		let filename = activeFile.filename || docTitle + ".md"
 		let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
 		let url = URL.createObjectURL(blob)
 		let a = document.createElement("a")
@@ -407,13 +518,52 @@ function LocalEditorContent({
 		URL.revokeObjectURL(url)
 	}
 
+	async function handleSwitchFile(fileId: string) {
+		if (isDirty) {
+			let confirmed = window.confirm(
+				"You have unsaved changes. Switch files anyway?",
+			)
+			if (!confirmed) return
+		}
+
+		await saveCurrentFile(activeFile.id)
+
+		let handle = await getHandleFromDB(fileId)
+		if (!handle) {
+			toast.error("File handle not found")
+			return
+		}
+
+		let result = await readFileFromHandle(handle)
+		if (!result) {
+			toast.error("Failed to read file")
+			return
+		}
+
+		let state = useLocalFileStore.getState()
+		state.markFileActive(fileId)
+		state.setFileContent(fileId, result.content)
+		state.setFileSavedContent(fileId, result.content)
+	}
+
+	async function handleCloseFile(fileId: string) {
+		if (activeFile.id === fileId && isDirty) {
+			let confirmed = window.confirm(
+				"You have unsaved changes. Close this file anyway?",
+			)
+			if (!confirmed) return
+		}
+
+		await closeLocalFile(fileId)
+	}
+
 	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
 	let wikilinkCache = useDocTitles(wikilinkIds)
 
 	if (isPreview) {
 		return (
 			<LocalPreviewView
-				filename={store.filename}
+				filename={activeFile.filename}
 				docTitle={docTitle}
 				content={content}
 				wikilinks={wikilinkCache}
@@ -432,8 +582,8 @@ function LocalEditorContent({
 					<Button
 						size="sm"
 						variant="ghost"
-						nativeButton={false}
-						render={<Link to="/local" />}
+						nativeButton
+						onClick={handleOpenFile}
 					>
 						<Plus className="size-4" />
 						New Local File
@@ -461,11 +611,14 @@ function LocalEditorContent({
 				<SidebarSeparator />
 				<SidebarGroup className="flex-1">
 					<SidebarGroupContent>
-						<div className="text-muted-foreground px-2 py-4 text-center text-sm">
-							<FileText className="mx-auto mb-2 size-8 opacity-50" />
-							<p>Editing local file</p>
-							<p className="mt-1 font-medium">{store.filename || "Untitled"}</p>
-						</div>
+						<LocalFilesList
+							files={store.files}
+							activeFileId={activeFile.id}
+							onSwitchFile={handleSwitchFile}
+							onCloseFile={handleCloseFile}
+							isMobile={isMobile}
+							setLeftOpenMobile={setLeftOpenMobile}
+						/>
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</ListSidebar>
@@ -561,17 +714,87 @@ function LocalEditorContent({
 
 				<SidebarGroup className="flex-1">
 					<SidebarGroupContent>
-						<LocalFileSaveStatus />
+						<LocalFileSaveStatus activeFile={activeFile} />
 					</SidebarGroupContent>
 				</SidebarGroup>
 			</DocumentSidebar>
 			<CopyToSyncedDialog
 				content={content}
-				filename={store.filename}
+				filename={activeFile.filename}
 				open={copyDialogOpen}
 				onOpenChange={setCopyDialogOpen}
 			/>
 		</>
+	)
+}
+
+function LocalFilesList({
+	files,
+	activeFileId,
+	onSwitchFile,
+	onCloseFile,
+	isMobile,
+	setLeftOpenMobile,
+}: {
+	files: LocalFileEntry[]
+	activeFileId: string
+	onSwitchFile: (fileId: string) => void
+	onCloseFile: (fileId: string) => void
+	isMobile: boolean
+	setLeftOpenMobile: (open: boolean) => void
+}) {
+	let sortedFiles = [...files].sort((a, b) => b.lastOpened - a.lastOpened)
+
+	return (
+		<SidebarMenu>
+			{sortedFiles.map(file => (
+				<ContextMenu key={file.id}>
+					<ContextMenuTrigger
+						render={
+							<SidebarMenuButton
+								isActive={file.id === activeFileId}
+								nativeButton
+								onClick={() => {
+									if (file.id !== activeFileId) {
+										void onSwitchFile(file.id)
+									}
+									if (isMobile) {
+										setLeftOpenMobile(false)
+									}
+								}}
+							>
+								<FileText
+									className={`size-4 ${
+										file.id === activeFileId
+											? "text-primary"
+											: "text-muted-foreground"
+									}`}
+								/>
+								<span
+									className={`truncate ${
+										file.id === activeFileId ? "font-medium" : ""
+									}`}
+								>
+									{file.filename}
+									{file.hasUnsavedChanges && (
+										<span className="ml-1 text-amber-500">•</span>
+									)}
+								</span>
+							</SidebarMenuButton>
+						}
+					/>
+					<ContextMenuContent>
+						<ContextMenuItem
+							onClick={() => void onCloseFile(file.id)}
+							className="gap-2"
+						>
+							<X className="size-4" />
+							Close
+						</ContextMenuItem>
+					</ContextMenuContent>
+				</ContextMenu>
+			))}
+		</SidebarMenu>
 	)
 }
 
@@ -654,9 +877,9 @@ function LocalPreviewTopBar({
 	)
 }
 
-function LocalFileSaveStatus() {
+function LocalFileSaveStatus({ activeFile }: { activeFile: LocalFileEntry }) {
 	let store = useLocalFileStore()
-	let hasHandle = !!store.fileHandle
+	let hasHandle = getHandleFromDB(activeFile.id) !== null
 	let supportsFileSystem = isFileSystemAccessSupported()
 
 	return (
