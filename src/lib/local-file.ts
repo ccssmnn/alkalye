@@ -585,7 +585,7 @@ type StorageValue<T> = {
 }
 
 function createIdbStorage<T>(
-	schema: z.ZodSchema<T>,
+	schema: z.ZodType<T>,
 	initialState: T,
 	version: number = 1,
 ): PersistStorage<T> {
@@ -605,7 +605,7 @@ function createIdbStorage<T>(
 				}
 
 				return {
-					state: check.data.state as T,
+					state: check.data.state,
 					version: check.data.version,
 				}
 			} catch (error) {
