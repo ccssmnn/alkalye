@@ -101,10 +101,12 @@ function CopyToSyncedDialog({
 			me.$jazz.owner,
 		)
 
-		if (!me.root.documents) {
-			me.root.$jazz.set("documents", co.list(Document).create([]))
+		let docs = me.root.documents
+		if (!docs) {
+			docs = co.list(Document).create([])
+			me.root.$jazz.set("documents", docs)
 		}
-		me.root.documents.$jazz.push(newDoc)
+		docs.$jazz.push(newDoc)
 
 		onCopy?.({ id: "personal", name: "Personal" })
 		onOpenChange(false)
