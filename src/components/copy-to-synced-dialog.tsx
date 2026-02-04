@@ -1,5 +1,6 @@
 import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
+import { toast } from "sonner"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
 import { User, Plus, Copy } from "lucide-react"
@@ -156,7 +157,10 @@ function CopyToSyncedDialog({
 				if (!success) {
 					setIsSubmitting(false)
 				}
-			} catch {
+			} catch (err) {
+				toast.error(
+					`Failed to copy document: ${err instanceof Error ? err.message : "Unknown error"}`,
+				)
 				setIsSubmitting(false)
 			}
 		},
