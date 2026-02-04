@@ -80,7 +80,7 @@ function CopyToSyncedDialog({
 		space.documents.$jazz.push(newDoc)
 
 		onCopy?.({ id: space.$jazz.id, name: newSpaceName })
-		onOpenChange(false)
+		handleOpenChange(false)
 		void navigate({
 			to: "/spaces/$spaceId/doc/$id",
 			params: { spaceId: space.$jazz.id, id: newDoc.$jazz.id },
@@ -109,7 +109,7 @@ function CopyToSyncedDialog({
 		docs.$jazz.push(newDoc)
 
 		onCopy?.({ id: "personal", name: "Personal" })
-		onOpenChange(false)
+		handleOpenChange(false)
 		void navigate({
 			to: "/doc/$id",
 			params: { id: newDoc.$jazz.id },
@@ -127,7 +127,7 @@ function CopyToSyncedDialog({
 		space.documents.$jazz.push(newDoc)
 
 		onCopy?.({ id: space.$jazz.id, name: space.name })
-		onOpenChange(false)
+		handleOpenChange(false)
 		void navigate({
 			to: "/spaces/$spaceId/doc/$id",
 			params: { spaceId: space.$jazz.id, id: newDoc.$jazz.id },
@@ -157,6 +157,7 @@ function CopyToSyncedDialog({
 					success = await copyToExistingSpace(destination)
 				}
 				if (!success) {
+					toast.error("Failed to copy document: missing data or permission")
 					setIsSubmitting(false)
 				}
 			} catch (err) {
@@ -167,6 +168,14 @@ function CopyToSyncedDialog({
 			}
 		},
 	})
+
+	{
+		let currentSpaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
+		let newDefault = currentSpaces[0]?.$jazz.id ?? "personal"
+		if (me?.$isLoaded && form.state.values.destination !== newDefault) {
+			form.reset({ destination: newDefault, newSpaceName: "" })
+		}
+	}
 
 	function handleOpenChange(newOpen: boolean) {
 		if (!newOpen) {

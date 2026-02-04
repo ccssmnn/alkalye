@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react"
+import React from "react"
 import { createFileRoute, Link, useBlocker } from "@tanstack/react-router"
 import { useAccount } from "jazz-tools/react"
 import { UserAccount } from "@/schema"
@@ -375,9 +376,6 @@ function LocalEditorContent({
 
 	function handleChange(newContent: string) {
 		store.setFileContent(activeFile.id, newContent)
-
-		let handle = getHandleFromDB(activeFile.id)
-		if (!handle) return
 
 		if (saveTimeoutRef.current) {
 			clearTimeout(saveTimeoutRef.current)
@@ -879,8 +877,22 @@ function LocalPreviewTopBar({
 
 function LocalFileSaveStatus({ activeFile }: { activeFile: LocalFileEntry }) {
 	let store = useLocalFileStore()
-	let hasHandle = getHandleFromDB(activeFile.id) !== null
 	let supportsFileSystem = isFileSystemAccessSupported()
+	let [hasHandle, setHasHandle] = useState(false)
+
+	useEffect(() => {
+		let ignore = false
+		async function checkHandle() {
+			let handle = await getHandleFromDB(activeFile.id)
+			if (!ignore) {
+				setHasHandle(Boolean(handle))
+			}
+		}
+		checkHandle()
+		return () => {
+			ignore = true
+		}
+	}, [activeFile.id])
 
 	return (
 		<div className="px-2 py-4">

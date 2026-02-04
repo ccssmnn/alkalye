@@ -373,7 +373,8 @@ async function readFileFromHandle(
 				toast.error("Cannot access file. Permission request failed.")
 				return null
 			}
-			if (requestResult.value !== "granted") {
+			permission = requestResult.value
+			if (permission !== "granted") {
 				toast.error("File access denied. Please re-open the file.")
 				return null
 			}
@@ -427,6 +428,7 @@ async function saveLocalFile(id: string, content: string): Promise<boolean> {
 				toast.error("File permissions denied. Please grant access to save.")
 				return false
 			}
+			permission = requestResult.value
 		}
 		if (permission !== "granted" && !handle.requestPermission) {
 			toast.error("File permissions denied. Please grant access to save.")
