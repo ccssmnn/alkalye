@@ -1,4 +1,6 @@
 import { create } from "zustand"
+import { toast } from "sonner"
+import { tryCatch } from "@/lib/utils"
 
 export {
 	useLocalFileStore,
@@ -11,7 +13,6 @@ export {
 	type LocalFileState,
 }
 
-// File System Access API type augmentation
 declare global {
 	interface Window {
 		launchQueue?: LaunchQueue
@@ -116,12 +117,12 @@ async function openLocalFile(): Promise<{
 	content: string
 	filename: string
 } | null> {
-	if (!window.showOpenFilePicker) {
+	if (!isFileSystemAccessSupported()) {
 		return null
 	}
 
-	try {
-		let [handle] = await window.showOpenFilePicker({
+	let result = await tryCatch(
+		window.showOpenFilePicker!({
 			multiple: false,
 			types: [
 				{
@@ -132,70 +133,125 @@ async function openLocalFile(): Promise<{
 					},
 				},
 			],
-		})
+		}),
+	)
 
-		let file = await handle.getFile()
-		let content = await file.text()
-
-		return {
-			handle,
-			content,
-			filename: file.name,
-		}
-	} catch (e) {
-		if (e instanceof Error && e.name === "AbortError") {
+	if (!result.ok) {
+		if (result.error.name === "AbortError") {
 			return null
 		}
-		throw e
+		toast.error("Failed to open file: " + result.error.message)
+		throw result.error
+	}
+
+	let [handle] = result.value
+
+	let fileResult = await tryCatch(handle.getFile())
+	if (!fileResult.ok) {
+		toast.error("Failed to read file: " + fileResult.error.message)
+		throw fileResult.error
+	}
+
+	let contentResult = await tryCatch(fileResult.value.text())
+	if (!contentResult.ok) {
+		toast.error("Failed to read file content: " + contentResult.error.message)
+		throw contentResult.error
+	}
+
+	return {
+		handle,
+		content: contentResult.value,
+		filename: fileResult.value.name,
 	}
 }
 
 async function readFileFromHandle(
 	handle: FileSystemFileHandle,
-): Promise<{ content: string; filename: string }> {
-	let file = await handle.getFile()
-	let content = await file.text()
-	return { content, filename: file.name }
+): Promise<{ content: string; filename: string } | null> {
+	let fileResult = await tryCatch(handle.getFile())
+	if (!fileResult.ok) {
+		toast.error("Failed to read file: " + fileResult.error.message)
+		return null
+	}
+
+	let contentResult = await tryCatch(fileResult.value.text())
+	if (!contentResult.ok) {
+		toast.error("Failed to read file content: " + contentResult.error.message)
+		return null
+	}
+
+	return { content: contentResult.value, filename: fileResult.value.name }
 }
 
 async function saveLocalFile(
 	handle: FileSystemFileHandle,
 	content: string,
 ): Promise<boolean> {
-	try {
-		// Check/request permission
-		if (handle.queryPermission) {
-			let permission = await handle.queryPermission({ mode: "readwrite" })
-			if (permission !== "granted" && handle.requestPermission) {
-				permission = await handle.requestPermission({ mode: "readwrite" })
-				if (permission !== "granted") {
-					return false
-				}
+	if (handle.queryPermission) {
+		let queryResult = await tryCatch(
+			handle.queryPermission({ mode: "readwrite" }),
+		)
+		if (!queryResult.ok) {
+			toast.error(
+				"Failed to check file permissions: " + queryResult.error.message,
+			)
+			return false
+		}
+		let permission = queryResult.value
+		if (permission !== "granted" && handle.requestPermission) {
+			let requestResult = await tryCatch(
+				handle.requestPermission({ mode: "readwrite" }),
+			)
+			if (!requestResult.ok) {
+				toast.error(
+					"Failed to request file permissions: " + requestResult.error.message,
+				)
+				return false
+			}
+			if (requestResult.value !== "granted") {
+				toast.error("File permissions denied. Please grant access to save.")
+				return false
 			}
 		}
+		if (permission !== "granted" && !handle.requestPermission) {
+			toast.error("File permissions denied. Please grant access to save.")
+			return false
+		}
+	}
 
-		let writable = await handle.createWritable()
-		await writable.write(content)
-		await writable.close()
-		return true
-	} catch (e) {
-		console.error("Failed to save file:", e)
+	let writableResult = await tryCatch(handle.createWritable())
+	if (!writableResult.ok) {
+		toast.error("Failed to create file writer: " + writableResult.error.message)
 		return false
 	}
+
+	let writeResult = await tryCatch(writableResult.value.write(content))
+	if (!writeResult.ok) {
+		toast.error("Failed to write file: " + writeResult.error.message)
+		await writableResult.value.close().catch(() => {})
+		return false
+	}
+
+	let closeResult = await tryCatch(writableResult.value.close())
+	if (!closeResult.ok) {
+		toast.error("Failed to close file: " + closeResult.error.message)
+		return false
+	}
+
+	return true
 }
 
 async function saveLocalFileAs(
 	content: string,
 	suggestedName?: string,
 ): Promise<FileSystemFileHandle | null> {
-	if (!window.showSaveFilePicker) {
-		// Fallback: download
+	if (!isFileSystemAccessSupported() || !window.showSaveFilePicker) {
 		downloadFile(content, suggestedName ?? "document.md")
 		return null
 	}
 
-	try {
-		let handle = await window.showSaveFilePicker({
+	let result = await tryCatch(
+		window.showSaveFilePicker!({
 			suggestedName: suggestedName ?? "document.md",
 			types: [
 				{
@@ -203,19 +259,39 @@ async function saveLocalFileAs(
 					accept: { "text/markdown": [".md"] },
 				},
 			],
-		})
+		}),
+	)
 
-		let writable = await handle.createWritable()
-		await writable.write(content)
-		await writable.close()
-
-		return handle
-	} catch (e) {
-		if (e instanceof Error && e.name === "AbortError") {
+	if (!result.ok) {
+		if (result.error.name === "AbortError") {
 			return null
 		}
-		throw e
+		toast.error("Failed to save file: " + result.error.message)
+		throw result.error
 	}
+
+	let handle = result.value
+
+	let writableResult = await tryCatch(handle.createWritable())
+	if (!writableResult.ok) {
+		toast.error("Failed to create file writer: " + writableResult.error.message)
+		throw writableResult.error
+	}
+
+	let writeResult = await tryCatch(writableResult.value.write(content))
+	if (!writeResult.ok) {
+		toast.error("Failed to write file: " + writeResult.error.message)
+		await writableResult.value.close().catch(() => {})
+		throw writeResult.error
+	}
+
+	let closeResult = await tryCatch(writableResult.value.close())
+	if (!closeResult.ok) {
+		toast.error("Failed to close file: " + closeResult.error.message)
+		throw closeResult.error
+	}
+
+	return handle
 }
 
 async function consumeLaunchQueue(): Promise<{
@@ -241,17 +317,31 @@ async function consumeLaunchQueue(): Promise<{
 			}
 
 			let handle = launchParams.files[0]
-			try {
-				let file = await handle.getFile()
-				let content = await file.text()
-				resolve({ handle, content, filename: file.name })
-			} catch (e) {
-				console.error("Failed to read launched file:", e)
+
+			let fileResult = await tryCatch(handle.getFile())
+			if (!fileResult.ok) {
+				toast.error("Failed to read launched file: " + fileResult.error.message)
 				resolve(null)
+				return
 			}
+
+			let contentResult = await tryCatch(fileResult.value.text())
+			if (!contentResult.ok) {
+				toast.error(
+					"Failed to read launched file content: " +
+						contentResult.error.message,
+				)
+				resolve(null)
+				return
+			}
+
+			resolve({
+				handle,
+				content: contentResult.value,
+				filename: fileResult.value.name,
+			})
 		})
 
-		// If no file is launched within a short time, resolve null
 		setTimeout(() => {
 			if (!consumed) {
 				consumed = true
@@ -260,10 +350,6 @@ async function consumeLaunchQueue(): Promise<{
 		}, 100)
 	})
 }
-
-// =============================================================================
-// Helpers
-// =============================================================================
 
 function downloadFile(content: string, filename: string): void {
 	let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })

@@ -14,7 +14,12 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import {
+	Empty,
+	EmptyHeader,
+	EmptyTitle,
+	EmptyDescription,
+} from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
 import {
 	SidebarGroup,
@@ -77,6 +82,8 @@ import { modKey, altModKey } from "@/lib/platform"
 import { Preview } from "@/components/preview"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
 import { useDocTitles, type ResolvedDoc } from "@/lib/doc-resolver"
+import { toast } from "sonner"
+import { tryCatch } from "@/lib/utils"
 
 export { Route }
 
@@ -90,16 +97,23 @@ function LocalFilePage() {
 	let [isPreview, setIsPreview] = useState(false)
 
 	useEffect(() => {
-		consumeLaunchQueue().then(result => {
-			if (result) {
+		async function init() {
+			let result = await tryCatch(consumeLaunchQueue())
+			if (!result.ok) {
+				toast.error("Failed to open launched file: " + result.error.message)
+				setInitialized(true)
+				return
+			}
+			if (result.value) {
 				let currentStore = useLocalFileStore.getState()
-				currentStore.setFileHandle(result.handle)
-				currentStore.setFilename(result.filename)
-				currentStore.setContent(result.content)
-				currentStore.setLastSavedContent(result.content)
+				currentStore.setFileHandle(result.value.handle)
+				currentStore.setFilename(result.value.filename)
+				currentStore.setContent(result.value.content)
+				currentStore.setLastSavedContent(result.value.content)
 			}
 			setInitialized(true)
-		})
+		}
+		void init()
 	}, [])
 
 	if (!initialized) {
@@ -140,10 +154,14 @@ function LocalFileEmptyState() {
 		let file = e.target.files?.[0]
 		if (!file) return
 
-		let content = await file.text()
+		let contentResult = await tryCatch(file.text())
+		if (!contentResult.ok) {
+			toast.error("Failed to read file: " + contentResult.error.message)
+			return
+		}
 		store.setFilename(file.name)
-		store.setContent(content)
-		store.setLastSavedContent(content)
+		store.setContent(contentResult.value)
+		store.setLastSavedContent(contentResult.value)
 	}
 
 	let supportsFileSystem = isFileSystemAccessSupported()
@@ -154,10 +172,10 @@ function LocalFileEmptyState() {
 				<FileText className="text-muted-foreground size-12" />
 				<EmptyTitle>Open a Local File</EmptyTitle>
 			</EmptyHeader>
-			<p className="text-muted-foreground max-w-md text-center text-sm">
+			<EmptyDescription className="max-w-md">
 				Edit a markdown file from your computer without syncing it to cloud.
 				Changes are saved directly to the file.
-			</p>
+			</EmptyDescription>
 			<div className="mt-6 flex flex-col gap-3">
 				{supportsFileSystem ? (
 					<Button onClick={handleOpenFile} size="lg" nativeButton>
@@ -178,9 +196,9 @@ function LocalFileEmptyState() {
 								onChange={handleUploadFile}
 							/>
 						</label>
-						<p className="text-muted-foreground text-center text-xs">
+						<EmptyDescription>
 							For auto-save support, use Chrome or Edge
-						</p>
+						</EmptyDescription>
 					</>
 				)}
 			</div>
@@ -254,19 +272,26 @@ function LocalEditorContent({
 		enableBeforeUnload: isDirty,
 	})
 
-	let fileHandle = store.fileHandle
-	useEffect(() => {
-		if (!fileHandle || !isDirty) return
+	function handleChange(newContent: string) {
+		store.setContent(newContent)
+
+		if (!store.fileHandle || !isDirty) return
 
 		if (saveTimeoutRef.current) {
 			clearTimeout(saveTimeoutRef.current)
 		}
 
 		saveTimeoutRef.current = setTimeout(async () => {
+			let currentStore = useLocalFileStore.getState()
+			let currentContent = currentStore.content
+			let currentHandle = currentStore.fileHandle
+
+			if (!currentHandle) return
+
 			useLocalFileStore.getState().setSaveStatus("saving")
-			let success = await saveLocalFile(fileHandle, content)
+			let success = await saveLocalFile(currentHandle, currentContent)
 			if (success) {
-				useLocalFileStore.getState().setLastSavedContent(content)
+				useLocalFileStore.getState().setLastSavedContent(currentContent)
 				useLocalFileStore.getState().setSaveStatus("saved")
 				setTimeout(
 					() => useLocalFileStore.getState().setSaveStatus("idle"),
@@ -279,13 +304,15 @@ function LocalEditorContent({
 					.setErrorMessage("Failed to save. Check file permissions.")
 			}
 		}, 1000)
+	}
 
+	useEffect(() => {
 		return () => {
 			if (saveTimeoutRef.current) {
 				clearTimeout(saveTimeoutRef.current)
 			}
 		}
-	}, [content, fileHandle, isDirty])
+	}, [])
 
 	let handlersRef = useRef({
 		handleSaveAs: async () => {
@@ -350,10 +377,6 @@ function LocalEditorContent({
 		return () => document.removeEventListener("keydown", handleKeyDown)
 	}, [])
 
-	function handleChange(newContent: string) {
-		store.setContent(newContent)
-	}
-
 	async function handleOpenFile() {
 		if (isDirty) {
 			let confirmed = window.confirm(
@@ -373,7 +396,7 @@ function LocalEditorContent({
 		}
 	}
 
-	function handleDownload() {
+	async function handleDownload() {
 		let filename = store.filename || docTitle + ".md"
 		let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
 		let url = URL.createObjectURL(blob)
@@ -650,8 +673,8 @@ function LocalFileSaveStatus() {
 				)}
 				{store.saveStatus === "saved" && (
 					<>
-						<Check className="size-4 text-green-600" />
-						<span className="text-sm text-green-600">Saved</span>
+						<Check className="size-4 text-emerald-600" />
+						<span className="text-sm text-emerald-600">Saved</span>
 					</>
 				)}
 				{store.saveStatus === "error" && (
@@ -672,7 +695,7 @@ function LocalFileSaveStatus() {
 				)}
 				{store.saveStatus === "idle" && !hasHandle && (
 					<>
-						<AlertCircle className="text-warning size-4" />
+						<AlertCircle className="text-muted-foreground size-4" />
 						<span className="text-muted-foreground text-sm">
 							{supportsFileSystem
 								? 'Use "Save As" to enable auto-save'

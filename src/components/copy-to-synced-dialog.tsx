@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
@@ -65,10 +65,72 @@ function CopyToSyncedDialog({
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [isSubmitting, setIsSubmitting] = useState(false)
 	let navigate = useNavigate()
-	let lastOpenRef = useRef(false)
 
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let defaultDestination = spaces[0]?.$jazz.id ?? "personal"
+
+	async function copyToNewSpace(newSpaceName: string) {
+		if (!me?.$isLoaded || !newSpaceName) return false
+
+		let space = createSpace(newSpaceName, me.root)
+		if (!space.documents?.$isLoaded) return false
+
+		let newDoc = createSpaceDocument(space.$jazz.owner, content)
+		space.documents.$jazz.push(newDoc)
+
+		onCopy?.({ id: space.$jazz.id, name: newSpaceName })
+		onOpenChange(false)
+		void navigate({
+			to: "/spaces/$spaceId/doc/$id",
+			params: { spaceId: space.$jazz.id, id: newDoc.$jazz.id },
+		})
+		return true
+	}
+
+	async function copyToPersonalSpace() {
+		if (!me?.$isLoaded) return false
+
+		let newDoc = Document.create(
+			{
+				version: 1,
+				content: co.plainText().create(content, me.$jazz.owner),
+				createdAt: new Date(),
+				updatedAt: new Date(),
+			},
+			me.$jazz.owner,
+		)
+
+		if (!me.root.documents) {
+			me.root.$jazz.set("documents", co.list(Document).create([]))
+		}
+		me.root.documents.$jazz.push(newDoc)
+
+		onCopy?.({ id: "personal", name: "Personal" })
+		onOpenChange(false)
+		void navigate({
+			to: "/doc/$id",
+			params: { id: newDoc.$jazz.id },
+		})
+		return true
+	}
+
+	async function copyToExistingSpace(spaceId: string) {
+		if (!me?.$isLoaded) return false
+
+		let space = spaces.find(s => s.$jazz.id === spaceId)
+		if (!space?.documents?.$isLoaded) return false
+
+		let newDoc = createSpaceDocument(space.$jazz.owner, content)
+		space.documents.$jazz.push(newDoc)
+
+		onCopy?.({ id: space.$jazz.id, name: space.name })
+		onOpenChange(false)
+		void navigate({
+			to: "/spaces/$spaceId/doc/$id",
+			params: { spaceId: space.$jazz.id, id: newDoc.$jazz.id },
+		})
+		return true
+	}
 
 	let form = useForm({
 		defaultValues: {
@@ -83,83 +145,33 @@ function CopyToSyncedDialog({
 			let newSpaceName = value.newSpaceName.trim()
 
 			try {
+				let success: boolean
 				if (destination === "__new__") {
-					// Create new space and add document
-					if (!newSpaceName) {
-						setIsSubmitting(false)
-						return
-					}
-					let space = createSpace(newSpaceName, me.root)
-					if (!space.documents?.$isLoaded) {
-						setIsSubmitting(false)
-						return
-					}
-					let newDoc = createSpaceDocument(space.$jazz.owner, content)
-					space.documents.$jazz.push(newDoc)
-
-					onCopy?.({ id: space.$jazz.id, name: newSpaceName })
-					onOpenChange(false)
-					void navigate({
-						to: "/spaces/$spaceId/doc/$id",
-						params: { spaceId: space.$jazz.id, id: newDoc.$jazz.id },
-					})
+					success = await copyToNewSpace(newSpaceName)
 				} else if (destination === "personal") {
-					// Add to personal documents
-					let newDoc = Document.create(
-						{
-							version: 1,
-							content: co.plainText().create(content, me.$jazz.owner),
-							createdAt: new Date(),
-							updatedAt: new Date(),
-						},
-						me.$jazz.owner,
-					)
-
-					// Ensure documents list exists before pushing
-					if (!me.root.documents) {
-						me.root.$jazz.set("documents", co.list(Document).create([]))
-					}
-					me.root.documents.$jazz.push(newDoc)
-
-					onCopy?.({ id: "personal", name: "Personal" })
-					onOpenChange(false)
-					void navigate({
-						to: "/doc/$id",
-						params: { id: newDoc.$jazz.id },
-					})
+					success = await copyToPersonalSpace()
 				} else {
-					// Add to existing space
-					let space = spaces.find(s => s.$jazz.id === destination)
-					if (!space?.documents?.$isLoaded) {
-						setIsSubmitting(false)
-						return
-					}
-					let newDoc = createSpaceDocument(space.$jazz.owner, content)
-					space.documents.$jazz.push(newDoc)
-
-					onCopy?.({ id: space.$jazz.id, name: space.name })
-					onOpenChange(false)
-					void navigate({
-						to: "/spaces/$spaceId/doc/$id",
-						params: { spaceId: space.$jazz.id, id: newDoc.$jazz.id },
-					})
+					success = await copyToExistingSpace(destination)
 				}
-			} finally {
+				if (!success) {
+					setIsSubmitting(false)
+				}
+			} catch {
 				setIsSubmitting(false)
 			}
 		},
 	})
 
-	useEffect(() => {
-		if (open && !lastOpenRef.current) {
+	function handleOpenChange(newOpen: boolean) {
+		if (!newOpen) {
 			form.reset({ destination: defaultDestination, newSpaceName: "" })
 			setIsSubmitting(false)
 		}
-		lastOpenRef.current = open
-	}, [open, defaultDestination, form])
+		onOpenChange(newOpen)
+	}
 
 	return (
-		<Dialog open={open} onOpenChange={onOpenChange}>
+		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent>
 				<DialogHeader>
 					<DialogTitle>Copy to Synced Documents</DialogTitle>
@@ -234,7 +246,7 @@ function CopyToSyncedDialog({
 						<Button
 							type="button"
 							variant="ghost"
-							onClick={() => onOpenChange(false)}
+							onClick={() => handleOpenChange(false)}
 							nativeButton
 						>
 							Cancel
