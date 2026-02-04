@@ -1,4 +1,5 @@
 {
+	"buildCommand": "bun run build",
 	"rewrites": [
 		{
 			"source": "/invite",
