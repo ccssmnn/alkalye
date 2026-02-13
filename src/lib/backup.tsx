@@ -279,7 +279,15 @@ async function checkBackupPermission(): Promise<boolean> {
 // Settings UI component
 
 function BackupSettings() {
-	let { enabled, directoryName, lastBackupAt, lastError } = useBackupStore()
+	let {
+		enabled,
+		bidirectional,
+		directoryName,
+		lastBackupAt,
+		lastPullAt,
+		lastError,
+		setBidirectional,
+	} = useBackupStore()
 	let [isLoading, setIsLoading] = useState(false)
 
 	if (!isBackupSupported()) return null
@@ -307,6 +315,9 @@ function BackupSettings() {
 		? lastBackupDate.toLocaleString()
 		: null
 
+	let lastPullDate = lastPullAt ? new Date(lastPullAt) : null
+	let formattedLastPull = lastPullDate ? lastPullDate.toLocaleString() : null
+
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
@@ -317,14 +328,21 @@ function BackupSettings() {
 					<>
 						<div className="mb-2 flex items-center gap-2 text-green-600 dark:text-green-400">
 							<FolderOpen className="size-4" />
-							<span className="text-sm font-medium">Backing up to folder</span>
+							<span className="text-sm font-medium">
+								{bidirectional ? "Syncing" : "Backing up"} to folder
+							</span>
 						</div>
 						<p className="text-muted-foreground mb-1 text-sm">
 							Folder: <span className="font-medium">{directoryName}</span>
 						</p>
 						{formattedLastBackup && (
-							<p className="text-muted-foreground mb-3 text-xs">
+							<p className="text-muted-foreground mb-1 text-xs">
 								Last backup: {formattedLastBackup}
+							</p>
+						)}
+						{bidirectional && formattedLastPull && (
+							<p className="text-muted-foreground mb-3 text-xs">
+								Last sync: {formattedLastPull}
 							</p>
 						)}
 						{lastError && (
@@ -333,6 +351,21 @@ function BackupSettings() {
 								{lastError}
 							</div>
 						)}
+						<div className="border-border/50 mb-3 border-t pt-3">
+							<label className="flex cursor-pointer items-center gap-2">
+								<input
+									type="checkbox"
+									checked={bidirectional}
+									onChange={e => setBidirectional(e.target.checked)}
+									className="size-4 rounded border-gray-300"
+								/>
+								<span className="text-sm">Sync changes from folder</span>
+							</label>
+							<p className="text-muted-foreground mt-1 text-xs">
+								When enabled, changes made in the backup folder will be imported
+								into Alkalye.
+							</p>
+						</div>
 						<div className="flex gap-2">
 							<Button
 								onClick={handleChangeDirectory}
