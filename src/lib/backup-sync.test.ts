@@ -35,25 +35,24 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 	private fileContents = new Map<string, string>()
 
 	addFile(name: string, file: File) {
-		let self = this
 		let mockHandle: FileSystemFileHandle = {
 			kind: "file",
 			name,
-			async getFile() {
+			getFile: async () => {
 				// Check if there's saved content from writeManifest
-				let content = self.fileContents.get(name)
+				let content = this.fileContents.get(name)
 				if (content !== undefined) {
 					return new File([content], name)
 				}
 				return file
 			},
-			async createWritable() {
+			createWritable: async () => {
 				return {
-					async write(data: string | Blob) {
+					write: async (data: string | Blob) => {
 						let content = typeof data === "string" ? data : await data.text()
-						self.fileContents.set(name, content)
+						this.fileContents.set(name, content)
 					},
-					async close() {},
+					close: async () => {},
 				}
 			},
 		} as unknown as FileSystemFileHandle
@@ -83,25 +82,24 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 		name: string,
 		options?: { create?: boolean },
 	): Promise<FileSystemFileHandle> {
-		let self = this
 		let handle = this.children.get(name)
 		if (!handle || handle.kind !== "file") {
 			if (options?.create) {
 				let mockHandle: FileSystemFileHandle = {
 					kind: "file",
 					name,
-					async getFile() {
-						let content = self.fileContents.get(name)
+					getFile: async () => {
+						let content = this.fileContents.get(name)
 						return new File([content ?? ""], name)
 					},
-					async createWritable() {
+					createWritable: async () => {
 						return {
-							async write(data: string | Blob) {
+							write: async (data: string | Blob) => {
 								let content =
 									typeof data === "string" ? data : await data.text()
-								self.fileContents.set(name, content)
+								this.fileContents.set(name, content)
 							},
-							async close() {},
+							close: async () => {},
 						}
 					},
 				} as unknown as FileSystemFileHandle

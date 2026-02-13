@@ -41,6 +41,10 @@ export {
 	disableBackup,
 	changeBackupDirectory,
 	checkBackupPermission,
+	// Exported for testing
+	hashContent,
+	syncFromBackup,
+	type ScannedFile,
 }
 
 // File System Access API type augmentation
@@ -992,6 +996,7 @@ function getSpacesWithBackup(
 // Bidirectional Sync - Pull from filesystem
 // =============================================================================
 
+// Exported for testing
 async function hashContent(content: string): Promise<string> {
 	// Simple hash using built-in crypto
 	let encoder = new TextEncoder()

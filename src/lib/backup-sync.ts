@@ -6,6 +6,8 @@ export {
 	computeExpectedStructure,
 	transformContentForImport,
 	scanBackupFolder,
+	readManifest,
+	writeManifest,
 	type BackupDoc,
 	type DocLocation,
 	type ExpectedStructure,
@@ -255,8 +257,6 @@ async function readManifest(
 		return null
 	}
 }
-
-export { readManifest, writeManifest }
 
 async function writeManifest(
 	handle: FileSystemDirectoryHandle,
