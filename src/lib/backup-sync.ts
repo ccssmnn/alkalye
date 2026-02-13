@@ -4,9 +4,14 @@ export {
 	computeDocLocations,
 	transformContentForBackup,
 	computeExpectedStructure,
+	transformContentForImport,
+	scanBackupFolder,
 	type BackupDoc,
 	type DocLocation,
 	type ExpectedStructure,
+	type BackupManifest,
+	type ManifestEntry,
+	type ScannedFile,
 }
 
 interface BackupDoc {
@@ -27,6 +32,28 @@ interface DocLocation {
 interface ExpectedStructure {
 	expectedPaths: Set<string>
 	expectedFiles: Map<string, Set<string>>
+}
+
+interface ManifestEntry {
+	docId: string
+	relativePath: string
+	contentHash: string
+	lastSyncedAt: string
+	assets: { name: string; hash: string }[]
+}
+
+interface BackupManifest {
+	version: 1
+	entries: ManifestEntry[]
+	lastSyncAt: string
+}
+
+interface ScannedFile {
+	relativePath: string
+	name: string
+	content: string
+	assets: { name: string; blob: Blob }[]
+	lastModified: number
 }
 
 function computeDocLocations(docs: BackupDoc[]): Map<string, DocLocation> {
@@ -102,6 +129,26 @@ function transformContentForBackup(
 	)
 }
 
+function transformContentForImport(
+	content: string,
+	assetFiles: Map<string, string>,
+): string {
+	// Transform local asset paths back to asset: references
+	return content.replace(
+		/!\[([^\]]*)\]\(assets\/([^)]+)\)/g,
+		(match, alt, assetFilename) => {
+			// Find asset ID by filename
+			for (let [id, filename] of assetFiles) {
+				if (filename === assetFilename) {
+					return `![${alt}](asset:${id})`
+				}
+			}
+			// If not found, keep the original local path (might be a manual addition)
+			return match
+		},
+	)
+}
+
 function computeExpectedStructure(
 	docs: BackupDoc[],
 	docLocations: Map<string, DocLocation>,
@@ -134,4 +181,91 @@ function computeExpectedStructure(
 	}
 
 	return { expectedPaths, expectedFiles }
+}
+
+async function scanBackupFolder(
+	handle: FileSystemDirectoryHandle,
+): Promise<ScannedFile[]> {
+	let files: ScannedFile[] = []
+
+	async function scanDir(
+		dir: FileSystemDirectoryHandle,
+		relativePath: string,
+	): Promise<void> {
+		for await (let [name, handle] of dir.entries()) {
+			let entryPath = relativePath ? `${relativePath}/${name}` : name
+
+			if (handle.kind === "directory") {
+				// Skip dot directories and special directories
+				if (name.startsWith(".")) continue
+				let subDir = await dir.getDirectoryHandle(name)
+				await scanDir(subDir, entryPath)
+			} else if (handle.kind === "file" && name.endsWith(".md")) {
+				// Skip manifest file
+				if (name === ".alkalye-manifest.json") continue
+
+				let fileHandle = await dir.getFileHandle(name)
+				let file = await fileHandle.getFile()
+				let content = await file.text()
+				let lastModified = file.lastModified
+
+				// Check for assets folder
+				let assets: { name: string; blob: Blob }[] = []
+				try {
+					let assetsDir = await dir.getDirectoryHandle("assets")
+					for await (let [assetName, assetHandle] of assetsDir.entries()) {
+						if (assetHandle.kind === "file" && !assetName.startsWith(".")) {
+							let assetFileHandle = await assetsDir.getFileHandle(assetName)
+							let assetFile = await assetFileHandle.getFile()
+							assets.push({ name: assetName, blob: assetFile })
+						}
+					}
+				} catch {
+					// No assets folder
+				}
+
+				files.push({
+					relativePath: entryPath,
+					name: name.replace(/\.md$/, ""),
+					content,
+					assets,
+					lastModified,
+				})
+			}
+		}
+	}
+
+	await scanDir(handle, "")
+	return files
+}
+
+async function readManifest(
+	handle: FileSystemDirectoryHandle,
+): Promise<BackupManifest | null> {
+	try {
+		let fileHandle = await handle.getFileHandle(".alkalye-manifest.json")
+		let file = await fileHandle.getFile()
+		let text = await file.text()
+		let parsed = JSON.parse(text)
+		if (parsed.version === 1) {
+			return parsed as BackupManifest
+		}
+		return null
+	} catch {
+		return null
+	}
+}
+
+export { readManifest, writeManifest }
+
+async function writeManifest(
+	handle: FileSystemDirectoryHandle,
+	manifest: BackupManifest,
+): Promise<void> {
+	let fileHandle = await handle.getFileHandle(".alkalye-manifest.json", {
+		create: true,
+	})
+	let writable = await fileHandle.createWritable()
+	await writable.write(JSON.stringify(manifest, null, 2))
+	await writable.close()
 }
