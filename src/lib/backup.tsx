@@ -66,7 +66,6 @@ declare global {
 }
 
 let BACKUP_DEBOUNCE_MS = 5000
-let _BACKUP_PULL_INTERVAL_MS = 20000
 
 function supportsFileSystemWatch(): boolean {
 	if (typeof FileSystemDirectoryHandle === "undefined") return false
@@ -151,7 +150,6 @@ function BackupSubscriber() {
 	let me = useAccount(UserAccount, { resolve: backupQuery })
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
-	let pullIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
 	// Push to filesystem (backup)
 	useEffect(() => {
@@ -235,36 +233,26 @@ function BackupSubscriber() {
 
 		document.addEventListener("visibilitychange", handleVisibility)
 
-		// Use FileSystemDirectoryHandle.watch() if available (Chrome 110+), fallback to polling
+		// Use FileSystemDirectoryHandle.watch() for real-time file change detection (Chrome 110+)
 		let watchAborted = false
 
 		async function setupWatch() {
 			let handle = await getBackupHandle()
-			if (!handle || watchAborted) return
+			if (!handle) return
 
 			if (supportsFileSystemWatch()) {
-				try {
-					let watcher = (
-						handle as unknown as {
-							watch(options: { recursive: boolean }): {
-								addEventListener(event: string, callback: () => void): void
-							}
+				let watcher = (
+					handle as unknown as {
+						watch(options: { recursive: boolean }): {
+							addEventListener(event: string, callback: () => void): void
 						}
-					).watch({
-						recursive: true,
-					})
-					watcher.addEventListener("change", () => {
-						if (!watchAborted) doPull()
-					})
-				} catch (e) {
-					console.warn("FileSystem watch not supported, using polling:", e)
-					pullIntervalRef.current = setInterval(
-						doPull,
-						_BACKUP_PULL_INTERVAL_MS,
-					)
-				}
-			} else {
-				pullIntervalRef.current = setInterval(doPull, _BACKUP_PULL_INTERVAL_MS)
+					}
+				).watch({
+					recursive: true,
+				})
+				watcher.addEventListener("change", () => {
+					if (!watchAborted) doPull()
+				})
 			}
 		}
 
@@ -273,7 +261,6 @@ function BackupSubscriber() {
 		return () => {
 			watchAborted = true
 			document.removeEventListener("visibilitychange", handleVisibility)
-			if (pullIntervalRef.current) clearInterval(pullIntervalRef.current)
 		}
 	}, [enabled, bidirectional, me, setLastPullAt])
 
@@ -695,7 +682,6 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
-	let pullIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
 	// Load space with documents
 	let space = useCoState(Space, spaceId as Parameters<typeof useCoState>[1], {
@@ -797,12 +783,34 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 
 		document.addEventListener("visibilitychange", handleVisibility)
 
-		// Set up interval for periodic pull
-		pullIntervalRef.current = setInterval(doPull, _BACKUP_PULL_INTERVAL_MS)
+		// Use FileSystemDirectoryHandle.watch() for real-time file change detection (Chrome 110+)
+		let watchAborted = false
+
+		async function setupWatch() {
+			let handle = await getSpaceBackupHandle(spaceId)
+			if (!handle) return
+
+			if (supportsFileSystemWatch()) {
+				let watcher = (
+					handle as unknown as {
+						watch(options: { recursive: boolean }): {
+							addEventListener(event: string, callback: () => void): void
+						}
+					}
+				).watch({
+					recursive: true,
+				})
+				watcher.addEventListener("change", () => {
+					if (!watchAborted) doPull()
+				})
+			}
+		}
+
+		setupWatch()
 
 		return () => {
+			watchAborted = true
 			document.removeEventListener("visibilitychange", handleVisibility)
-			if (pullIntervalRef.current) clearInterval(pullIntervalRef.current)
 		}
 	}, [directoryName, space, spaceId])
 
