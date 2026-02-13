@@ -67,6 +67,13 @@ declare global {
 
 let BACKUP_DEBOUNCE_MS = 5000
 let _BACKUP_PULL_INTERVAL_MS = 20000
+
+function supportsFileSystemWatch(): boolean {
+	if (typeof FileSystemDirectoryHandle === "undefined") return false
+	let proto = Object.getPrototypeOf(FileSystemDirectoryHandle.prototype)
+	return "watch" in proto
+}
+
 let HANDLE_STORAGE_KEY = "backup-directory-handle"
 
 interface BackupState {
@@ -228,10 +235,43 @@ function BackupSubscriber() {
 
 		document.addEventListener("visibilitychange", handleVisibility)
 
-		// Set up interval for periodic pull
-		pullIntervalRef.current = setInterval(doPull, _BACKUP_PULL_INTERVAL_MS)
+		// Use FileSystemDirectoryHandle.watch() if available (Chrome 110+), fallback to polling
+		let watchAborted = false
+
+		async function setupWatch() {
+			let handle = await getBackupHandle()
+			if (!handle || watchAborted) return
+
+			if (supportsFileSystemWatch()) {
+				try {
+					let watcher = (
+						handle as unknown as {
+							watch(options: { recursive: boolean }): {
+								addEventListener(event: string, callback: () => void): void
+							}
+						}
+					).watch({
+						recursive: true,
+					})
+					watcher.addEventListener("change", () => {
+						if (!watchAborted) doPull()
+					})
+				} catch (e) {
+					console.warn("FileSystem watch not supported, using polling:", e)
+					pullIntervalRef.current = setInterval(
+						doPull,
+						_BACKUP_PULL_INTERVAL_MS,
+					)
+				}
+			} else {
+				pullIntervalRef.current = setInterval(doPull, _BACKUP_PULL_INTERVAL_MS)
+			}
+		}
+
+		setupWatch()
 
 		return () => {
+			watchAborted = true
 			document.removeEventListener("visibilitychange", handleVisibility)
 			if (pullIntervalRef.current) clearInterval(pullIntervalRef.current)
 		}
@@ -294,7 +334,30 @@ function BackupSettings() {
 	} = useBackupStore()
 	let [isLoading, setIsLoading] = useState(false)
 
-	if (!isBackupSupported()) return null
+	if (!isBackupSupported()) {
+		return (
+			<section>
+				<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+					Local Backup
+				</h2>
+				<div className="bg-muted/30 rounded-lg p-4">
+					<div className="flex items-start gap-2">
+						<AlertCircle className="text-muted-foreground mt-0.5 size-4" />
+						<div>
+							<p className="text-muted-foreground text-sm">
+								Local backup requires a Chromium-based browser (Chrome, Edge,
+								Brave, or Opera).
+							</p>
+							<p className="text-muted-foreground mt-1 text-xs">
+								Safari and Firefox do not support the File System Access API
+								needed for this feature.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+		)
+	}
 
 	async function handleEnable() {
 		setIsLoading(true)
@@ -473,7 +536,30 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
 	let [isLoading, setIsLoading] = useState(false)
 
-	if (!isBackupSupported()) return null
+	if (!isBackupSupported()) {
+		return (
+			<section>
+				<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+					Local Backup
+				</h2>
+				<div className="bg-muted/30 rounded-lg p-4">
+					<div className="flex items-start gap-2">
+						<AlertCircle className="text-muted-foreground mt-0.5 size-4" />
+						<div>
+							<p className="text-muted-foreground text-sm">
+								Local backup requires a Chromium-based browser (Chrome, Edge,
+								Brave, or Opera).
+							</p>
+							<p className="text-muted-foreground mt-1 text-xs">
+								Safari and Firefox do not support the File System Access API
+								needed for this feature.
+							</p>
+						</div>
+					</div>
+				</div>
+			</section>
+		)
+	}
 
 	async function handleChooseFolder() {
 		setIsLoading(true)
