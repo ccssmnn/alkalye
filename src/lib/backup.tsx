@@ -73,6 +73,10 @@ function supportsFileSystemWatch(): boolean {
 	return "watch" in proto
 }
 
+function isBackupSupported(): boolean {
+	return "showDirectoryPicker" in window
+}
+
 let HANDLE_STORAGE_KEY = "backup-directory-handle"
 
 interface BackupState {
@@ -198,9 +202,10 @@ function BackupSubscriber() {
 		}
 	}, [enabled, me, setLastBackupAt, setLastError, setEnabled, setDirectoryName])
 
-	// Pull from filesystem (import changes)
+	// Pull from filesystem (import changes) - only supported with FileSystem watch
 	useEffect(() => {
 		if (!enabled || !bidirectional || !me.$isLoaded) return
+		if (!supportsFileSystemWatch()) return // Requires watch API
 
 		let docs = me.root?.documents
 		if (!docs?.$isLoaded) return
@@ -222,45 +227,31 @@ function BackupSubscriber() {
 			}
 		}
 
-		// Pull on mount and visibility change
-		doPull()
-
-		let handleVisibility = () => {
-			if (document.visibilityState === "visible") {
-				doPull()
-			}
-		}
-
-		document.addEventListener("visibilitychange", handleVisibility)
-
-		// Use FileSystemDirectoryHandle.watch() for real-time file change detection (Chrome 110+)
+		// Set up watch for real-time file change detection
 		let watchAborted = false
 
 		async function setupWatch() {
 			let handle = await getBackupHandle()
 			if (!handle) return
 
-			if (supportsFileSystemWatch()) {
-				let watcher = (
-					handle as unknown as {
-						watch(options: { recursive: boolean }): {
-							addEventListener(event: string, callback: () => void): void
-						}
+			let watcher = (
+				handle as unknown as {
+					watch(options: { recursive: boolean }): {
+						addEventListener(event: string, callback: () => void): void
 					}
-				).watch({
-					recursive: true,
-				})
-				watcher.addEventListener("change", () => {
-					if (!watchAborted) doPull()
-				})
-			}
+				}
+			).watch({
+				recursive: true,
+			})
+			watcher.addEventListener("change", () => {
+				if (!watchAborted) doPull()
+			})
 		}
 
 		setupWatch()
 
 		return () => {
 			watchAborted = true
-			document.removeEventListener("visibilitychange", handleVisibility)
 		}
 	}, [enabled, bidirectional, me, setLastPullAt])
 
@@ -406,18 +397,26 @@ function BackupSettings() {
 							</div>
 						)}
 						<div className="border-border/50 mb-3 border-t pt-3">
-							<label className="flex cursor-pointer items-center gap-2">
+							<label
+								className={
+									!supportsFileSystemWatch()
+										? "flex cursor-not-allowed items-center gap-2 opacity-50"
+										: "flex cursor-pointer items-center gap-2"
+								}
+							>
 								<input
 									type="checkbox"
 									checked={bidirectional}
 									onChange={e => setBidirectional(e.target.checked)}
+									disabled={!supportsFileSystemWatch()}
 									className="size-4 rounded border-gray-300"
 								/>
 								<span className="text-sm">Sync changes from folder</span>
 							</label>
 							<p className="text-muted-foreground mt-1 text-xs">
-								When enabled, changes made in the backup folder will be imported
-								into Alkalye.
+								{supportsFileSystemWatch()
+									? "When enabled, changes made in the backup folder will be imported into Alkalye."
+									: "Requires a Chromium-based browser with File System Watch support."}
 							</p>
 						</div>
 						<div className="flex gap-2">
@@ -738,12 +737,13 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		}
 	}, [directoryName, space, spaceId, setDirectoryName])
 
-	// Pull from filesystem (import changes) - always enabled for space backups
+	// Pull from filesystem (import changes) - only supported with FileSystem watch
 	useEffect(() => {
 		// Skip if no backup folder configured
 		if (!directoryName) return
 		// Skip if space not loaded
 		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
+		if (!supportsFileSystemWatch()) return // Requires watch API
 
 		let docs = space.documents
 
@@ -772,45 +772,31 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 			}
 		}
 
-		// Pull on mount and visibility change
-		doPull()
-
-		let handleVisibility = () => {
-			if (document.visibilityState === "visible") {
-				doPull()
-			}
-		}
-
-		document.addEventListener("visibilitychange", handleVisibility)
-
-		// Use FileSystemDirectoryHandle.watch() for real-time file change detection (Chrome 110+)
+		// Set up watch for real-time file change detection
 		let watchAborted = false
 
 		async function setupWatch() {
 			let handle = await getSpaceBackupHandle(spaceId)
 			if (!handle) return
 
-			if (supportsFileSystemWatch()) {
-				let watcher = (
-					handle as unknown as {
-						watch(options: { recursive: boolean }): {
-							addEventListener(event: string, callback: () => void): void
-						}
+			let watcher = (
+				handle as unknown as {
+					watch(options: { recursive: boolean }): {
+						addEventListener(event: string, callback: () => void): void
 					}
-				).watch({
-					recursive: true,
-				})
-				watcher.addEventListener("change", () => {
-					if (!watchAborted) doPull()
-				})
-			}
+				}
+			).watch({
+				recursive: true,
+			})
+			watcher.addEventListener("change", () => {
+				if (!watchAborted) doPull()
+			})
 		}
 
 		setupWatch()
 
 		return () => {
 			watchAborted = true
-			document.removeEventListener("visibilitychange", handleVisibility)
 		}
 	}, [directoryName, space, spaceId])
 
@@ -822,10 +808,6 @@ let spacesBackupQuery = {
 		spaces: true,
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
-
-function isBackupSupported(): boolean {
-	return "showDirectoryPicker" in window
-}
 
 async function getStoredHandle(): Promise<FileSystemDirectoryHandle | null> {
 	try {
