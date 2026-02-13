@@ -2,9 +2,17 @@ import { useState, useEffect, useRef } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { useAccount, useCoState } from "jazz-tools/react"
-import { co, type ResolveQuery } from "jazz-tools"
+import { co, type ResolveQuery, Group, FileStream } from "jazz-tools"
+import { createImage } from "jazz-tools/media"
 import { FolderOpen, AlertCircle } from "lucide-react"
-import { UserAccount, Document, Space } from "@/schema"
+import {
+	UserAccount,
+	Document,
+	Space,
+	Asset,
+	ImageAsset,
+	VideoAsset,
+} from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { getPath } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
@@ -13,7 +21,11 @@ import {
 	computeDocLocations,
 	transformContentForBackup,
 	computeExpectedStructure,
+	scanBackupFolder,
+	readManifest,
+	transformContentForImport,
 	type BackupDoc,
+	type ScannedFile,
 } from "@/lib/backup-sync"
 
 export {
@@ -50,7 +62,7 @@ declare global {
 }
 
 let BACKUP_DEBOUNCE_MS = 5000
-let BACKUP_PULL_INTERVAL_MS = 20000
+let _BACKUP_PULL_INTERVAL_MS = 20000
 let HANDLE_STORAGE_KEY = "backup-directory-handle"
 
 interface BackupState {
@@ -103,6 +115,9 @@ type LoadedDocument = co.loaded<
 	{ content: true; assets: { $each: { image: true; video: true } } }
 >
 
+type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
+type Account = co.loaded<typeof UserAccount>
+
 let backupQuery = {
 	root: {
 		documents: {
@@ -113,12 +128,21 @@ let backupQuery = {
 } as const satisfies ResolveQuery<typeof UserAccount>
 
 function BackupSubscriber() {
-	let { enabled, setLastBackupAt, setLastError, setEnabled, setDirectoryName } =
-		useBackupStore()
+	let {
+		enabled,
+		bidirectional,
+		setLastBackupAt,
+		setLastPullAt,
+		setLastError,
+		setEnabled,
+		setDirectoryName,
+	} = useBackupStore()
 	let me = useAccount(UserAccount, { resolve: backupQuery })
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
+	let pullIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+	// Push to filesystem (backup)
 	useEffect(() => {
 		if (!enabled || !me.$isLoaded) return
 
@@ -164,6 +188,50 @@ function BackupSubscriber() {
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
 	}, [enabled, me, setLastBackupAt, setLastError, setEnabled, setDirectoryName])
+
+	// Pull from filesystem (import changes)
+	useEffect(() => {
+		if (!enabled || !bidirectional || !me.$isLoaded) return
+
+		let docs = me.root?.documents
+		if (!docs?.$isLoaded) return
+
+		async function doPull() {
+			try {
+				let handle = await getBackupHandle()
+				if (!handle) return
+
+				if (!docs.$isLoaded) return
+				let result = await syncFromBackup(handle, docs as DocumentList, true)
+				if (result.errors.length > 0) {
+					console.warn("Backup pull errors:", result.errors)
+				}
+
+				setLastPullAt(new Date().toISOString())
+			} catch (e) {
+				console.error("Backup pull failed:", e)
+			}
+		}
+
+		// Pull on mount and visibility change
+		doPull()
+
+		let handleVisibility = () => {
+			if (document.visibilityState === "visible") {
+				doPull()
+			}
+		}
+
+		document.addEventListener("visibilitychange", handleVisibility)
+
+		// Set up interval for periodic pull
+		pullIntervalRef.current = setInterval(doPull, _BACKUP_PULL_INTERVAL_MS)
+
+		return () => {
+			document.removeEventListener("visibilitychange", handleVisibility)
+			if (pullIntervalRef.current) clearInterval(pullIntervalRef.current)
+		}
+	}, [enabled, bidirectional, me, setLastPullAt])
 
 	return null
 }
@@ -829,4 +897,211 @@ function getSpacesWithBackup(
 		}
 	}
 	return spaceIds
+}
+
+// =============================================================================
+// Bidirectional Sync - Pull from filesystem
+// =============================================================================
+
+async function hashContent(content: string): Promise<string> {
+	// Simple hash using built-in crypto
+	let encoder = new TextEncoder()
+	let data = encoder.encode(content)
+	let hashBuffer = await crypto.subtle.digest("SHA-256", data)
+	let hashArray = Array.from(new Uint8Array(hashBuffer))
+	return hashArray
+		.map(b => b.toString(16).padStart(2, "0"))
+		.join("")
+		.slice(0, 16)
+}
+
+async function syncFromBackup(
+	handle: FileSystemDirectoryHandle,
+	targetDocs: DocumentList,
+	canWrite: boolean,
+): Promise<{
+	created: number
+	updated: number
+	deleted: number
+	errors: string[]
+}> {
+	let result = { created: 0, updated: 0, deleted: 0, errors: [] as string[] }
+
+	let manifest = await readManifest(handle)
+	let scannedFiles = await scanBackupFolder(handle)
+	let listOwner = targetDocs.$jazz.owner
+
+	// Build maps for lookup
+	let manifestByPath = new Map(
+		manifest?.entries.map(e => [e.relativePath, e]) ?? [],
+	)
+	let scannedByPath = new Map(scannedFiles.map(f => [f.relativePath, f]))
+
+	// Process new and updated files
+	for (let file of scannedFiles) {
+		try {
+			let contentHash = await hashContent(file.content)
+			let manifestEntry = manifestByPath.get(file.relativePath)
+
+			if (!manifestEntry) {
+				// New file - create document
+				if (!canWrite) {
+					result.errors.push(`Cannot create ${file.name}: no write permission`)
+					continue
+				}
+				await createDocFromFile(file, targetDocs, listOwner)
+				result.created++
+			} else if (manifestEntry.contentHash !== contentHash) {
+				// File changed - update document
+				if (!canWrite) {
+					result.errors.push(`Cannot update ${file.name}: no write permission`)
+					continue
+				}
+				await updateDocFromFile(
+					file,
+					manifestEntry.docId,
+					targetDocs,
+					listOwner,
+				)
+				result.updated++
+			}
+		} catch (err) {
+			result.errors.push(
+				`Failed to process ${file.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
+			)
+		}
+	}
+
+	// Handle deletions (files in manifest but not on disk)
+	if (manifest && canWrite) {
+		for (let entry of manifest.entries) {
+			if (!scannedByPath.has(entry.relativePath)) {
+				try {
+					let doc = targetDocs.find(d => d?.$jazz.id === entry.docId)
+					if (doc?.$isLoaded && !doc.deletedAt) {
+						// Soft delete
+						doc.$jazz.set("deletedAt", new Date())
+						doc.$jazz.set("updatedAt", new Date())
+						result.deleted++
+					}
+				} catch (err) {
+					result.errors.push(
+						`Failed to delete ${entry.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
+					)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
+async function createDocFromFile(
+	file: ScannedFile,
+	targetDocs: DocumentList,
+	listOwner: Group | Account,
+): Promise<void> {
+	// Transform asset references back to asset: format
+	let assetFiles = new Map<string, string>()
+	for (let asset of file.assets) {
+		let id = crypto.randomUUID()
+		assetFiles.set(id, asset.name)
+	}
+	let content = transformContentForImport(file.content, assetFiles)
+
+	// Create doc-specific group with list owner as parent
+	let docGroup = Group.create()
+	if (listOwner instanceof Group) {
+		docGroup.addMember(listOwner)
+	}
+
+	let now = new Date()
+
+	// Create assets
+	let docAssets: co.loaded<typeof Asset>[] = []
+	for (let assetFile of file.assets) {
+		let isVideo = assetFile.blob.type.startsWith("video/")
+		let id = [...assetFiles.entries()].find(
+			([, name]) => name === assetFile.name,
+		)?.[0]
+		if (!id) continue
+
+		if (isVideo) {
+			let video = await FileStream.createFromBlob(assetFile.blob, {
+				owner: docGroup,
+			})
+			let asset = VideoAsset.create(
+				{
+					type: "video",
+					name: assetFile.name.replace(/\.[^.]+$/, ""),
+					video,
+					mimeType: "video/mp4",
+					createdAt: now,
+				},
+				docGroup,
+			)
+			docAssets.push(asset)
+		} else {
+			let image = await createImage(assetFile.blob, {
+				owner: docGroup,
+				maxSize: 2048,
+			})
+			let asset = ImageAsset.create(
+				{
+					type: "image",
+					name: assetFile.name.replace(/\.[^.]+$/, ""),
+					image,
+					createdAt: now,
+				},
+				docGroup,
+			)
+			docAssets.push(asset)
+		}
+	}
+
+	let newDoc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(content, docGroup),
+			assets:
+				docAssets.length > 0
+					? co.list(Asset).create(docAssets, docGroup)
+					: undefined,
+			createdAt: now,
+			updatedAt: now,
+		},
+		docGroup,
+	)
+
+	targetDocs.$jazz.push(newDoc)
+}
+
+async function updateDocFromFile(
+	file: ScannedFile,
+	docId: string,
+	targetDocs: DocumentList,
+	listOwner: Group | Account,
+): Promise<void> {
+	let doc = targetDocs.find(
+		(d): d is LoadedDocument => d?.$isLoaded === true && d.$jazz.id === docId,
+	)
+	if (!doc || !doc.content?.$isLoaded) {
+		// Doc doesn't exist or content not loaded, treat as create
+		await createDocFromFile(file, targetDocs, listOwner)
+		return
+	}
+
+	// Update content
+	let assetFiles = new Map<string, string>()
+	for (let asset of file.assets) {
+		let id = crypto.randomUUID()
+		assetFiles.set(id, asset.name)
+	}
+	let content = transformContentForImport(file.content, assetFiles)
+
+	doc.content.$jazz.applyDiff(content)
+	doc.$jazz.set("updatedAt", new Date())
+
+	// TODO: Handle asset updates (add/remove/replace assets)
+	// For now, we just update the content. Asset changes require more complex logic.
 }
