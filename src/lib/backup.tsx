@@ -50,16 +50,21 @@ declare global {
 }
 
 let BACKUP_DEBOUNCE_MS = 5000
+let BACKUP_PULL_INTERVAL_MS = 20000
 let HANDLE_STORAGE_KEY = "backup-directory-handle"
 
 interface BackupState {
 	enabled: boolean
+	bidirectional: boolean
 	directoryName: string | null
 	lastBackupAt: string | null
+	lastPullAt: string | null
 	lastError: string | null
 	setEnabled: (enabled: boolean) => void
+	setBidirectional: (bidirectional: boolean) => void
 	setDirectoryName: (name: string | null) => void
 	setLastBackupAt: (date: string | null) => void
+	setLastPullAt: (date: string | null) => void
 	setLastError: (error: string | null) => void
 	reset: () => void
 }
@@ -68,18 +73,24 @@ let useBackupStore = create<BackupState>()(
 	persist(
 		set => ({
 			enabled: false,
+			bidirectional: true,
 			directoryName: null,
 			lastBackupAt: null,
+			lastPullAt: null,
 			lastError: null,
 			setEnabled: enabled => set({ enabled }),
+			setBidirectional: bidirectional => set({ bidirectional }),
 			setDirectoryName: directoryName => set({ directoryName }),
 			setLastBackupAt: lastBackupAt => set({ lastBackupAt }),
+			setLastPullAt: lastPullAt => set({ lastPullAt }),
 			setLastError: lastError => set({ lastError }),
 			reset: () =>
 				set({
 					enabled: false,
+					bidirectional: true,
 					directoryName: null,
 					lastBackupAt: null,
+					lastPullAt: null,
 					lastError: null,
 				}),
 		}),
