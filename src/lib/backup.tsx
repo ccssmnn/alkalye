@@ -572,6 +572,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
+	let pullIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
 	// Load space with documents
 	let space = useCoState(Space, spaceId as Parameters<typeof useCoState>[1], {
@@ -583,6 +584,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		},
 	})
 
+	// Push to filesystem (backup)
 	useEffect(() => {
 		// Skip if no backup folder configured
 		if (!directoryName) return
@@ -626,6 +628,60 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
 	}, [directoryName, space, spaceId, setDirectoryName])
+
+	// Pull from filesystem (import changes) - always enabled for space backups
+	useEffect(() => {
+		// Skip if no backup folder configured
+		if (!directoryName) return
+		// Skip if space not loaded
+		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
+
+		let docs = space.documents
+
+		// Check permissions for writing
+		let spaceGroup =
+			space.$jazz.owner instanceof Group ? space.$jazz.owner : null
+		let canWrite =
+			spaceGroup?.myRole() === "admin" || spaceGroup?.myRole() === "writer"
+
+		async function doPull() {
+			try {
+				let handle = await getSpaceBackupHandle(spaceId)
+				if (!handle) return
+
+				if (!docs.$isLoaded) return
+				let result = await syncFromBackup(
+					handle,
+					docs as DocumentList,
+					canWrite,
+				)
+				if (result.errors.length > 0) {
+					console.warn(`Space ${spaceId} pull errors:`, result.errors)
+				}
+			} catch (e) {
+				console.error(`Space backup pull failed for ${spaceId}:`, e)
+			}
+		}
+
+		// Pull on mount and visibility change
+		doPull()
+
+		let handleVisibility = () => {
+			if (document.visibilityState === "visible") {
+				doPull()
+			}
+		}
+
+		document.addEventListener("visibilitychange", handleVisibility)
+
+		// Set up interval for periodic pull
+		pullIntervalRef.current = setInterval(doPull, _BACKUP_PULL_INTERVAL_MS)
+
+		return () => {
+			document.removeEventListener("visibilitychange", handleVisibility)
+			if (pullIntervalRef.current) clearInterval(pullIntervalRef.current)
+		}
+	}, [directoryName, space, spaceId])
 
 	return null
 }
