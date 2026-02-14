@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest"
 import {
+	computeDocLocations,
+	transformContentForBackup,
+	computeExpectedStructure,
 	scanBackupFolder,
 	transformContentForImport,
 	readManifest,
 	writeManifest,
 	type BackupManifest,
+	type BackupDoc,
 } from "./backup-sync"
 
 // =============================================================================
@@ -19,14 +23,162 @@ function createMockBlob(content: string, type = "image/png"): Blob {
 	return new Blob([content], { type })
 }
 
+class MockWritableFileStream implements FileSystemWritableFileStream {
+	private stream = new WritableStream<unknown>()
+	private saveContent: (content: string) => void
+
+	constructor(saveContent: (content: string) => void) {
+		this.saveContent = saveContent
+	}
+
+	get locked(): boolean {
+		return this.stream.locked
+	}
+
+	abort(reason?: unknown): Promise<void> {
+		return this.stream.abort(reason)
+	}
+
+	close(): Promise<void> {
+		return Promise.resolve()
+	}
+
+	getWriter(): WritableStreamDefaultWriter<unknown> {
+		return this.stream.getWriter()
+	}
+
+	seek(_position: number): Promise<void> {
+		return Promise.resolve()
+	}
+
+	truncate(_size: number): Promise<void> {
+		return Promise.resolve()
+	}
+
+	write(data: string | Blob | ArrayBuffer): Promise<void>
+	write(data: ArrayBufferView): Promise<void>
+	write(data: {
+		type: "write"
+		data: string | Blob | ArrayBuffer | ArrayBufferView | null
+	}): Promise<void>
+	write(data: { type: "seek"; position: number }): Promise<void>
+	write(data: { type: "truncate"; size: number }): Promise<void>
+	async write(data: unknown): Promise<void> {
+		if (typeof data === "string") {
+			this.saveContent(data)
+			return
+		}
+
+		if (data instanceof Blob) {
+			this.saveContent(await data.text())
+			return
+		}
+
+		if (data instanceof ArrayBuffer) {
+			let bytes = new Uint8Array(data)
+			this.saveContent(new TextDecoder().decode(bytes))
+			return
+		}
+
+		if (ArrayBuffer.isView(data)) {
+			let bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
+			this.saveContent(new TextDecoder().decode(bytes))
+			return
+		}
+
+		if (typeof data === "object" && data !== null && "type" in data) {
+			if (
+				data.type === "write" &&
+				"data" in data &&
+				data.data !== undefined &&
+				data.data !== null
+			) {
+				let nestedData = data.data
+				if (typeof nestedData === "string") {
+					this.saveContent(nestedData)
+					return
+				}
+				if (nestedData instanceof Blob) {
+					this.saveContent(await nestedData.text())
+					return
+				}
+				if (nestedData instanceof ArrayBuffer) {
+					let bytes = new Uint8Array(nestedData)
+					this.saveContent(new TextDecoder().decode(bytes))
+					return
+				}
+				if (ArrayBuffer.isView(nestedData)) {
+					let bytes = new Uint8Array(
+						nestedData.buffer,
+						nestedData.byteOffset,
+						nestedData.byteLength,
+					)
+					this.saveContent(new TextDecoder().decode(bytes))
+				}
+			}
+		}
+	}
+
+	get [Symbol.toStringTag](): string {
+		return "FileSystemWritableFileStream"
+	}
+}
+
+class MockFileHandle implements FileSystemFileHandle {
+	kind = "file" as const
+	name: string
+	private getContent: () => string | undefined
+	private setContent: (content: string) => void
+	private initialFile: File
+
+	constructor(
+		name: string,
+		getContent: () => string | undefined,
+		setContent: (content: string) => void,
+		initialFile: File,
+	) {
+		this.name = name
+		this.getContent = getContent
+		this.setContent = setContent
+		this.initialFile = initialFile
+	}
+
+	async getFile(): Promise<File> {
+		let content = this.getContent()
+		if (content !== undefined) return new File([content], this.name)
+		return this.initialFile
+	}
+
+	async createWritable(): Promise<FileSystemWritableFileStream> {
+		return new MockWritableFileStream(this.setContent)
+	}
+
+	isSameEntry(other: FileSystemHandle): Promise<boolean> {
+		return Promise.resolve(other.kind === "file" && other.name === this.name)
+	}
+
+	get [Symbol.toStringTag](): string {
+		return "FileSystemFileHandle"
+	}
+}
+
+function isFileHandle(
+	handle: FileSystemHandle | undefined,
+): handle is FileSystemFileHandle {
+	return handle?.kind === "file"
+}
+
+function isDirectoryHandle(
+	handle: FileSystemHandle | undefined,
+): handle is FileSystemDirectoryHandle {
+	return handle?.kind === "directory"
+}
+
 // Mock FileSystemDirectoryHandle for testing
 class MockDirectoryHandle implements FileSystemDirectoryHandle {
 	kind = "directory" as const
 	name: string
-	private children = new Map<
-		string,
-		FileSystemFileHandle | FileSystemDirectoryHandle
-	>()
+	private children = new Map<string, FileSystemHandle>()
 
 	constructor(name: string) {
 		this.name = name
@@ -35,27 +187,12 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 	private fileContents = new Map<string, string>()
 
 	addFile(name: string, file: File) {
-		let mockHandle: FileSystemFileHandle = {
-			kind: "file",
+		let mockHandle = new MockFileHandle(
 			name,
-			getFile: async () => {
-				// Check if there's saved content from writeManifest
-				let content = this.fileContents.get(name)
-				if (content !== undefined) {
-					return new File([content], name)
-				}
-				return file
-			},
-			createWritable: async () => {
-				return {
-					write: async (data: string | Blob) => {
-						let content = typeof data === "string" ? data : await data.text()
-						this.fileContents.set(name, content)
-					},
-					close: async () => {},
-				}
-			},
-		} as unknown as FileSystemFileHandle
+			() => this.fileContents.get(name),
+			content => this.fileContents.set(name, content),
+			file,
+		)
 		this.children.set(name, mockHandle)
 	}
 
@@ -83,32 +220,20 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 		options?: { create?: boolean },
 	): Promise<FileSystemFileHandle> {
 		let handle = this.children.get(name)
-		if (!handle || handle.kind !== "file") {
+		if (!isFileHandle(handle)) {
 			if (options?.create) {
-				let mockHandle: FileSystemFileHandle = {
-					kind: "file",
+				let mockHandle = new MockFileHandle(
 					name,
-					getFile: async () => {
-						let content = this.fileContents.get(name)
-						return new File([content ?? ""], name)
-					},
-					createWritable: async () => {
-						return {
-							write: async (data: string | Blob) => {
-								let content =
-									typeof data === "string" ? data : await data.text()
-								this.fileContents.set(name, content)
-							},
-							close: async () => {},
-						}
-					},
-				} as unknown as FileSystemFileHandle
+					() => this.fileContents.get(name),
+					content => this.fileContents.set(name, content),
+					new File([""], name),
+				)
 				this.children.set(name, mockHandle)
 				return mockHandle
 			}
 			throw new Error(`File not found: ${name}`)
 		}
-		return handle as FileSystemFileHandle
+		return handle
 	}
 
 	async getDirectoryHandle(
@@ -116,7 +241,7 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 		options?: { create?: boolean },
 	): Promise<FileSystemDirectoryHandle> {
 		let handle = this.children.get(name)
-		if (!handle || handle.kind !== "directory") {
+		if (!isDirectoryHandle(handle)) {
 			if (options?.create) {
 				let newDir = new MockDirectoryHandle(name)
 				this.children.set(name, newDir)
@@ -124,7 +249,7 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 			}
 			throw new Error(`Directory not found: ${name}`)
 		}
-		return handle as FileSystemDirectoryHandle
+		return handle
 	}
 
 	removeEntry(): Promise<void> {
@@ -151,6 +276,171 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 		return "FileSystemDirectoryHandle"
 	}
 }
+
+// =============================================================================
+// Compute Doc Locations
+// =============================================================================
+
+describe("computeDocLocations", () => {
+	function createDoc(input: {
+		id: string
+		title: string
+		path: string | null
+		assets?: { id: string; name: string; blob: Blob }[]
+	}): BackupDoc {
+		return {
+			id: input.id,
+			title: input.title,
+			content: "# Content",
+			path: input.path,
+			updatedAtMs: 0,
+			assets: input.assets ?? [],
+		}
+	}
+
+	it("uses title.md for root docs without assets", () => {
+		let docs = [createDoc({ id: "d1", title: "Hello World", path: null })]
+		let locations = computeDocLocations(docs)
+		let loc = locations.get("d1")
+
+		expect(loc?.dirPath).toBe("")
+		expect(loc?.filename).toBe("Hello World.md")
+		expect(loc?.hasOwnFolder).toBe(false)
+	})
+
+	it("creates doc folder for docs with assets", () => {
+		let docs = [
+			createDoc({
+				id: "d1",
+				title: "Project Note",
+				path: null,
+				assets: [{ id: "a1", name: "Image", blob: createMockBlob("img") }],
+			}),
+		]
+		let locations = computeDocLocations(docs)
+		let loc = locations.get("d1")
+
+		expect(loc?.dirPath).toBe("Project Note")
+		expect(loc?.filename).toBe("Project Note.md")
+		expect(loc?.hasOwnFolder).toBe(true)
+	})
+
+	it("disambiguates title collisions in same folder", () => {
+		let docs = [
+			createDoc({ id: "doc-11111111", title: "Same", path: "work" }),
+			createDoc({ id: "doc-22222222", title: "Same", path: "work" }),
+		]
+		let locations = computeDocLocations(docs)
+		let first = locations.get("doc-11111111")
+		let second = locations.get("doc-22222222")
+
+		expect(first?.filename).toBe("Same.md")
+		expect(second?.filename).toContain("Same")
+		expect(second?.filename).toContain("22222222")
+	})
+
+	it("does not disambiguate same title in different folders", () => {
+		let docs = [
+			createDoc({ id: "d1", title: "Same", path: "work" }),
+			createDoc({ id: "d2", title: "Same", path: "personal" }),
+		]
+		let locations = computeDocLocations(docs)
+
+		expect(locations.get("d1")?.filename).toBe("Same.md")
+		expect(locations.get("d2")?.filename).toBe("Same.md")
+	})
+
+	it("disambiguates duplicate asset filenames", () => {
+		let docs = [
+			createDoc({
+				id: "d1",
+				title: "Assets",
+				path: null,
+				assets: [
+					{ id: "a1", name: "shot", blob: createMockBlob("one") },
+					{ id: "a2", name: "shot", blob: createMockBlob("two") },
+				],
+			}),
+		]
+		let locations = computeDocLocations(docs)
+		let loc = locations.get("d1")
+
+		expect(loc?.assetFiles.get("a1")).toBeDefined()
+		expect(loc?.assetFiles.get("a2")).toBeDefined()
+		expect(loc?.assetFiles.get("a1")).not.toBe(loc?.assetFiles.get("a2"))
+	})
+})
+
+// =============================================================================
+// Transform Content for Backup
+// =============================================================================
+
+describe("transformContentForBackup", () => {
+	it("transforms asset: references to assets paths", () => {
+		let assetFiles = new Map([
+			["asset1", "photo.png"],
+			["asset2", "clip.jpg"],
+		])
+		let content = "![A](asset:asset1)\n![B](asset:asset2)"
+
+		let result = transformContentForBackup(content, assetFiles)
+
+		expect(result).toContain("![A](assets/photo.png)")
+		expect(result).toContain("![B](assets/clip.jpg)")
+	})
+
+	it("keeps unmatched asset references unchanged", () => {
+		let assetFiles = new Map([["asset1", "photo.png"]])
+		let content = "![A](asset:missing)"
+
+		let result = transformContentForBackup(content, assetFiles)
+
+		expect(result).toBe("![A](asset:missing)")
+	})
+})
+
+// =============================================================================
+// Compute Expected Structure
+// =============================================================================
+
+describe("computeExpectedStructure", () => {
+	it("includes parent directories and markdown files", () => {
+		let docs: BackupDoc[] = [
+			{
+				id: "d1",
+				title: "Note",
+				content: "x",
+				path: "work/notes",
+				updatedAtMs: 0,
+				assets: [],
+			},
+		]
+		let locations = computeDocLocations(docs)
+		let expected = computeExpectedStructure(docs, locations)
+
+		expect(expected.expectedPaths.has("work")).toBe(true)
+		expect(expected.expectedPaths.has("work/notes")).toBe(true)
+		expect(expected.expectedFiles.get("work/notes")?.has("Note.md")).toBe(true)
+	})
+
+	it("includes assets folder for docs with assets", () => {
+		let docs: BackupDoc[] = [
+			{
+				id: "d1",
+				title: "Note",
+				content: "x",
+				path: "work",
+				updatedAtMs: 0,
+				assets: [{ id: "a1", name: "image", blob: createMockBlob("img") }],
+			},
+		]
+		let locations = computeDocLocations(docs)
+		let expected = computeExpectedStructure(docs, locations)
+
+		expect(expected.expectedPaths.has("work/Note")).toBe(true)
+		expect(expected.expectedPaths.has("work/Note/assets")).toBe(true)
+	})
+})
 
 // =============================================================================
 // Transform Content for Import
@@ -252,6 +542,36 @@ describe("readManifest", () => {
 		root.addFile(
 			".alkalye-manifest.json",
 			new File([JSON.stringify(invalidManifest)], ".alkalye-manifest.json"),
+		)
+
+		let result = await readManifest(root)
+
+		expect(result).toBeNull()
+	})
+
+	it("returns null for invalid entries shape", async () => {
+		let root = new MockDirectoryHandle("root")
+		let invalidManifest = {
+			version: 1,
+			entries: [{ docId: "d1" }],
+			lastSyncAt: new Date().toISOString(),
+		}
+
+		root.addFile(
+			".alkalye-manifest.json",
+			new File([JSON.stringify(invalidManifest)], ".alkalye-manifest.json"),
+		)
+
+		let result = await readManifest(root)
+
+		expect(result).toBeNull()
+	})
+
+	it("returns null for malformed JSON", async () => {
+		let root = new MockDirectoryHandle("root")
+		root.addFile(
+			".alkalye-manifest.json",
+			new File(["{invalid"], ".alkalye-manifest.json"),
 		)
 
 		let result = await readManifest(root)

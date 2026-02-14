@@ -1,4 +1,5 @@
 import { getExtensionFromBlob, sanitizeFilename } from "@/lib/export"
+import { z } from "zod"
 
 export {
 	computeDocLocations,
@@ -21,6 +22,7 @@ interface BackupDoc {
 	title: string
 	content: string
 	path: string | null
+	updatedAtMs: number
 	assets: { id: string; name: string; blob: Blob }[]
 }
 
@@ -39,6 +41,7 @@ interface ExpectedStructure {
 interface ManifestEntry {
 	docId: string
 	relativePath: string
+	locationKey?: string
 	contentHash: string
 	lastSyncedAt: string
 	assets: { name: string; hash: string }[]
@@ -57,6 +60,26 @@ interface ScannedFile {
 	assets: { name: string; blob: Blob }[]
 	lastModified: number
 }
+
+let manifestAssetSchema = z.object({
+	name: z.string(),
+	hash: z.string(),
+})
+
+let manifestEntrySchema = z.object({
+	docId: z.string(),
+	relativePath: z.string(),
+	locationKey: z.string().optional(),
+	contentHash: z.string(),
+	lastSyncedAt: z.string(),
+	assets: z.array(manifestAssetSchema),
+})
+
+let backupManifestSchema = z.object({
+	version: z.literal(1),
+	entries: z.array(manifestEntrySchema),
+	lastSyncAt: z.string(),
+})
 
 function computeDocLocations(docs: BackupDoc[]): Map<string, DocLocation> {
 	let docLocations = new Map<string, DocLocation>()
@@ -249,10 +272,9 @@ async function readManifest(
 		let file = await fileHandle.getFile()
 		let text = await file.text()
 		let parsed = JSON.parse(text)
-		if (parsed.version === 1) {
-			return parsed as BackupManifest
-		}
-		return null
+		let validated = backupManifestSchema.safeParse(parsed)
+		if (!validated.success) return null
+		return validated.data
 	} catch {
 		return null
 	}

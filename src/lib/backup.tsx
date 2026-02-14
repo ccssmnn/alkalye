@@ -14,7 +14,7 @@ import {
 	VideoAsset,
 } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
-import { getPath } from "@/editor/frontmatter"
+import { getPath, parseFrontmatter } from "@/editor/frontmatter"
 import { Button } from "@/components/ui/button"
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval"
 import {
@@ -23,6 +23,7 @@ import {
 	computeExpectedStructure,
 	scanBackupFolder,
 	readManifest,
+	writeManifest,
 	transformContentForImport,
 	type BackupDoc,
 	type ScannedFile,
@@ -43,13 +44,27 @@ export {
 	checkBackupPermission,
 	// Exported for testing
 	hashContent,
+	syncBackup,
 	syncFromBackup,
 	type ScannedFile,
 }
 
 // File System Access API type augmentation
 declare global {
+	interface FileSystemObserver {
+		observe(
+			handle: FileSystemDirectoryHandle,
+			options?: { recursive?: boolean },
+		): Promise<void>
+		disconnect(): void
+	}
+
 	interface Window {
+		FileSystemObserver?: {
+			new (
+				onChange: (records: unknown[], observer: FileSystemObserver) => void,
+			): FileSystemObserver
+		}
 		showDirectoryPicker(options?: {
 			mode?: "read" | "readwrite"
 		}): Promise<FileSystemDirectoryHandle>
@@ -65,19 +80,13 @@ declare global {
 	}
 }
 
-let BACKUP_DEBOUNCE_MS = 5000
-
-function supportsFileSystemWatch(): boolean {
-	if (typeof FileSystemDirectoryHandle === "undefined") return false
-	let proto = Object.getPrototypeOf(FileSystemDirectoryHandle.prototype)
-	return "watch" in proto
-}
-
-function isBackupSupported(): boolean {
-	return "showDirectoryPicker" in window
-}
+let BACKUP_DEBOUNCE_MS = 1200
 
 let HANDLE_STORAGE_KEY = "backup-directory-handle"
+let preferredRelativePathByDocId = new Map<string, string>()
+let recentImportedRelativePaths = new Map<string, number>()
+let RECENT_IMPORT_WINDOW_MS = 30_000
+let spaceLastPullAtById = new Map<string, number>()
 
 interface BackupState {
 	enabled: boolean
@@ -132,6 +141,13 @@ type LoadedDocument = co.loaded<
 type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
 type Account = co.loaded<typeof UserAccount>
 
+interface SyncFromBackupResult {
+	created: number
+	updated: number
+	deleted: number
+	errors: string[]
+}
+
 let backupQuery = {
 	root: {
 		documents: {
@@ -145,6 +161,7 @@ function BackupSubscriber() {
 	let {
 		enabled,
 		bidirectional,
+		lastPullAt,
 		setLastBackupAt,
 		setLastPullAt,
 		setLastError,
@@ -154,6 +171,8 @@ function BackupSubscriber() {
 	let me = useAccount(UserAccount, { resolve: backupQuery })
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
+	let isPushingRef = useRef(false)
+	let isPullingRef = useRef(false)
 
 	// Push to filesystem (backup)
 	useEffect(() => {
@@ -188,12 +207,15 @@ function BackupSubscriber() {
 					(d): d is LoadedDocument => d?.$isLoaded === true,
 				)
 				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				isPushingRef.current = true
 				await syncBackup(handle, backupDocs)
 
 				setLastBackupAt(new Date().toISOString())
 				setLastError(null)
 			} catch (e) {
 				setLastError(e instanceof Error ? e.message : "Backup failed")
+			} finally {
+				isPushingRef.current = false
 			}
 		}, BACKUP_DEBOUNCE_MS)
 
@@ -202,21 +224,29 @@ function BackupSubscriber() {
 		}
 	}, [enabled, me, setLastBackupAt, setLastError, setEnabled, setDirectoryName])
 
-	// Pull from filesystem (import changes) - only supported with FileSystem watch
+	// Pull from filesystem (import changes) - only supported with FileSystemObserver
 	useEffect(() => {
 		if (!enabled || !bidirectional || !me.$isLoaded) return
-		if (!supportsFileSystemWatch()) return // Requires watch API
+		if (!supportsFileSystemWatch()) return
 
 		let docs = me.root?.documents
 		if (!docs?.$isLoaded) return
 
 		async function doPull() {
 			try {
+				if (isPushingRef.current) return
+				if (isPullingRef.current) return
+				isPullingRef.current = true
 				let handle = await getBackupHandle()
 				if (!handle) return
 
-				if (!docs.$isLoaded) return
-				let result = await syncFromBackup(handle, docs as DocumentList, true)
+				if (!docs.$isLoaded || !isDocumentList(docs)) return
+				let result = await syncFromBackup(
+					handle,
+					docs,
+					true,
+					toTimestamp(lastPullAt),
+				)
 				if (result.errors.length > 0) {
 					console.warn("Backup pull errors:", result.errors)
 				}
@@ -224,36 +254,36 @@ function BackupSubscriber() {
 				setLastPullAt(new Date().toISOString())
 			} catch (e) {
 				console.error("Backup pull failed:", e)
+			} finally {
+				isPullingRef.current = false
 			}
 		}
 
-		// Set up watch for real-time file change detection
+		// Set up observer for real-time file change detection
 		let watchAborted = false
+		let stopWatching: (() => void) | null = null
 
 		async function setupWatch() {
 			let handle = await getBackupHandle()
 			if (!handle) return
 
-			let watcher = (
-				handle as unknown as {
-					watch(options: { recursive: boolean }): {
-						addEventListener(event: string, callback: () => void): void
-					}
-				}
-			).watch({
-				recursive: true,
-			})
-			watcher.addEventListener("change", () => {
+			let stop = await observeDirectoryChanges(handle, () => {
 				if (!watchAborted) doPull()
 			})
+			if (watchAborted) {
+				stop?.()
+				return
+			}
+			stopWatching = stop
 		}
 
 		setupWatch()
 
 		return () => {
 			watchAborted = true
+			stopWatching?.()
 		}
-	}, [enabled, bidirectional, me, setLastPullAt])
+	}, [enabled, bidirectional, me, setLastPullAt, lastPullAt])
 
 	return null
 }
@@ -416,7 +446,7 @@ function BackupSettings() {
 							<p className="text-muted-foreground mt-1 text-xs">
 								{supportsFileSystemWatch()
 									? "When enabled, changes made in the backup folder will be imported into Alkalye."
-									: "Requires a Chromium-based browser with File System Watch support."}
+									: "Requires a Chromium-based browser with File System Observer support."}
 							</p>
 						</div>
 						<div className="flex gap-2">
@@ -475,7 +505,8 @@ function getSpaceBackupPath(spaceId: string): string | null {
 		let key = getSpaceBackupStorageKey(spaceId)
 		let stored = localStorage.getItem(key)
 		if (!stored) return null
-		let parsed = JSON.parse(stored) as SpaceBackupState
+		let parsed = JSON.parse(stored)
+		if (!isSpaceBackupState(parsed)) return null
 		return parsed.directoryName
 	} catch {
 		return null
@@ -665,13 +696,148 @@ function SpacesBackupSubscriber() {
 	)
 }
 
+// Exported for testing
+async function hashContent(content: string): Promise<string> {
+	// Simple hash using built-in crypto
+	let encoder = new TextEncoder()
+	let data = encoder.encode(content)
+	let hashBuffer = await crypto.subtle.digest("SHA-256", data)
+	let hashArray = Array.from(new Uint8Array(hashBuffer))
+	return hashArray
+		.map(b => b.toString(16).padStart(2, "0"))
+		.join("")
+		.slice(0, 16)
+}
+
+async function syncBackup(
+	handle: FileSystemDirectoryHandle,
+	docs: BackupDoc[],
+): Promise<void> {
+	await performSyncBackup(handle, docs)
+}
+
+async function syncFromBackup(
+	handle: FileSystemDirectoryHandle,
+	targetDocs: DocumentList,
+	canWrite: boolean,
+	lastPullAtMs: number | null = null,
+): Promise<SyncFromBackupResult> {
+	let result: SyncFromBackupResult = {
+		created: 0,
+		updated: 0,
+		deleted: 0,
+		errors: [],
+	}
+
+	let manifest = await readManifest(handle)
+	let scannedFiles = await scanBackupFolder(handle)
+	let listOwner = targetDocs.$jazz.owner
+
+	// Build maps for lookup
+	let manifestByPath = new Map(
+		manifest?.entries.map(e => [e.relativePath, e]) ?? [],
+	)
+	let scannedByPath = new Map(scannedFiles.map(f => [f.relativePath, f]))
+	let matchedManifestDocIds = new Set<string>()
+
+	// Process new and updated files
+	for (let file of scannedFiles) {
+		try {
+			let contentHash = await hashContent(file.content)
+			let manifestEntry = manifestByPath.get(file.relativePath)
+			if (manifestEntry) {
+				matchedManifestDocIds.add(manifestEntry.docId)
+				if (lastPullAtMs !== null && file.lastModified <= lastPullAtMs) {
+					continue
+				}
+			}
+
+			if (!manifestEntry) {
+				let movedEntry = findMovedManifestEntry(
+					manifest,
+					scannedByPath,
+					matchedManifestDocIds,
+					contentHash,
+				)
+				if (movedEntry) {
+					manifestEntry = movedEntry
+					matchedManifestDocIds.add(movedEntry.docId)
+				}
+			}
+
+			if (!manifestEntry) {
+				// New file - create document
+				if (!canWrite) {
+					result.errors.push(`Cannot create ${file.name}: no write permission`)
+					continue
+				}
+				if (wasRecentlyImported(file.relativePath)) continue
+				let newDocId = await createDocFromFile(file, targetDocs, listOwner)
+				preferredRelativePathByDocId.set(newDocId, file.relativePath)
+				markRecentlyImported(file.relativePath)
+				result.created++
+			} else if (
+				manifestEntry.contentHash !== contentHash ||
+				manifestEntry.relativePath !== file.relativePath
+			) {
+				preferredRelativePathByDocId.set(manifestEntry.docId, file.relativePath)
+				// File changed or moved - update document
+				if (!canWrite) {
+					result.errors.push(`Cannot update ${file.name}: no write permission`)
+					continue
+				}
+				let didUpdate = await updateDocFromFile(
+					file,
+					manifestEntry.docId,
+					targetDocs,
+				)
+				if (didUpdate) {
+					result.updated++
+				} else {
+					result.errors.push(
+						`Skipped update for ${file.relativePath}: target document not loaded`,
+					)
+				}
+			}
+		} catch (err) {
+			result.errors.push(
+				`Failed to process ${file.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
+			)
+		}
+	}
+
+	// Handle deletions (files in manifest but not on disk)
+	if (manifest && canWrite) {
+		for (let entry of manifest.entries) {
+			if (matchedManifestDocIds.has(entry.docId)) continue
+			if (!scannedByPath.has(entry.relativePath)) {
+				try {
+					let doc = targetDocs.find(d => d?.$jazz.id === entry.docId)
+					if (doc?.$isLoaded && !doc.deletedAt) {
+						// Soft delete
+						doc.$jazz.set("deletedAt", new Date())
+						doc.$jazz.set("updatedAt", new Date())
+						result.deleted++
+					}
+				} catch (err) {
+					result.errors.push(
+						`Failed to delete ${entry.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
+					)
+				}
+			}
+		}
+	}
+
+	return result
+}
+
 // =============================================================================
 // Helper functions (used by exported functions above)
 // =============================================================================
 
 // Space backup subscriber - handles backup sync for a single space
 
-let SPACE_BACKUP_DEBOUNCE_MS = 5000
+let SPACE_BACKUP_DEBOUNCE_MS = 1200
 
 interface SpaceBackupSubscriberProps {
 	spaceId: string
@@ -681,9 +847,11 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
+	let isPushingRef = useRef(false)
+	let isPullingRef = useRef(false)
 
 	// Load space with documents
-	let space = useCoState(Space, spaceId as Parameters<typeof useCoState>[1], {
+	let space = useCoState(Space, spaceId, {
 		resolve: {
 			documents: {
 				$each: { content: true, assets: { $each: { image: true } } },
@@ -726,9 +894,12 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 					(d): d is LoadedDocument => d?.$isLoaded === true,
 				)
 				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				isPushingRef.current = true
 				await syncBackup(handle, backupDocs)
 			} catch (e) {
 				console.error(`Space backup failed for ${spaceId}:`, e)
+			} finally {
+				isPushingRef.current = false
 			}
 		}, SPACE_BACKUP_DEBOUNCE_MS)
 
@@ -737,13 +908,13 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		}
 	}, [directoryName, space, spaceId, setDirectoryName])
 
-	// Pull from filesystem (import changes) - only supported with FileSystem watch
+	// Pull from filesystem (import changes) - only supported with FileSystemObserver
 	useEffect(() => {
 		// Skip if no backup folder configured
 		if (!directoryName) return
 		// Skip if space not loaded
 		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
-		if (!supportsFileSystemWatch()) return // Requires watch API
+		if (!supportsFileSystemWatch()) return
 
 		let docs = space.documents
 
@@ -755,48 +926,53 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 
 		async function doPull() {
 			try {
+				if (isPushingRef.current) return
+				if (isPullingRef.current) return
+				isPullingRef.current = true
 				let handle = await getSpaceBackupHandle(spaceId)
 				if (!handle) return
 
-				if (!docs.$isLoaded) return
+				if (!docs.$isLoaded || !isDocumentList(docs)) return
 				let result = await syncFromBackup(
 					handle,
-					docs as DocumentList,
+					docs,
 					canWrite,
+					spaceLastPullAtById.get(spaceId) ?? null,
 				)
 				if (result.errors.length > 0) {
 					console.warn(`Space ${spaceId} pull errors:`, result.errors)
 				}
+				spaceLastPullAtById.set(spaceId, Date.now())
 			} catch (e) {
 				console.error(`Space backup pull failed for ${spaceId}:`, e)
+			} finally {
+				isPullingRef.current = false
 			}
 		}
 
-		// Set up watch for real-time file change detection
+		// Set up observer for real-time file change detection
 		let watchAborted = false
+		let stopWatching: (() => void) | null = null
 
 		async function setupWatch() {
 			let handle = await getSpaceBackupHandle(spaceId)
 			if (!handle) return
 
-			let watcher = (
-				handle as unknown as {
-					watch(options: { recursive: boolean }): {
-						addEventListener(event: string, callback: () => void): void
-					}
-				}
-			).watch({
-				recursive: true,
-			})
-			watcher.addEventListener("change", () => {
+			let stop = await observeDirectoryChanges(handle, () => {
 				if (!watchAborted) doPull()
 			})
+			if (watchAborted) {
+				stop?.()
+				return
+			}
+			stopWatching = stop
 		}
 
 		setupWatch()
 
 		return () => {
 			watchAborted = true
+			stopWatching?.()
 		}
 	}, [directoryName, space, spaceId])
 
@@ -829,7 +1005,7 @@ async function clearHandle(): Promise<void> {
 async function verifyPermission(
 	handle: FileSystemDirectoryHandle,
 ): Promise<boolean> {
-	let opts = { mode: "readwrite" } as const
+	let opts: { mode: "readwrite" } = { mode: "readwrite" }
 	if ((await handle.queryPermission(opts)) === "granted") return true
 	if ((await handle.requestPermission(opts)) === "granted") return true
 	return false
@@ -858,6 +1034,7 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 	let content = doc.content?.toString() ?? ""
 	let title = getDocumentTitle(doc)
 	let path = getPath(content)
+	let updatedAtMs = doc.updatedAt?.getTime() ?? 0
 
 	let assets: BackupDoc["assets"] = []
 	if (doc.assets?.$isLoaded) {
@@ -880,7 +1057,7 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 		}
 	}
 
-	return { id: doc.$jazz.id, title, content, path, assets }
+	return { id: doc.$jazz.id, title, content, path, updatedAtMs, assets }
 }
 
 async function getOrCreateDirectory(
@@ -935,34 +1112,118 @@ async function listDirectories(
 	return dirs
 }
 
-async function syncBackup(
+async function performSyncBackup(
 	handle: FileSystemDirectoryHandle,
 	docs: BackupDoc[],
 ): Promise<void> {
 	let docLocations = computeDocLocations(docs)
+	let existingManifest = await readManifest(handle)
+	let existingEntriesByDocId = new Map(
+		existingManifest?.entries.map(entry => [entry.docId, entry]) ?? [],
+	)
+	let manifestEntries: {
+		docId: string
+		relativePath: string
+		locationKey: string
+		contentHash: string
+		lastSyncedAt: string
+		assets: { name: string; hash: string }[]
+	}[] = []
+	let hasFilesystemChanges = false
+	let nowIso = new Date().toISOString()
 
-	// Write all documents and their assets
+	// Write only changed documents and assets
 	for (let doc of docs) {
 		let loc = docLocations.get(doc.id)!
+		let locationKey = getDocLocationKey(doc)
+		let computedRelativePath = loc.dirPath
+			? `${loc.dirPath}/${loc.filename}`
+			: loc.filename
+		let existingEntry = existingEntriesByDocId.get(doc.id)
+		let preferredRelativePath = preferredRelativePathByDocId.get(doc.id)
+		let finalRelativePath = computedRelativePath
+		if (existingEntry) {
+			if (existingEntry.locationKey === locationKey) {
+				finalRelativePath = existingEntry.relativePath
+			}
+		}
+		if (preferredRelativePath) {
+			finalRelativePath = preferredRelativePath
+		}
+		let finalLocation = buildLocationFromRelativePath(loc, finalRelativePath)
+		docLocations.set(doc.id, finalLocation)
+		loc = finalLocation
+
 		let dir = loc.dirPath
 			? await getOrCreateDirectory(handle, loc.dirPath)
 			: handle
 
 		let exportedContent = transformContentForBackup(doc.content, loc.assetFiles)
-		await writeFile(dir, loc.filename, exportedContent)
+		let contentHash = await hashContent(exportedContent)
+		let relativePath = finalRelativePath
+		let assets: { name: string; hash: string }[] = []
+		for (let asset of doc.assets) {
+			let filename = loc.assetFiles.get(asset.id)!
+			assets.push({
+				name: filename,
+				hash: await hashBlob(asset.blob),
+			})
+		}
 
-		// Write assets if any
-		if (doc.assets.length > 0) {
-			let assetsDir = await dir.getDirectoryHandle("assets", { create: true })
-			for (let asset of doc.assets) {
-				let filename = loc.assetFiles.get(asset.id)!
-				await writeFile(assetsDir, filename, asset.blob)
+		let shouldWriteDoc =
+			!existingEntry ||
+			existingEntry.relativePath !== relativePath ||
+			existingEntry.contentHash !== contentHash ||
+			!areManifestAssetsEqual(existingEntry.assets, assets)
+
+		if (shouldWriteDoc) {
+			hasFilesystemChanges = true
+			await writeFile(dir, loc.filename, exportedContent)
+
+			// Write assets if any
+			if (doc.assets.length > 0) {
+				let assetsDir = await dir.getDirectoryHandle("assets", { create: true })
+				for (let asset of doc.assets) {
+					let filename = loc.assetFiles.get(asset.id)!
+					await writeFile(assetsDir, filename, asset.blob)
+				}
 			}
+		}
+
+		manifestEntries.push({
+			docId: doc.id,
+			relativePath,
+			locationKey,
+			contentHash,
+			lastSyncedAt: shouldWriteDoc
+				? nowIso
+				: (existingEntry?.lastSyncedAt ?? nowIso),
+			assets,
+		})
+	}
+
+	let docsChanged =
+		existingEntriesByDocId.size !== manifestEntries.length ||
+		hasFilesystemChanges
+
+	if (docsChanged) {
+		// Clean up orphaned files and directories
+		await cleanupOrphanedFiles(handle, docs, docLocations)
+
+		await writeManifest(handle, {
+			version: 1,
+			entries: manifestEntries,
+			lastSyncAt: nowIso,
+		})
+
+		for (let entry of manifestEntries) {
+			recentImportedRelativePaths.delete(entry.relativePath)
 		}
 	}
 
-	// Clean up orphaned files and directories
-	await cleanupOrphanedFiles(handle, docs, docLocations)
+	for (let doc of docs) {
+		preferredRelativePathByDocId.delete(doc.id)
+	}
 }
 
 async function cleanupOrphanedFiles(
@@ -1029,155 +1290,23 @@ async function cleanupOrphanedFiles(
 	await cleanDir(handle, "")
 }
 
-function getSpaceBackupStorageKey(spaceId: string): string {
-	return `${SPACE_BACKUP_KEY_PREFIX}${spaceId}`
-}
-
-async function getSpaceBackupHandle(
-	spaceId: string,
-): Promise<FileSystemDirectoryHandle | null> {
-	try {
-		let handle = await idbGet<FileSystemDirectoryHandle>(
-			`${HANDLE_STORAGE_KEY}-space-${spaceId}`,
-		)
-		if (!handle) return null
-		let hasPermission = await verifyPermission(handle)
-		if (!hasPermission) return null
-		return handle
-	} catch {
-		return null
-	}
-}
-
-function getSpacesWithBackup(
-	me: ReturnType<
-		typeof useAccount<typeof UserAccount, typeof spacesBackupQuery>
-	>,
-	_storageVersion: number,
-): string[] {
-	if (!me.$isLoaded || !me.root?.spaces?.$isLoaded) return []
-
-	let spaceIds: string[] = []
-	for (let space of Array.from(me.root.spaces)) {
-		if (!space?.$isLoaded) continue
-		let backupPath = getSpaceBackupPath(space.$jazz.id)
-		if (backupPath) {
-			spaceIds.push(space.$jazz.id)
-		}
-	}
-	return spaceIds
-}
-
-// =============================================================================
-// Bidirectional Sync - Pull from filesystem
-// =============================================================================
-
-// Exported for testing
-async function hashContent(content: string): Promise<string> {
-	// Simple hash using built-in crypto
-	let encoder = new TextEncoder()
-	let data = encoder.encode(content)
-	let hashBuffer = await crypto.subtle.digest("SHA-256", data)
-	let hashArray = Array.from(new Uint8Array(hashBuffer))
-	return hashArray
-		.map(b => b.toString(16).padStart(2, "0"))
-		.join("")
-		.slice(0, 16)
-}
-
-async function syncFromBackup(
-	handle: FileSystemDirectoryHandle,
-	targetDocs: DocumentList,
-	canWrite: boolean,
-): Promise<{
-	created: number
-	updated: number
-	deleted: number
-	errors: string[]
-}> {
-	let result = { created: 0, updated: 0, deleted: 0, errors: [] as string[] }
-
-	let manifest = await readManifest(handle)
-	let scannedFiles = await scanBackupFolder(handle)
-	let listOwner = targetDocs.$jazz.owner
-
-	// Build maps for lookup
-	let manifestByPath = new Map(
-		manifest?.entries.map(e => [e.relativePath, e]) ?? [],
-	)
-	let scannedByPath = new Map(scannedFiles.map(f => [f.relativePath, f]))
-
-	// Process new and updated files
-	for (let file of scannedFiles) {
-		try {
-			let contentHash = await hashContent(file.content)
-			let manifestEntry = manifestByPath.get(file.relativePath)
-
-			if (!manifestEntry) {
-				// New file - create document
-				if (!canWrite) {
-					result.errors.push(`Cannot create ${file.name}: no write permission`)
-					continue
-				}
-				await createDocFromFile(file, targetDocs, listOwner)
-				result.created++
-			} else if (manifestEntry.contentHash !== contentHash) {
-				// File changed - update document
-				if (!canWrite) {
-					result.errors.push(`Cannot update ${file.name}: no write permission`)
-					continue
-				}
-				await updateDocFromFile(
-					file,
-					manifestEntry.docId,
-					targetDocs,
-					listOwner,
-				)
-				result.updated++
-			}
-		} catch (err) {
-			result.errors.push(
-				`Failed to process ${file.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
-			)
-		}
-	}
-
-	// Handle deletions (files in manifest but not on disk)
-	if (manifest && canWrite) {
-		for (let entry of manifest.entries) {
-			if (!scannedByPath.has(entry.relativePath)) {
-				try {
-					let doc = targetDocs.find(d => d?.$jazz.id === entry.docId)
-					if (doc?.$isLoaded && !doc.deletedAt) {
-						// Soft delete
-						doc.$jazz.set("deletedAt", new Date())
-						doc.$jazz.set("updatedAt", new Date())
-						result.deleted++
-					}
-				} catch (err) {
-					result.errors.push(
-						`Failed to delete ${entry.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
-					)
-				}
-			}
-		}
-	}
-
-	return result
-}
-
 async function createDocFromFile(
 	file: ScannedFile,
 	targetDocs: DocumentList,
 	listOwner: Group | Account,
-): Promise<void> {
+): Promise<string> {
 	// Transform asset references back to asset: format
 	let assetFiles = new Map<string, string>()
 	for (let asset of file.assets) {
 		let id = crypto.randomUUID()
 		assetFiles.set(id, asset.name)
 	}
-	let content = transformContentForImport(file.content, assetFiles)
+	let transformedContent = transformContentForImport(file.content, assetFiles)
+	let content = applyPathFromRelativePath(
+		transformedContent,
+		file.relativePath,
+		file.assets.length > 0,
+	)
 
 	// Create doc-specific group with list owner as parent
 	let docGroup = Group.create()
@@ -1244,21 +1373,19 @@ async function createDocFromFile(
 	)
 
 	targetDocs.$jazz.push(newDoc)
+	return newDoc.$jazz.id
 }
 
 async function updateDocFromFile(
 	file: ScannedFile,
 	docId: string,
 	targetDocs: DocumentList,
-	listOwner: Group | Account,
-): Promise<void> {
+): Promise<boolean> {
 	let doc = targetDocs.find(
 		(d): d is LoadedDocument => d?.$isLoaded === true && d.$jazz.id === docId,
 	)
 	if (!doc || !doc.content?.$isLoaded) {
-		// Doc doesn't exist or content not loaded, treat as create
-		await createDocFromFile(file, targetDocs, listOwner)
-		return
+		return false
 	}
 
 	// Update content
@@ -1267,11 +1394,237 @@ async function updateDocFromFile(
 		let id = crypto.randomUUID()
 		assetFiles.set(id, asset.name)
 	}
-	let content = transformContentForImport(file.content, assetFiles)
+	let transformedContent = transformContentForImport(file.content, assetFiles)
+	let content = applyPathFromRelativePath(
+		transformedContent,
+		file.relativePath,
+		file.assets.length > 0,
+	)
 
 	doc.content.$jazz.applyDiff(content)
 	doc.$jazz.set("updatedAt", new Date())
 
 	// TODO: Handle asset updates (add/remove/replace assets)
 	// For now, we just update the content. Asset changes require more complex logic.
+	return true
+}
+
+function isDocumentList(value: unknown): value is DocumentList {
+	if (typeof value !== "object" || value === null) return false
+	return "$jazz" in value && "find" in value
+}
+
+function isSpaceBackupState(value: unknown): value is SpaceBackupState {
+	if (typeof value !== "object" || value === null) return false
+	if (!("directoryName" in value)) return false
+	return value.directoryName === null || typeof value.directoryName === "string"
+}
+
+function findMovedManifestEntry(
+	manifest: Awaited<ReturnType<typeof readManifest>>,
+	scannedByPath: Map<string, ScannedFile>,
+	matchedManifestDocIds: Set<string>,
+	contentHash: string,
+) {
+	if (!manifest) return null
+
+	for (let entry of manifest.entries) {
+		if (matchedManifestDocIds.has(entry.docId)) continue
+		if (scannedByPath.has(entry.relativePath)) continue
+		if (entry.contentHash === contentHash) return entry
+	}
+
+	return null
+}
+
+function applyPathFromRelativePath(
+	content: string,
+	relativePath: string,
+	hasAssets: boolean,
+): string {
+	let diskPath = derivePathFromRelativePath(relativePath, hasAssets)
+	let { frontmatter } = parseFrontmatter(content)
+	let currentPath = getPath(content)
+
+	if (!frontmatter) {
+		if (!diskPath) return content
+		return `---\npath: ${diskPath}\n---\n\n${content}`
+	}
+
+	if (currentPath === diskPath) return content
+
+	if (currentPath && !diskPath) {
+		return content.replace(
+			/^(---\r?\n[\s\S]*?)path:\s*[^\r\n]*\r?\n([\s\S]*?---)/,
+			"$1$2",
+		)
+	}
+
+	if (currentPath && diskPath) {
+		return content.replace(
+			/^(---\r?\n[\s\S]*?)path:\s*[^\r\n]*/,
+			`$1path: ${diskPath}`,
+		)
+	}
+
+	if (!currentPath && diskPath) {
+		return content.replace(/^(---\r?\n)/, `$1path: ${diskPath}\n`)
+	}
+
+	return content
+}
+
+function derivePathFromRelativePath(
+	relativePath: string,
+	hasAssets: boolean,
+): string | null {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length <= 1) return null
+
+	let directoryParts = parts.slice(0, -1)
+	if (!hasAssets) {
+		let path = directoryParts.join("/")
+		return path || null
+	}
+
+	let parentParts = directoryParts.slice(0, -1)
+	let path = parentParts.join("/")
+	return path || null
+}
+
+function buildLocationFromRelativePath(
+	baseLocation: ReturnType<typeof computeDocLocations> extends Map<
+		string,
+		infer V
+	>
+		? V
+		: never,
+	relativePath: string,
+) {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length === 0) return baseLocation
+
+	return {
+		...baseLocation,
+		dirPath: parts.slice(0, -1).join("/"),
+		filename: parts[parts.length - 1],
+	}
+}
+
+function supportsFileSystemWatch(): boolean {
+	return typeof window.FileSystemObserver === "function"
+}
+
+function isBackupSupported(): boolean {
+	return "showDirectoryPicker" in window
+}
+
+function getSpaceBackupStorageKey(spaceId: string): string {
+	return `${SPACE_BACKUP_KEY_PREFIX}${spaceId}`
+}
+
+function getSpacesWithBackup(
+	me: ReturnType<
+		typeof useAccount<typeof UserAccount, typeof spacesBackupQuery>
+	>,
+	_storageVersion: number,
+): string[] {
+	if (!me.$isLoaded || !me.root?.spaces?.$isLoaded) return []
+
+	let spaceIds: string[] = []
+	for (let space of Array.from(me.root.spaces)) {
+		if (!space?.$isLoaded) continue
+		let backupPath = getSpaceBackupPath(space.$jazz.id)
+		if (backupPath) {
+			spaceIds.push(space.$jazz.id)
+		}
+	}
+	return spaceIds
+}
+
+async function observeDirectoryChanges(
+	handle: FileSystemDirectoryHandle,
+	onChange: () => void,
+): Promise<(() => void) | null> {
+	let Observer = window.FileSystemObserver
+	if (!Observer) return null
+
+	let observer = new Observer(() => {
+		onChange()
+	})
+	await observer.observe(handle, { recursive: true })
+	return () => observer.disconnect()
+}
+
+async function hashBlob(blob: Blob): Promise<string> {
+	let buffer = await blob.arrayBuffer()
+	let hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
+	let hashArray = Array.from(new Uint8Array(hashBuffer))
+	return hashArray
+		.map(b => b.toString(16).padStart(2, "0"))
+		.join("")
+		.slice(0, 16)
+}
+
+function areManifestAssetsEqual(
+	a: { name: string; hash: string }[],
+	b: { name: string; hash: string }[],
+): boolean {
+	if (a.length !== b.length) return false
+
+	let sortedA = [...a].sort((left, right) =>
+		left.name.localeCompare(right.name),
+	)
+	let sortedB = [...b].sort((left, right) =>
+		left.name.localeCompare(right.name),
+	)
+
+	for (let i = 0; i < sortedA.length; i++) {
+		if (sortedA[i].name !== sortedB[i].name) return false
+		if (sortedA[i].hash !== sortedB[i].hash) return false
+	}
+
+	return true
+}
+
+function wasRecentlyImported(relativePath: string): boolean {
+	let importedAt = recentImportedRelativePaths.get(relativePath)
+	if (!importedAt) return false
+	if (Date.now() - importedAt > RECENT_IMPORT_WINDOW_MS) {
+		recentImportedRelativePaths.delete(relativePath)
+		return false
+	}
+	return true
+}
+
+function markRecentlyImported(relativePath: string): void {
+	recentImportedRelativePaths.set(relativePath, Date.now())
+}
+
+function toTimestamp(value: string | null): number | null {
+	if (!value) return null
+	let ms = Date.parse(value)
+	return Number.isNaN(ms) ? null : ms
+}
+
+function getDocLocationKey(doc: BackupDoc): string {
+	let path = doc.path ?? ""
+	let hasAssets = doc.assets.length > 0 ? "assets" : "no-assets"
+	return `${doc.title}|${path}|${hasAssets}`
+}
+
+async function getSpaceBackupHandle(
+	spaceId: string,
+): Promise<FileSystemDirectoryHandle | null> {
+	try {
+		let handle = await idbGet<FileSystemDirectoryHandle>(
+			`${HANDLE_STORAGE_KEY}-space-${spaceId}`,
+		)
+		if (!handle) return null
+		let hasPermission = await verifyPermission(handle)
+		if (!hasPermission) return null
+		return handle
+	} catch {
+		return null
+	}
 }

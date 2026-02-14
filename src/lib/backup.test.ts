@@ -1,9 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { hashContent } from "./backup"
-
-// =============================================================================
-// Hash Content
-// =============================================================================
+import { hashContent, syncFromBackup } from "./backup"
 
 describe("hashContent", () => {
 	it("returns consistent hash for same content", async () => {
@@ -36,14 +32,21 @@ describe("hashContent", () => {
 
 		expect(hash1).toBe(hash2)
 	})
-})
 
-// =============================================================================
-// Bidirectional Sync (Exported for Testing)
-// =============================================================================
+	it("changes hash when only one character changes", async () => {
+		let hash1 = await hashContent("abc")
+		let hash2 = await hashContent("abd")
+
+		expect(hash1).not.toBe(hash2)
+	})
+})
 
 describe("bidirectional sync exports", () => {
 	it("exports hashContent for testing", () => {
 		expect(typeof hashContent).toBe("function")
+	})
+
+	it("exports syncFromBackup for integration tests", () => {
+		expect(typeof syncFromBackup).toBe("function")
 	})
 })
