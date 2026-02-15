@@ -22,7 +22,17 @@ import {
 	toTimestamp,
 } from "@/lib/backup-storage"
 
-export { BackupSubscriber, SpacesBackupSubscriber }
+export { BackupSubscriber, SpacesBackupSubscriber, spaceBackupDocumentResolve }
+
+let spaceBackupDocumentResolve = {
+	documents: {
+		$each: {
+			content: true,
+			assets: { $each: { image: true, video: true } },
+		},
+		$onError: "catch",
+	},
+} as const
 
 let backupQuery = {
 	root: {
@@ -205,12 +215,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 	let isPullingRef = useRef(false)
 
 	let space = useCoState(Space, spaceId, {
-		resolve: {
-			documents: {
-				$each: { content: true, assets: { $each: { image: true } } },
-				$onError: "catch",
-			},
-		},
+		resolve: spaceBackupDocumentResolve,
 	})
 
 	useEffect(() => {
