@@ -11,6 +11,7 @@ import { getDocumentTitle } from "@/lib/document-utils"
 import { copyDocumentToMyList } from "@/lib/documents"
 import { saveDocumentAs } from "@/lib/export"
 import { useCoState, useAccount } from "jazz-tools/react"
+import { toast } from "sonner"
 
 export {
 	makeUploadImage,
@@ -280,8 +281,27 @@ function setupKeyboardShortcuts(opts: {
 	toggleRight: () => void
 	toggleFocusMode: () => void
 	openFind?: () => void
+	onPrintPdf?: () => void
 	docWithContent: MaybeDocWithContent
 }) {
+	function downloadCurrentDocument() {
+		if (!opts.docWithContent?.$isLoaded) return
+		let title = getDocumentTitle(opts.docWithContent)
+		saveDocumentAs(opts.docWithContent.content?.toString() ?? "", title)
+	}
+
+	function showAutosaveToast() {
+		toast("Alkalyte saves automatically", {
+			description:
+				"Changes are saved locally and synced to the cloud while you type.",
+			action: {
+				label: "Download",
+				onClick: downloadCurrentDocument,
+			},
+			id: "editor-save-shortcut",
+		})
+	}
+
 	function handleKeyDown(e: KeyboardEvent) {
 		if (
 			(e.metaKey || e.ctrlKey) &&
@@ -320,11 +340,19 @@ function setupKeyboardShortcuts(opts: {
 			opts.openFind?.()
 			return
 		}
+		if (
+			(e.metaKey || e.ctrlKey) &&
+			!e.shiftKey &&
+			!e.altKey &&
+			e.key.toLowerCase() === "p"
+		) {
+			e.preventDefault()
+			opts.onPrintPdf?.()
+			return
+		}
 		if ((e.metaKey || e.ctrlKey) && e.key === "s") {
 			e.preventDefault()
-			if (!opts.docWithContent?.$isLoaded) return
-			let title = getDocumentTitle(opts.docWithContent)
-			saveDocumentAs(opts.docWithContent.content?.toString() ?? "", title)
+			showAutosaveToast()
 		}
 	}
 

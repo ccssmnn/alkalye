@@ -81,6 +81,7 @@ import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
+import { printToPdf } from "@/lib/print-to-pdf"
 
 export { Route }
 
@@ -339,9 +340,27 @@ function SpaceEditorContent({
 				document.documentElement.dataset.focusMode = String(!current)
 			},
 			openFind: () => editor.current?.openFind(),
+			onPrintPdf: () => {
+				void printToPdf({
+					content,
+					themes: me.$isLoaded ? me.root?.themes : undefined,
+					defaultPreviewTheme: me.$isLoaded
+						? (me.root?.settings?.defaultPreviewTheme ?? null)
+						: null,
+				})
+			},
 			docWithContent,
 		})
-	}, [navigate, docId, toggleLeft, toggleRight, docWithContent, editor])
+	}, [
+		navigate,
+		docId,
+		toggleLeft,
+		toggleRight,
+		content,
+		me,
+		docWithContent,
+		editor,
+	])
 
 	let allDocs = getSpaceDocs(space)
 	let spaceDocs = space.documents?.$isLoaded ? space.documents : null
@@ -641,6 +660,9 @@ let spaceMeResolve = {
 	root: {
 		documents: { $each: { content: true } },
 		settings: true,
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
 	},
 } as const
 
