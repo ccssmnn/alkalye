@@ -108,6 +108,66 @@ describe("computeDocLocations", () => {
 		expect(loc?.assetFiles.get("a2")).toBeDefined()
 		expect(loc?.assetFiles.get("a1")).not.toBe(loc?.assetFiles.get("a2"))
 	})
+
+	it("assigns stable duplicate asset filenames regardless of asset order", () => {
+		let docForward = createDoc({
+			id: "d1",
+			title: "Assets",
+			path: null,
+			assets: [
+				{ id: "a1", name: "shot", blob: createMockBlob("one") },
+				{ id: "a2", name: "shot", blob: createMockBlob("two") },
+			],
+		})
+		let docReverse = createDoc({
+			id: "d1",
+			title: "Assets",
+			path: null,
+			assets: [
+				{ id: "a2", name: "shot", blob: createMockBlob("two") },
+				{ id: "a1", name: "shot", blob: createMockBlob("one") },
+			],
+		})
+
+		let forwardLoc = computeDocLocations([docForward]).get("d1")
+		let reverseLoc = computeDocLocations([docReverse]).get("d1")
+
+		expect(forwardLoc?.assetFiles.get("a1")).toBe(
+			reverseLoc?.assetFiles.get("a1"),
+		)
+		expect(forwardLoc?.assetFiles.get("a2")).toBe(
+			reverseLoc?.assetFiles.get("a2"),
+		)
+	})
+
+	it("assigns stable collision filenames regardless of input order", () => {
+		let first: BackupDoc = {
+			id: "doc-aaaa1111",
+			title: "Same",
+			content: "x",
+			path: "work",
+			updatedAtMs: 0,
+			assets: [],
+		}
+		let second: BackupDoc = {
+			id: "doc-bbbb2222",
+			title: "Same",
+			content: "x",
+			path: "work",
+			updatedAtMs: 0,
+			assets: [],
+		}
+
+		let forward = computeDocLocations([first, second])
+		let reverse = computeDocLocations([second, first])
+
+		expect(forward.get(first.id)?.filename).toBe(
+			reverse.get(first.id)?.filename,
+		)
+		expect(forward.get(second.id)?.filename).toBe(
+			reverse.get(second.id)?.filename,
+		)
+	})
 })
 
 // =============================================================================
@@ -261,10 +321,7 @@ describe("readManifest", () => {
 			lastSyncAt: new Date().toISOString(),
 		}
 
-		root.addFile(
-			".alkalye-manifest.json",
-			new File([JSON.stringify(manifest)], ".alkalye-manifest.json"),
-		)
+		root.addFile(".alkalye-manifest.json", JSON.stringify(manifest))
 
 		let result = await readManifest(root)
 
@@ -278,10 +335,7 @@ describe("readManifest", () => {
 		let root = new MockDirectoryHandle("root")
 		let invalidManifest = { version: 2, entries: [] }
 
-		root.addFile(
-			".alkalye-manifest.json",
-			new File([JSON.stringify(invalidManifest)], ".alkalye-manifest.json"),
-		)
+		root.addFile(".alkalye-manifest.json", JSON.stringify(invalidManifest))
 
 		let result = await readManifest(root)
 
@@ -296,10 +350,7 @@ describe("readManifest", () => {
 			lastSyncAt: new Date().toISOString(),
 		}
 
-		root.addFile(
-			".alkalye-manifest.json",
-			new File([JSON.stringify(invalidManifest)], ".alkalye-manifest.json"),
-		)
+		root.addFile(".alkalye-manifest.json", JSON.stringify(invalidManifest))
 
 		let result = await readManifest(root)
 
@@ -308,10 +359,7 @@ describe("readManifest", () => {
 
 	it("returns null for malformed JSON", async () => {
 		let root = new MockDirectoryHandle("root")
-		root.addFile(
-			".alkalye-manifest.json",
-			new File(["{invalid"], ".alkalye-manifest.json"),
-		)
+		root.addFile(".alkalye-manifest.json", "{invalid")
 
 		let result = await readManifest(root)
 
@@ -379,6 +427,29 @@ describe("scanBackupFolder", () => {
 		expect(paths).toEqual(["Root.md", "work/Work.md", "work/notes/Notes.md"])
 	})
 
+	it("returns files in stable lexicographic order", async () => {
+		let root = new MockDirectoryHandle("root")
+		root.addFile("z-last.md", createMockFile("# z"))
+		root.addFile("a-first.md", createMockFile("# a"))
+
+		let files = await scanBackupFolder(root)
+
+		expect(files.map(file => file.relativePath)).toEqual([
+			"a-first.md",
+			"z-last.md",
+		])
+	})
+
+	it("scans markdown extension case-insensitively", async () => {
+		let root = new MockDirectoryHandle("root")
+		root.addFile("UPPER.MD", createMockFile("# Upper"))
+
+		let files = await scanBackupFolder(root)
+
+		expect(files).toHaveLength(1)
+		expect(files[0].name).toBe("UPPER")
+	})
+
 	it("collects assets from assets folders", async () => {
 		let root = new MockDirectoryHandle("root")
 		let docDir = new MockDirectoryHandle("My Doc")
@@ -391,16 +462,46 @@ describe("scanBackupFolder", () => {
 			"My Doc.md",
 			createMockFile("# My Doc\n\n![Image](assets/photo.png)"),
 		)
-		assetsDir.addFile(
-			"photo.png",
-			new File([createMockBlob("image data")], "photo.png"),
-		)
+		assetsDir.addFile("photo.png", "image data")
 
 		let files = await scanBackupFolder(root)
 
 		expect(files).toHaveLength(1)
 		expect(files[0].assets).toHaveLength(1)
 		expect(files[0].assets[0].name).toBe("photo.png")
+	})
+
+	it("loads only referenced assets for each markdown file", async () => {
+		let root = new MockDirectoryHandle("root")
+		root.addFile("Doc One.md", createMockFile("![One](assets/one.png)"))
+		root.addFile("Doc Two.md", createMockFile("No assets here"))
+
+		let assetsDir = new MockDirectoryHandle("assets")
+		assetsDir.addFile("one.png", "1")
+		assetsDir.addFile("two.png", "2")
+		root.addDirectory("assets", assetsDir)
+
+		let files = await scanBackupFolder(root)
+		let byName = new Map(files.map(file => [file.name, file]))
+
+		expect(byName.get("Doc One")?.assets.map(asset => asset.name)).toEqual([
+			"one.png",
+		])
+		expect(byName.get("Doc Two")?.assets).toHaveLength(0)
+	})
+
+	it("does not import markdown files inside assets directories", async () => {
+		let root = new MockDirectoryHandle("root")
+		let docDir = new MockDirectoryHandle("Doc")
+		let assetsDir = new MockDirectoryHandle("assets")
+		docDir.addDirectory("assets", assetsDir)
+		root.addDirectory("Doc", docDir)
+		docDir.addFile("Doc.md", createMockFile("# Doc"))
+		assetsDir.addFile("notes.md", createMockFile("# Should stay asset"))
+
+		let files = await scanBackupFolder(root)
+
+		expect(files.map(file => file.relativePath)).toEqual(["Doc/Doc.md"])
 	})
 
 	it("skips dot directories", async () => {
@@ -419,10 +520,7 @@ describe("scanBackupFolder", () => {
 
 	it("skips manifest file", async () => {
 		let root = new MockDirectoryHandle("root")
-		root.addFile(
-			".alkalye-manifest.json",
-			new File(['{"version":1}'], ".alkalye-manifest.json"),
-		)
+		root.addFile(".alkalye-manifest.json", '{"version":1}')
 		root.addFile("Test.md", createMockFile("# Test"))
 
 		let files = await scanBackupFolder(root)
@@ -431,10 +529,20 @@ describe("scanBackupFolder", () => {
 		expect(files[0].name).toBe("Test")
 	})
 
+	it("skips hidden markdown files", async () => {
+		let root = new MockDirectoryHandle("root")
+		root.addFile(".hidden.md", createMockFile("# Hidden"))
+		root.addFile("Visible.md", createMockFile("# Visible"))
+
+		let files = await scanBackupFolder(root)
+
+		expect(files.map(file => file.relativePath)).toEqual(["Visible.md"])
+	})
+
 	it("captures lastModified timestamp", async () => {
 		let root = new MockDirectoryHandle("root")
 		let timestamp = 1234567890000
-		root.addFile("Test.md", createMockFile("# Test", timestamp))
+		root.addFile("Test.md", createMockFile("# Test"), timestamp)
 
 		let files = await scanBackupFolder(root)
 

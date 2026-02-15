@@ -6,9 +6,10 @@ import { getPath } from "@/editor/frontmatter"
 import { getDocumentTitle } from "@/lib/document-utils"
 import type { BackupDoc } from "./backup-sync"
 import { readManifest } from "./backup-sync"
-import { hashContent, syncBackup, syncFromBackup } from "./backup"
+import { hashContent, syncBackup, syncFromBackup } from "./backup-engine"
 import {
 	MockDirectoryHandle,
+	createMockBlob,
 	basename,
 	readFileAtPath as readFile,
 	removeFileAtPath as removeFile,
@@ -154,6 +155,21 @@ describe("backup scenarios", () => {
 		expect(getPath(loaded?.content?.toString() ?? "")).toBe("archive")
 	})
 
+	it("imports file updates when lastModified equals last pull timestamp", async () => {
+		let doc = await createDoc(docs, "# Timestamp Edge\n\noriginal")
+		await pushToBackup(root, docs)
+
+		let updatedContent = "# Timestamp Edge\n\nchanged on disk"
+		root.addFile("Timestamp Edge.md", updatedContent, 10_000)
+
+		let result = await syncFromBackup(root, docs, true, 10_000)
+		expect(result.updated).toBe(1)
+
+		let loaded = getLoadedDocs(docs).find(d => d.$jazz.id === doc.$jazz.id)
+		expect(loaded).toBeDefined()
+		expect(loaded?.content?.toString()).toContain("changed on disk")
+	})
+
 	it("matches moved doc by filename when content hashes collide", async () => {
 		let first = await createDoc(docs, "# Same")
 		let second = await createDoc(docs, "# Same")
@@ -190,6 +206,83 @@ describe("backup scenarios", () => {
 
 		expect(firstLoaded?.deletedAt).toBeTruthy()
 		expect(secondLoaded?.deletedAt).toBeFalsy()
+	})
+
+	it("matches moved docs with colliding hashes by asset hashes", async () => {
+		let first = await createDoc(docs, "# Same")
+		let second = await createDoc(docs, "# Same")
+
+		let backupDocs: BackupDoc[] = [
+			{
+				id: first.$jazz.id,
+				title: "Same",
+				content: "# Same\n\n![Clip](asset:asset-1)",
+				path: "alpha",
+				updatedAtMs: Date.now(),
+				assets: [
+					{
+						id: "asset-1",
+						name: "clip",
+						blob: createMockBlob("first-video", "video/mp4"),
+					},
+				],
+			},
+			{
+				id: second.$jazz.id,
+				title: "Same",
+				content: "# Same\n\n![Clip](asset:asset-2)",
+				path: "beta",
+				updatedAtMs: Date.now(),
+				assets: [
+					{
+						id: "asset-2",
+						name: "clip",
+						blob: createMockBlob("second-video", "video/mp4"),
+					},
+				],
+			},
+		]
+
+		await syncBackup(root, backupDocs)
+
+		let firstOriginalPath = "alpha/Same/Same.md"
+		let secondOriginalPath = "beta/Same/Same.md"
+		let firstContent = await readFile(root, firstOriginalPath)
+		let secondContent = await readFile(root, secondOriginalPath)
+		await removeFile(root, firstOriginalPath)
+		await removeFile(root, secondOriginalPath)
+
+		await writeFileAtPath(root, "archive/one/Same/Same.md", firstContent)
+		await writeFileAtPath(
+			root,
+			"archive/one/Same/assets/clip.mp4",
+			"first-video",
+		)
+		await writeFileAtPath(root, "archive/two/Same/Same.md", secondContent)
+		await writeFileAtPath(
+			root,
+			"archive/two/Same/assets/clip.mp4",
+			"second-video",
+		)
+
+		let beforePullCount = getLoadedDocs(docs).length
+		let result = await syncFromBackup(root, docs, true)
+
+		expect(result.created).toBe(0)
+		expect(result.updated).toBe(2)
+		expect(result.deleted).toBe(0)
+		expect(getLoadedDocs(docs)).toHaveLength(beforePullCount)
+
+		let firstLoaded = getLoadedDocs(docs).find(
+			d => d.$jazz.id === first.$jazz.id,
+		)
+		let secondLoaded = getLoadedDocs(docs).find(
+			d => d.$jazz.id === second.$jazz.id,
+		)
+		expect(firstLoaded?.deletedAt).toBeFalsy()
+		expect(secondLoaded?.deletedAt).toBeFalsy()
+		expect(getPath(firstLoaded?.content?.toString() ?? "")).toBe("archive/one")
+		expect(getPath(secondLoaded?.content?.toString() ?? "")).toBe("archive/two")
 	})
 
 	it("keeps asset refs stable when pulling updates for docs with assets", async () => {
@@ -234,6 +327,17 @@ describe("backup scenarios", () => {
 
 	it("imports asset binary updates when markdown is unchanged", async () => {
 		let { doc, assetId } = await createDocWithVideoAsset(docs, "Binary Update")
+		let originalAsset = doc.assets?.$isLoaded
+			? [...doc.assets].find(
+					asset => asset?.$isLoaded && asset.$jazz.id === assetId,
+				)
+			: undefined
+		let originalVideoId =
+			originalAsset?.$isLoaded &&
+			originalAsset.type === "video" &&
+			originalAsset.video?.$isLoaded
+				? originalAsset.video.$jazz.id
+				: null
 		let localPath = "Binary Update/Binary Update.md"
 		let localContent = "# Binary Update\n\n![Clip](assets/clip.mp4)"
 		await writeFileAtPath(root, localPath, localContent)
@@ -292,9 +396,89 @@ describe("backup scenarios", () => {
 			throw new Error("Updated video asset not loaded")
 		}
 
-		let blob = await updatedAsset.video.toBlob()
-		if (!blob) throw new Error("Updated video blob missing")
-		expect(await blob.text()).toBe("new-video-bytes")
+		expect(updatedAsset.video.$jazz.id).not.toBe(originalVideoId)
+	})
+
+	it("imports asset-only updates when markdown file is older than last pull", async () => {
+		let { doc, assetId } = await createDocWithVideoAsset(
+			docs,
+			"Asset Timestamp",
+		)
+		let originalAsset = doc.assets?.$isLoaded
+			? [...doc.assets].find(
+					asset => asset?.$isLoaded && asset.$jazz.id === assetId,
+				)
+			: undefined
+		let originalVideoId =
+			originalAsset?.$isLoaded &&
+			originalAsset.type === "video" &&
+			originalAsset.video?.$isLoaded
+				? originalAsset.video.$jazz.id
+				: null
+
+		let docDir = new MockDirectoryHandle("Asset Timestamp")
+		let assetsDir = new MockDirectoryHandle("assets")
+		docDir.addDirectory("assets", assetsDir)
+		docDir.addFile(
+			"Asset Timestamp.md",
+			"# Asset Timestamp\n\n![Clip](assets/clip.mp4)",
+			1_000,
+		)
+		assetsDir.addFile("clip.mp4", "new-video-bytes", 9_000)
+		root.addDirectory("Asset Timestamp", docDir)
+
+		let contentHash = await hashContent(
+			"# Asset Timestamp\n\n![Clip](assets/clip.mp4)",
+		)
+		let previousAssetHash = await hashContent("old-video-bytes")
+		await writeFileAtPath(
+			root,
+			".alkalye-manifest.json",
+			JSON.stringify(
+				{
+					version: 1,
+					entries: [
+						{
+							docId: doc.$jazz.id,
+							relativePath: "Asset Timestamp/Asset Timestamp.md",
+							contentHash,
+							lastSyncedAt: new Date().toISOString(),
+							assets: [
+								{
+									id: assetId,
+									name: "clip.mp4",
+									hash: previousAssetHash,
+								},
+							],
+						},
+					],
+					lastSyncAt: new Date().toISOString(),
+				},
+				null,
+				2,
+			),
+		)
+
+		let result = await syncFromBackup(root, docs, true, 5_000)
+		expect(result.updated).toBe(1)
+
+		let loaded = getLoadedDocs(docs).find(d => d.$jazz.id === doc.$jazz.id)
+		expect(loaded).toBeDefined()
+		let updatedAsset = loaded?.assets?.$isLoaded
+			? [...loaded.assets].find(
+					asset => asset?.$isLoaded && asset.$jazz.id === assetId,
+				)
+			: undefined
+		expect(updatedAsset?.$isLoaded).toBe(true)
+		if (
+			!updatedAsset?.$isLoaded ||
+			updatedAsset.type !== "video" ||
+			!updatedAsset.video?.$isLoaded
+		) {
+			throw new Error("Updated video asset not loaded")
+		}
+
+		expect(updatedAsset.video.$jazz.id).not.toBe(originalVideoId)
 	})
 
 	it("writes asset ids to manifest entries on backup", async () => {
@@ -309,7 +493,7 @@ describe("backup scenarios", () => {
 					{
 						id: "asset-1",
 						name: "clip",
-						blob: new Blob(["video"], { type: "video/mp4" }),
+						blob: createMockBlob("video", "video/mp4"),
 					},
 				],
 			},
@@ -335,12 +519,12 @@ describe("backup scenarios", () => {
 					{
 						id: "asset-1",
 						name: "one",
-						blob: new Blob(["one"], { type: "image/png" }),
+						blob: createMockBlob("one", "image/png"),
 					},
 					{
 						id: "asset-2",
 						name: "two",
-						blob: new Blob(["two"], { type: "image/png" }),
+						blob: createMockBlob("two", "image/png"),
 					},
 				],
 			},
@@ -359,7 +543,7 @@ describe("backup scenarios", () => {
 					{
 						id: "asset-1",
 						name: "one",
-						blob: new Blob(["one"], { type: "image/png" }),
+						blob: createMockBlob("one", "image/png"),
 					},
 				],
 			},
@@ -485,7 +669,7 @@ async function createDocWithVideoAsset(
 	let group = Group.create()
 	let now = new Date()
 	let stream = await FileStream.createFromBlob(
-		new Blob(["video"], { type: "video/mp4" }),
+		createMockBlob("video", "video/mp4"),
 		{
 			owner: group,
 		},

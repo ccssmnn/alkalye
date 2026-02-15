@@ -84,14 +84,28 @@ let backupManifestSchema = z.object({
 
 function computeDocLocations(docs: BackupDoc[]): Map<string, DocLocation> {
 	let docLocations = new Map<string, DocLocation>()
-	let usedNames = new Map<string, Set<string>>() // parentPath -> used names (lowercase)
+	let usedNames = new Map<string, Set<string>>()
+	let sortedDocs = [...docs].sort((left, right) => {
+		let leftParentPath = left.path ?? ""
+		let rightParentPath = right.path ?? ""
+		if (leftParentPath !== rightParentPath) {
+			return leftParentPath.localeCompare(rightParentPath)
+		}
 
-	for (let doc of docs) {
+		let leftName = sanitizeFilename(left.title)
+		let rightName = sanitizeFilename(right.title)
+		if (leftName !== rightName) {
+			return leftName.localeCompare(rightName)
+		}
+
+		return left.id.localeCompare(right.id)
+	})
+
+	for (let doc of sortedDocs) {
 		let baseName = sanitizeFilename(doc.title)
 		let hasAssets = doc.assets.length > 0
 		let parentPath = doc.path ?? ""
 
-		// Track used names at parent level for conflict detection
 		if (!usedNames.has(parentPath)) usedNames.set(parentPath, new Set())
 		let used = usedNames.get(parentPath)!
 
@@ -113,10 +127,17 @@ function computeDocLocations(docs: BackupDoc[]): Map<string, DocLocation> {
 			hasOwnFolder = false
 		}
 
-		// Build asset filename map for this doc
 		let assetFiles = new Map<string, string>()
 		let usedAssetNames = new Set<string>()
-		for (let asset of doc.assets) {
+		let sortedAssets = [...doc.assets].sort((left, right) => {
+			let leftName = sanitizeFilename(left.name) || "image"
+			let rightName = sanitizeFilename(right.name) || "image"
+			if (leftName !== rightName) {
+				return leftName.localeCompare(rightName)
+			}
+			return left.id.localeCompare(right.id)
+		})
+		for (let asset of sortedAssets) {
 			let ext = getExtensionFromBlob(asset.blob)
 			let assetBaseName = sanitizeFilename(asset.name) || "image"
 			let fileName = assetBaseName + ext
@@ -159,17 +180,14 @@ function transformContentForImport(
 	content: string,
 	assetFiles: Map<string, string>,
 ): string {
-	// Transform local asset paths back to asset: references
 	return content.replace(
 		/!\[([^\]]*)\]\(assets\/([^)]+)\)/g,
 		(match, alt, assetFilename) => {
-			// Find asset ID by filename
 			for (let [id, filename] of assetFiles) {
 				if (filename === assetFilename) {
 					return `![${alt}](asset:${id})`
 				}
 			}
-			// If not found, keep the original local path (might be a manual addition)
 			return match
 		},
 	)
@@ -185,7 +203,6 @@ function computeExpectedStructure(
 	for (let doc of docs) {
 		let loc = docLocations.get(doc.id)!
 
-		// Add the directory path and all parent paths
 		if (loc.dirPath) {
 			let parts = loc.dirPath.split("/")
 			for (let i = 1; i <= parts.length; i++) {
@@ -193,13 +210,11 @@ function computeExpectedStructure(
 			}
 		}
 
-		// Add expected file
 		if (!expectedFiles.has(loc.dirPath)) {
 			expectedFiles.set(loc.dirPath, new Set())
 		}
 		expectedFiles.get(loc.dirPath)!.add(loc.filename)
 
-		// If doc has assets, expect assets subfolder
 		if (loc.hasOwnFolder && doc.assets.length > 0) {
 			let assetsPath = loc.dirPath ? `${loc.dirPath}/assets` : "assets"
 			expectedPaths.add(assetsPath)
@@ -214,20 +229,31 @@ async function scanBackupFolder(
 ): Promise<ScannedFile[]> {
 	let files: ScannedFile[] = []
 
+	function getReferencedAssetNames(content: string): Set<string> {
+		let references = new Set<string>()
+		for (let match of content.matchAll(/!\[[^\]]*\]\(assets\/([^)]+)\)/g)) {
+			let filename = match[1]
+			if (!filename) continue
+			references.add(filename)
+		}
+		return references
+	}
+
 	async function scanDir(
 		dir: FileSystemDirectoryHandle,
 		relativePath: string,
 	): Promise<void> {
 		for await (let [name, handle] of dir.entries()) {
 			let entryPath = relativePath ? `${relativePath}/${name}` : name
+			let loweredName = name.toLowerCase()
 
 			if (handle.kind === "directory") {
-				// Skip dot directories and special directories
 				if (name.startsWith(".")) continue
+				if (loweredName === "assets") continue
 				let subDir = await dir.getDirectoryHandle(name)
 				await scanDir(subDir, entryPath)
-			} else if (handle.kind === "file" && name.endsWith(".md")) {
-				// Skip manifest file
+			} else if (handle.kind === "file" && loweredName.endsWith(".md")) {
+				if (name.startsWith(".")) continue
 				if (name === ".alkalye-manifest.json") continue
 
 				let fileHandle = await dir.getFileHandle(name)
@@ -235,24 +261,29 @@ async function scanBackupFolder(
 				let content = await file.text()
 				let lastModified = file.lastModified
 
-				// Check for assets folder
 				let assets: { name: string; blob: Blob }[] = []
-				try {
-					let assetsDir = await dir.getDirectoryHandle("assets")
-					for await (let [assetName, assetHandle] of assetsDir.entries()) {
-						if (assetHandle.kind === "file" && !assetName.startsWith(".")) {
-							let assetFileHandle = await assetsDir.getFileHandle(assetName)
-							let assetFile = await assetFileHandle.getFile()
-							assets.push({ name: assetName, blob: assetFile })
+				let referencedAssets = getReferencedAssetNames(content)
+				if (referencedAssets.size > 0) {
+					let assetsDir = await dir
+						.getDirectoryHandle("assets")
+						.catch(() => null)
+					if (assetsDir) {
+						for (let assetName of referencedAssets) {
+							if (assetName.startsWith(".")) continue
+							try {
+								let assetFileHandle = await assetsDir.getFileHandle(assetName)
+								let assetFile = await assetFileHandle.getFile()
+								assets.push({ name: assetName, blob: assetFile })
+							} catch {
+								continue
+							}
 						}
 					}
-				} catch {
-					// No assets folder
 				}
 
 				files.push({
 					relativePath: entryPath,
-					name: name.replace(/\.md$/, ""),
+					name: name.replace(/\.md$/i, ""),
 					content,
 					assets,
 					lastModified,
@@ -262,6 +293,9 @@ async function scanBackupFolder(
 	}
 
 	await scanDir(handle, "")
+	files.sort((left, right) =>
+		left.relativePath.localeCompare(right.relativePath),
+	)
 	return files
 }
 

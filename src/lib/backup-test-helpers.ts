@@ -15,12 +15,56 @@ interface StoredFile {
 	type: string
 }
 
-function createMockFile(content: string, lastModified = Date.now()): File {
-	return new File([content], "test.md", { lastModified })
+function createMockFile(content: string): string {
+	return content
+}
+
+class MockBlob implements Blob {
+	size: number
+	type: string
+	private data: Uint8Array<ArrayBuffer>
+
+	constructor(content: string | Uint8Array, type: string) {
+		let raw = typeof content === "string" ? encodeText(content) : content
+		this.data = toStrictBytes(raw)
+		this.size = this.data.byteLength
+		this.type = type
+	}
+
+	bytes(): Promise<Uint8Array<ArrayBuffer>> {
+		return Promise.resolve(toStrictBytes(this.data))
+	}
+
+	arrayBuffer(): Promise<ArrayBuffer> {
+		return Promise.resolve(bytesToArrayBuffer(this.data))
+	}
+
+	text(): Promise<string> {
+		return Promise.resolve(decodeBytes(this.data))
+	}
+
+	stream(): ReadableStream<Uint8Array<ArrayBuffer>> {
+		let bytes = toStrictBytes(this.data)
+		return new ReadableStream<Uint8Array<ArrayBuffer>>({
+			start(controller) {
+				controller.enqueue(bytes)
+				controller.close()
+			},
+		})
+	}
+
+	slice(start?: number, end?: number, contentType?: string): Blob {
+		let next = this.data.slice(start ?? 0, end ?? this.data.byteLength)
+		return new MockBlob(next, contentType ?? this.type)
+	}
+
+	get [Symbol.toStringTag](): string {
+		return "Blob"
+	}
 }
 
 function createMockBlob(content: string, type = "image/png"): Blob {
-	return new Blob([content], { type })
+	return new MockBlob(content, type)
 }
 
 async function readFileAtPath(
@@ -80,6 +124,40 @@ function basename(relativePath: string): string {
 	let parts = relativePath.split("/").filter(Boolean)
 	if (parts.length === 0) return relativePath
 	return parts[parts.length - 1]
+}
+
+function encodeText(value: string): Uint8Array<ArrayBuffer> {
+	return new TextEncoder().encode(value)
+}
+
+function bytesToArrayBuffer(bytes: Uint8Array): ArrayBuffer {
+	let buffer = new ArrayBuffer(bytes.byteLength)
+	new Uint8Array(buffer).set(bytes)
+	return buffer
+}
+
+function toStrictBytes(bytes: Uint8Array): Uint8Array<ArrayBuffer> {
+	let buffer = bytesToArrayBuffer(bytes)
+	let strict: Uint8Array<ArrayBuffer> = new Uint8Array(buffer)
+	return strict
+}
+
+function decodeBytes(bytes: Uint8Array): string {
+	return new TextDecoder().decode(bytes)
+}
+
+async function readBlobBytes(blob: Blob): Promise<Uint8Array<ArrayBuffer>> {
+	if (typeof blob.arrayBuffer === "function") {
+		let buffer = await blob.arrayBuffer()
+		return new Uint8Array(buffer)
+	}
+
+	if (typeof blob.text === "function") {
+		let text = await blob.text()
+		return encodeText(text)
+	}
+
+	throw new Error("Blob cannot be read in this environment")
 }
 
 class MockWritableFileStream implements FileSystemWritableFileStream {
@@ -204,13 +282,30 @@ class MockFileHandle implements FileSystemFileHandle {
 		if (!file) {
 			return new File([""], this.name)
 		}
+
+		let bytes =
+			file.content !== null ? encodeText(file.content) : new Uint8Array(0)
 		if (file.content === null && file.source) {
-			return file.source
+			bytes = await readBlobBytes(file.source)
 		}
-		return new File([file.content ?? ""], this.name, {
+
+		let compatibleFile = new File([bytesToArrayBuffer(bytes)], this.name, {
 			lastModified: file.lastModified,
 			type: file.type,
 		})
+
+		if (typeof compatibleFile.text !== "function") {
+			Object.defineProperty(compatibleFile, "text", {
+				value: async () => decodeBytes(bytes),
+			})
+		}
+		if (typeof compatibleFile.arrayBuffer !== "function") {
+			Object.defineProperty(compatibleFile, "arrayBuffer", {
+				value: async () => bytesToArrayBuffer(bytes),
+			})
+		}
+
+		return compatibleFile
 	}
 
 	async createWritable(): Promise<FileSystemWritableFileStream> {

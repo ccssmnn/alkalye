@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { hashContent, syncFromBackup } from "./backup"
+import { hashContent, syncFromBackup } from "./backup-engine"
 
 describe("hashContent", () => {
 	it("returns consistent hash for same content", async () => {
