@@ -164,6 +164,7 @@ function BackupSubscriber() {
 				return
 			}
 			stopWatching = stop
+			doPull()
 		}
 
 		setupWatch()
@@ -313,6 +314,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 				return
 			}
 			stopWatching = stop
+			doPull()
 		}
 
 		setupWatch()

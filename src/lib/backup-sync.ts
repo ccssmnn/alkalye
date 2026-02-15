@@ -243,13 +243,34 @@ async function scanBackupFolder(
 		dir: FileSystemDirectoryHandle,
 		relativePath: string,
 	): Promise<void> {
+		async function isGeneratedAssetsDirectory(
+			parentDir: FileSystemDirectoryHandle,
+			parentRelativePath: string,
+		): Promise<boolean> {
+			let parentName = parentRelativePath.split("/").filter(Boolean).at(-1)
+			if (!parentName) return false
+
+			try {
+				await parentDir.getFileHandle(`${parentName}.md`)
+				return true
+			} catch {
+				return false
+			}
+		}
+
 		for await (let [name, handle] of dir.entries()) {
 			let entryPath = relativePath ? `${relativePath}/${name}` : name
 			let loweredName = name.toLowerCase()
 
 			if (handle.kind === "directory") {
 				if (name.startsWith(".")) continue
-				if (loweredName === "assets") continue
+				if (loweredName === "assets") {
+					let isDocAssetsDirectory = await isGeneratedAssetsDirectory(
+						dir,
+						relativePath,
+					)
+					if (isDocAssetsDirectory) continue
+				}
 				let subDir = await dir.getDirectoryHandle(name)
 				await scanDir(subDir, entryPath)
 			} else if (handle.kind === "file" && loweredName.endsWith(".md")) {

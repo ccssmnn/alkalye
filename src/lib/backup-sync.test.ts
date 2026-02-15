@@ -504,6 +504,17 @@ describe("scanBackupFolder", () => {
 		expect(files.map(file => file.relativePath)).toEqual(["Doc/Doc.md"])
 	})
 
+	it("scans docs inside top-level assets folder when it is a normal directory", async () => {
+		let root = new MockDirectoryHandle("root")
+		let assetsDir = new MockDirectoryHandle("assets")
+		root.addDirectory("assets", assetsDir)
+		assetsDir.addFile("Roadmap.md", createMockFile("# Roadmap"))
+
+		let files = await scanBackupFolder(root)
+
+		expect(files.map(file => file.relativePath)).toEqual(["assets/Roadmap.md"])
+	})
+
 	it("skips dot directories", async () => {
 		let root = new MockDirectoryHandle("root")
 		let hiddenDir = new MockDirectoryHandle(".hidden")
