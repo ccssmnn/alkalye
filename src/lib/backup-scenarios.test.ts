@@ -72,6 +72,33 @@ describe("backup scenarios", () => {
 		expect(imported).toBeDefined()
 	})
 
+	it("imports same relative path across different backup roots", async () => {
+		let firstInitialCount = getLoadedDocs(docs).length
+		let firstRoot = new MockDirectoryHandle("first-root")
+		let secondRoot = new MockDirectoryHandle("second-root")
+		firstRoot.addFile(
+			"Cross Scope Note.md",
+			"# Cross Scope Note\n\nfrom first root",
+			2_000,
+		)
+		secondRoot.addFile(
+			"Cross Scope Note.md",
+			"# Cross Scope Note\n\nfrom second root",
+			2_000,
+		)
+
+		let secondDocs = co.list(Document).create([], Group.create())
+		let secondInitialCount = getLoadedDocs(secondDocs).length
+
+		let firstResult = await syncFromBackup(firstRoot, docs, true)
+		let secondResult = await syncFromBackup(secondRoot, secondDocs, true)
+
+		expect(firstResult.created).toBe(1)
+		expect(secondResult.created).toBe(1)
+		expect(getLoadedDocs(docs)).toHaveLength(firstInitialCount + 1)
+		expect(getLoadedDocs(secondDocs)).toHaveLength(secondInitialCount + 1)
+	})
+
 	it("imports asset references with created asset ids", async () => {
 		await writeFileAtPath(
 			root,

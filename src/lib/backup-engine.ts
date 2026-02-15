@@ -47,6 +47,8 @@ interface ScannedAssetHash {
 let preferredRelativePathByDocId = new Map<string, string>()
 let recentImportedRelativePaths = new Map<string, number>()
 let RECENT_IMPORT_WINDOW_MS = 30_000
+let handleScopeIds = new WeakMap<FileSystemDirectoryHandle, string>()
+let handleScopeCounter = 0
 
 async function hashContent(content: string): Promise<string> {
 	let encoder = new TextEncoder()
@@ -82,6 +84,7 @@ async function syncFromBackup(
 	let manifest = await readManifest(handle)
 	let scannedFiles = await scanBackupFolder(handle)
 	let listOwner = targetDocs.$jazz.owner
+	let importScopeKey = getHandleScopeKey(handle)
 
 	let manifestByPath = new Map(
 		manifest?.entries.map(e => [e.relativePath, e]) ?? [],
@@ -134,10 +137,10 @@ async function syncFromBackup(
 					result.errors.push(`Cannot create ${file.name}: no write permission`)
 					continue
 				}
-				if (wasRecentlyImported(file.relativePath)) continue
+				if (wasRecentlyImported(importScopeKey, file.relativePath)) continue
 				let newDocId = await createDocFromFile(file, targetDocs, listOwner)
 				preferredRelativePathByDocId.set(newDocId, file.relativePath)
-				markRecentlyImported(file.relativePath)
+				markRecentlyImported(importScopeKey, file.relativePath)
 				result.created++
 			} else if (
 				manifestEntry.contentHash !== contentHash ||
@@ -280,6 +283,7 @@ async function performSyncBackup(
 	docs: BackupDoc[],
 ): Promise<void> {
 	let docLocations = computeDocLocations(docs)
+	let importScopeKey = getHandleScopeKey(handle)
 	let existingManifest = await readManifest(handle)
 	let existingEntriesByDocId = new Map(
 		existingManifest?.entries.map(entry => [entry.docId, entry]) ?? [],
@@ -378,7 +382,9 @@ async function performSyncBackup(
 		})
 
 		for (let entry of manifestEntries) {
-			recentImportedRelativePaths.delete(entry.relativePath)
+			recentImportedRelativePaths.delete(
+				makeRecentImportKey(importScopeKey, entry.relativePath),
+			)
 		}
 	}
 
@@ -950,18 +956,35 @@ function areManifestAssetsEqual(
 	return true
 }
 
-function wasRecentlyImported(relativePath: string): boolean {
-	let importedAt = recentImportedRelativePaths.get(relativePath)
+function wasRecentlyImported(scopeKey: string, relativePath: string): boolean {
+	let key = makeRecentImportKey(scopeKey, relativePath)
+	let importedAt = recentImportedRelativePaths.get(key)
 	if (!importedAt) return false
 	if (Date.now() - importedAt > RECENT_IMPORT_WINDOW_MS) {
-		recentImportedRelativePaths.delete(relativePath)
+		recentImportedRelativePaths.delete(key)
 		return false
 	}
 	return true
 }
 
-function markRecentlyImported(relativePath: string): void {
-	recentImportedRelativePaths.set(relativePath, Date.now())
+function markRecentlyImported(scopeKey: string, relativePath: string): void {
+	recentImportedRelativePaths.set(
+		makeRecentImportKey(scopeKey, relativePath),
+		Date.now(),
+	)
+}
+
+function makeRecentImportKey(scopeKey: string, relativePath: string): string {
+	return `${scopeKey}:${relativePath}`
+}
+
+function getHandleScopeKey(handle: FileSystemDirectoryHandle): string {
+	let existing = handleScopeIds.get(handle)
+	if (existing) return existing
+	handleScopeCounter += 1
+	let created = `backup-handle-${handleScopeCounter}`
+	handleScopeIds.set(handle, created)
+	return created
 }
 
 function getDocLocationKey(doc: BackupDoc): string {
