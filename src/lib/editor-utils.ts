@@ -291,7 +291,7 @@ function setupKeyboardShortcuts(opts: {
 	}
 
 	function showAutosaveToast() {
-		toast("Alkalyte saves automatically", {
+		toast("Alkalye saves automatically", {
 			description:
 				"Changes are saved locally and synced to the cloud while you type.",
 			action: {

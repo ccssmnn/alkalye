@@ -1046,7 +1046,7 @@ function InstallationSection() {
 					Not installed
 				</div>
 				<p className="text-muted-foreground mb-4 text-sm">
-					Install Alkalyte to your device for the best experience.
+					Install Alkalye to your device for the best experience.
 				</p>
 				<Button onClick={() => setDialogOpen(true)} variant="outline" size="sm">
 					Show install instructions
