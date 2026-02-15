@@ -23,6 +23,65 @@ function createMockBlob(content: string, type = "image/png"): Blob {
 	return new Blob([content], { type })
 }
 
+async function readFileAtPath(
+	root: MockDirectoryHandle,
+	relativePath: string,
+): Promise<string> {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length === 0) throw new Error("Empty path")
+
+	let dir: FileSystemDirectoryHandle = root
+	for (let i = 0; i < parts.length - 1; i++) {
+		dir = await dir.getDirectoryHandle(parts[i])
+	}
+
+	let fileHandle = await dir.getFileHandle(parts[parts.length - 1])
+	let file = await fileHandle.getFile()
+	return file.text()
+}
+
+async function removeFileAtPath(
+	root: MockDirectoryHandle,
+	relativePath: string,
+): Promise<void> {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length === 0) throw new Error("Empty path")
+
+	let dir: FileSystemDirectoryHandle = root
+	for (let i = 0; i < parts.length - 1; i++) {
+		dir = await dir.getDirectoryHandle(parts[i])
+	}
+
+	await dir.removeEntry(parts[parts.length - 1])
+}
+
+async function writeFileAtPath(
+	root: MockDirectoryHandle,
+	relativePath: string,
+	content: string,
+): Promise<void> {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length === 0) throw new Error("Empty path")
+
+	let dir: FileSystemDirectoryHandle = root
+	for (let i = 0; i < parts.length - 1; i++) {
+		dir = await dir.getDirectoryHandle(parts[i], { create: true })
+	}
+
+	let fileHandle = await dir.getFileHandle(parts[parts.length - 1], {
+		create: true,
+	})
+	let writable = await fileHandle.createWritable()
+	await writable.write(content)
+	await writable.close()
+}
+
+function basename(relativePath: string): string {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length === 0) return relativePath
+	return parts[parts.length - 1]
+}
+
 class MockWritableFileStream implements FileSystemWritableFileStream {
 	private stream = new WritableStream<unknown>()
 	private saveContent: (content: string) => void
@@ -315,65 +374,6 @@ class MockDirectoryHandle implements FileSystemDirectoryHandle {
 	get [Symbol.toStringTag](): string {
 		return "FileSystemDirectoryHandle"
 	}
-}
-
-async function readFileAtPath(
-	root: MockDirectoryHandle,
-	relativePath: string,
-): Promise<string> {
-	let parts = relativePath.split("/").filter(Boolean)
-	if (parts.length === 0) throw new Error("Empty path")
-
-	let dir: FileSystemDirectoryHandle = root
-	for (let i = 0; i < parts.length - 1; i++) {
-		dir = await dir.getDirectoryHandle(parts[i])
-	}
-
-	let fileHandle = await dir.getFileHandle(parts[parts.length - 1])
-	let file = await fileHandle.getFile()
-	return file.text()
-}
-
-async function removeFileAtPath(
-	root: MockDirectoryHandle,
-	relativePath: string,
-): Promise<void> {
-	let parts = relativePath.split("/").filter(Boolean)
-	if (parts.length === 0) throw new Error("Empty path")
-
-	let dir: FileSystemDirectoryHandle = root
-	for (let i = 0; i < parts.length - 1; i++) {
-		dir = await dir.getDirectoryHandle(parts[i])
-	}
-
-	await dir.removeEntry(parts[parts.length - 1])
-}
-
-async function writeFileAtPath(
-	root: MockDirectoryHandle,
-	relativePath: string,
-	content: string,
-): Promise<void> {
-	let parts = relativePath.split("/").filter(Boolean)
-	if (parts.length === 0) throw new Error("Empty path")
-
-	let dir: FileSystemDirectoryHandle = root
-	for (let i = 0; i < parts.length - 1; i++) {
-		dir = await dir.getDirectoryHandle(parts[i], { create: true })
-	}
-
-	let fileHandle = await dir.getFileHandle(parts[parts.length - 1], {
-		create: true,
-	})
-	let writable = await fileHandle.createWritable()
-	await writable.write(content)
-	await writable.close()
-}
-
-function basename(relativePath: string): string {
-	let parts = relativePath.split("/").filter(Boolean)
-	if (parts.length === 0) return relativePath
-	return parts[parts.length - 1]
 }
 
 function inferMimeType(filename: string): string {

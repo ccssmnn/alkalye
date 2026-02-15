@@ -232,6 +232,71 @@ describe("backup scenarios", () => {
 		expect(content).not.toContain("(assets/")
 	})
 
+	it("imports asset binary updates when markdown is unchanged", async () => {
+		let { doc, assetId } = await createDocWithVideoAsset(docs, "Binary Update")
+		let localPath = "Binary Update/Binary Update.md"
+		let localContent = "# Binary Update\n\n![Clip](assets/clip.mp4)"
+		await writeFileAtPath(root, localPath, localContent)
+		await writeFileAtPath(
+			root,
+			"Binary Update/assets/clip.mp4",
+			"new-video-bytes",
+		)
+
+		let contentHash = await hashContent(localContent)
+		let previousAssetHash = await hashContent("old-video-bytes")
+		await writeFileAtPath(
+			root,
+			".alkalye-manifest.json",
+			JSON.stringify(
+				{
+					version: 1,
+					entries: [
+						{
+							docId: doc.$jazz.id,
+							relativePath: localPath,
+							contentHash,
+							lastSyncedAt: new Date().toISOString(),
+							assets: [
+								{
+									id: assetId,
+									name: "clip.mp4",
+									hash: previousAssetHash,
+								},
+							],
+						},
+					],
+					lastSyncAt: new Date().toISOString(),
+				},
+				null,
+				2,
+			),
+		)
+
+		let result = await syncFromBackup(root, docs, true)
+		expect(result.updated).toBe(1)
+
+		let loaded = getLoadedDocs(docs).find(d => d.$jazz.id === doc.$jazz.id)
+		expect(loaded).toBeDefined()
+		let updatedAsset = loaded?.assets?.$isLoaded
+			? [...loaded.assets].find(
+					asset => asset?.$isLoaded && asset.$jazz.id === assetId,
+				)
+			: undefined
+		expect(updatedAsset?.$isLoaded).toBe(true)
+		if (
+			!updatedAsset?.$isLoaded ||
+			updatedAsset.type !== "video" ||
+			!updatedAsset.video?.$isLoaded
+		) {
+			throw new Error("Updated video asset not loaded")
+		}
+
+		let blob = await updatedAsset.video.toBlob()
+		if (!blob) throw new Error("Updated video blob missing")
+		expect(await blob.text()).toBe("new-video-bytes")
+	})
+
 	it("writes asset ids to manifest entries on backup", async () => {
 		let backupDocs: BackupDoc[] = [
 			{
@@ -255,6 +320,54 @@ describe("backup scenarios", () => {
 		let manifest = await readManifest(root)
 		expect(manifest).toBeDefined()
 		expect(manifest?.entries[0].assets[0].id).toBe("asset-1")
+	})
+
+	it("removes stale files from assets folders during backup", async () => {
+		let first: BackupDoc[] = [
+			{
+				id: "doc-assets-prune",
+				title: "Assets Prune",
+				content:
+					"# Assets Prune\n\n![One](asset:asset-1)\n![Two](asset:asset-2)",
+				path: null,
+				updatedAtMs: Date.now(),
+				assets: [
+					{
+						id: "asset-1",
+						name: "one",
+						blob: new Blob(["one"], { type: "image/png" }),
+					},
+					{
+						id: "asset-2",
+						name: "two",
+						blob: new Blob(["two"], { type: "image/png" }),
+					},
+				],
+			},
+		]
+		await syncBackup(root, first)
+		expect(await hasFile(root, "Assets Prune/assets/two.png")).toBe(true)
+
+		let second: BackupDoc[] = [
+			{
+				id: "doc-assets-prune",
+				title: "Assets Prune",
+				content: "# Assets Prune\n\n![One](asset:asset-1)",
+				path: null,
+				updatedAtMs: Date.now() + 1,
+				assets: [
+					{
+						id: "asset-1",
+						name: "one",
+						blob: new Blob(["one"], { type: "image/png" }),
+					},
+				],
+			},
+		]
+		await syncBackup(root, second)
+
+		expect(await hasFile(root, "Assets Prune/assets/one.png")).toBe(true)
+		expect(await hasFile(root, "Assets Prune/assets/two.png")).toBe(false)
 	})
 
 	it("changed path in alkalye", async () => {

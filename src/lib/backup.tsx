@@ -149,6 +149,11 @@ interface SyncFromBackupResult {
 	errors: string[]
 }
 
+interface ScannedAssetHash {
+	name: string
+	hash: string
+}
+
 let backupQuery = {
 	root: {
 		documents: {
@@ -745,6 +750,7 @@ async function syncFromBackup(
 	for (let file of scannedFiles) {
 		try {
 			let contentHash = await hashContent(file.content)
+			let scannedAssetHashes = await hashScannedAssets(file.assets)
 			let manifestEntry = manifestByPath.get(file.relativePath)
 			if (manifestEntry) {
 				matchedManifestDocIds.add(manifestEntry.docId)
@@ -780,7 +786,8 @@ async function syncFromBackup(
 				result.created++
 			} else if (
 				manifestEntry.contentHash !== contentHash ||
-				manifestEntry.relativePath !== file.relativePath
+				manifestEntry.relativePath !== file.relativePath ||
+				!areScannedAssetsInSync(manifestEntry.assets, scannedAssetHashes)
 			) {
 				preferredRelativePathByDocId.set(manifestEntry.docId, file.relativePath)
 				// File changed or moved - update document
@@ -1244,6 +1251,39 @@ async function cleanupOrphanedFiles(
 		docs,
 		docLocations,
 	)
+	let expectedAssetFilesByDir = new Map<string, Set<string>>()
+	for (let doc of docs) {
+		let location = docLocations.get(doc.id)
+		if (!location || !location.hasOwnFolder) continue
+		let assetsPath = location.dirPath ? `${location.dirPath}/assets` : "assets"
+		expectedAssetFilesByDir.set(
+			assetsPath,
+			new Set(location.assetFiles.values()),
+		)
+	}
+
+	async function cleanAssetsDirectory(
+		dir: FileSystemDirectoryHandle,
+		path: string,
+	): Promise<boolean> {
+		let hasContent = false
+		let expected = expectedAssetFilesByDir.get(path) ?? new Set()
+
+		for await (let [name, child] of dir.entries()) {
+			if (name.startsWith(".")) continue
+			if (child.kind === "directory") {
+				await dir.removeEntry(name, { recursive: true })
+				continue
+			}
+			if (expected.has(name)) {
+				hasContent = true
+				continue
+			}
+			await deleteFile(dir, name)
+		}
+
+		return hasContent
+	}
 
 	async function cleanDir(
 		dir: FileSystemDirectoryHandle,
@@ -1255,9 +1295,10 @@ async function cleanupOrphanedFiles(
 		for (let subdir of subdirs) {
 			let subPath = path ? `${path}/${subdir}` : subdir
 
-			// Skip assets folders that belong to a doc
 			if (subdir === "assets" && expectedPaths.has(subPath)) {
-				hasContent = true
+				let subHandle = await dir.getDirectoryHandle(subdir)
+				let assetsHasContent = await cleanAssetsDirectory(subHandle, subPath)
+				if (assetsHasContent) hasContent = true
 				continue
 			}
 
@@ -1311,41 +1352,9 @@ async function createDocFromFile(
 	let docAssets: co.loaded<typeof Asset>[] = []
 	let assetFilesById = new Map<string, string>()
 	for (let assetFile of file.assets) {
-		let isVideo = assetFile.blob.type.startsWith("video/")
-
-		if (isVideo) {
-			let video = await FileStream.createFromBlob(assetFile.blob, {
-				owner: docGroup,
-			})
-			let asset = VideoAsset.create(
-				{
-					type: "video",
-					name: assetFile.name.replace(/\.[^.]+$/, ""),
-					video,
-					mimeType: "video/mp4",
-					createdAt: now,
-				},
-				docGroup,
-			)
-			docAssets.push(asset)
-			assetFilesById.set(asset.$jazz.id, assetFile.name)
-		} else {
-			let image = await createImage(assetFile.blob, {
-				owner: docGroup,
-				maxSize: 2048,
-			})
-			let asset = ImageAsset.create(
-				{
-					type: "image",
-					name: assetFile.name.replace(/\.[^.]+$/, ""),
-					image,
-					createdAt: now,
-				},
-				docGroup,
-			)
-			docAssets.push(asset)
-			assetFilesById.set(asset.$jazz.id, assetFile.name)
-		}
+		let asset = await createAssetFromBlob(assetFile, docGroup, now)
+		docAssets.push(asset)
+		assetFilesById.set(asset.$jazz.id, assetFile.name)
 	}
 
 	let transformedContent = transformContentForImport(
@@ -1389,8 +1398,7 @@ async function updateDocFromFile(
 		return false
 	}
 
-	// Update content
-	let assetFilesById = getAssetFilesByIdFromManifest(manifestEntry)
+	let assetFilesById = await syncDocAssetsFromFile(doc, file, manifestEntry)
 	let content = applyPathFromRelativePath(
 		transformContentForImport(file.content, assetFilesById),
 		file.relativePath,
@@ -1399,10 +1407,216 @@ async function updateDocFromFile(
 
 	doc.content.$jazz.applyDiff(content)
 	doc.$jazz.set("updatedAt", new Date())
-
-	// TODO: Handle asset updates (add/remove/replace assets)
-	// For now, we just update the content. Asset changes require more complex logic.
 	return true
+}
+
+async function syncDocAssetsFromFile(
+	doc: LoadedDocument,
+	file: ScannedFile,
+	manifestEntry: ManifestEntry,
+): Promise<Map<string, string>> {
+	if (file.assets.length === 0) {
+		let manifestFilesById = getAssetFilesByIdFromManifest(manifestEntry)
+		let keepsManifestRefs = Array.from(manifestFilesById.values()).some(
+			filename => file.content.includes(`assets/${filename}`),
+		)
+		if (keepsManifestRefs) {
+			return manifestFilesById
+		}
+		if (doc.assets?.$isLoaded) {
+			for (let i = doc.assets.length - 1; i >= 0; i--) {
+				doc.assets.$jazz.splice(i, 1)
+			}
+		}
+		return new Map<string, string>()
+	}
+
+	if (!doc.assets) {
+		doc.$jazz.set("assets", co.list(Asset).create([], doc.$jazz.owner))
+	}
+	if (!doc.assets?.$isLoaded) {
+		return getAssetFilesByIdFromManifest(manifestEntry)
+	}
+
+	let currentAssets = Array.from(doc.assets).filter(
+		(asset): asset is co.loaded<typeof Asset> => asset?.$isLoaded === true,
+	)
+	let assetsById = new Map(currentAssets.map(asset => [asset.$jazz.id, asset]))
+	let fileAssetsWithHash = await Promise.all(
+		file.assets.map(async asset => ({
+			name: asset.name,
+			blob: asset.blob,
+			hash: await hashBlob(asset.blob),
+		})),
+	)
+
+	let manifestByName = new Map(
+		manifestEntry.assets.map(asset => [asset.name, asset]),
+	)
+	let manifestByHash = new Map<string, ManifestEntry["assets"]>()
+	for (let asset of manifestEntry.assets) {
+		if (!manifestByHash.has(asset.hash)) {
+			manifestByHash.set(asset.hash, [])
+		}
+		manifestByHash.get(asset.hash)?.push(asset)
+	}
+
+	let keepAssetIds = new Set<string>()
+	let assetFilesById = new Map<string, string>()
+
+	for (let fileAsset of fileAssetsWithHash) {
+		let matchedByName = manifestByName.get(fileAsset.name)
+		let matchedId =
+			matchedByName?.id && assetsById.has(matchedByName.id)
+				? matchedByName.id
+				: null
+
+		if (!matchedId) {
+			let byHash = manifestByHash.get(fileAsset.hash) ?? []
+			for (let candidate of byHash) {
+				if (!candidate.id || keepAssetIds.has(candidate.id)) continue
+				if (!assetsById.has(candidate.id)) continue
+				matchedId = candidate.id
+				break
+			}
+		}
+
+		if (matchedId) {
+			let existing = assetsById.get(matchedId)
+			if (!existing) continue
+
+			let shouldUpdateBinary =
+				matchedByName?.id === matchedId
+					? matchedByName.hash !== fileAsset.hash
+					: false
+
+			if (shouldUpdateBinary) {
+				matchedId = await syncExistingAssetFromFile(
+					doc,
+					existing,
+					matchedId,
+					fileAsset,
+				)
+			}
+
+			let updatedAsset = doc.assets.find(
+				asset => asset?.$isLoaded && asset.$jazz.id === matchedId,
+			)
+			if (!updatedAsset) continue
+			assetsById.set(matchedId, updatedAsset)
+			if (updatedAsset.name !== removeExtension(fileAsset.name)) {
+				updatedAsset.$jazz.applyDiff({ name: removeExtension(fileAsset.name) })
+			}
+
+			keepAssetIds.add(matchedId)
+			assetFilesById.set(matchedId, fileAsset.name)
+			continue
+		}
+
+		let created = await createAssetFromBlob(
+			fileAsset,
+			doc.$jazz.owner,
+			new Date(),
+		)
+		doc.assets.$jazz.push(created)
+		keepAssetIds.add(created.$jazz.id)
+		assetFilesById.set(created.$jazz.id, fileAsset.name)
+	}
+
+	for (let i = doc.assets.length - 1; i >= 0; i--) {
+		let asset = doc.assets[i]
+		if (!asset?.$isLoaded) continue
+		if (keepAssetIds.has(asset.$jazz.id)) continue
+		doc.assets.$jazz.splice(i, 1)
+	}
+
+	if (fileAssetsWithHash.length === 0) {
+		return new Map<string, string>()
+	}
+
+	return assetFilesById
+}
+
+async function syncExistingAssetFromFile(
+	doc: LoadedDocument,
+	existing: co.loaded<typeof Asset>,
+	assetId: string,
+	fileAsset: { name: string; blob: Blob },
+): Promise<string> {
+	let nextType = fileAsset.blob.type.startsWith("video/") ? "video" : "image"
+	if (existing.type !== nextType) {
+		let index =
+			doc.assets?.findIndex(asset => asset?.$jazz.id === assetId) ?? -1
+		if (index === -1 || !doc.assets) return assetId
+		doc.assets.$jazz.splice(index, 1)
+		let replacement = await createAssetFromBlob(
+			fileAsset,
+			doc.$jazz.owner,
+			existing.createdAt,
+		)
+		doc.assets.$jazz.push(replacement)
+		return replacement.$jazz.id
+	}
+
+	if (existing.type === "video") {
+		let stream = await FileStream.createFromBlob(fileAsset.blob, {
+			owner: doc.$jazz.owner,
+		})
+		existing.$jazz.applyDiff({
+			name: removeExtension(fileAsset.name),
+			video: stream,
+			mimeType: fileAsset.blob.type || "video/mp4",
+		})
+		return assetId
+	}
+
+	let image = await createImage(fileAsset.blob, {
+		owner: doc.$jazz.owner,
+		maxSize: 2048,
+	})
+	existing.$jazz.applyDiff({ name: removeExtension(fileAsset.name), image })
+	return assetId
+}
+
+async function createAssetFromBlob(
+	assetFile: { name: string; blob: Blob },
+	owner: Group,
+	now: Date,
+) {
+	let isVideo = assetFile.blob.type.startsWith("video/")
+	if (isVideo) {
+		let video = await FileStream.createFromBlob(assetFile.blob, {
+			owner,
+		})
+		return VideoAsset.create(
+			{
+				type: "video",
+				name: removeExtension(assetFile.name),
+				video,
+				mimeType: assetFile.blob.type || "video/mp4",
+				createdAt: now,
+			},
+			owner,
+		)
+	}
+
+	let image = await createImage(assetFile.blob, {
+		owner,
+		maxSize: 2048,
+	})
+	return ImageAsset.create(
+		{
+			type: "image",
+			name: removeExtension(assetFile.name),
+			image,
+			createdAt: now,
+		},
+		owner,
+	)
+}
+
+function removeExtension(filename: string): string {
+	return filename.replace(/\.[^.]+$/, "")
 }
 
 function isDocumentList(value: unknown): value is DocumentList {
@@ -1587,6 +1801,39 @@ async function hashBlob(blob: Blob): Promise<string> {
 		.map(b => b.toString(16).padStart(2, "0"))
 		.join("")
 		.slice(0, 16)
+}
+
+async function hashScannedAssets(
+	assets: { name: string; blob: Blob }[],
+): Promise<ScannedAssetHash[]> {
+	let hashed = await Promise.all(
+		assets.map(async asset => ({
+			name: asset.name,
+			hash: await hashBlob(asset.blob),
+		})),
+	)
+	return hashed
+}
+
+function areScannedAssetsInSync(
+	manifestAssets: { id?: string; name: string; hash: string }[],
+	scannedAssets: ScannedAssetHash[],
+): boolean {
+	if (manifestAssets.length !== scannedAssets.length) return false
+
+	let sortedManifest = [...manifestAssets].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	)
+	let sortedScanned = [...scannedAssets].sort((a, b) =>
+		a.name.localeCompare(b.name),
+	)
+
+	for (let i = 0; i < sortedManifest.length; i++) {
+		if (sortedManifest[i].name !== sortedScanned[i].name) return false
+		if (sortedManifest[i].hash !== sortedScanned[i].hash) return false
+	}
+
+	return true
 }
 
 function areManifestAssetsEqual(
