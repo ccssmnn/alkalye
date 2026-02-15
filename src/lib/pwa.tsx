@@ -153,7 +153,7 @@ function PWAInstallHint() {
 			toast(
 				<div className="flex flex-col gap-3">
 					<div>
-						<div className="font-medium">Install Alkalyte</div>
+						<div className="font-medium">Install Alkalye</div>
 						<div className="text-muted-foreground text-sm">
 							Add to your homescreen for the best experience.
 						</div>
@@ -213,11 +213,11 @@ function PWAInstallDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Install Alkalyte</DialogTitle>
+					<DialogTitle>Install Alkalye</DialogTitle>
 					<DialogDescription>
 						{isMobileDevice()
-							? "Add Alkalyte to your homescreen for instant access and the best experience."
-							: "Install Alkalyte as an app for quick access and a better experience."}
+							? "Add Alkalye to your homescreen for instant access and the best experience."
+							: "Install Alkalye as an app for quick access and a better experience."}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4">
