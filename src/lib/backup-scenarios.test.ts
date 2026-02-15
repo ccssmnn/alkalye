@@ -1,295 +1,19 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { co, Group } from "jazz-tools"
+import { co, Group, FileStream } from "jazz-tools"
 import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
-import { UserAccount, Document } from "@/schema"
+import { UserAccount, Document, Asset, VideoAsset } from "@/schema"
 import { getPath } from "@/editor/frontmatter"
 import { getDocumentTitle } from "@/lib/document-utils"
 import type { BackupDoc } from "./backup-sync"
 import { readManifest } from "./backup-sync"
-import { syncBackup, syncFromBackup } from "./backup"
-
-class MockWritableFileStream implements FileSystemWritableFileStream {
-	private stream = new WritableStream<unknown>()
-	private saveContent: (content: string) => void
-
-	constructor(saveContent: (content: string) => void) {
-		this.saveContent = saveContent
-	}
-
-	get locked(): boolean {
-		return this.stream.locked
-	}
-
-	abort(reason?: unknown): Promise<void> {
-		return this.stream.abort(reason)
-	}
-
-	close(): Promise<void> {
-		return Promise.resolve()
-	}
-
-	getWriter(): WritableStreamDefaultWriter<unknown> {
-		return this.stream.getWriter()
-	}
-
-	seek(_position: number): Promise<void> {
-		return Promise.resolve()
-	}
-
-	truncate(_size: number): Promise<void> {
-		return Promise.resolve()
-	}
-
-	write(data: string | Blob | ArrayBuffer): Promise<void>
-	write(data: ArrayBufferView): Promise<void>
-	write(data: {
-		type: "write"
-		data: string | Blob | ArrayBuffer | ArrayBufferView | null
-	}): Promise<void>
-	write(data: { type: "seek"; position: number }): Promise<void>
-	write(data: { type: "truncate"; size: number }): Promise<void>
-	async write(data: unknown): Promise<void> {
-		if (typeof data === "string") {
-			this.saveContent(data)
-			return
-		}
-
-		if (data instanceof Blob) {
-			this.saveContent(await data.text())
-			return
-		}
-
-		if (data instanceof ArrayBuffer) {
-			this.saveContent(new TextDecoder().decode(new Uint8Array(data)))
-			return
-		}
-
-		if (ArrayBuffer.isView(data)) {
-			let bytes = new Uint8Array(data.buffer, data.byteOffset, data.byteLength)
-			this.saveContent(new TextDecoder().decode(bytes))
-			return
-		}
-
-		if (typeof data === "object" && data !== null && "type" in data) {
-			if (
-				data.type === "write" &&
-				"data" in data &&
-				data.data !== undefined &&
-				data.data !== null
-			) {
-				let nestedData = data.data
-				if (typeof nestedData === "string") {
-					this.saveContent(nestedData)
-					return
-				}
-				if (nestedData instanceof Blob) {
-					this.saveContent(await nestedData.text())
-					return
-				}
-				if (nestedData instanceof ArrayBuffer) {
-					this.saveContent(new TextDecoder().decode(new Uint8Array(nestedData)))
-					return
-				}
-				if (ArrayBuffer.isView(nestedData)) {
-					let bytes = new Uint8Array(
-						nestedData.buffer,
-						nestedData.byteOffset,
-						nestedData.byteLength,
-					)
-					this.saveContent(new TextDecoder().decode(bytes))
-				}
-			}
-		}
-	}
-
-	get [Symbol.toStringTag](): string {
-		return "FileSystemWritableFileStream"
-	}
-}
-
-class MockFileHandle implements FileSystemFileHandle {
-	kind = "file" as const
-	name: string
-	private getContent: () => string
-	private setContent: (content: string) => void
-	private getLastModified: () => number
-	private setLastModified: (lastModified: number) => void
-
-	constructor(
-		name: string,
-		getContent: () => string,
-		setContent: (content: string) => void,
-		getLastModified: () => number,
-		setLastModified: (lastModified: number) => void,
-	) {
-		this.name = name
-		this.getContent = getContent
-		this.setContent = setContent
-		this.getLastModified = getLastModified
-		this.setLastModified = setLastModified
-	}
-
-	async getFile(): Promise<File> {
-		return new File([this.getContent()], this.name, {
-			lastModified: this.getLastModified(),
-		})
-	}
-
-	async createWritable(): Promise<FileSystemWritableFileStream> {
-		return new MockWritableFileStream(content => {
-			this.setContent(content)
-			this.setLastModified(Date.now())
-		})
-	}
-
-	isSameEntry(other: FileSystemHandle): Promise<boolean> {
-		return Promise.resolve(other.kind === "file" && other.name === this.name)
-	}
-
-	get [Symbol.toStringTag](): string {
-		return "FileSystemFileHandle"
-	}
-}
-
-interface StoredFile {
-	content: string
-	lastModified: number
-}
-
-function isDirectoryHandle(
-	handle: FileSystemHandle | undefined,
-): handle is MockDirectoryHandle {
-	return handle?.kind === "directory"
-}
-
-function isFileHandle(
-	handle: FileSystemHandle | undefined,
-): handle is MockFileHandle {
-	return handle?.kind === "file"
-}
-
-class MockDirectoryHandle implements FileSystemDirectoryHandle {
-	kind = "directory" as const
-	name: string
-	private children = new Map<string, FileSystemHandle>()
-	private files = new Map<string, StoredFile>()
-
-	constructor(name: string) {
-		this.name = name
-	}
-
-	addFile(name: string, content: string, lastModified = Date.now()) {
-		this.files.set(name, { content, lastModified })
-		let fileHandle = new MockFileHandle(
-			name,
-			() => this.files.get(name)?.content ?? "",
-			updatedContent => {
-				let entry = this.files.get(name)
-				this.files.set(name, {
-					content: updatedContent,
-					lastModified: entry?.lastModified ?? Date.now(),
-				})
-			},
-			() => this.files.get(name)?.lastModified ?? Date.now(),
-			lastModifiedValue => {
-				let entry = this.files.get(name)
-				this.files.set(name, {
-					content: entry?.content ?? "",
-					lastModified: lastModifiedValue,
-				})
-			},
-		)
-		this.children.set(name, fileHandle)
-	}
-
-	addDirectory(name: string, directory: MockDirectoryHandle) {
-		this.children.set(name, directory)
-	}
-
-	entries(): AsyncIterableIterator<[string, FileSystemHandle]> {
-		let iter = this.children.entries()
-		return {
-			async next() {
-				let result = iter.next()
-				if (result.done) return { done: true, value: undefined }
-				return { done: false, value: result.value }
-			},
-			[Symbol.asyncIterator]() {
-				return this
-			},
-		}
-	}
-
-	async getFileHandle(
-		name: string,
-		options?: { create?: boolean },
-	): Promise<FileSystemFileHandle> {
-		let handle = this.children.get(name)
-		if (!isFileHandle(handle)) {
-			if (options?.create) {
-				this.addFile(name, "")
-				let created = this.children.get(name)
-				if (!isFileHandle(created)) throw new Error("Failed creating file")
-				return created
-			}
-			throw new Error(`File not found: ${name}`)
-		}
-		return handle
-	}
-
-	async getDirectoryHandle(
-		name: string,
-		options?: { create?: boolean },
-	): Promise<FileSystemDirectoryHandle> {
-		let handle = this.children.get(name)
-		if (!isDirectoryHandle(handle)) {
-			if (options?.create) {
-				let created = new MockDirectoryHandle(name)
-				this.children.set(name, created)
-				return created
-			}
-			throw new Error(`Directory not found: ${name}`)
-		}
-		return handle
-	}
-
-	async removeEntry(
-		name: string,
-		options?: { recursive?: boolean },
-	): Promise<void> {
-		let handle = this.children.get(name)
-		if (!handle) return
-
-		if (handle.kind === "directory" && !options?.recursive) {
-			throw new Error("Directory removal requires recursive flag")
-		}
-
-		this.children.delete(name)
-		this.files.delete(name)
-	}
-
-	resolve(): Promise<string[] | null> {
-		return Promise.resolve([this.name])
-	}
-
-	queryPermission(): Promise<"granted"> {
-		return Promise.resolve("granted")
-	}
-
-	requestPermission(): Promise<"granted"> {
-		return Promise.resolve("granted")
-	}
-
-	isSameEntry(other: FileSystemHandle): Promise<boolean> {
-		return Promise.resolve(
-			other.kind === "directory" && other.name === this.name,
-		)
-	}
-
-	get [Symbol.toStringTag](): string {
-		return "FileSystemDirectoryHandle"
-	}
-}
+import { hashContent, syncBackup, syncFromBackup } from "./backup"
+import {
+	MockDirectoryHandle,
+	basename,
+	readFileAtPath as readFile,
+	removeFileAtPath as removeFile,
+	writeFileAtPath,
+} from "./backup-test-helpers"
 
 type LoadedAccount = co.loaded<typeof UserAccount>
 type LoadedDoc = co.loaded<typeof Document>
@@ -347,6 +71,40 @@ describe("backup scenarios", () => {
 		expect(imported).toBeDefined()
 	})
 
+	it("imports asset references with created asset ids", async () => {
+		await writeFileAtPath(
+			root,
+			"Video Doc/Video Doc.md",
+			"# Video Doc\n\n![Clip](assets/clip.mp4)",
+		)
+		await writeFileAtPath(root, "Video Doc/assets/clip.mp4", "video-bytes")
+
+		let result = await syncFromBackup(root, docs, true)
+		expect(result.created).toBe(1)
+
+		let imported = getLoadedDocs(docs).find(
+			d => getDocumentTitle(d) === "Video Doc",
+		)
+		expect(imported).toBeDefined()
+		if (!imported?.content?.$isLoaded) throw new Error("Doc content not loaded")
+
+		let content = imported.content.toString()
+		let refMatch = content.match(/!\[[^\]]*\]\(asset:([^)]+)\)/)
+		expect(refMatch).toBeTruthy()
+
+		let refs = (content.match(/asset:[^)]+/g) ?? []).map(ref =>
+			ref.replace("asset:", ""),
+		)
+		let assetIds = (imported.assets?.$isLoaded ? [...imported.assets] : [])
+			.filter(asset => asset?.$isLoaded)
+			.map(asset => asset.$jazz.id)
+
+		expect(assetIds.length).toBeGreaterThan(0)
+		for (let refId of refs) {
+			expect(assetIds).toContain(refId)
+		}
+	})
+
 	it("renamed in alkalye", async () => {
 		let doc = await createDoc(docs, "# Hello World")
 		await pushToBackup(root, docs)
@@ -394,6 +152,109 @@ describe("backup scenarios", () => {
 		)
 		expect(loaded).toBeDefined()
 		expect(getPath(loaded?.content?.toString() ?? "")).toBe("archive")
+	})
+
+	it("matches moved doc by filename when content hashes collide", async () => {
+		let first = await createDoc(docs, "# Same")
+		let second = await createDoc(docs, "# Same")
+		await pushToBackup(root, docs)
+
+		let manifest = await readManifest(root)
+		if (!manifest) throw new Error("Manifest not found")
+
+		let firstEntry = manifest.entries.find(
+			entry => entry.docId === first.$jazz.id,
+		)
+		let secondEntry = manifest.entries.find(
+			entry => entry.docId === second.$jazz.id,
+		)
+		if (!firstEntry || !secondEntry) throw new Error("Manifest entries missing")
+
+		let secondContent = await readFile(root, secondEntry.relativePath)
+		await removeFile(root, firstEntry.relativePath)
+		await removeFile(root, secondEntry.relativePath)
+
+		let movedFilename = basename(secondEntry.relativePath)
+		await writeFileAtPath(root, `archive/${movedFilename}`, secondContent)
+
+		let result = await syncFromBackup(root, docs, true)
+		expect(result.updated).toBe(1)
+		expect(result.deleted).toBe(1)
+
+		let firstLoaded = getLoadedDocs(docs).find(
+			d => d.$jazz.id === first.$jazz.id,
+		)
+		let secondLoaded = getLoadedDocs(docs).find(
+			d => d.$jazz.id === second.$jazz.id,
+		)
+
+		expect(firstLoaded?.deletedAt).toBeTruthy()
+		expect(secondLoaded?.deletedAt).toBeFalsy()
+	})
+
+	it("keeps asset refs stable when pulling updates for docs with assets", async () => {
+		let { doc, assetId } = await createDocWithVideoAsset(docs, "Asset Sync")
+		let localContent =
+			"# Asset Sync\n\n![Clip](assets/clip.mp4)\n\nExternal edit"
+		let localPath = "Asset Sync.md"
+		await writeFileAtPath(root, localPath, localContent)
+		let contentHash = await hashContent(
+			"# Asset Sync\n\n![Clip](assets/clip.mp4)",
+		)
+		let manifestContent = JSON.stringify(
+			{
+				version: 1,
+				entries: [
+					{
+						docId: doc.$jazz.id,
+						relativePath: localPath,
+						contentHash,
+						lastSyncedAt: new Date().toISOString(),
+						assets: [{ id: assetId, name: "clip.mp4", hash: "asset-hash" }],
+					},
+				],
+				lastSyncAt: new Date().toISOString(),
+			},
+			null,
+			2,
+		)
+		await writeFileAtPath(root, ".alkalye-manifest.json", manifestContent)
+
+		let result = await syncFromBackup(root, docs, true)
+		expect(result.updated).toBe(1)
+
+		let loaded = getLoadedDocs(docs).find(d => d.$jazz.id === doc.$jazz.id)
+		expect(loaded).toBeDefined()
+		if (!loaded?.content?.$isLoaded) throw new Error("Doc content not loaded")
+
+		let content = loaded.content.toString()
+		expect(content).toContain(`asset:${assetId}`)
+		expect(content).not.toContain("(assets/")
+	})
+
+	it("writes asset ids to manifest entries on backup", async () => {
+		let backupDocs: BackupDoc[] = [
+			{
+				id: "doc-asset-manifest",
+				title: "Asset Manifest",
+				content: "# Asset Manifest\n\n![Clip](asset:asset-1)",
+				path: null,
+				updatedAtMs: Date.now(),
+				assets: [
+					{
+						id: "asset-1",
+						name: "clip",
+						blob: new Blob(["video"], { type: "video/mp4" }),
+					},
+				],
+			},
+		]
+
+		await syncBackup(root, backupDocs)
+
+		let manifest = await readManifest(root)
+		expect(manifest).toBeDefined()
+		expect(manifest?.entries[0].assets[0].id).toBe("asset-1")
 	})
 
 	it("changed path in alkalye", async () => {
@@ -504,6 +365,44 @@ async function createDoc(
 	return doc
 }
 
+async function createDocWithVideoAsset(
+	docs: co.loaded<ReturnType<typeof co.list<typeof Document>>>,
+	title: string,
+): Promise<{ doc: LoadedDoc; assetId: string }> {
+	let group = Group.create()
+	let now = new Date()
+	let stream = await FileStream.createFromBlob(
+		new Blob(["video"], { type: "video/mp4" }),
+		{
+			owner: group,
+		},
+	)
+	let videoAsset = VideoAsset.create(
+		{
+			type: "video",
+			name: "clip",
+			video: stream,
+			mimeType: "video/mp4",
+			createdAt: now,
+		},
+		group,
+	)
+	let content = `# ${title}\n\n![Clip](asset:${videoAsset.$jazz.id})`
+	let doc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(content, group),
+			assets: co.list(Asset).create([videoAsset], group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+	docs.$jazz.push(doc)
+	if (!doc.$isLoaded) throw new Error("Doc failed to load")
+	return { doc, assetId: videoAsset.$jazz.id }
+}
+
 async function pushToBackup(
 	handle: FileSystemDirectoryHandle,
 	docs: co.loaded<ReturnType<typeof co.list<typeof Document>>>,
@@ -536,36 +435,4 @@ async function hasFile(
 	} catch {
 		return false
 	}
-}
-
-async function readFile(
-	root: MockDirectoryHandle,
-	relativePath: string,
-): Promise<string> {
-	let parts = relativePath.split("/").filter(Boolean)
-	if (parts.length === 0) throw new Error("Empty path")
-
-	let dir: FileSystemDirectoryHandle = root
-	for (let i = 0; i < parts.length - 1; i++) {
-		dir = await dir.getDirectoryHandle(parts[i])
-	}
-
-	let fileHandle = await dir.getFileHandle(parts[parts.length - 1])
-	let file = await fileHandle.getFile()
-	return file.text()
-}
-
-async function removeFile(
-	root: MockDirectoryHandle,
-	relativePath: string,
-): Promise<void> {
-	let parts = relativePath.split("/").filter(Boolean)
-	if (parts.length === 0) throw new Error("Empty path")
-
-	let dir: FileSystemDirectoryHandle = root
-	for (let i = 0; i < parts.length - 1; i++) {
-		dir = await dir.getDirectoryHandle(parts[i])
-	}
-
-	await dir.removeEntry(parts[parts.length - 1])
 }

@@ -26,6 +26,7 @@ import {
 	writeManifest,
 	transformContentForImport,
 	type BackupDoc,
+	type ManifestEntry,
 	type ScannedFile,
 } from "@/lib/backup-sync"
 
@@ -757,6 +758,7 @@ async function syncFromBackup(
 					manifest,
 					scannedByPath,
 					matchedManifestDocIds,
+					file,
 					contentHash,
 				)
 				if (movedEntry) {
@@ -789,6 +791,7 @@ async function syncFromBackup(
 				let didUpdate = await updateDocFromFile(
 					file,
 					manifestEntry.docId,
+					manifestEntry,
 					targetDocs,
 				)
 				if (didUpdate) {
@@ -1127,7 +1130,7 @@ async function performSyncBackup(
 		locationKey: string
 		contentHash: string
 		lastSyncedAt: string
-		assets: { name: string; hash: string }[]
+		assets: { id: string; name: string; hash: string }[]
 	}[] = []
 	let hasFilesystemChanges = false
 	let nowIso = new Date().toISOString()
@@ -1161,10 +1164,11 @@ async function performSyncBackup(
 		let exportedContent = transformContentForBackup(doc.content, loc.assetFiles)
 		let contentHash = await hashContent(exportedContent)
 		let relativePath = finalRelativePath
-		let assets: { name: string; hash: string }[] = []
+		let assets: { id: string; name: string; hash: string }[] = []
 		for (let asset of doc.assets) {
 			let filename = loc.assetFiles.get(asset.id)!
 			assets.push({
+				id: asset.id,
 				name: filename,
 				hash: await hashBlob(asset.blob),
 			})
@@ -1295,19 +1299,6 @@ async function createDocFromFile(
 	targetDocs: DocumentList,
 	listOwner: Group | Account,
 ): Promise<string> {
-	// Transform asset references back to asset: format
-	let assetFiles = new Map<string, string>()
-	for (let asset of file.assets) {
-		let id = crypto.randomUUID()
-		assetFiles.set(id, asset.name)
-	}
-	let transformedContent = transformContentForImport(file.content, assetFiles)
-	let content = applyPathFromRelativePath(
-		transformedContent,
-		file.relativePath,
-		file.assets.length > 0,
-	)
-
 	// Create doc-specific group with list owner as parent
 	let docGroup = Group.create()
 	if (listOwner instanceof Group) {
@@ -1318,12 +1309,9 @@ async function createDocFromFile(
 
 	// Create assets
 	let docAssets: co.loaded<typeof Asset>[] = []
+	let assetFilesById = new Map<string, string>()
 	for (let assetFile of file.assets) {
 		let isVideo = assetFile.blob.type.startsWith("video/")
-		let id = [...assetFiles.entries()].find(
-			([, name]) => name === assetFile.name,
-		)?.[0]
-		if (!id) continue
 
 		if (isVideo) {
 			let video = await FileStream.createFromBlob(assetFile.blob, {
@@ -1340,6 +1328,7 @@ async function createDocFromFile(
 				docGroup,
 			)
 			docAssets.push(asset)
+			assetFilesById.set(asset.$jazz.id, assetFile.name)
 		} else {
 			let image = await createImage(assetFile.blob, {
 				owner: docGroup,
@@ -1355,8 +1344,19 @@ async function createDocFromFile(
 				docGroup,
 			)
 			docAssets.push(asset)
+			assetFilesById.set(asset.$jazz.id, assetFile.name)
 		}
 	}
+
+	let transformedContent = transformContentForImport(
+		file.content,
+		assetFilesById,
+	)
+	let content = applyPathFromRelativePath(
+		transformedContent,
+		file.relativePath,
+		file.assets.length > 0,
+	)
 
 	let newDoc = Document.create(
 		{
@@ -1379,6 +1379,7 @@ async function createDocFromFile(
 async function updateDocFromFile(
 	file: ScannedFile,
 	docId: string,
+	manifestEntry: ManifestEntry,
 	targetDocs: DocumentList,
 ): Promise<boolean> {
 	let doc = targetDocs.find(
@@ -1389,14 +1390,9 @@ async function updateDocFromFile(
 	}
 
 	// Update content
-	let assetFiles = new Map<string, string>()
-	for (let asset of file.assets) {
-		let id = crypto.randomUUID()
-		assetFiles.set(id, asset.name)
-	}
-	let transformedContent = transformContentForImport(file.content, assetFiles)
+	let assetFilesById = getAssetFilesByIdFromManifest(manifestEntry)
 	let content = applyPathFromRelativePath(
-		transformedContent,
+		transformContentForImport(file.content, assetFilesById),
 		file.relativePath,
 		file.assets.length > 0,
 	)
@@ -1424,17 +1420,44 @@ function findMovedManifestEntry(
 	manifest: Awaited<ReturnType<typeof readManifest>>,
 	scannedByPath: Map<string, ScannedFile>,
 	matchedManifestDocIds: Set<string>,
+	file: ScannedFile,
 	contentHash: string,
 ) {
 	if (!manifest) return null
+	let candidates = manifest.entries.filter(entry => {
+		if (matchedManifestDocIds.has(entry.docId)) return false
+		if (scannedByPath.has(entry.relativePath)) return false
+		if (entry.contentHash !== contentHash) return false
+		return true
+	})
+	if (candidates.length === 0) return null
+	if (candidates.length === 1) return candidates[0]
 
-	for (let entry of manifest.entries) {
-		if (matchedManifestDocIds.has(entry.docId)) continue
-		if (scannedByPath.has(entry.relativePath)) continue
-		if (entry.contentHash === contentHash) return entry
+	let matchingBasename = candidates.filter(entry => {
+		return getFilename(entry.relativePath) === getFilename(file.relativePath)
+	})
+	if (matchingBasename.length === 1) {
+		return matchingBasename[0]
 	}
 
 	return null
+}
+
+function getFilename(relativePath: string): string {
+	let parts = relativePath.split("/").filter(Boolean)
+	if (parts.length === 0) return relativePath
+	return parts[parts.length - 1]
+}
+
+function getAssetFilesByIdFromManifest(
+	manifestEntry: ManifestEntry,
+): Map<string, string> {
+	let filesById = new Map<string, string>()
+	for (let asset of manifestEntry.assets) {
+		if (!asset.id) continue
+		filesById.set(asset.id, asset.name)
+	}
+	return filesById
 }
 
 function applyPathFromRelativePath(
@@ -1567,8 +1590,8 @@ async function hashBlob(blob: Blob): Promise<string> {
 }
 
 function areManifestAssetsEqual(
-	a: { name: string; hash: string }[],
-	b: { name: string; hash: string }[],
+	a: { id?: string; name: string; hash: string }[],
+	b: { id?: string; name: string; hash: string }[],
 ): boolean {
 	if (a.length !== b.length) return false
 
@@ -1580,6 +1603,7 @@ function areManifestAssetsEqual(
 	)
 
 	for (let i = 0; i < sortedA.length; i++) {
+		if ((sortedA[i].id ?? null) !== (sortedB[i].id ?? null)) return false
 		if (sortedA[i].name !== sortedB[i].name) return false
 		if (sortedA[i].hash !== sortedB[i].hash) return false
 	}

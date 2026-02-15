@@ -44,7 +44,7 @@ interface ManifestEntry {
 	locationKey?: string
 	contentHash: string
 	lastSyncedAt: string
-	assets: { name: string; hash: string }[]
+	assets: { id?: string; name: string; hash: string }[]
 }
 
 interface BackupManifest {
@@ -62,6 +62,7 @@ interface ScannedFile {
 }
 
 let manifestAssetSchema = z.object({
+	id: z.string().optional(),
 	name: z.string(),
 	hash: z.string(),
 })
