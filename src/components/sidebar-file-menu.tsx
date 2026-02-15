@@ -35,17 +35,8 @@ import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
 import type { MarkdownEditorRef } from "@/editor/editor"
 
-import {
-	findThemeByName,
-	getThemeName,
-	getPresetName,
-	findPresetByName,
-	getThemePresets,
-	findPresetByAppearance,
-	type LoadedThemes,
-} from "@/lib/document-theme"
-import { buildPrintableHtml, openPrintWindow } from "@/lib/pdf-export"
-import { Marked } from "marked"
+import { type LoadedThemes } from "@/lib/document-theme"
+import { printToPdf } from "@/lib/print-to-pdf"
 
 export { SidebarFileMenu }
 
@@ -109,6 +100,13 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let isAdmin = docGroup?.myRole() === "admin"
 	let isPinned = parseFrontmatter(content).frontmatter?.pinned === true
 	let isPresentation = getPresentationMode(content)
+	let handlePrintPdf = makePrintPdf(
+		content,
+		meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
+		meWithThemes.$isLoaded
+			? (meWithThemes.root?.settings?.defaultPreviewTheme ?? null)
+			: null,
+	)
 
 	return (
 		<>
@@ -190,15 +188,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 							Save as...
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
 						</DropdownMenuItem>
-						<DropdownMenuItem
-							onClick={makePrintPdf(
-								content,
-								meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
-								meWithThemes.$isLoaded
-									? (meWithThemes.root?.settings?.defaultPreviewTheme ?? null)
-									: null,
-							)}
-						>
+						<DropdownMenuItem onClick={handlePrintPdf}>
 							Print to PDF
 							<DropdownMenuShortcut>{modKey}P</DropdownMenuShortcut>
 						</DropdownMenuItem>
@@ -518,53 +508,7 @@ function makePrintPdf(
 	defaultPreviewTheme: string | null,
 ) {
 	return async function handlePrintPdf() {
-		let { body } = parseFrontmatter(content)
-		let title = getDocumentTitle(content)
-
-		// Resolve theme and preset from frontmatter (same logic as useDocumentTheme)
-		let themeName = getThemeName(content)
-		let presetName = getPresetName(content)
-
-		// Handle "light"/"dark" as appearance-only, not theme names
-		let isAppearanceOnlyTheme = themeName === "light" || themeName === "dark"
-		let effectiveThemeName = isAppearanceOnlyTheme ? null : themeName
-
-		// Fall back to default preview theme from settings
-		if (!effectiveThemeName && defaultPreviewTheme) {
-			effectiveThemeName = defaultPreviewTheme
-		}
-
-		let theme = effectiveThemeName
-			? findThemeByName(themes ?? null, effectiveThemeName)
-			: null
-		let preset = null
-
-		if (theme && presetName) {
-			preset = findPresetByName(theme, presetName)
-		} else if (theme) {
-			// PDF always uses light mode
-			preset = findPresetByAppearance(theme, "light")
-			if (!preset) {
-				let presets = getThemePresets(theme)
-				preset = presets[0] ?? null
-			}
-		}
-
-		// Render markdown to HTML
-		let marked = new Marked()
-		marked.setOptions({ gfm: true, breaks: true })
-		let htmlContent = await marked.parse(body)
-
-		// Build printable HTML with theme styles
-		let printableHtml = await buildPrintableHtml({
-			title,
-			htmlContent,
-			theme,
-			preset,
-		})
-
-		// Open print window
-		openPrintWindow(printableHtml)
+		await printToPdf({ content, themes, defaultPreviewTheme })
 	}
 }
 

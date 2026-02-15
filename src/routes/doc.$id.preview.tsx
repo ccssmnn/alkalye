@@ -1,7 +1,8 @@
+import { useEffect } from "react"
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useCoState } from "jazz-tools/react"
+import { useCoState, useAccount } from "jazz-tools/react"
 import { type ResolveQuery } from "jazz-tools"
-import { Document } from "@/schema"
+import { Document, UserAccount } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { altModKey } from "@/lib/platform"
 import { EllipsisIcon, Pencil } from "lucide-react"
@@ -27,6 +28,7 @@ import {
 	useDocTitles,
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
+import { printToPdf } from "@/lib/print-to-pdf"
 
 export { Route }
 
@@ -34,6 +36,15 @@ let resolve = {
 	content: true,
 	assets: { $each: { image: true } },
 } as const satisfies ResolveQuery<typeof Document>
+
+let themesResolve = {
+	root: {
+		settings: true,
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
+	},
+} as const
 
 let Route = createFileRoute("/doc/$id/preview")({
 	loader: async ({ params }) => {
@@ -68,6 +79,7 @@ function PreviewPage() {
 	let navigate = useNavigate()
 
 	let subscribedDoc = useCoState(Document, id, { resolve })
+	let meWithThemes = useAccount(UserAccount, { resolve: themesResolve })
 
 	// Extract content for wikilinks (use loader data as fallback, empty if neither)
 	let content =
@@ -75,6 +87,24 @@ function PreviewPage() {
 		""
 	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
 	let wikilinkCache = useDocTitles(wikilinkIds, data.wikilinkCache)
+
+	useEffect(() => {
+		function handleKeyDown(e: KeyboardEvent) {
+			if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
+			if (e.key.toLowerCase() !== "p") return
+			e.preventDefault()
+			void printToPdf({
+				content,
+				themes: meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
+				defaultPreviewTheme: meWithThemes.$isLoaded
+					? (meWithThemes.root?.settings?.defaultPreviewTheme ?? null)
+					: null,
+			})
+		}
+
+		document.addEventListener("keydown", handleKeyDown)
+		return () => document.removeEventListener("keydown", handleKeyDown)
+	}, [content, meWithThemes])
 
 	// Error states from loader
 	if (!data.doc) {

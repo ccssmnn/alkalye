@@ -79,6 +79,7 @@ import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
+import { printToPdf } from "@/lib/print-to-pdf"
 export { Route }
 
 let Route = createFileRoute("/doc/$id/")({
@@ -174,6 +175,9 @@ let personalMeResolve = {
 	root: {
 		documents: { $each: { content: true } },
 		settings: true,
+		themes: {
+			$each: { css: true, template: true, assets: { $each: { data: true } } },
+		},
 	},
 } as const
 
@@ -322,9 +326,27 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				document.documentElement.dataset.focusMode = String(!current)
 			},
 			openFind: () => editor.current?.openFind(),
+			onPrintPdf: () => {
+				void printToPdf({
+					content,
+					themes: me.$isLoaded ? me.root?.themes : undefined,
+					defaultPreviewTheme: me.$isLoaded
+						? (me.root?.settings?.defaultPreviewTheme ?? null)
+						: null,
+				})
+			},
 			docWithContent,
 		})
-	}, [navigate, docId, toggleLeft, toggleRight, docWithContent, editor])
+	}, [
+		navigate,
+		docId,
+		toggleLeft,
+		toggleRight,
+		content,
+		me,
+		docWithContent,
+		editor,
+	])
 
 	let allDocs = getPersonalDocs(me)
 
