@@ -41,6 +41,7 @@ interface ExpectedStructure {
 interface ManifestEntry {
 	docId: string
 	relativePath: string
+	scopeId?: string
 	locationKey?: string
 	contentHash: string
 	lastSyncedAt: string
@@ -70,6 +71,7 @@ let manifestAssetSchema = z.object({
 let manifestEntrySchema = z.object({
 	docId: z.string(),
 	relativePath: z.string(),
+	scopeId: z.string().optional(),
 	locationKey: z.string().optional(),
 	contentHash: z.string(),
 	lastSyncedAt: z.string(),

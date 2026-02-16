@@ -70,6 +70,34 @@ describe("backup scenarios", () => {
 		expect(loadedDocs).toHaveLength(initialCount + 1)
 		let imported = loadedDocs.find(d => getDocumentTitle(d) === "Local Note")
 		expect(imported).toBeDefined()
+
+		let manifest = await readManifest(root)
+		expect(
+			manifest?.entries.some(entry => entry.relativePath === "Local Note.md"),
+		).toBe(true)
+	})
+
+	it("does not duplicate imports on repeated pulls before manifest exists", async () => {
+		let initialCount = getLoadedDocs(docs).length
+		root.addFile("Repeated.md", "# Repeated\n\nFrom filesystem", 2_000)
+
+		let first = await syncFromBackup(root, docs, true)
+		let second = await syncFromBackup(root, docs, true)
+
+		expect(first.created).toBe(1)
+		expect(second.created).toBe(0)
+		expect(getLoadedDocs(docs)).toHaveLength(initialCount + 1)
+	})
+
+	it("does not create duplicates when same untracked no-asset doc already exists", async () => {
+		let initialCount = getLoadedDocs(docs).length
+		await createDoc(docs, "# Local Note\n\nFrom filesystem")
+		root.addFile("Local Note.md", "# Local Note\n\nFrom filesystem", 2_000)
+
+		let result = await syncFromBackup(root, docs, true)
+
+		expect(result.created).toBe(0)
+		expect(getLoadedDocs(docs)).toHaveLength(initialCount + 1)
 	})
 
 	it("imports same relative path across different backup roots", async () => {
@@ -637,6 +665,16 @@ describe("backup scenarios", () => {
 
 		let target = getLoadedDocs(docs).find(d => d.$jazz.id === doc.$jazz.id)
 		expect(target?.deletedAt).toBeTruthy()
+	})
+
+	it("re-writes missing backup file even when manifest says synced", async () => {
+		await createDoc(docs, "# Rewrite Missing")
+		await pushToBackup(root, docs)
+		await removeFile(root, "Rewrite Missing.md")
+
+		await pushToBackup(root, docs)
+
+		expect(await hasFile(root, "Rewrite Missing.md")).toBe(true)
 	})
 
 	it("edited both locally and in alkalye keeps document accessible and stable", async () => {

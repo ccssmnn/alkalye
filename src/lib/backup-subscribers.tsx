@@ -65,8 +65,13 @@ function BackupSubscriber() {
 	let me = useAccount(UserAccount, { resolve: backupQuery })
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastContentHashRef = useRef<string>("")
+	let lastPullAtRef = useRef<number | null>(toTimestamp(lastPullAt))
 	let isPushingRef = useRef(false)
 	let isPullingRef = useRef(false)
+
+	useEffect(() => {
+		lastPullAtRef.current = toTimestamp(lastPullAt)
+	}, [lastPullAt])
 
 	useEffect(() => {
 		if (!enabled || !me.$isLoaded) return
@@ -98,8 +103,9 @@ function BackupSubscriber() {
 					(d): d is LoadedDocument => d?.$isLoaded === true,
 				)
 				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
 				isPushingRef.current = true
-				await syncBackup(handle, backupDocs)
+				await syncBackup(handle, backupDocs, scopeId)
 
 				setLastBackupAt(new Date().toISOString())
 				setLastError(null)
@@ -135,13 +141,15 @@ function BackupSubscriber() {
 					handle,
 					docs,
 					true,
-					toTimestamp(lastPullAt),
+					lastPullAtRef.current,
 				)
 				if (result.errors.length > 0) {
 					console.warn("Backup pull errors:", result.errors)
 				}
 
-				setLastPullAt(new Date().toISOString())
+				let pulledAt = new Date().toISOString()
+				lastPullAtRef.current = Date.parse(pulledAt)
+				setLastPullAt(pulledAt)
 			} catch (e) {
 				console.error("Backup pull failed:", e)
 			} finally {
@@ -173,7 +181,7 @@ function BackupSubscriber() {
 			watchAborted = true
 			stopWatching?.()
 		}
-	}, [enabled, bidirectional, me, setLastPullAt, lastPullAt])
+	}, [enabled, bidirectional, me, setLastPullAt])
 
 	return null
 }
@@ -247,8 +255,9 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 					(d): d is LoadedDocument => d?.$isLoaded === true,
 				)
 				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
 				isPushingRef.current = true
-				await syncBackup(handle, backupDocs)
+				await syncBackup(handle, backupDocs, scopeId)
 			} catch (e) {
 				console.error(`Space backup failed for ${spaceId}:`, e)
 			} finally {

@@ -47,8 +47,6 @@ interface ScannedAssetHash {
 let preferredRelativePathByDocId = new Map<string, string>()
 let recentImportedRelativePaths = new Map<string, number>()
 let RECENT_IMPORT_WINDOW_MS = 30_000
-let handleScopeIds = new WeakMap<FileSystemDirectoryHandle, string>()
-let handleScopeCounter = 0
 
 async function hashContent(content: string): Promise<string> {
 	let encoder = new TextEncoder()
@@ -64,8 +62,9 @@ async function hashContent(content: string): Promise<string> {
 async function syncBackup(
 	handle: FileSystemDirectoryHandle,
 	docs: BackupDoc[],
+	scopeId = "docs:unknown",
 ): Promise<void> {
-	await performSyncBackup(handle, docs)
+	await performSyncBackup(handle, docs, scopeId)
 }
 
 async function syncFromBackup(
@@ -84,10 +83,22 @@ async function syncFromBackup(
 	let manifest = await readManifest(handle)
 	let scannedFiles = await scanBackupFolder(handle)
 	let listOwner = targetDocs.$jazz.owner
-	let importScopeKey = getHandleScopeKey(handle)
+	let importScopeKey = getDocumentListScopeKey(targetDocs)
+	let manifestEntriesForScope =
+		manifest?.entries.filter(entry =>
+			manifestEntryMatchesScope(entry, importScopeKey),
+		) ?? []
+	let manifestEntriesOutsideScope =
+		manifest?.entries.filter(
+			entry => !manifestEntryMatchesScope(entry, importScopeKey),
+		) ?? []
+	let nextManifestByDocId = new Map(
+		manifestEntriesForScope.map(entry => [entry.docId, entry]),
+	)
+	let manifestChanged = false
 
 	let manifestByPath = new Map(
-		manifest?.entries.map(e => [e.relativePath, e]) ?? [],
+		manifestEntriesForScope.map(e => [e.relativePath, e]),
 	)
 	let scannedByPath = new Map(scannedFiles.map(f => [f.relativePath, f]))
 	let matchedManifestDocIds = new Set<string>()
@@ -115,7 +126,7 @@ async function syncFromBackup(
 
 			if (!manifestEntry) {
 				let movedEntry = findMovedManifestEntry(
-					manifest,
+					manifestEntriesForScope,
 					scannedByPath,
 					matchedManifestDocIds,
 					file,
@@ -133,12 +144,42 @@ async function syncFromBackup(
 			}
 
 			if (!manifestEntry) {
+				let matchingUntrackedDocId = findMatchingUntrackedDocId(
+					file,
+					targetDocs,
+				)
+				if (matchingUntrackedDocId) {
+					let changed = upsertManifestEntry(nextManifestByDocId, {
+						docId: matchingUntrackedDocId,
+						relativePath: file.relativePath,
+						scopeId: importScopeKey,
+						contentHash,
+						lastSyncedAt: new Date().toISOString(),
+						assets: buildManifestAssetsFromScanned(scannedAssetHashes),
+					})
+					manifestChanged = manifestChanged || changed
+					preferredRelativePathByDocId.set(
+						matchingUntrackedDocId,
+						file.relativePath,
+					)
+					continue
+				}
+
 				if (!canWrite) {
 					result.errors.push(`Cannot create ${file.name}: no write permission`)
 					continue
 				}
 				if (wasRecentlyImported(importScopeKey, file.relativePath)) continue
 				let newDocId = await createDocFromFile(file, targetDocs, listOwner)
+				let changed = upsertManifestEntry(nextManifestByDocId, {
+					docId: newDocId,
+					relativePath: file.relativePath,
+					scopeId: importScopeKey,
+					contentHash,
+					lastSyncedAt: new Date().toISOString(),
+					assets: buildManifestAssetsFromScanned(scannedAssetHashes),
+				})
+				manifestChanged = manifestChanged || changed
 				preferredRelativePathByDocId.set(newDocId, file.relativePath)
 				markRecentlyImported(importScopeKey, file.relativePath)
 				result.created++
@@ -159,12 +200,39 @@ async function syncFromBackup(
 					targetDocs,
 				)
 				if (didUpdate) {
+					let changed = upsertManifestEntry(nextManifestByDocId, {
+						docId: manifestEntry.docId,
+						relativePath: file.relativePath,
+						scopeId: importScopeKey,
+						locationKey: manifestEntry.locationKey,
+						contentHash,
+						lastSyncedAt: new Date().toISOString(),
+						assets: buildManifestAssetsFromScanned(
+							scannedAssetHashes,
+							manifestEntry.assets,
+						),
+					})
+					manifestChanged = manifestChanged || changed
 					result.updated++
 				} else {
 					result.errors.push(
 						`Skipped update for ${file.relativePath}: target document not loaded`,
 					)
 				}
+			} else if (manifestEntry) {
+				let changed = upsertManifestEntry(nextManifestByDocId, {
+					docId: manifestEntry.docId,
+					relativePath: file.relativePath,
+					scopeId: importScopeKey,
+					locationKey: manifestEntry.locationKey,
+					contentHash,
+					lastSyncedAt: manifestEntry.lastSyncedAt,
+					assets: buildManifestAssetsFromScanned(
+						scannedAssetHashes,
+						manifestEntry.assets,
+					),
+				})
+				manifestChanged = manifestChanged || changed
 			}
 		} catch (err) {
 			result.errors.push(
@@ -173,8 +241,8 @@ async function syncFromBackup(
 		}
 	}
 
-	if (manifest && canWrite) {
-		for (let entry of manifest.entries) {
+	if (manifestEntriesForScope.length > 0 && canWrite) {
+		for (let entry of manifestEntriesForScope) {
 			if (matchedManifestDocIds.has(entry.docId)) continue
 			if (!scannedByPath.has(entry.relativePath)) {
 				try {
@@ -184,6 +252,8 @@ async function syncFromBackup(
 						doc.$jazz.set("updatedAt", new Date())
 						result.deleted++
 					}
+					nextManifestByDocId.delete(entry.docId)
+					manifestChanged = true
 				} catch (err) {
 					result.errors.push(
 						`Failed to delete ${entry.relativePath}: ${err instanceof Error ? err.message : "Unknown error"}`,
@@ -191,6 +261,18 @@ async function syncFromBackup(
 				}
 			}
 		}
+	}
+
+	let nextScopeEntries = Array.from(nextManifestByDocId.values())
+	if (
+		manifestChanged ||
+		haveManifestEntriesChanged(manifestEntriesForScope, nextScopeEntries)
+	) {
+		await writeManifest(handle, {
+			version: 1,
+			entries: [...nextScopeEntries, ...manifestEntriesOutsideScope],
+			lastSyncAt: new Date().toISOString(),
+		})
 	}
 
 	return result
@@ -281,16 +363,25 @@ async function listDirectories(
 async function performSyncBackup(
 	handle: FileSystemDirectoryHandle,
 	docs: BackupDoc[],
+	scopeId: string,
 ): Promise<void> {
 	let docLocations = computeDocLocations(docs)
-	let importScopeKey = getHandleScopeKey(handle)
 	let existingManifest = await readManifest(handle)
+	let existingScopeEntries =
+		existingManifest?.entries.filter(entry =>
+			manifestEntryMatchesScope(entry, scopeId),
+		) ?? []
+	let existingForeignEntries =
+		existingManifest?.entries.filter(
+			entry => !manifestEntryMatchesScope(entry, scopeId),
+		) ?? []
 	let existingEntriesByDocId = new Map(
-		existingManifest?.entries.map(entry => [entry.docId, entry]) ?? [],
+		existingScopeEntries.map(entry => [entry.docId, entry]),
 	)
 	let manifestEntries: {
 		docId: string
 		relativePath: string
+		scopeId: string
 		locationKey: string
 		contentHash: string
 		lastSyncedAt: string
@@ -343,6 +434,18 @@ async function performSyncBackup(
 			existingEntry.contentHash !== contentHash ||
 			!areManifestAssetsEqual(existingEntry.assets, assets)
 
+		if (!shouldWriteDoc) {
+			let docFileExists = await fileExists(dir, loc.filename)
+			if (!docFileExists) {
+				shouldWriteDoc = true
+			} else if (doc.assets.length > 0) {
+				let assetsExist = await assetsExistAtLocation(dir, loc, doc)
+				if (!assetsExist) {
+					shouldWriteDoc = true
+				}
+			}
+		}
+
 		if (shouldWriteDoc) {
 			hasFilesystemChanges = true
 			await writeFile(dir, loc.filename, exportedContent)
@@ -359,6 +462,7 @@ async function performSyncBackup(
 		manifestEntries.push({
 			docId: doc.id,
 			relativePath,
+			scopeId,
 			locationKey,
 			contentHash,
 			lastSyncedAt: shouldWriteDoc
@@ -368,24 +472,29 @@ async function performSyncBackup(
 		})
 	}
 
+	let currentDocIds = new Set(docs.map(doc => doc.id))
+	let shouldPreserveMissingScopeEntries =
+		scopeId !== "docs:unknown" && docs.length < existingEntriesByDocId.size
+	let preservedScopeEntries = shouldPreserveMissingScopeEntries
+		? existingScopeEntries.filter(entry => !currentDocIds.has(entry.docId))
+		: []
+	let nextScopeEntries = [...manifestEntries, ...preservedScopeEntries]
 	let docsChanged =
-		existingEntriesByDocId.size !== manifestEntries.length ||
+		existingScopeEntries.length !== nextScopeEntries.length ||
 		hasFilesystemChanges
+	let shouldCleanup =
+		existingForeignEntries.length === 0 && !shouldPreserveMissingScopeEntries
 
 	if (docsChanged) {
-		await cleanupOrphanedFiles(handle, docs, docLocations)
+		if (shouldCleanup) {
+			await cleanupOrphanedFiles(handle, docs, docLocations)
+		}
 
 		await writeManifest(handle, {
 			version: 1,
-			entries: manifestEntries,
+			entries: [...nextScopeEntries, ...existingForeignEntries],
 			lastSyncAt: nowIso,
 		})
-
-		for (let entry of manifestEntries) {
-			recentImportedRelativePaths.delete(
-				makeRecentImportKey(importScopeKey, entry.relativePath),
-			)
-		}
 	}
 
 	for (let doc of docs) {
@@ -772,15 +881,14 @@ function removeExtension(filename: string): string {
 }
 
 function findMovedManifestEntry(
-	manifest: Awaited<ReturnType<typeof readManifest>>,
+	manifestEntries: ManifestEntry[],
 	scannedByPath: Map<string, ScannedFile>,
 	matchedManifestDocIds: Set<string>,
 	file: ScannedFile,
 	contentHash: string,
 	scannedAssetHashes: ScannedAssetHash[],
 ) {
-	if (!manifest) return null
-	let candidates = manifest.entries.filter(entry => {
+	let candidates = manifestEntries.filter(entry => {
 		if (matchedManifestDocIds.has(entry.docId)) return false
 		if (scannedByPath.has(entry.relativePath)) return false
 		if (entry.contentHash !== contentHash) return false
@@ -901,6 +1009,38 @@ async function hashBlob(blob: Blob): Promise<string> {
 		.slice(0, 16)
 }
 
+async function fileExists(
+	dir: FileSystemDirectoryHandle,
+	name: string,
+): Promise<boolean> {
+	try {
+		await dir.getFileHandle(name)
+		return true
+	} catch {
+		return false
+	}
+}
+
+async function assetsExistAtLocation(
+	dir: FileSystemDirectoryHandle,
+	loc: ReturnType<typeof computeDocLocations> extends Map<string, infer V>
+		? V
+		: never,
+	doc: BackupDoc,
+): Promise<boolean> {
+	let assetsDir = await dir.getDirectoryHandle("assets").catch(() => null)
+	if (!assetsDir) return false
+
+	for (let asset of doc.assets) {
+		let filename = loc.assetFiles.get(asset.id)
+		if (!filename) return false
+		let exists = await fileExists(assetsDir, filename)
+		if (!exists) return false
+	}
+
+	return true
+}
+
 async function hashScannedAssets(
 	assets: { name: string; blob: Blob }[],
 ): Promise<ScannedAssetHash[]> {
@@ -978,17 +1118,117 @@ function makeRecentImportKey(scopeKey: string, relativePath: string): string {
 	return `${scopeKey}:${relativePath}`
 }
 
-function getHandleScopeKey(handle: FileSystemDirectoryHandle): string {
-	let existing = handleScopeIds.get(handle)
-	if (existing) return existing
-	handleScopeCounter += 1
-	let created = `backup-handle-${handleScopeCounter}`
-	handleScopeIds.set(handle, created)
-	return created
+function getDocumentListScopeKey(targetDocs: DocumentList): string {
+	let listId = targetDocs.$jazz.id
+	if (listId) return `docs:${listId}`
+
+	return "docs:unknown"
 }
 
 function getDocLocationKey(doc: BackupDoc): string {
 	let path = doc.path ?? ""
 	let hasAssets = doc.assets.length > 0 ? "assets" : "no-assets"
 	return `${doc.title}|${path}|${hasAssets}`
+}
+
+function manifestEntryMatchesScope(
+	entry: ManifestEntry,
+	scopeId: string,
+): boolean {
+	if (!entry.scopeId) return true
+	if (entry.scopeId === "docs:unknown") return true
+	return entry.scopeId === scopeId
+}
+
+function buildManifestAssetsFromScanned(
+	scannedAssets: ScannedAssetHash[],
+	existingAssets: { id?: string; name: string; hash: string }[] = [],
+): { id?: string; name: string; hash: string }[] {
+	let existingByName = new Map(existingAssets.map(asset => [asset.name, asset]))
+	return scannedAssets.map(asset => {
+		let existing = existingByName.get(asset.name)
+		if (!existing) {
+			return { name: asset.name, hash: asset.hash }
+		}
+		if (existing.hash !== asset.hash) {
+			return { name: asset.name, hash: asset.hash }
+		}
+		return { id: existing.id, name: asset.name, hash: asset.hash }
+	})
+}
+
+function upsertManifestEntry(
+	entriesByDocId: Map<string, ManifestEntry>,
+	entry: ManifestEntry,
+): boolean {
+	let existing = entriesByDocId.get(entry.docId)
+	if (existing && areManifestEntriesEquivalent(existing, entry)) {
+		return false
+	}
+	entriesByDocId.set(entry.docId, entry)
+	return true
+}
+
+function haveManifestEntriesChanged(
+	left: ManifestEntry[],
+	right: ManifestEntry[],
+): boolean {
+	if (left.length !== right.length) return true
+
+	let sortedLeft = [...left].sort(compareManifestEntries)
+	let sortedRight = [...right].sort(compareManifestEntries)
+	for (let i = 0; i < sortedLeft.length; i++) {
+		if (!areManifestEntriesEquivalent(sortedLeft[i], sortedRight[i])) {
+			return true
+		}
+	}
+
+	return false
+}
+
+function compareManifestEntries(
+	left: ManifestEntry,
+	right: ManifestEntry,
+): number {
+	if (left.docId !== right.docId) return left.docId.localeCompare(right.docId)
+	return left.relativePath.localeCompare(right.relativePath)
+}
+
+function areManifestEntriesEquivalent(
+	left: ManifestEntry,
+	right: ManifestEntry,
+): boolean {
+	if (left.docId !== right.docId) return false
+	if (left.relativePath !== right.relativePath) return false
+	if ((left.scopeId ?? null) !== (right.scopeId ?? null)) return false
+	if ((left.locationKey ?? null) !== (right.locationKey ?? null)) return false
+	if (left.contentHash !== right.contentHash) return false
+	if (left.lastSyncedAt !== right.lastSyncedAt) return false
+	if (!areManifestAssetsEqual(left.assets, right.assets)) return false
+	return true
+}
+
+function findMatchingUntrackedDocId(
+	file: ScannedFile,
+	targetDocs: DocumentList,
+): string | null {
+	if (file.assets.length > 0) return null
+
+	let expectedContent = applyPathFromRelativePath(
+		file.content,
+		file.relativePath,
+		false,
+	)
+
+	for (let doc of targetDocs) {
+		if (!doc?.$isLoaded || doc.deletedAt) continue
+		if (!doc.content?.$isLoaded) continue
+		if (doc.assets?.$isLoaded && doc.assets.length > 0) continue
+
+		if (doc.content.toString() === expectedContent) {
+			return doc.$jazz.id
+		}
+	}
+
+	return null
 }
