@@ -12,7 +12,10 @@ import {
 	useSplashDelay,
 } from "./components/splash-screen"
 import { PWAContext, usePWAProvider, PWAInstallHint } from "./lib/pwa"
-import { BackupSubscriber, SpacesBackupSubscriber } from "./lib/backup"
+import {
+	BackupSubscriber,
+	SpacesBackupSubscriber,
+} from "./lib/backup-subscribers"
 import { useCleanupDeleted } from "./lib/use-cleanup-deleted"
 import { init } from "@plausible-analytics/tracker"
 

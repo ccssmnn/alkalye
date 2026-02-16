@@ -1,12 +1,20 @@
 import { getExtensionFromBlob, sanitizeFilename } from "@/lib/export"
+import { z } from "zod"
 
 export {
 	computeDocLocations,
 	transformContentForBackup,
 	computeExpectedStructure,
+	transformContentForImport,
+	scanBackupFolder,
+	readManifest,
+	writeManifest,
 	type BackupDoc,
 	type DocLocation,
 	type ExpectedStructure,
+	type BackupManifest,
+	type ManifestEntry,
+	type ScannedFile,
 }
 
 interface BackupDoc {
@@ -14,6 +22,7 @@ interface BackupDoc {
 	title: string
 	content: string
 	path: string | null
+	updatedAtMs: number
 	assets: { id: string; name: string; blob: Blob }[]
 }
 
@@ -29,16 +38,76 @@ interface ExpectedStructure {
 	expectedFiles: Map<string, Set<string>>
 }
 
+interface ManifestEntry {
+	docId: string
+	relativePath: string
+	scopeId?: string
+	locationKey?: string
+	contentHash: string
+	lastSyncedAt: string
+	assets: { id?: string; name: string; hash: string }[]
+}
+
+interface BackupManifest {
+	version: 1
+	entries: ManifestEntry[]
+	lastSyncAt: string
+}
+
+interface ScannedFile {
+	relativePath: string
+	name: string
+	content: string
+	assets: { name: string; blob: Blob }[]
+	lastModified: number
+}
+
+let manifestAssetSchema = z.object({
+	id: z.string().optional(),
+	name: z.string(),
+	hash: z.string(),
+})
+
+let manifestEntrySchema = z.object({
+	docId: z.string(),
+	relativePath: z.string(),
+	scopeId: z.string().optional(),
+	locationKey: z.string().optional(),
+	contentHash: z.string(),
+	lastSyncedAt: z.string(),
+	assets: z.array(manifestAssetSchema),
+})
+
+let backupManifestSchema = z.object({
+	version: z.literal(1),
+	entries: z.array(manifestEntrySchema),
+	lastSyncAt: z.string(),
+})
+
 function computeDocLocations(docs: BackupDoc[]): Map<string, DocLocation> {
 	let docLocations = new Map<string, DocLocation>()
-	let usedNames = new Map<string, Set<string>>() // parentPath -> used names (lowercase)
+	let usedNames = new Map<string, Set<string>>()
+	let sortedDocs = [...docs].sort((left, right) => {
+		let leftParentPath = left.path ?? ""
+		let rightParentPath = right.path ?? ""
+		if (leftParentPath !== rightParentPath) {
+			return leftParentPath.localeCompare(rightParentPath)
+		}
 
-	for (let doc of docs) {
+		let leftName = sanitizeFilename(left.title)
+		let rightName = sanitizeFilename(right.title)
+		if (leftName !== rightName) {
+			return leftName.localeCompare(rightName)
+		}
+
+		return left.id.localeCompare(right.id)
+	})
+
+	for (let doc of sortedDocs) {
 		let baseName = sanitizeFilename(doc.title)
 		let hasAssets = doc.assets.length > 0
 		let parentPath = doc.path ?? ""
 
-		// Track used names at parent level for conflict detection
 		if (!usedNames.has(parentPath)) usedNames.set(parentPath, new Set())
 		let used = usedNames.get(parentPath)!
 
@@ -60,10 +129,17 @@ function computeDocLocations(docs: BackupDoc[]): Map<string, DocLocation> {
 			hasOwnFolder = false
 		}
 
-		// Build asset filename map for this doc
 		let assetFiles = new Map<string, string>()
 		let usedAssetNames = new Set<string>()
-		for (let asset of doc.assets) {
+		let sortedAssets = [...doc.assets].sort((left, right) => {
+			let leftName = sanitizeFilename(left.name) || "image"
+			let rightName = sanitizeFilename(right.name) || "image"
+			if (leftName !== rightName) {
+				return leftName.localeCompare(rightName)
+			}
+			return left.id.localeCompare(right.id)
+		})
+		for (let asset of sortedAssets) {
 			let ext = getExtensionFromBlob(asset.blob)
 			let assetBaseName = sanitizeFilename(asset.name) || "image"
 			let fileName = assetBaseName + ext
@@ -102,6 +178,23 @@ function transformContentForBackup(
 	)
 }
 
+function transformContentForImport(
+	content: string,
+	assetFiles: Map<string, string>,
+): string {
+	return content.replace(
+		/!\[([^\]]*)\]\(assets\/([^)]+)\)/g,
+		(match, alt, assetFilename) => {
+			for (let [id, filename] of assetFiles) {
+				if (filename === assetFilename) {
+					return `![${alt}](asset:${id})`
+				}
+			}
+			return match
+		},
+	)
+}
+
 function computeExpectedStructure(
 	docs: BackupDoc[],
 	docLocations: Map<string, DocLocation>,
@@ -112,7 +205,6 @@ function computeExpectedStructure(
 	for (let doc of docs) {
 		let loc = docLocations.get(doc.id)!
 
-		// Add the directory path and all parent paths
 		if (loc.dirPath) {
 			let parts = loc.dirPath.split("/")
 			for (let i = 1; i <= parts.length; i++) {
@@ -120,13 +212,11 @@ function computeExpectedStructure(
 			}
 		}
 
-		// Add expected file
 		if (!expectedFiles.has(loc.dirPath)) {
 			expectedFiles.set(loc.dirPath, new Set())
 		}
 		expectedFiles.get(loc.dirPath)!.add(loc.filename)
 
-		// If doc has assets, expect assets subfolder
 		if (loc.hasOwnFolder && doc.assets.length > 0) {
 			let assetsPath = loc.dirPath ? `${loc.dirPath}/assets` : "assets"
 			expectedPaths.add(assetsPath)
@@ -134,4 +224,128 @@ function computeExpectedStructure(
 	}
 
 	return { expectedPaths, expectedFiles }
+}
+
+async function scanBackupFolder(
+	handle: FileSystemDirectoryHandle,
+): Promise<ScannedFile[]> {
+	let files: ScannedFile[] = []
+
+	function getReferencedAssetNames(content: string): Set<string> {
+		let references = new Set<string>()
+		for (let match of content.matchAll(/!\[[^\]]*\]\(assets\/([^)]+)\)/g)) {
+			let filename = match[1]
+			if (!filename) continue
+			references.add(filename)
+		}
+		return references
+	}
+
+	async function scanDir(
+		dir: FileSystemDirectoryHandle,
+		relativePath: string,
+	): Promise<void> {
+		async function isGeneratedAssetsDirectory(
+			parentDir: FileSystemDirectoryHandle,
+			parentRelativePath: string,
+		): Promise<boolean> {
+			let parentName = parentRelativePath.split("/").filter(Boolean).at(-1)
+			if (!parentName) return false
+
+			try {
+				await parentDir.getFileHandle(`${parentName}.md`)
+				return true
+			} catch {
+				return false
+			}
+		}
+
+		for await (let [name, handle] of dir.entries()) {
+			let entryPath = relativePath ? `${relativePath}/${name}` : name
+			let loweredName = name.toLowerCase()
+
+			if (handle.kind === "directory") {
+				if (name.startsWith(".")) continue
+				if (loweredName === "assets") {
+					let isDocAssetsDirectory = await isGeneratedAssetsDirectory(
+						dir,
+						relativePath,
+					)
+					if (isDocAssetsDirectory) continue
+				}
+				let subDir = await dir.getDirectoryHandle(name)
+				await scanDir(subDir, entryPath)
+			} else if (handle.kind === "file" && loweredName.endsWith(".md")) {
+				if (name.startsWith(".")) continue
+				if (name === ".alkalye-manifest.json") continue
+
+				let fileHandle = await dir.getFileHandle(name)
+				let file = await fileHandle.getFile()
+				let content = await file.text()
+				let lastModified = file.lastModified
+
+				let assets: { name: string; blob: Blob }[] = []
+				let referencedAssets = getReferencedAssetNames(content)
+				if (referencedAssets.size > 0) {
+					let assetsDir = await dir
+						.getDirectoryHandle("assets")
+						.catch(() => null)
+					if (assetsDir) {
+						for (let assetName of referencedAssets) {
+							if (assetName.startsWith(".")) continue
+							try {
+								let assetFileHandle = await assetsDir.getFileHandle(assetName)
+								let assetFile = await assetFileHandle.getFile()
+								assets.push({ name: assetName, blob: assetFile })
+							} catch {
+								continue
+							}
+						}
+					}
+				}
+
+				files.push({
+					relativePath: entryPath,
+					name: name.replace(/\.md$/i, ""),
+					content,
+					assets,
+					lastModified,
+				})
+			}
+		}
+	}
+
+	await scanDir(handle, "")
+	files.sort((left, right) =>
+		left.relativePath.localeCompare(right.relativePath),
+	)
+	return files
+}
+
+async function readManifest(
+	handle: FileSystemDirectoryHandle,
+): Promise<BackupManifest | null> {
+	try {
+		let fileHandle = await handle.getFileHandle(".alkalye-manifest.json")
+		let file = await fileHandle.getFile()
+		let text = await file.text()
+		let parsed = JSON.parse(text)
+		let validated = backupManifestSchema.safeParse(parsed)
+		if (!validated.success) return null
+		return validated.data
+	} catch {
+		return null
+	}
+}
+
+async function writeManifest(
+	handle: FileSystemDirectoryHandle,
+	manifest: BackupManifest,
+): Promise<void> {
+	let fileHandle = await handle.getFileHandle(".alkalye-manifest.json", {
+		create: true,
+	})
+	let writable = await fileHandle.createWritable()
+	await writable.write(JSON.stringify(manifest, null, 2))
+	await writable.close()
 }
