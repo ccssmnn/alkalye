@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { FolderOpen, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
+import { Label } from "@/components/ui/label"
 import {
 	useBackupStore,
 	enableBackup,
@@ -24,50 +26,51 @@ function BackupSettings() {
 		lastPullAt,
 		lastError,
 		setBidirectional,
+		setLastError,
 	} = useBackupStore()
-	let [isLoading, setIsLoading] = useState(false)
+	let [pendingAction, setPendingAction] = useState<
+		"enable" | "disable" | "change" | null
+	>(null)
+	let isLoading = pendingAction !== null
+	let canWatchFileSystem = supportsFileSystemWatch()
 
 	if (!isBackupSupported()) {
-		return (
-			<section>
-				<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-					Local Backup
-				</h2>
-				<div className="bg-muted/30 rounded-lg p-4">
-					<div className="flex items-start gap-2">
-						<AlertCircle className="text-muted-foreground mt-0.5 size-4" />
-						<div>
-							<p className="text-muted-foreground text-sm">
-								Local backup requires a Chromium-based browser (Chrome, Edge,
-								Brave, or Opera).
-							</p>
-							<p className="text-muted-foreground mt-1 text-xs">
-								Safari and Firefox do not support the File System Access API
-								needed for this feature.
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
-		)
+		return <UnsupportedBrowserCallout />
 	}
 
 	async function handleEnable() {
-		setIsLoading(true)
-		await enableBackup()
-		setIsLoading(false)
+		setPendingAction("enable")
+		setLastError(null)
+		try {
+			let result = await enableBackup()
+			if (!result.success && result.error && result.error !== "Cancelled") {
+				setLastError(result.error)
+			}
+		} finally {
+			setPendingAction(null)
+		}
 	}
 
 	async function handleDisable() {
-		setIsLoading(true)
-		await disableBackup()
-		setIsLoading(false)
+		setPendingAction("disable")
+		try {
+			await disableBackup()
+		} finally {
+			setPendingAction(null)
+		}
 	}
 
 	async function handleChangeDirectory() {
-		setIsLoading(true)
-		await changeBackupDirectory()
-		setIsLoading(false)
+		setPendingAction("change")
+		setLastError(null)
+		try {
+			let result = await changeBackupDirectory()
+			if (!result.success && result.error && result.error !== "Cancelled") {
+				setLastError(result.error)
+			}
+		} finally {
+			setPendingAction(null)
+		}
 	}
 
 	let lastBackupDate = lastBackupAt ? new Date(lastBackupAt) : null
@@ -93,7 +96,13 @@ function BackupSettings() {
 							</span>
 						</div>
 						<p className="text-muted-foreground mb-1 text-sm">
-							Folder: <span className="font-medium">{directoryName}</span>
+							Folder:{" "}
+							<span
+								className="inline-block max-w-56 truncate align-bottom font-medium"
+								title={directoryName ?? undefined}
+							>
+								{directoryName}
+							</span>
 						</p>
 						{formattedLastBackup && (
 							<p className="text-muted-foreground mb-1 text-xs">
@@ -112,27 +121,33 @@ function BackupSettings() {
 							</div>
 						)}
 						<div className="border-border/50 mb-3 border-t pt-3">
-							<label
+							<div
 								className={
-									!supportsFileSystemWatch()
-										? "flex cursor-not-allowed items-center gap-2 opacity-50"
-										: "flex cursor-pointer items-center gap-2"
+									!canWatchFileSystem
+										? "flex items-start justify-between gap-3 opacity-50"
+										: "flex items-start justify-between gap-3"
 								}
 							>
-								<input
-									type="checkbox"
+								<div className="space-y-1">
+									<Label
+										htmlFor="backup-bidirectional"
+										className="text-sm leading-5"
+									>
+										Sync changes from folder
+									</Label>
+									<p className="text-muted-foreground text-xs">
+										{canWatchFileSystem
+											? "Import folder edits back into Alkalye automatically."
+											: "Requires Chromium with File System Observer support."}
+									</p>
+								</div>
+								<Switch
+									id="backup-bidirectional"
 									checked={bidirectional}
-									onChange={e => setBidirectional(e.target.checked)}
-									disabled={!supportsFileSystemWatch()}
-									className="size-4 rounded border-gray-300"
+									onCheckedChange={setBidirectional}
+									disabled={!canWatchFileSystem || isLoading}
 								/>
-								<span className="text-sm">Sync changes from folder</span>
-							</label>
-							<p className="text-muted-foreground mt-1 text-xs">
-								{supportsFileSystemWatch()
-									? "When enabled, changes made in the backup folder will be imported into Alkalye."
-									: "Requires a Chromium-based browser with File System Observer support."}
-							</p>
+							</div>
 						</div>
 						<div className="flex gap-2">
 							<Button
@@ -141,7 +156,7 @@ function BackupSettings() {
 								size="sm"
 								disabled={isLoading}
 							>
-								Change folder
+								{pendingAction === "change" ? "Changing..." : "Change folder"}
 							</Button>
 							<Button
 								onClick={handleDisable}
@@ -149,7 +164,7 @@ function BackupSettings() {
 								size="sm"
 								disabled={isLoading}
 							>
-								Disable
+								{pendingAction === "disable" ? "Disabling..." : "Disable"}
 							</Button>
 						</div>
 					</>
@@ -168,7 +183,9 @@ function BackupSettings() {
 							disabled={isLoading}
 						>
 							<FolderOpen className="mr-1.5 size-3.5" />
-							Choose backup folder
+							{pendingAction === "enable"
+								? "Choosing..."
+								: "Choose backup folder"}
 						</Button>
 					</>
 				)}
@@ -184,59 +201,60 @@ interface SpaceBackupSettingsProps {
 
 function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
-	let [isLoading, setIsLoading] = useState(false)
+	let [pendingAction, setPendingAction] = useState<
+		"choose" | "change" | "clear" | null
+	>(null)
+	let [error, setError] = useState<string | null>(null)
+	let isLoading = pendingAction !== null
 
 	if (!isBackupSupported()) {
-		return (
-			<section>
-				<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-					Local Backup
-				</h2>
-				<div className="bg-muted/30 rounded-lg p-4">
-					<div className="flex items-start gap-2">
-						<AlertCircle className="text-muted-foreground mt-0.5 size-4" />
-						<div>
-							<p className="text-muted-foreground text-sm">
-								Local backup requires a Chromium-based browser (Chrome, Edge,
-								Brave, or Opera).
-							</p>
-							<p className="text-muted-foreground mt-1 text-xs">
-								Safari and Firefox do not support the File System Access API
-								needed for this feature.
-							</p>
-						</div>
-					</div>
-				</div>
-			</section>
-		)
+		return <UnsupportedBrowserCallout />
 	}
 
 	async function handleChooseFolder() {
-		setIsLoading(true)
+		setPendingAction("choose")
+		setError(null)
 		try {
 			let handle = await window.showDirectoryPicker({ mode: "readwrite" })
 			await setSpaceBackupHandle(spaceId, handle)
 			setDirectoryName(handle.name)
 		} catch (e) {
 			if (!(e instanceof Error && e.name === "AbortError")) {
+				setError("Failed to choose folder. Try again.")
 				console.error("Failed to select folder:", e)
 			}
 		} finally {
-			setIsLoading(false)
+			setPendingAction(null)
 		}
 	}
 
 	async function handleChangeFolder() {
-		await handleChooseFolder()
+		setPendingAction("change")
+		setError(null)
+		try {
+			let handle = await window.showDirectoryPicker({ mode: "readwrite" })
+			await setSpaceBackupHandle(spaceId, handle)
+			setDirectoryName(handle.name)
+		} catch (e) {
+			if (!(e instanceof Error && e.name === "AbortError")) {
+				setError("Failed to choose folder. Try again.")
+				console.error("Failed to select folder:", e)
+			}
+		} finally {
+			setPendingAction(null)
+		}
 	}
 
 	async function handleClear() {
-		setIsLoading(true)
+		setPendingAction("clear")
+		setError(null)
 		try {
 			await clearSpaceBackupHandle(spaceId)
 			setDirectoryName(null)
+		} catch {
+			setError("Failed to clear folder. Try again.")
 		} finally {
-			setIsLoading(false)
+			setPendingAction(null)
 		}
 	}
 
@@ -253,8 +271,20 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 							<span className="text-sm font-medium">Backup folder set</span>
 						</div>
 						<p className="text-muted-foreground mb-3 text-sm">
-							Folder: <span className="font-medium">{directoryName}</span>
+							Folder:{" "}
+							<span
+								className="inline-block max-w-56 truncate align-bottom font-medium"
+								title={directoryName}
+							>
+								{directoryName}
+							</span>
 						</p>
+						{error && (
+							<div className="text-destructive mb-3 flex items-center gap-1.5 text-sm">
+								<AlertCircle className="size-4" />
+								{error}
+							</div>
+						)}
 						<div className="flex gap-2">
 							<Button
 								onClick={handleChangeFolder}
@@ -262,7 +292,9 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 								size="sm"
 								disabled={isLoading || !isAdmin}
 							>
-								Change folder
+								{pendingAction === "change" || pendingAction === "choose"
+									? "Changing..."
+									: "Change folder"}
 							</Button>
 							<Button
 								onClick={handleClear}
@@ -270,9 +302,14 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 								size="sm"
 								disabled={isLoading || !isAdmin}
 							>
-								Clear
+								{pendingAction === "clear" ? "Clearing..." : "Clear"}
 							</Button>
 						</div>
+						{!isAdmin && (
+							<p className="text-muted-foreground mt-2 text-xs">
+								Only space admins can change this folder.
+							</p>
+						)}
 					</>
 				) : (
 					<>
@@ -282,6 +319,12 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 						<p className="text-muted-foreground mb-4 text-sm">
 							Set a backup folder for this space&apos;s documents.
 						</p>
+						{error && (
+							<div className="text-destructive mb-3 flex items-center gap-1.5 text-sm">
+								<AlertCircle className="size-4" />
+								{error}
+							</div>
+						)}
 						<Button
 							onClick={handleChooseFolder}
 							variant="outline"
@@ -289,10 +332,42 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 							disabled={isLoading || !isAdmin}
 						>
 							<FolderOpen className="mr-1.5 size-3.5" />
-							Choose backup folder
+							{pendingAction === "choose"
+								? "Choosing..."
+								: "Choose backup folder"}
 						</Button>
+						{!isAdmin && (
+							<p className="text-muted-foreground mt-2 text-xs">
+								Only space admins can set a backup folder.
+							</p>
+						)}
 					</>
 				)}
+			</div>
+		</section>
+	)
+}
+
+function UnsupportedBrowserCallout() {
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				Local Backup
+			</h2>
+			<div className="bg-muted/30 rounded-lg p-4">
+				<div className="flex items-start gap-2">
+					<AlertCircle className="text-muted-foreground mt-0.5 size-4" />
+					<div>
+						<p className="text-muted-foreground text-sm">
+							Local backup requires a Chromium-based browser (Chrome, Edge,
+							Brave, or Opera).
+						</p>
+						<p className="text-muted-foreground mt-1 text-xs">
+							Safari and Firefox do not support the File System Access API
+							needed for this feature.
+						</p>
+					</div>
+				</div>
 			</div>
 		</section>
 	)
