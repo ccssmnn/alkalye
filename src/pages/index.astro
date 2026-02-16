@@ -10,37 +10,31 @@ let pageTitle = "Alkalye - local-first markdown editor"
 let metaDescription =
 	"Typography-first markdown workspace with end-to-end encrypted sync, realtime collaboration, and presentation tools."
 
-let featureGroups = [
+let coreFeatures = [
 	{
-		headline: "Write once. Keep control.",
-		items: [
-			"End-to-end encrypted sync across devices",
-			"Local-first architecture for instant edits",
-			"Beautiful native-feeling app on desktop and mobile",
-		],
+		title: "Secure sync, still local-first",
+		body: "Write instantly offline, then sync end-to-end encrypted across your devices.",
 	},
 	{
-		headline: "Collaborate in motion.",
-		items: [
-			"Realtime collaboration with live cursors",
-			"Wiki links to connect ideas without friction",
-			"Share docs and spaces with invite links",
-		],
+		title: "Realtime collaboration",
+		body: "Work in the same doc with live cursors and updates that feel immediate.",
 	},
 	{
-		headline: "Present and recover.",
-		items: [
-			"Markdown slideshow and teleprompter modes",
-			"Time machine across complete document history",
-			"Backup to your computer and sync back to collaborate with Claude Code / OpenCode",
-		],
+		title: "Presentation workflow",
+		body: "Turn markdown into slideshow and teleprompter views without leaving the app.",
 	},
-]
-
-let utilityFeatures = [
-	"Image and video asset support",
-	"Keyboard-first workflows with tons of shortcuts",
-	"Private by default and ready for deep work",
+	{
+		title: "Time machine",
+		body: "Scrub complete document history and recover exactly what you need.",
+	},
+	{
+		title: "Backup and round-trip",
+		body: "Export to your computer, edit with Claude Code/OpenCode, sync back to collaborate.",
+	},
+	{
+		title: "Asset-rich markdown",
+		body: "Work with image and video assets, wiki links, and lots of keyboard shortcuts.",
+	},
 ]
 ---
 
@@ -53,25 +47,25 @@ let utilityFeatures = [
 		<meta name="description" content={metaDescription} />
 		<link rel="canonical" href={canonicalUrl} />
 		<meta property="og:type" content="website" />
-		<meta property="og:title" content="Alkalye - local-first markdown editor" />
+		<meta property="og:title" content={pageTitle} />
 		<meta property="og:description" content={metaDescription} />
 		<meta property="og:url" content={canonicalUrl} />
 		<meta property="og:image" content={ogImageUrl} />
 		<meta name="twitter:card" content="summary_large_image" />
-		<meta name="twitter:title" content="Alkalye - local-first markdown editor" />
+		<meta name="twitter:title" content={pageTitle} />
 		<meta name="twitter:description" content={metaDescription} />
 		<meta name="twitter:image" content={ogImageUrl} />
-		<style is:global>
+		<style>
 			@import "@fontsource-variable/geist";
 			@import "@fontsource-variable/geist-mono";
 
 			:root {
-				--ink: #121212;
-				--paper: #fdfdfc;
-				--muted: #6b6b67;
-				--line: #d8dad5;
 				--brand: oklch(59.6% 0.145 163.225);
-				--brand-soft: color-mix(in oklab, var(--brand) 12%, white);
+				--brand-subtle: oklch(59.6% 0.145 163.225 / 10%);
+				--background: #ffffff;
+				--foreground: oklch(0.145 0 0);
+				--muted-foreground: oklch(0.556 0 0);
+				--border: oklch(0.922 0 0);
 			}
 
 			* {
@@ -82,23 +76,28 @@ let utilityFeatures = [
 			body {
 				margin: 0;
 				padding: 0;
-				background: radial-gradient(circle at 82% 12%, var(--brand-soft), transparent 48%),
-					linear-gradient(to bottom, #ffffff, var(--paper) 36%);
-				color: var(--ink);
+				background: var(--background);
+				color: var(--foreground);
 				font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
 			}
 
 			main {
-				max-width: 1050px;
+				max-width: 1120px;
 				margin: 0 auto;
-				padding: 1.25rem 1.25rem 4rem;
+				padding: 1.25rem 1rem 6rem;
 			}
 
 			nav {
+				position: sticky;
+				top: 0;
+				z-index: 20;
 				display: flex;
-				align-items: center;
 				justify-content: space-between;
+				align-items: center;
 				padding: 0.75rem 0;
+				background: color-mix(in oklab, var(--background) 90%, transparent);
+				backdrop-filter: blur(10px);
+				border-bottom: 1px solid var(--border);
 			}
 
 			.logo {
@@ -107,163 +106,194 @@ let utilityFeatures = [
 				letter-spacing: -0.03em;
 			}
 
+			a {
+				color: inherit;
+			}
+
+			.btn {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.45rem;
+				border-radius: 999px;
+				padding: 0.62rem 1rem;
+				font-size: 0.9rem;
+				text-decoration: none;
+				border: 1px solid var(--border);
+				transition: transform 120ms ease, border-color 120ms ease;
+			}
+
+			.btn:hover {
+				transform: translateY(-1px);
+			}
+
+			.btn.primary {
+				background: var(--foreground);
+				color: var(--background);
+				border-color: var(--foreground);
+			}
+
 			.hero {
-				padding: 4.2rem 0 2.2rem;
+				padding: 5.5rem 0 3rem;
 				display: grid;
-				gap: 2rem;
+				gap: 1.5rem;
 			}
 
 			.kicker {
-				font-size: 0.78rem;
-				letter-spacing: 0.13em;
+				font-family: "Geist Mono Variable", ui-monospace, monospace;
+				font-size: 0.76rem;
+				letter-spacing: 0.1em;
 				text-transform: uppercase;
 				color: var(--brand);
-				font-family: "Geist Mono Variable", ui-monospace, monospace;
 			}
 
 			h1 {
 				margin: 0;
-				font-size: clamp(2.25rem, 7.4vw, 5.3rem);
-				line-height: 0.96;
+				max-width: 13ch;
+				font-size: clamp(2.35rem, 7vw, 5.8rem);
+				line-height: 0.95;
 				letter-spacing: -0.055em;
-				max-width: 17ch;
-				animation: rise 420ms ease-out;
 			}
 
 			.lead {
-				max-width: 62ch;
 				margin: 0;
-				line-height: 1.58;
-				font-size: clamp(1.02rem, 1.7vw, 1.17rem);
-				color: var(--muted);
-				animation: rise 600ms ease-out;
+				max-width: 62ch;
+				color: var(--muted-foreground);
+				line-height: 1.55;
+				font-size: 1.08rem;
 			}
 
-			.cta-row {
-				display: flex;
-				gap: 0.65rem;
-				flex-wrap: wrap;
-				animation: rise 760ms ease-out;
-			}
-
-			a.cta,
-			a.ghost {
-				display: inline-flex;
-				align-items: center;
-				gap: 0.35rem;
-				padding: 0.72rem 1.05rem;
-				border-radius: 999px;
-				text-decoration: none;
-				font-weight: 600;
-				font-size: 0.93rem;
-				transition: transform 140ms ease, background-color 140ms ease;
-			}
-
-			a.cta {
-				color: white;
-				background: color-mix(in oklab, var(--brand) 88%, black 8%);
-			}
-
-			a.ghost {
-				color: var(--ink);
-				background: white;
-				border: 1px solid var(--line);
-			}
-
-			a.cta:hover,
-			a.ghost:hover {
-				transform: translateY(-1px);
-			}
-
-			.panel-grid {
+			.hero-grid {
 				display: grid;
-				grid-template-columns: repeat(3, minmax(0, 1fr));
-				gap: 0.95rem;
-				margin-top: 2.5rem;
+				grid-template-columns: 1.15fr 0.85fr;
+				gap: 1.1rem;
+				margin-top: 1rem;
 			}
 
 			.panel {
-				padding: 1rem;
-				border: 1px solid var(--line);
-				background: color-mix(in oklab, white 92%, var(--brand) 8%);
-				border-radius: 0.7rem;
-				min-height: 200px;
+				border: 1px solid var(--border);
+				border-radius: 0.9rem;
+				padding: 1.1rem;
+				background: linear-gradient(
+					to bottom,
+					color-mix(in oklab, var(--brand) 3%, white),
+					white
+				);
 			}
 
 			.panel h2 {
-				margin: 0 0 0.7rem;
+				margin: 0 0 0.6rem;
 				font-size: 1rem;
-				line-height: 1.2;
 				letter-spacing: -0.02em;
+			}
+
+			.panel p,
+			.panel li {
+				margin: 0;
+				color: var(--muted-foreground);
+				line-height: 1.5;
+				font-size: 0.94rem;
 			}
 
 			.panel ul {
 				margin: 0;
-				padding-left: 1rem;
-				color: var(--muted);
-				line-height: 1.54;
-				font-size: 0.92rem;
+				padding-left: 1.1rem;
+				display: grid;
+				gap: 0.5rem;
 			}
 
-			.utility {
-				margin-top: 2.4rem;
-				padding-top: 1.2rem;
-				border-top: 1px solid var(--line);
+			.section {
+				padding: 3.8rem 0;
+				border-top: 1px solid var(--border);
+			}
+
+			.section h3 {
+				margin: 0 0 0.8rem;
+				font-size: clamp(1.45rem, 2.4vw, 2.2rem);
+				letter-spacing: -0.03em;
+			}
+
+			.section-intro {
+				margin: 0;
+				max-width: 70ch;
+				color: var(--muted-foreground);
+				line-height: 1.55;
+			}
+
+			.feature-grid {
 				display: grid;
 				grid-template-columns: repeat(3, minmax(0, 1fr));
-				gap: 1rem;
-				font-size: 0.88rem;
-				color: var(--muted);
+				gap: 0.9rem;
+				margin-top: 1.25rem;
 			}
 
-			.utility span {
+			.feature {
+				border: 1px solid var(--border);
+				border-radius: 0.8rem;
+				padding: 1rem;
+				background: #fff;
+			}
+
+			.feature strong {
 				display: block;
-				padding-left: 1rem;
-				position: relative;
+				margin-bottom: 0.35rem;
+				letter-spacing: -0.01em;
 			}
 
-			.utility span::before {
-				content: "";
-				position: absolute;
-				left: 0;
-				top: 0.57em;
-				width: 0.42rem;
-				height: 0.42rem;
-				border-radius: 99px;
-				background: var(--brand);
+			.timeline {
+				display: grid;
+				gap: 0.75rem;
+				margin-top: 1.2rem;
 			}
 
-			footer {
-				margin-top: 3rem;
-				padding-top: 1rem;
-				border-top: 1px dashed var(--line);
+			.timeline-item {
+				display: grid;
+				grid-template-columns: 120px 1fr;
+				gap: 0.8rem;
+				align-items: start;
+				padding: 0.8rem;
+				border: 1px solid var(--border);
+				border-radius: 0.8rem;
+			}
+
+			.timeline-item span {
+				font-family: "Geist Mono Variable", ui-monospace, monospace;
+				font-size: 0.76rem;
+				text-transform: uppercase;
+				letter-spacing: 0.08em;
+				color: var(--brand);
+			}
+
+			.cta {
+				padding: 4.2rem 0 0;
 				display: flex;
-				justify-content: space-between;
 				gap: 0.6rem;
-				color: var(--muted);
-				font-size: 0.82rem;
 				flex-wrap: wrap;
 			}
 
-			@keyframes rise {
-				from {
-					opacity: 0;
-					transform: translateY(8px);
-				}
-				to {
-					opacity: 1;
-					transform: translateY(0);
-				}
+			footer {
+				margin-top: 2.2rem;
+				padding-top: 1rem;
+				border-top: 1px dashed var(--border);
+				color: var(--muted-foreground);
+				font-size: 0.86rem;
+				display: flex;
+				justify-content: space-between;
+				gap: 0.75rem;
+				flex-wrap: wrap;
 			}
 
-			@media (max-width: 900px) {
-				.panel-grid,
-				.utility {
+			@media (max-width: 980px) {
+				.hero-grid,
+				.feature-grid {
+					grid-template-columns: 1fr;
+				}
+
+				.timeline-item {
 					grid-template-columns: 1fr;
 				}
 
 				.hero {
-					padding-top: 3rem;
+					padding-top: 4rem;
 				}
 			}
 		</style>
@@ -272,47 +302,110 @@ let utilityFeatures = [
 		<main>
 			<nav>
 				<div class="logo">Alkalye</div>
-				<a class="ghost" href="/app">Open App</a>
+				<a class="btn" href="/app">Open app</a>
 			</nav>
 
 			<section class="hero">
-				<p class="kicker">Markdown workspace, rebuilt for now</p>
-				<h1>Minimal writing surface. Serious collaborative power.</h1>
+				<div class="kicker">Typography-first markdown editor</div>
+				<h1>Clean surface. Deep toolset. Built for serious writing.</h1>
 				<p class="lead">
-					Alkalye is a typography-first markdown editor for people who want clarity,
-					not clutter. It stays local-first, syncs securely, and scales from quick
-					notes to live presentations.
+					Alkalye keeps the product language minimal, then puts power where it
+					belongs: secure sync, collaboration, version history, and polished
+					presentation modes. Local-first by default. Reliable on mobile and desktop.
 				</p>
-				<div class="cta-row">
-					<a class="cta" href="/app">Start writing</a>
-					<a class="ghost" href="/app/welcome">See walkthrough</a>
+				<div class="cta">
+					<a class="btn primary" href="/app">Start writing</a>
+					<a class="btn" href="/app/welcome">Product walkthrough</a>
+				</div>
+				<div class="hero-grid">
+					<article class="panel">
+						<h2>What you get</h2>
+						<ul>
+							<li>End-to-end encrypted sync across devices</li>
+							<li>Realtime collaboration with live cursors</li>
+							<li>Markdown slideshow and teleprompter views</li>
+							<li>Time machine for complete doc history</li>
+						</ul>
+					</article>
+					<article class="panel">
+						<h2>Built for writing flow</h2>
+						<p>
+							Wiki links, image/video assets, keyboard-heavy navigation, and backup
+							round-trips with Claude Code/OpenCode all stay inside one coherent
+							workspace.
+						</p>
+					</article>
 				</div>
 			</section>
 
-			<section class="panel-grid" aria-label="Product features">
-				{
-					featureGroups.map(group => (
-						<article class="panel">
-							<h2>{group.headline}</h2>
-							<ul>
-								{group.items.map(item => (
-									<li>{item}</li>
-								))}
-							</ul>
-						</article>
-					))
-				}
+			<section class="section" id="features">
+				<h3>Core capabilities</h3>
+				<p class="section-intro">
+					The app keeps visual noise low, but it does a lot under the surface.
+				</p>
+				<div class="feature-grid">
+					{
+						coreFeatures.map(feature => (
+							<div class="feature">
+								<strong>{feature.title}</strong>
+								<p>{feature.body}</p>
+							</div>
+						))
+					}
+				</div>
 			</section>
 
-			<section class="utility" aria-label="Additional capabilities">
-				{utilityFeatures.map(item => <span>{item}</span>)}
+			<section class="section" id="workflow">
+				<h3>One workflow, from first draft to delivery</h3>
+				<p class="section-intro">
+					Use one markdown source across writing, collaboration, review, and
+					presentation. No format conversion tax.
+				</p>
+				<div class="timeline">
+					<div class="timeline-item">
+						<span>Draft</span>
+						<p>
+							Write with a typography-focused editor and keyboard-first controls.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<span>Collaborate</span>
+						<p>
+							Invite people to docs or spaces, edit together in real time, follow live
+							cursors.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<span>Recover</span>
+						<p>
+							Use time machine to inspect and restore previous states when needed.
+						</p>
+					</div>
+					<div class="timeline-item">
+						<span>Present</span>
+						<p>
+							Switch into slideshow or teleprompter mode from the same document.
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="section" id="platform">
+				<h3>Made for modern web app reality</h3>
+				<p class="section-intro">
+					Local-first behavior keeps interactions fast. Sync keeps devices aligned.
+					Backups keep ownership on your machine. The result is a writing app that
+					feels simple, but scales with your work.
+				</p>
+				<div class="cta">
+					<a class="btn primary" href="/app">Open Alkalye</a>
+					<a class="btn" href="/invite">Try invite flow</a>
+				</div>
 			</section>
 
 			<footer>
-				<span>Built for mobile and desktop. Feels native on both.</span>
-				<span>
-					Invite links remain active. Old doc, space, and settings links still route.
-				</span>
+				<span>Legacy `/doc`, `/spaces`, and `/settings` links still work.</span>
+				<span>Dedicated invite OG page remains available at `/invite`.</span>
 			</footer>
 		</main>
 	</body>
