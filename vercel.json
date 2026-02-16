@@ -1,13 +1,33 @@
 {
+	"framework": "astro",
+	"installCommand": "bun install",
 	"buildCommand": "bun run build",
-	"rewrites": [
+	"redirects": [
 		{
-			"source": "/invite",
-			"destination": "/invite.html"
+			"source": "/doc/:match*",
+			"destination": "/app/doc/:match*",
+			"permanent": true
 		},
 		{
-			"source": "/(.*)",
-			"destination": "/index.html"
+			"source": "/spaces/:match*",
+			"destination": "/app/spaces/:match*",
+			"permanent": true
+		},
+		{
+			"source": "/settings",
+			"destination": "/app/settings",
+			"permanent": true
+		},
+		{
+			"source": "/settings/:match*",
+			"destination": "/app/settings/:match*",
+			"permanent": true
+		}
+	],
+	"rewrites": [
+		{
+			"source": "/app/:match*",
+			"destination": "/app/index.html"
 		}
 	]
 }

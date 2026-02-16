@@ -1,0 +1,319 @@
+---
+let requestUrl = new URL(Astro.request.url)
+let siteBaseUrl = Astro.site ?? new URL(requestUrl.origin)
+let canonicalUrl = new URL(
+	requestUrl.pathname + requestUrl.search,
+	siteBaseUrl,
+).toString()
+let ogImageUrl = new URL("/icons/alkalye-social.png", siteBaseUrl).toString()
+let pageTitle = "Alkalye - local-first markdown editor"
+let metaDescription =
+	"Typography-first markdown workspace with end-to-end encrypted sync, realtime collaboration, and presentation tools."
+
+let featureGroups = [
+	{
+		headline: "Write once. Keep control.",
+		items: [
+			"End-to-end encrypted sync across devices",
+			"Local-first architecture for instant edits",
+			"Beautiful native-feeling app on desktop and mobile",
+		],
+	},
+	{
+		headline: "Collaborate in motion.",
+		items: [
+			"Realtime collaboration with live cursors",
+			"Wiki links to connect ideas without friction",
+			"Share docs and spaces with invite links",
+		],
+	},
+	{
+		headline: "Present and recover.",
+		items: [
+			"Markdown slideshow and teleprompter modes",
+			"Time machine across complete document history",
+			"Backup to your computer and sync back to collaborate with Claude Code / OpenCode",
+		],
+	},
+]
+
+let utilityFeatures = [
+	"Image and video asset support",
+	"Keyboard-first workflows with tons of shortcuts",
+	"Private by default and ready for deep work",
+]
+---
+
+<!doctype html>
+<html lang="en">
+	<head>
+		<title>{pageTitle}</title>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<meta name="description" content={metaDescription} />
+		<link rel="canonical" href={canonicalUrl} />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content="Alkalye - local-first markdown editor" />
+		<meta property="og:description" content={metaDescription} />
+		<meta property="og:url" content={canonicalUrl} />
+		<meta property="og:image" content={ogImageUrl} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content="Alkalye - local-first markdown editor" />
+		<meta name="twitter:description" content={metaDescription} />
+		<meta name="twitter:image" content={ogImageUrl} />
+		<style is:global>
+			@import "@fontsource-variable/geist";
+			@import "@fontsource-variable/geist-mono";
+
+			:root {
+				--ink: #121212;
+				--paper: #fdfdfc;
+				--muted: #6b6b67;
+				--line: #d8dad5;
+				--brand: oklch(59.6% 0.145 163.225);
+				--brand-soft: color-mix(in oklab, var(--brand) 12%, white);
+			}
+
+			* {
+				box-sizing: border-box;
+			}
+
+			html,
+			body {
+				margin: 0;
+				padding: 0;
+				background: radial-gradient(circle at 82% 12%, var(--brand-soft), transparent 48%),
+					linear-gradient(to bottom, #ffffff, var(--paper) 36%);
+				color: var(--ink);
+				font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
+			}
+
+			main {
+				max-width: 1050px;
+				margin: 0 auto;
+				padding: 1.25rem 1.25rem 4rem;
+			}
+
+			nav {
+				display: flex;
+				align-items: center;
+				justify-content: space-between;
+				padding: 0.75rem 0;
+			}
+
+			.logo {
+				font-size: 1rem;
+				font-weight: 700;
+				letter-spacing: -0.03em;
+			}
+
+			.hero {
+				padding: 4.2rem 0 2.2rem;
+				display: grid;
+				gap: 2rem;
+			}
+
+			.kicker {
+				font-size: 0.78rem;
+				letter-spacing: 0.13em;
+				text-transform: uppercase;
+				color: var(--brand);
+				font-family: "Geist Mono Variable", ui-monospace, monospace;
+			}
+
+			h1 {
+				margin: 0;
+				font-size: clamp(2.25rem, 7.4vw, 5.3rem);
+				line-height: 0.96;
+				letter-spacing: -0.055em;
+				max-width: 17ch;
+				animation: rise 420ms ease-out;
+			}
+
+			.lead {
+				max-width: 62ch;
+				margin: 0;
+				line-height: 1.58;
+				font-size: clamp(1.02rem, 1.7vw, 1.17rem);
+				color: var(--muted);
+				animation: rise 600ms ease-out;
+			}
+
+			.cta-row {
+				display: flex;
+				gap: 0.65rem;
+				flex-wrap: wrap;
+				animation: rise 760ms ease-out;
+			}
+
+			a.cta,
+			a.ghost {
+				display: inline-flex;
+				align-items: center;
+				gap: 0.35rem;
+				padding: 0.72rem 1.05rem;
+				border-radius: 999px;
+				text-decoration: none;
+				font-weight: 600;
+				font-size: 0.93rem;
+				transition: transform 140ms ease, background-color 140ms ease;
+			}
+
+			a.cta {
+				color: white;
+				background: color-mix(in oklab, var(--brand) 88%, black 8%);
+			}
+
+			a.ghost {
+				color: var(--ink);
+				background: white;
+				border: 1px solid var(--line);
+			}
+
+			a.cta:hover,
+			a.ghost:hover {
+				transform: translateY(-1px);
+			}
+
+			.panel-grid {
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 0.95rem;
+				margin-top: 2.5rem;
+			}
+
+			.panel {
+				padding: 1rem;
+				border: 1px solid var(--line);
+				background: color-mix(in oklab, white 92%, var(--brand) 8%);
+				border-radius: 0.7rem;
+				min-height: 200px;
+			}
+
+			.panel h2 {
+				margin: 0 0 0.7rem;
+				font-size: 1rem;
+				line-height: 1.2;
+				letter-spacing: -0.02em;
+			}
+
+			.panel ul {
+				margin: 0;
+				padding-left: 1rem;
+				color: var(--muted);
+				line-height: 1.54;
+				font-size: 0.92rem;
+			}
+
+			.utility {
+				margin-top: 2.4rem;
+				padding-top: 1.2rem;
+				border-top: 1px solid var(--line);
+				display: grid;
+				grid-template-columns: repeat(3, minmax(0, 1fr));
+				gap: 1rem;
+				font-size: 0.88rem;
+				color: var(--muted);
+			}
+
+			.utility span {
+				display: block;
+				padding-left: 1rem;
+				position: relative;
+			}
+
+			.utility span::before {
+				content: "";
+				position: absolute;
+				left: 0;
+				top: 0.57em;
+				width: 0.42rem;
+				height: 0.42rem;
+				border-radius: 99px;
+				background: var(--brand);
+			}
+
+			footer {
+				margin-top: 3rem;
+				padding-top: 1rem;
+				border-top: 1px dashed var(--line);
+				display: flex;
+				justify-content: space-between;
+				gap: 0.6rem;
+				color: var(--muted);
+				font-size: 0.82rem;
+				flex-wrap: wrap;
+			}
+
+			@keyframes rise {
+				from {
+					opacity: 0;
+					transform: translateY(8px);
+				}
+				to {
+					opacity: 1;
+					transform: translateY(0);
+				}
+			}
+
+			@media (max-width: 900px) {
+				.panel-grid,
+				.utility {
+					grid-template-columns: 1fr;
+				}
+
+				.hero {
+					padding-top: 3rem;
+				}
+			}
+		</style>
+	</head>
+	<body>
+		<main>
+			<nav>
+				<div class="logo">Alkalye</div>
+				<a class="ghost" href="/app">Open App</a>
+			</nav>
+
+			<section class="hero">
+				<p class="kicker">Markdown workspace, rebuilt for now</p>
+				<h1>Minimal writing surface. Serious collaborative power.</h1>
+				<p class="lead">
+					Alkalye is a typography-first markdown editor for people who want clarity,
+					not clutter. It stays local-first, syncs securely, and scales from quick
+					notes to live presentations.
+				</p>
+				<div class="cta-row">
+					<a class="cta" href="/app">Start writing</a>
+					<a class="ghost" href="/app/welcome">See walkthrough</a>
+				</div>
+			</section>
+
+			<section class="panel-grid" aria-label="Product features">
+				{
+					featureGroups.map(group => (
+						<article class="panel">
+							<h2>{group.headline}</h2>
+							<ul>
+								{group.items.map(item => (
+									<li>{item}</li>
+								))}
+							</ul>
+						</article>
+					))
+				}
+			</section>
+
+			<section class="utility" aria-label="Additional capabilities">
+				{utilityFeatures.map(item => <span>{item}</span>)}
+			</section>
+
+			<footer>
+				<span>Built for mobile and desktop. Feels native on both.</span>
+				<span>
+					Invite links remain active. Old doc, space, and settings links still route.
+				</span>
+			</footer>
+		</main>
+	</body>
+</html>

@@ -693,8 +693,8 @@ function RenderSegment({ segment }: { segment: TextSegment }) {
 				isPresentation: false,
 			}
 			let href = resolved.isPresentation
-				? `/doc/${segment.docId}/slideshow`
-				: `/doc/${segment.docId}/preview`
+				? `/app/doc/${segment.docId}/slideshow`
+				: `/app/doc/${segment.docId}/preview`
 			return (
 				<a
 					href={href}

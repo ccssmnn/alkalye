@@ -583,7 +583,9 @@ function makeMoveToSpace(
 		destination: { id: string; name: string } | null,
 	) {
 		if (destination) {
-			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
+			let docId = window.location.pathname.match(
+				/\/(?:app\/)?doc\/([^/]+)/,
+			)?.[1]
 			if (docId) {
 				navigate({
 					to: "/spaces/$spaceId/doc/$id",
@@ -591,7 +593,9 @@ function makeMoveToSpace(
 				})
 			}
 		} else if (currentSpaceId) {
-			let docId = window.location.pathname.match(/\/doc\/([^/]+)/)?.[1]
+			let docId = window.location.pathname.match(
+				/\/(?:app\/)?doc\/([^/]+)/,
+			)?.[1]
 			if (docId) {
 				navigate({ to: "/doc/$id", params: { id: docId } })
 			}

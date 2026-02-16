@@ -302,7 +302,7 @@ function MarkdownEditor(
 
 	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
 		if (newTab) {
-			window.open(`/doc/${id}`, "_blank")
+			window.open(`/app/doc/${id}`, "_blank")
 		} else {
 			navigate({ to: "/doc/$id", params: { id } })
 		}

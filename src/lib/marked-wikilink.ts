@@ -57,7 +57,7 @@ function createWikilinkExtension(
 					let exists = resolved.exists
 
 					if (exists) {
-						return `<a href="/doc/${docId}/preview" class="wikilink">${title}</a>`
+						return `<a href="/app/doc/${docId}/preview" class="wikilink">${title}</a>`
 					}
 					return `<span class="wikilink wikilink-broken" title="Document not found">${title}</span>`
 				},
