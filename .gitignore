@@ -7,3 +7,4 @@ dist
 sync-db
 example
 .claude
+.vercel
