@@ -69,6 +69,7 @@ export default [
 			"src/app/routeTree.gen.ts",
 			".astro/",
 			"eslint-local-rules/",
+			".vercel/",
 		],
 	},
 ]

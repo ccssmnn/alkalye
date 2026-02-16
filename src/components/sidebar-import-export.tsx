@@ -1,5 +1,5 @@
 import { useRef, useState } from "react"
-import { Group, co, FileStream } from "jazz-tools"
+import { Group, co } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { compressVideo, canEncodeVideo } from "@/lib/video-conversion"
@@ -245,7 +245,7 @@ async function handleImportFiles(
 						if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
 					}
 				}
-				let video = await FileStream.createFromBlob(videoBlob, {
+				let video = await co.fileStream().createFromBlob(videoBlob, {
 					owner: docGroup,
 				})
 				asset = VideoAsset.create(
@@ -386,7 +386,7 @@ async function loadDocumentAssets(
 					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
 				}
 			} else if (asset.type === "video" && asset.video?.$isLoaded) {
-				let blob = await asset.video.toBlob()
+				let blob = asset.video.toBlob()
 				if (blob) {
 					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
 				}

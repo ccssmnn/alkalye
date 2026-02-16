@@ -1,4 +1,4 @@
-import { Github, Twitter } from "lucide-react"
+import { Github, Bird } from "lucide-react"
 import { Link } from "@tanstack/react-router"
 
 export { Footer }
@@ -13,7 +13,7 @@ function Footer() {
 					rel="noopener noreferrer"
 					className="hover:text-foreground p-1 transition-colors"
 				>
-					<Twitter className="size-4" />
+					<Bird className="size-4" />
 					<span className="sr-only">@ccssmnn</span>
 				</a>
 				<a

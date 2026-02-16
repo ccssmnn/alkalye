@@ -1,4 +1,4 @@
-import { co, FileStream, type ResolveQuery } from "jazz-tools"
+import { co, type ResolveQuery } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useNavigate } from "@tanstack/react-router"
 import { Asset, ImageAsset, VideoAsset, Document, UserAccount } from "@/schema"
@@ -123,7 +123,7 @@ function makeUploadVideo(doc: LoadedDocument) {
 
 		// Upload to Jazz FileStream
 		onProgress?.({ phase: "uploading", progress: 0 })
-		let video = await FileStream.createFromBlob(compressed, {
+		let video = await co.fileStream().createFromBlob(compressed, {
 			owner: doc.$jazz.owner,
 			onProgress: p => onProgress?.({ phase: "uploading", progress: p }),
 		})
@@ -237,7 +237,7 @@ function makeDownloadAsset(doc: LoadedDocument) {
 				blob = original.toBlob()
 			}
 		} else if (asset.type === "video" && asset.video?.$isLoaded) {
-			blob = await asset.video.toBlob()
+			blob = asset.video.toBlob()
 		}
 
 		if (!blob) return
