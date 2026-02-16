@@ -1,4 +1,6 @@
 ---
+import "#app/index.css"
+
 let requestUrl = new URL(Astro.request.url)
 let siteBaseUrl = Astro.site ?? new URL(requestUrl.origin)
 let canonicalUrl = new URL(
@@ -56,16 +58,7 @@ let coreFeatures = [
 		<meta name="twitter:description" content={metaDescription} />
 		<meta name="twitter:image" content={ogImageUrl} />
 		<style>
-			@import "@fontsource-variable/geist";
-			@import "@fontsource-variable/geist-mono";
-
 			:root {
-				--brand: oklch(59.6% 0.145 163.225);
-				--brand-subtle: oklch(59.6% 0.145 163.225 / 8%);
-				--background: #ffffff;
-				--foreground: oklch(0.145 0 0);
-				--muted-foreground: oklch(0.556 0 0);
-				--border: oklch(0.922 0 0);
 				--border-hairline: 1px;
 			}
 
@@ -170,7 +163,7 @@ let coreFeatures = [
 
 			h1 {
 				margin: 0;
-				max-width: 13ch;
+				max-width: 18ch;
 				font-family: "Geist Mono Variable", ui-monospace, monospace;
 				font-size: clamp(2.35rem, 7vw, 5.8rem);
 				line-height: 0.95;
@@ -293,18 +286,6 @@ let coreFeatures = [
 				padding: 4.2rem 0 0;
 				display: flex;
 				gap: 0.6rem;
-				flex-wrap: wrap;
-			}
-
-			footer {
-				margin-top: 2.2rem;
-				padding-top: 1rem;
-				border-top: var(--border-hairline) dashed var(--border);
-				color: var(--muted-foreground);
-				font-size: 0.86rem;
-				display: flex;
-				justify-content: space-between;
-				gap: 0.75rem;
 				flex-wrap: wrap;
 			}
 
@@ -442,10 +423,6 @@ let coreFeatures = [
 				</div>
 			</section>
 
-			<footer>
-				<span>Legacy `/doc`, `/spaces`, and `/settings` links still work.</span>
-				<span>Dedicated invite OG page remains available at `/invite`.</span>
-			</footer>
 		</main>
 	</body>
 </html>
