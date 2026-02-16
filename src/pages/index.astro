@@ -121,7 +121,6 @@ let aiWorkflow = [
 		>
 			<nav class="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-background py-3">
 				<div class="flex items-center gap-2 text-sm font-semibold tracking-tight">
-					<span class="text-brand">◆</span>
 					<span>Alkalye</span>
 				</div>
 				<a
@@ -151,9 +150,9 @@ let aiWorkflow = [
 					</a>
 				</div>
 				<div class="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
-					<span class="inline-flex items-center gap-1"><span>◆</span><span>End-to-end encrypted</span></span>
-					<span class="inline-flex items-center gap-1"><span>◆</span><span>Works offline</span></span>
-					<span class="inline-flex items-center gap-1"><span>◆</span><span>Open source</span></span>
+					<span>End-to-end encrypted</span>
+					<span>Works offline</span>
+					<span>Open source</span>
 				</div>
 
 				<div class="overflow-hidden border border-border bg-card text-card-foreground">
@@ -239,9 +238,8 @@ let aiWorkflow = [
 				<div class="grid gap-px border border-border bg-border">
 					{capabilities.map(capability => (
 						<article class="bg-card p-6 text-card-foreground">
-							<h3 class="mb-2 flex items-center gap-2 text-[15px] font-semibold">
-								<span class="text-brand">◆</span>
-								<span>{capability.title}</span>
+							<h3 class="mb-2 text-[15px] font-semibold leading-6">
+								{capability.title}
 							</h3>
 							<p class="font-sans text-sm leading-6 text-muted-foreground">{capability.body}</p>
 						</article>
