@@ -98,6 +98,13 @@ let aiWorkflow = [
 		/>
 		<meta name="description" content={metaDescription} />
 		<link rel="canonical" href={canonicalUrl} />
+		<link rel="icon" type="image/png" href="/icons/alkalye-icon.png" />
+		<link rel="apple-touch-icon" href="/icons/alkalye-icon.png" />
+		<script is:inline>
+			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+				document.documentElement.classList.add("dark")
+			}
+		</script>
 		<meta property="og:type" content="website" />
 		<meta property="og:title" content={pageTitle} />
 		<meta property="og:description" content={metaDescription} />
