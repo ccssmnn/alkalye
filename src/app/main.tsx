@@ -1,10 +1,10 @@
 import { StrictMode } from "react"
 import { JazzReactProvider, useAccount } from "jazz-tools/react"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
+import { PUBLIC_JAZZ_SYNC_SERVER } from "astro:env/client"
 import { Toaster } from "sonner"
 import { routeTree } from "#app/routeTree.gen"
 import { UserAccount, migrateAnonymousData } from "@/schema"
-import { env } from "@/lib/env"
 import {
 	SplashScreen,
 	SplashScreenStatic,
@@ -67,10 +67,7 @@ export function PWA() {
 		<StrictMode>
 			<JazzReactProvider
 				AccountSchema={UserAccount}
-				sync={{
-					peer: env.VITE_JAZZ_SYNC_SERVER as `wss://${string}`,
-					when: "always",
-				}}
+				sync={buildSyncConfig()}
 				onAnonymousAccountDiscarded={migrateAnonymousData}
 				fallback={<SplashScreenStatic />}
 			>
@@ -79,3 +76,26 @@ export function PWA() {
 		</StrictMode>
 	)
 }
+
+function buildSyncConfig(): JazzSyncConfig {
+	let syncServer = PUBLIC_JAZZ_SYNC_SERVER
+	if (!isSyncPeer(syncServer)) {
+		throw new Error("PUBLIC_JAZZ_SYNC_SERVER must be a ws:// or wss:// URL")
+	}
+
+	let syncConfig: JazzSyncConfig = {
+		peer: syncServer,
+		when: "always",
+	}
+
+	return syncConfig
+}
+
+function isSyncPeer(value: string | undefined): value is SyncPeer {
+	if (!value) return false
+	return value.startsWith("ws://") || value.startsWith("wss://")
+}
+
+type JazzSyncProps = Parameters<typeof JazzReactProvider>[0]["sync"]
+type JazzSyncConfig = NonNullable<JazzSyncProps>
+type SyncPeer = JazzSyncConfig["peer"]

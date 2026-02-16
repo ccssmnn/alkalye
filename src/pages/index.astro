@@ -3,745 +3,267 @@ import "#app/index.css"
 
 let requestUrl = new URL(Astro.request.url)
 let siteBaseUrl = Astro.site ?? new URL(requestUrl.origin)
-let canonicalUrl = new URL(requestUrl.pathname + requestUrl.search, siteBaseUrl).toString()
+let canonicalUrl = new URL(
+	requestUrl.pathname + requestUrl.search,
+	siteBaseUrl,
+).toString()
 let ogImageUrl = new URL("/icons/alkalye-social.png", siteBaseUrl).toString()
 
-let pageTitle = "Alkalye — Write anywhere. Stay in flow."
-let metaDescription = "A beautiful markdown editor that works offline, syncs across all your devices, and keeps your words encrypted. Real-time collaboration, time machine, and presentation mode included."
+let pageTitle = "Alkalye - Write anywhere. Stay in flow."
+let metaDescription =
+	"A beautiful markdown editor that works offline, syncs across all your devices, and keeps your words encrypted. Real-time collaboration, time machine, and presentation mode included."
 
 let workflow = [
-  {
-    time: "Morning commute",
-    device: "Phone",
-    title: "Capture ideas instantly",
-    body: "No signal? No problem. Write offline on the train. Your thoughts sync when you're back online.",
-    features: ["Offline-first", "Auto-sync"],
-  },
-  {
-    time: "At your desk",
-    device: "Laptop",
-    title: "Deep work, uninterrupted",
-    body: "Beautiful typography, zero chrome. Just you and your words. Export to your file system to collaborate with Claude Code or OpenCode.",
-    features: ["File system sync", "AI collaboration"],
-  },
-  {
-    time: "Team meeting",
-    device: "Any device",
-    title: "Share and collaborate",
-    body: "Send a link. Set permissions: public, read-only, or full editing. See live cursors as your team writes together.",
-    features: ["Real-time collaboration", "Granular permissions"],
-  },
-  {
-    time: "Presentation time",
-    device: "Tablet + Phone",
-    title: "From draft to delivery",
-    body: "Switch to slideshow mode instantly. Use your phone as a teleprompter. Same document, new context.",
-    features: ["Presentation mode", "Teleprompter"],
-  },
+	{
+		time: "Morning commute",
+		device: "Phone",
+		title: "Capture ideas instantly",
+		body: "No signal? No problem. Write offline on the train. Your thoughts sync when you are back online.",
+		features: ["Offline-first", "Auto-sync"],
+	},
+	{
+		time: "At your desk",
+		device: "Laptop",
+		title: "Deep work, uninterrupted",
+		body: "Beautiful typography, zero chrome. Just you and your words. Export to your file system to collaborate with Claude Code or OpenCode.",
+		features: ["File system sync", "AI collaboration"],
+	},
+	{
+		time: "Team meeting",
+		device: "Any device",
+		title: "Share and collaborate",
+		body: "Send a link. Set permissions: public, read-only, or full editing. See live cursors as your team writes together.",
+		features: ["Real-time collaboration", "Granular permissions"],
+	},
+	{
+		time: "Presentation time",
+		device: "Tablet + Phone",
+		title: "From draft to delivery",
+		body: "Switch to slideshow mode instantly. Use your phone as a teleprompter. Same document, new context.",
+		features: ["Presentation mode", "Teleprompter"],
+	},
 ]
 
 let capabilities = [
-  {
-    title: "Time Machine",
-    body: "See every change. Scrub through complete document history and recover exactly what you need.",
-  },
-  {
-    title: "Custom Themes",
-    body: "Make it yours. Change how preview and slideshow look with custom themes.",
-  },
-  {
-    title: "End-to-end Encrypted",
-    body: "Your documents are encrypted before they leave your device. Not even we can read your words.",
-  },
-  {
-    title: "No Lock-in",
-    body: "Standard markdown with frontmatter. Export anytime. Self-host if you want. Your data stays yours.",
-  },
-  {
-    title: "Works Everywhere",
-    body: "PWA that installs on any device. iOS, Android, macOS, Windows, Linux — one app, all platforms.",
-  },
-  {
-    title: "Open Source",
-    body: "MIT licensed. Inspect the code, host it yourself, make it yours. Community driven development.",
-  },
+	{
+		title: "Time Machine",
+		body: "See every change. Scrub through complete document history and recover exactly what you need.",
+	},
+	{
+		title: "Custom Themes",
+		body: "Make it yours. Change how preview and slideshow look with custom themes.",
+	},
+	{
+		title: "End-to-end Encrypted",
+		body: "Your documents are encrypted before they leave your device. Not even we can read your words.",
+	},
+	{
+		title: "No Lock-in",
+		body: "Standard markdown with frontmatter. Export anytime. Self-host if you want. Your data stays yours.",
+	},
+	{
+		title: "Works Everywhere",
+		body: "PWA that installs on any device. iOS, Android, macOS, Windows, Linux - one app, all platforms.",
+	},
+	{
+		title: "Open Source",
+		body: "MIT licensed. Inspect the code, host it yourself, make it yours. Community driven development.",
+	},
 ]
 
 let aiWorkflow = [
-  {
-    title: "Sync to your file system",
-    body: "Mirror documents as markdown files for backup, versioning, and external editing.",
-  },
-  {
-    title: "Collaborate with Claude Code / OpenCode",
-    body: "Point your AI agent at your synced files for drafting, rewrites, structure, and critique.",
-  },
-  {
-    title: "Keep writing in Alkalye",
-    body: "Changes flow back into your workspace, with backlinks and history still intact.",
-  },
+	{
+		title: "Sync to your file system",
+		body: "Mirror documents as markdown files for backup, versioning, and external editing.",
+	},
+	{
+		title: "Collaborate with Claude Code / OpenCode",
+		body: "Point your AI agent at your synced files for drafting, rewrites, structure, and critique.",
+	},
+	{
+		title: "Keep writing in Alkalye",
+		body: "Changes flow back into your workspace, with backlinks and history still intact.",
+	},
 ]
 ---
 
 <!doctype html>
-<html lang="en">
-  <head>
-    <title>{pageTitle}</title>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-    <meta name="description" content={metaDescription} />
-    <link rel="canonical" href={canonicalUrl} />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content={pageTitle} />
-    <meta property="og:description" content={metaDescription} />
-    <meta property="og:url" content={canonicalUrl} />
-    <meta property="og:image" content={ogImageUrl} />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content={pageTitle} />
-    <meta name="twitter:description" content={metaDescription} />
-    <meta name="twitter:image" content={ogImageUrl} />
-    <style>
-      :root {
-        --border-hairline: 1px;
-      }
-
-      @media only screen and (min-device-pixel-ratio: 2),
-        only screen and (min-resolution: 192dpi) {
-        :root {
-          --border-hairline: 0.5px;
-        }
-      }
-
-      * {
-        box-sizing: border-box;
-      }
-
-      html,
-      body {
-        margin: 0;
-        padding: 0;
-        background: var(--background);
-        color: var(--foreground);
-        font-family: "Geist Mono Variable", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-        -webkit-font-smoothing: antialiased;
-        overflow-y: auto;
-        overscroll-behavior: auto;
-      }
-
-      .container {
-        max-width: 900px;
-        margin: 0 auto;
-        padding: calc(1rem + env(safe-area-inset-top))
-          calc(1.25rem + env(safe-area-inset-right))
-          calc(4rem + env(safe-area-inset-bottom))
-          calc(1.25rem + env(safe-area-inset-left));
-      }
-
-      /* Navigation */
-      nav {
-        position: sticky;
-        top: 0;
-        z-index: 50;
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        padding: 0.875rem 0;
-        background: var(--background);
-        border-bottom: var(--border-hairline) solid var(--border);
-      }
-
-      .logo {
-        font-size: 0.875rem;
-        font-weight: 600;
-        letter-spacing: -0.02em;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .logo::before {
-        content: "◆";
-        color: var(--brand);
-      }
-
-      a {
-        color: inherit;
-        text-decoration: none;
-        touch-action: manipulation;
-      }
-
-      .btn {
-        display: inline-flex;
-        align-items: center;
-        gap: 0.5rem;
-        padding: 0.5rem 1rem;
-        font-size: 0.8125rem;
-        font-weight: 500;
-        border: var(--border-hairline) solid var(--border);
-        background: var(--background);
-        transition: background 150ms ease, border-color 150ms ease;
-        min-height: 40px;
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        .btn:hover {
-          background: var(--muted);
-          border-color: var(--muted-foreground);
-        }
-      }
-
-      .btn:focus-visible {
-        outline: 2px solid var(--brand);
-        outline-offset: 2px;
-      }
-
-      .btn-primary {
-        background: var(--foreground);
-        color: var(--background);
-        border-color: var(--foreground);
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        .btn-primary:hover {
-          background: var(--muted-foreground);
-          border-color: var(--muted-foreground);
-        }
-      }
-
-      /* Hero */
-      .hero {
-        padding: 5rem 0 3rem;
-        display: flex;
-        flex-direction: column;
-        gap: 1.75rem;
-      }
-
-      .eyebrow {
-        font-size: 0.75rem;
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-        color: var(--brand);
-        font-weight: 500;
-      }
-
-      h1 {
-        margin: 0;
-        font-size: clamp(1.75rem, 4.5vw, 3rem);
-        line-height: 1.15;
-        letter-spacing: -0.03em;
-        font-weight: 500;
-        max-width: 26ch;
-      }
-
-      h1 em {
-        font-style: normal;
-        color: var(--muted-foreground);
-      }
-
-      .lead {
-        margin: 0;
-        max-width: 52ch;
-        color: var(--muted-foreground);
-        line-height: 1.7;
-        font-size: 1rem;
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-      }
-
-      .hero-actions {
-        display: flex;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-        margin-top: 0.25rem;
-      }
-
-      .hero-meta {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        margin-top: 1.25rem;
-        font-size: 0.75rem;
-        color: var(--muted-foreground);
-        flex-wrap: wrap;
-      }
-
-      .hero-meta span {
-        display: flex;
-        align-items: center;
-        gap: 0.375rem;
-      }
-
-      /* Editor preview */
-      .editor-preview {
-        margin: 2.5rem 0 1.5rem;
-        border: var(--border-hairline) solid var(--border);
-        background: var(--card);
-        overflow: hidden;
-      }
-
-      .editor-header {
-        display: flex;
-        align-items: center;
-        padding: 0.5rem 0.75rem;
-        border-bottom: var(--border-hairline) solid var(--border);
-        background: var(--muted);
-        gap: 0.375rem;
-      }
-
-      .editor-dot {
-        width: 8px;
-        height: 8px;
-        border-radius: 50%;
-        background: var(--border);
-      }
-
-      .editor-dot:nth-child(1) { background: #ff5f57; }
-      .editor-dot:nth-child(2) { background: #febc2e; }
-      .editor-dot:nth-child(3) { background: #28c840; }
-
-      .editor-filename {
-        margin-left: auto;
-        font-size: 0.6875rem;
-        color: var(--muted-foreground);
-      }
-
-      .editor-body {
-        padding: 1.5rem 2rem;
-        font-size: 0.9375rem;
-        line-height: 1.8;
-        color: var(--foreground);
-      }
-
-      .editor-body h2 {
-        font-size: 1.125rem;
-        font-weight: 600;
-        margin: 0 0 1rem;
-      }
-
-      .editor-body p {
-        margin: 0 0 1rem;
-        color: var(--muted-foreground);
-      }
-
-      .editor-cursor {
-        display: inline-block;
-        width: 2px;
-        height: 1.2em;
-        background: var(--brand);
-        animation: blink 1s step-end infinite;
-        vertical-align: middle;
-        margin-left: 1px;
-      }
-
-      @keyframes blink {
-        50% { opacity: 0; }
-      }
-
-      /* Section base */
-      .section {
-        padding: 4rem 0;
-        border-top: var(--border-hairline) solid var(--border);
-      }
-
-      .section-header {
-        margin-bottom: 2.5rem;
-      }
-
-      h2 {
-        margin: 0 0 0.75rem;
-        font-size: clamp(1.25rem, 2.5vw, 1.5rem);
-        font-weight: 500;
-        letter-spacing: -0.02em;
-      }
-
-      .section-desc {
-        margin: 0;
-        max-width: 60ch;
-        color: var(--muted-foreground);
-        line-height: 1.6;
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-      }
-
-      /* Feature cards */
-      .features-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1px;
-        background: var(--border);
-        border: var(--border-hairline) solid var(--border);
-      }
-
-      .feature-card {
-        background: var(--background);
-        padding: 1.5rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.5rem;
-      }
-
-      .feature-card h3 {
-        margin: 0;
-        font-size: 0.9375rem;
-        font-weight: 600;
-        display: flex;
-        align-items: center;
-        gap: 0.5rem;
-      }
-
-      .feature-card p {
-        margin: 0;
-        font-size: 0.8125rem;
-        line-height: 1.6;
-        color: var(--muted-foreground);
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-      }
-
-      .feature-icon {
-        color: var(--brand);
-      }
-
-      /* Workflow */
-      .workflow {
-        display: grid;
-        grid-template-columns: repeat(4, 1fr);
-        gap: 1px;
-        background: var(--border);
-        border: var(--border-hairline) solid var(--border);
-      }
-
-      .workflow-step {
-        background: var(--background);
-        padding: 1.25rem;
-        display: flex;
-        flex-direction: column;
-        gap: 0.75rem;
-      }
-
-      .workflow-meta {
-        display: grid;
-        gap: 0.25rem;
-        margin-bottom: 0.125rem;
-      }
-
-      .workflow-time,
-      .workflow-device {
-        font-size: 0.6875rem;
-        letter-spacing: 0.08em;
-        text-transform: uppercase;
-      }
-
-      .workflow-time {
-        color: var(--brand);
-        font-weight: 600;
-      }
-
-      .workflow-device {
-        color: var(--muted-foreground);
-      }
-
-      .workflow-step h3 {
-        margin: 0;
-        font-size: 1.125rem;
-        line-height: 1.25;
-        letter-spacing: -0.01em;
-      }
-
-      .workflow-step p {
-        margin: 0;
-        font-size: 0.9375rem;
-        line-height: 1.65;
-        color: var(--muted-foreground);
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-      }
-
-      .workflow-features {
-        margin-top: auto;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 0.375rem;
-        padding-top: 0.5rem;
-      }
-
-      .feature-tag {
-        border: var(--border-hairline) solid var(--border);
-        background: var(--muted);
-        padding: 0.2rem 0.45rem;
-        font-size: 0.6875rem;
-        letter-spacing: 0.04em;
-        text-transform: uppercase;
-        color: var(--foreground);
-      }
-
-      .ai-block {
-        border: var(--border-hairline) solid var(--border);
-        background: var(--card);
-      }
-
-      .ai-block-header {
-        padding: 1rem 1.25rem;
-        border-bottom: var(--border-hairline) solid var(--border);
-        background: var(--muted);
-      }
-
-      .ai-block-header p {
-        margin: 0;
-        font-size: 0.875rem;
-        line-height: 1.6;
-        color: var(--muted-foreground);
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-      }
-
-      .ai-grid {
-        display: grid;
-        grid-template-columns: repeat(3, 1fr);
-        gap: 1px;
-        background: var(--border);
-      }
-
-      .ai-item {
-        background: var(--background);
-        padding: 1.25rem;
-      }
-
-      .ai-item h3 {
-        margin: 0 0 0.6rem;
-        font-size: 0.9375rem;
-        line-height: 1.35;
-      }
-
-      .ai-item p {
-        margin: 0;
-        font-size: 0.8125rem;
-        line-height: 1.6;
-        color: var(--muted-foreground);
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-      }
-
-      /* CTA section */
-      .cta-section {
-        padding: 5rem 0;
-        text-align: center;
-        border-top: var(--border-hairline) solid var(--border);
-      }
-
-      .cta-title {
-        font-size: clamp(1.5rem, 3vw, 2rem);
-        margin: 0 0 1rem;
-        font-weight: 500;
-      }
-
-      .cta-desc {
-        margin: 0 auto 2rem;
-        max-width: 45ch;
-        color: var(--muted-foreground);
-        font-family: "Geist Variable", ui-sans-serif, system-ui, sans-serif;
-        line-height: 1.6;
-      }
-
-      .cta-actions {
-        display: flex;
-        justify-content: center;
-        gap: 0.75rem;
-        flex-wrap: wrap;
-      }
-
-      /* Footer */
-      footer {
-        padding: 2rem 0 4rem;
-        border-top: var(--border-hairline) solid var(--border);
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        font-size: 0.75rem;
-        color: var(--muted-foreground);
-        flex-wrap: wrap;
-        gap: 1rem;
-      }
-
-      .footer-links {
-        display: flex;
-        gap: 1.5rem;
-      }
-
-      .footer-links a {
-        transition: color 150ms ease;
-      }
-
-      @media (hover: hover) and (pointer: fine) {
-        .footer-links a:hover {
-          color: var(--foreground);
-        }
-      }
-
-      /* Reduced motion */
-      @media (prefers-reduced-motion: reduce) {
-        * {
-          animation-duration: 1ms !important;
-          transition-duration: 1ms !important;
-        }
-      }
-
-      /* Responsive */
-      @media (max-width: 768px) {
-        .features-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .workflow {
-          grid-template-columns: 1fr;
-        }
-
-        .ai-grid {
-          grid-template-columns: 1fr;
-        }
-
-        .hero {
-          padding: 4rem 0 3rem;
-        }
-
-        .editor-body {
-          padding: 1rem 1.25rem;
-          font-size: 0.875rem;
-        }
-
-        h1 {
-          font-size: 1.75rem;
-        }
-
-        footer {
-          flex-direction: column;
-          text-align: center;
-        }
-      }
-
-      @media (max-width: 480px) {
-        .container {
-          padding-left: 1rem;
-          padding-right: 1rem;
-        }
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <nav>
-        <div class="logo">Alkalye</div>
-        <a href="/app" class="btn btn-primary">Open Alkalye</a>
-      </nav>
-
-      <section class="hero">
-        <div class="eyebrow">Free Public Beta</div>
-        <h1>Write anywhere.<br /><em>Stay in flow.</em></h1>
-        <p class="lead">
-          A beautiful markdown editor that works offline, syncs across all your devices, 
-          and keeps your words encrypted. From first thought to final presentation — 
-          one document, infinite possibilities.
-        </p>
-        <div class="hero-actions">
-          <a href="/app" class="btn btn-primary">Start Writing</a>
-        </div>
-        <div class="hero-meta">
-          <span>◆ End-to-end encrypted</span>
-          <span>◆ Works offline</span>
-          <span>◆ Open source</span>
-        </div>
-
-        <div class="editor-preview">
-          <div class="editor-header">
-            <div class="editor-dot"></div>
-            <div class="editor-dot"></div>
-            <div class="editor-dot"></div>
-            <div class="editor-filename">ideas.md</div>
-          </div>
-          <div class="editor-body">
-            <h2>Ideas should not wait for Wi-Fi</h2>
-            <p>Office, train, cafe, red-eye flight. Alkalye stays available - offline, on any device, always yours.<span class="editor-cursor"></span></p>
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-header">
-          <h2>A day in the life</h2>
-          <p class="section-desc">
-            Follow a document from first spark to final delivery. One source, multiple contexts, zero friction.
-          </p>
-        </div>
-        <div class="workflow">
-          {workflow.map(step => (
-            <div class="workflow-step">
-              <div class="workflow-meta">
-                <span class="workflow-time">{step.time}</span>
-                <span class="workflow-device">{step.device}</span>
-              </div>
-              <h3>{step.title}</h3>
-              <p>{step.body}</p>
-              <div class="workflow-features">
-                {step.features.map(f => <span class="feature-tag">{f}</span>)}
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-header">
-          <h2>Your AI pair writer, without lock-in</h2>
-          <p class="section-desc">
-            Alkalye can sync documents to your file system, so Claude Code or OpenCode can help with blog posts, talks, and technical writing whenever you need it.
-          </p>
-        </div>
-        <div class="ai-block">
-          <div class="ai-block-header">
-            <p>
-              Keep your markdown local. Let your agent propose edits. Bring improvements back into the same collaborative document with full history.
-            </p>
-          </div>
-          <div class="ai-grid">
-            {aiWorkflow.map(step => (
-              <article class="ai-item">
-                <h3>{step.title}</h3>
-                <p>{step.body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section class="section">
-        <div class="section-header">
-          <h2>Everything you need</h2>
-          <p class="section-desc">
-            Powerful features that stay out of your way until you need them.
-          </p>
-        </div>
-        <div class="features-grid">
-          {capabilities.map(cap => (
-            <div class="feature-card">
-              <h3><span class="feature-icon">◆</span> {cap.title}</h3>
-              <p>{cap.body}</p>
-            </div>
-          ))}
-        </div>
-      </section>
-
-      <section class="cta-section">
-        <h2 class="cta-title">Your words, everywhere</h2>
-        <p class="cta-desc">
-          Join the free public beta. No credit card required. 
-          Self-host anytime. Your data stays encrypted and yours.
-        </p>
-        <div class="cta-actions">
-          <a href="/app" class="btn btn-primary">Start Writing</a>
-        </div>
-      </section>
-
-      <footer>
-        <div>© 2026 Alkalye — MIT Licensed</div>
-        <div class="footer-links">
-          <a href="https://github.com/ccssmnn/alkalye" target="_blank" rel="noopener">GitHub</a>
-          <a href="/app/welcome">Docs</a>
-        </div>
-      </footer>
-    </div>
-  </body>
+<html lang="en" class="bg-background text-foreground">
+	<head>
+		<title>{pageTitle}</title>
+		<meta charset="UTF-8" />
+		<meta
+			name="viewport"
+			content="width=device-width, initial-scale=1, viewport-fit=cover"
+		/>
+		<meta name="description" content={metaDescription} />
+		<link rel="canonical" href={canonicalUrl} />
+		<meta property="og:type" content="website" />
+		<meta property="og:title" content={pageTitle} />
+		<meta property="og:description" content={metaDescription} />
+		<meta property="og:url" content={canonicalUrl} />
+		<meta property="og:image" content={ogImageUrl} />
+		<meta name="twitter:card" content="summary_large_image" />
+		<meta name="twitter:title" content={pageTitle} />
+		<meta name="twitter:description" content={metaDescription} />
+		<meta name="twitter:image" content={ogImageUrl} />
+	</head>
+	<body class="bg-background text-foreground font-mono overflow-y-auto overscroll-auto">
+		<main
+			class="mx-auto max-w-[900px] px-[calc(1rem+env(safe-area-inset-left))] pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(4rem+env(safe-area-inset-bottom))]"
+		>
+			<nav class="sticky top-0 z-50 flex items-center justify-between border-b border-border bg-background py-3">
+				<div class="flex items-center gap-2 text-sm font-semibold tracking-tight">
+					<span class="text-brand">◆</span>
+					<span>Alkalye</span>
+				</div>
+				<a
+					href="/app"
+					class="inline-flex min-h-10 items-center justify-center border border-primary bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+				>
+					Open Alkalye
+				</a>
+			</nav>
+
+			<section class="flex flex-col gap-7 py-16 md:py-20">
+				<div class="text-xs font-medium uppercase tracking-[0.12em] text-brand">Free Public Beta</div>
+				<h1 class="text-[clamp(1.9rem,4.2vw,3.2rem)] leading-[1.08] tracking-tight">
+					Write anywhere.<br /><em class="not-italic text-muted-foreground">Stay in flow.</em>
+				</h1>
+				<p class="max-w-[52ch] font-sans text-base leading-7 text-muted-foreground">
+					A beautiful markdown editor that works offline, syncs across all your devices,
+					and keeps your words encrypted. From first thought to final presentation - one
+					document, infinite possibilities.
+				</p>
+				<div>
+					<a
+						href="/app"
+						class="inline-flex min-h-10 items-center justify-center border border-primary bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						Start Writing
+					</a>
+				</div>
+				<div class="flex flex-wrap items-center gap-4 text-xs text-muted-foreground">
+					<span class="inline-flex items-center gap-1"><span>◆</span><span>End-to-end encrypted</span></span>
+					<span class="inline-flex items-center gap-1"><span>◆</span><span>Works offline</span></span>
+					<span class="inline-flex items-center gap-1"><span>◆</span><span>Open source</span></span>
+				</div>
+
+				<div class="overflow-hidden border border-border bg-card text-card-foreground">
+					<div class="flex items-center gap-1 border-b border-border bg-muted px-3 py-2">
+						<span class="size-2 rounded-full bg-[#ff5f57]"></span>
+						<span class="size-2 rounded-full bg-[#febc2e]"></span>
+						<span class="size-2 rounded-full bg-[#28c840]"></span>
+						<span class="ml-auto text-[11px] text-muted-foreground">ideas.md</span>
+					</div>
+					<div class="px-5 py-6 md:px-8">
+						<h2 class="mb-4 text-lg font-semibold tracking-tight">Ideas should not wait for Wi-Fi</h2>
+						<p class="m-0 font-sans text-[15px] leading-8 text-muted-foreground">
+							Office, train, cafe, red-eye flight. Alkalye stays available - offline, on any device, always yours.
+							<span class="ml-px inline-block h-[1.2em] w-[2px] animate-pulse bg-brand align-middle"></span>
+						</p>
+					</div>
+				</div>
+			</section>
+
+			<section class="border-t border-border py-16">
+				<div class="mb-10 space-y-3">
+					<h2 class="text-[clamp(1.35rem,2.6vw,1.8rem)] tracking-tight">A day in the life</h2>
+					<p class="max-w-[60ch] font-sans leading-7 text-muted-foreground">
+						Follow a document from first spark to final delivery. One source, multiple contexts, zero friction.
+					</p>
+				</div>
+				<div class="grid gap-px border border-border bg-border">
+					{workflow.map(step => (
+						<article class="flex flex-col gap-3 bg-card p-5 text-card-foreground">
+							<div class="grid gap-1">
+								<span class="text-[11px] font-semibold uppercase tracking-[0.08em] text-brand">
+									{step.time}
+								</span>
+								<span class="text-[11px] uppercase tracking-[0.08em] text-muted-foreground">
+									{step.device}
+								</span>
+							</div>
+							<h3 class="text-lg leading-tight tracking-tight">{step.title}</h3>
+							<p class="font-sans text-[15px] leading-7 text-muted-foreground">{step.body}</p>
+							<div class="flex flex-wrap gap-1.5 pt-1">
+								{step.features.map(feature => (
+									<span class="inline-flex items-center justify-center rounded-md border border-border bg-muted px-2 py-1 text-[11px] uppercase tracking-[0.04em] text-foreground">
+										{feature}
+									</span>
+								))}
+							</div>
+						</article>
+					))}
+				</div>
+			</section>
+
+			<section class="border-t border-border py-16">
+				<div class="mb-10 space-y-3">
+					<h2 class="text-[clamp(1.35rem,2.6vw,1.8rem)] tracking-tight">Your AI pair writer, without lock-in</h2>
+					<p class="max-w-[60ch] font-sans leading-7 text-muted-foreground">
+						Alkalye can sync documents to your file system, so Claude Code or OpenCode can help with blog posts, talks, and technical writing whenever you need it.
+					</p>
+				</div>
+				<div class="overflow-hidden border border-border bg-card text-card-foreground">
+					<div class="border-b border-border bg-muted px-5 py-4">
+						<p class="font-sans text-sm leading-6 text-muted-foreground">
+							Keep your markdown local. Let your agent propose edits. Bring improvements back into the same collaborative document with full history.
+						</p>
+					</div>
+					<div class="grid gap-px bg-border">
+						{aiWorkflow.map(step => (
+							<article class="bg-card px-5 py-5">
+								<h3 class="mb-2 text-[15px] font-semibold leading-6">{step.title}</h3>
+								<p class="font-sans text-sm leading-6 text-muted-foreground">{step.body}</p>
+							</article>
+						))}
+					</div>
+				</div>
+			</section>
+
+			<section class="border-t border-border py-16">
+				<div class="mb-10 space-y-3">
+					<h2 class="text-[clamp(1.35rem,2.6vw,1.8rem)] tracking-tight">Everything you need</h2>
+					<p class="max-w-[60ch] font-sans leading-7 text-muted-foreground">
+						Powerful features that stay out of your way until you need them.
+					</p>
+				</div>
+				<div class="grid gap-px border border-border bg-border">
+					{capabilities.map(capability => (
+						<article class="bg-card p-6 text-card-foreground">
+							<h3 class="mb-2 flex items-center gap-2 text-[15px] font-semibold">
+								<span class="text-brand">◆</span>
+								<span>{capability.title}</span>
+							</h3>
+							<p class="font-sans text-sm leading-6 text-muted-foreground">{capability.body}</p>
+						</article>
+					))}
+				</div>
+			</section>
+
+			<section class="border-t border-border py-20 text-center">
+				<h2 class="mb-3 text-[clamp(1.5rem,3vw,2rem)] tracking-tight">Your words, everywhere</h2>
+				<p class="mx-auto mb-8 max-w-[45ch] font-sans leading-7 text-muted-foreground">
+					Join the free public beta. No credit card required. Self-host anytime. Your data stays encrypted and yours.
+				</p>
+				<div>
+					<a
+						href="/app"
+						class="inline-flex min-h-10 items-center justify-center border border-primary bg-primary px-4 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						Start Writing
+					</a>
+				</div>
+			</section>
+
+			<footer class="flex flex-col items-center justify-between gap-4 border-t border-border py-8 text-xs text-muted-foreground md:flex-row">
+				<div>© 2026 Alkalye - MIT Licensed</div>
+				<div class="flex items-center gap-6">
+					<a class="transition-colors hover:text-foreground" href="https://github.com/ccssmnn/alkalye" target="_blank" rel="noopener">GitHub</a>
+					<a class="transition-colors hover:text-foreground" href="/app/welcome">Docs</a>
+				</div>
+			</footer>
+		</main>
+	</body>
 </html>

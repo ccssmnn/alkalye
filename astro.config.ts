@@ -1,4 +1,4 @@
-import { defineConfig } from "astro/config"
+import { defineConfig, envField } from "astro/config"
 import react from "@astrojs/react"
 import vercel from "@astrojs/vercel"
 import pwa from "@vite-pwa/astro"
@@ -73,4 +73,12 @@ export default defineConfig({
 			},
 		}),
 	],
+	env: {
+		schema: {
+			PUBLIC_JAZZ_SYNC_SERVER: envField.string({
+				context: "client",
+				access: "public",
+			}),
+		},
+	},
 })
