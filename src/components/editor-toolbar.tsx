@@ -1,4 +1,5 @@
 import { useEffect } from "react"
+import { Link } from "@tanstack/react-router"
 import type { MarkdownEditorRef } from "@/editor/editor"
 import { Button } from "@/components/ui/button"
 import {
@@ -20,9 +21,10 @@ import {
 	Heading,
 	List,
 	ListTodo,
-	Link,
+	Link2,
 	Command,
 	EyeOff,
+	Eye,
 	Copy,
 	Check,
 	ListIcon,
@@ -41,6 +43,7 @@ interface EditorToolbarProps {
 	containerRef?: React.RefObject<HTMLDivElement | null>
 	onToggleLeftSidebar: () => void
 	onToggleRightSidebar: () => void
+	docId?: string
 
 	onSaveCopy?: () => Promise<void>
 	saveCopyState?: "idle" | "saving" | "saved"
@@ -54,6 +57,7 @@ function EditorToolbar({
 	containerRef,
 	onToggleLeftSidebar,
 	onToggleRightSidebar,
+	docId,
 
 	onSaveCopy,
 	saveCopyState = "idle",
@@ -220,7 +224,7 @@ function EditorToolbar({
 							onClick={() => editor.current?.toggleTaskList()}
 						/>
 						<ToolbarButton
-							icon={<Link />}
+							icon={<Link2 />}
 							label="Link"
 							shortcut="K"
 							onClick={() => editor.current?.insertLink()}
@@ -246,6 +250,44 @@ function EditorToolbar({
 			</div>
 
 			<div className="border-border flex shrink-0 items-center gap-1 border-l p-2 md:border-l-0">
+				{docId && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label="Preview"
+									className="shrink-0"
+									nativeButton={false}
+									render={
+										<Link
+											to="/doc/$id/preview"
+											params={{ id: docId }}
+											search={{ from: "list" }}
+										/>
+									}
+								>
+									<Eye />
+								</Button>
+							}
+						/>
+						<TooltipContent className="flex items-center gap-2">
+							Preview
+							<Kbd>
+								{isMac ? (
+									<>
+										⇧
+										<Command className="size-3" />
+									</>
+								) : (
+									"Ctrl+Shift+"
+								)}
+								P
+							</Kbd>
+						</TooltipContent>
+					</Tooltip>
+				)}
 				<ToolbarButton
 					icon={<Wrench />}
 					label="Document tools"

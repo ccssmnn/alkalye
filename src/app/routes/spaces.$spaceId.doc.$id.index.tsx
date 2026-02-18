@@ -474,6 +474,7 @@ function SpaceEditorContent({
 					containerRef={containerRef}
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
+					docId={docId}
 					onSaveCopy={
 						canSaveCopy && me.$isLoaded
 							? () => handleSaveCopy(doc, me, setSaveCopyState, navigate)
