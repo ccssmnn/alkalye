@@ -100,9 +100,18 @@ let aiWorkflow = [
 		<link rel="canonical" href={canonicalUrl} />
 		<link rel="icon" type="image/png" href="/icons/alkalye-icon.png" />
 		<link rel="apple-touch-icon" href="/icons/alkalye-icon.png" />
+		<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+		<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
 		<script is:inline>
 			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
 				document.documentElement.classList.add("dark")
+			}
+		</script>
+		<script is:inline>
+			let isStandalone = window.matchMedia("(display-mode: standalone)").matches
+			let isIOSStandalone = window.navigator.standalone === true
+			if ((isStandalone || isIOSStandalone) && location.pathname === "/") {
+				location.replace("/app")
 			}
 		</script>
 		<meta property="og:type" content="website" />
@@ -170,6 +179,10 @@ let aiWorkflow = [
 							<span class="flex items-center gap-2">
 								<svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"></path></svg>
 								Works offline
+							</span>
+							<span class="flex items-center gap-2">
+								<svg class="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
+								No account required
 							</span>
 						</div>
 					</div>
@@ -295,7 +308,7 @@ let aiWorkflow = [
 				<div class="relative mx-auto max-w-[960px] px-[calc(1rem+env(safe-area-inset-left))]">
 					<h2 class="mb-4 text-[clamp(1.75rem,3.5vw,2.5rem)] tracking-tight font-semibold">Your words, everywhere</h2>
 					<p class="mx-auto mb-10 max-w-[50ch] text-lg text-muted-foreground leading-relaxed">
-						Join the free public beta. No credit card required. Self-host anytime. Your data stays encrypted and yours.
+						Join the free public beta. No email, no credit card, no account required. Self-host anytime. Your data stays encrypted and yours.
 					</p>
 					<a
 						href="/app"
