@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from "vitest"
-import { co, Group, FileStream } from "jazz-tools"
+import { co, Group } from "jazz-tools"
 import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
 import { UserAccount, Document, Asset, VideoAsset } from "@/schema"
 import { getPath } from "@/editor/frontmatter"
@@ -733,12 +733,11 @@ async function createDocWithVideoAsset(
 ): Promise<{ doc: LoadedDoc; assetId: string }> {
 	let group = Group.create()
 	let now = new Date()
-	let stream = await FileStream.createFromBlob(
-		createMockBlob("video", "video/mp4"),
-		{
+	let stream = await co
+		.fileStream()
+		.createFromBlob(createMockBlob("video", "video/mp4"), {
 			owner: group,
-		},
-	)
+		})
 	let videoAsset = VideoAsset.create(
 		{
 			type: "video",

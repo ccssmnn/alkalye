@@ -246,7 +246,7 @@ function openPrintWindow(html: string): void {
 		return
 	}
 
-	printWindow.document.write(html)
+	printWindow.document.body.innerHTML = html
 	printWindow.document.close()
 
 	printWindow.onload = async () => {

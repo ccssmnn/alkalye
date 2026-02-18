@@ -4,57 +4,149 @@
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />
 		<script src="https://cdn.tailwindcss.com"></script>
+		<link rel="preconnect" href="https://fonts.googleapis.com" />
+		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+		<link
+			href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
+		<link
+			href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&display=swap"
+			rel="stylesheet"
+		/>
 	</head>
-	<body>
+	<body class="bg-gray-900">
 		<div
-			class="flex min-h-screen w-screen flex-wrap items-center justify-center gap-10 bg-white p-32"
+			class="flex min-h-screen w-screen flex-wrap items-center justify-center gap-10 bg-gray-900 p-32"
 		>
+			<!-- App Icon - 630x630 -->
 			<div
-				class="relative flex aspect-square h-[630px] flex-col items-center justify-center bg-radial from-emerald-900 via-emerald-950 to-black text-white"
-				style="
-					font-family:
-						Geist Mono,
-						monospace;
-				"
+				class="relative flex aspect-square h-[630px] flex-col items-center justify-center overflow-hidden bg-white text-black shadow-xl shadow-black/5"
+				style="font-family: &quot;Geist Mono&quot;, monospace"
 			>
-				<div class="-ml-6 text-[500px] leading-none font-bold tracking-tighter">
+				<div
+					class="absolute top-0 left-1/4 h-[600px] w-[600px] -translate-y-1/2 rounded-full bg-emerald-500/[0.1] blur-3xl"
+				></div>
+				<div
+					class="absolute right-1/4 bottom-0 h-[500px] w-[500px] translate-y-1/2 rounded-full bg-emerald-500/[0.1] blur-3xl"
+				></div>
+				<div
+					class="relative text-[500px] leading-none font-bold tracking-tighter"
+				>
 					A
 				</div>
 			</div>
+
 			<div class="h-[20px]"></div>
+
+			<!-- OG Image - 600x315 -->
 			<div
-				class="relative flex h-[315px] w-[600px] flex-col items-start justify-end gap-3 bg-radial-[at_25%_75%] from-emerald-900 via-emerald-950 to-black p-12 text-white"
-				style="
-					font-family:
-						Geist Mono,
-						monospace;
-				"
+				class="relative flex h-[315px] w-[600px] flex-col items-start justify-end gap-3 overflow-hidden bg-white p-12 text-gray-900 shadow-xl shadow-black/5"
+				style="font-family: &quot;Geist&quot;, sans-serif"
 			>
-				<div class="text-[80px] leading-none font-bold">Alkalye</div>
-				<div class="text-[24px] leading-none font-bold">
-					a beautiful Markdown Editor
+				<div
+					class="absolute top-0 left-1/4 h-[600px] w-[600px] -translate-y-1/2 rounded-full bg-emerald-500/[0.03] blur-3xl"
+				></div>
+				<div
+					class="absolute right-1/4 bottom-0 h-[500px] w-[500px] translate-y-1/2 rounded-full bg-emerald-500/[0.03] blur-3xl"
+				></div>
+
+				<div class="relative mb-2 flex items-center gap-3">
+					<span class="text-2xl font-semibold tracking-tight text-emerald-600"
+						>Alkalye</span
+					>
 				</div>
-				<div class="text-[24px] leading-none font-bold tracking-widest italic">
-					for the Web
+				<div
+					class="relative text-[56px] leading-none font-semibold tracking-tight"
+				>
+					Write anywhere.<br />
+					<span class="text-gray-500">Stay in flow.</span>
+				</div>
+				<div class="mt-2 flex items-center gap-2 text-sm text-gray-400">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+						></path>
+					</svg>
+					End-to-end encrypted
+					<span class="mx-2">·</span>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"
+						></path>
+					</svg>
+					Works offline
 				</div>
 			</div>
+
 			<div class="h-[20px]"></div>
+
+			<!-- Collab OG Image - 600x315 -->
 			<div
-				class="relative flex h-[315px] w-[600px] flex-col items-start justify-end gap-3 bg-radial-[at_25%_75%] from-emerald-900 via-emerald-950 to-black p-12 text-white"
-				style="
-					font-family:
-						Geist Mono,
-						monospace;
-				"
+				class="relative flex h-[315px] w-[600px] flex-col items-start justify-end gap-3 overflow-hidden bg-white p-12 text-gray-900 shadow-xl shadow-black/5"
+				style="font-family: &quot;Geist&quot;, sans-serif"
 			>
-				<div class="text-[40px] leading-none font-bold">
-					Collaborate with me in <span>Alkalye</span>
+				<div
+					class="absolute top-0 left-1/4 h-[600px] w-[600px] -translate-y-1/2 rounded-full bg-emerald-500/[0.03] blur-3xl"
+				></div>
+				<div
+					class="absolute right-1/4 bottom-0 h-[500px] w-[500px] translate-y-1/2 rounded-full bg-emerald-500/[0.03] blur-3xl"
+				></div>
+
+				<div
+					class="relative text-[36px] leading-none font-semibold tracking-tight"
+				>
+					Collaborate in <span class="text-emerald-600">Alkalye</span>
 				</div>
-				<div class="text-[24px] leading-none font-bold">
-					the beautiful Markdown Editor
+				<div class="relative text-lg leading-relaxed text-gray-500">
+					The beautiful Markdown editor with E2E encryption
 				</div>
-				<div class="text-[24px] leading-none font-bold tracking-widest italic">
-					for the Web
+				<div class="mt-2 flex items-center gap-2 text-sm text-gray-400">
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
+						></path>
+					</svg>
+					End-to-end encrypted
+					<span class="mx-2">·</span>
+					<svg
+						class="h-4 w-4"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<path
+							stroke-linecap="round"
+							stroke-linejoin="round"
+							stroke-width="2"
+							d="M18.364 5.636a9 9 0 010 12.728m0 0l-2.829-2.829m2.829 2.829L21 21M15.536 8.464a5 5 0 010 7.072m0 0l-2.829-2.829m-4.243 2.829a4.978 4.978 0 01-1.414-2.83m-1.414 5.658a9 9 0 01-2.167-9.238m7.824 2.167a1 1 0 111.414 1.414m-1.414-1.414L3 3m8.293 8.293l1.414 1.414"
+						></path>
+					</svg>
+					Works offline
 				</div>
 			</div>
 		</div>

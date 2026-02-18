@@ -4,6 +4,7 @@ import tsparser from "@typescript-eslint/parser"
 import reactHooks from "eslint-plugin-react-hooks"
 import react from "eslint-plugin-react"
 import globals from "globals"
+import astro from "eslint-plugin-astro"
 import { plugin as localPlugin } from "./eslint-local-rules/index.js"
 
 let commonRules = {
@@ -46,6 +47,17 @@ export default [
 		},
 		settings: { react: { version: "detect" } },
 	},
+	...astro.configs.recommended,
+	{
+		files: ["src/**/*.astro"],
+		languageOptions: {
+			parser: astro.parser,
+			parserOptions: { parser: tsparser, extraFileExtensions: [".astro"] },
+			globals: { ...browserGlobals, Astro: "readonly" },
+		},
+		plugins: { "@typescript-eslint": tseslint },
+		rules: { ...tseslint.configs.recommended.rules, ...commonRules },
+	},
 	{
 		ignores: [
 			"dist/",
@@ -54,7 +66,10 @@ export default [
 			".reference/",
 			"*.config.{js,mjs,ts}",
 			"src/routeTree.gen.ts",
+			"src/app/routeTree.gen.ts",
+			".astro/",
 			"eslint-local-rules/",
+			".vercel/",
 		],
 	},
 ]

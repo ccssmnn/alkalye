@@ -1,8 +1,10 @@
 node_modules
 dist
+.astro
 .reference
 .env
 .env.local
 sync-db
 example
 .claude
+.vercel

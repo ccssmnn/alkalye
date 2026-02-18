@@ -3,6 +3,7 @@
 @import "shadcn/tailwind.css";
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
+
 @plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
@@ -13,6 +14,12 @@
 			@slot;
 		}
 	}
+}
+
+h1,
+h2,
+h3 {
+	text-wrap: balance;
 }
 
 input[type="search"]::-webkit-search-cancel-button {
@@ -185,5 +192,25 @@ input[type="search"]::-webkit-search-cancel-button {
 	}
 	to {
 		transform: scaleX(1);
+	}
+}
+
+@keyframes cursor-blink {
+	0%,
+	100% {
+		opacity: 1;
+	}
+	50% {
+		opacity: 0;
+	}
+}
+
+.cursor-blink {
+	animation: cursor-blink 1s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.cursor-blink {
+		animation: none;
 	}
 }

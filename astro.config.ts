@@ -1,32 +1,47 @@
+import { defineConfig, envField } from "astro/config"
+import react from "@astrojs/react"
+import vercel from "@astrojs/vercel"
+import pwa from "@vite-pwa/astro"
 import tailwindcss from "@tailwindcss/vite"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
-import react from "@vitejs/plugin-react"
-import path, { dirname, resolve } from "node:path"
-import { fileURLToPath } from "node:url"
-import { VitePWA } from "vite-plugin-pwa"
-import { defineConfig } from "vitest/config"
-
-const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
-	plugins: [
-		tanstackRouter(),
+	site: "https://www.alkalye.com",
+	adapter: vercel(),
+	devToolbar: { enabled: false },
+	vite: {
+		plugins: [
+			tanstackRouter({
+				target: "react",
+				routesDirectory: "./src/app/routes",
+				generatedRouteTree: "./src/app/routeTree.gen.ts",
+			}),
+			tailwindcss(),
+		] as any,
+		resolve: {
+			alias: {
+				"@": new URL("./src", import.meta.url).pathname,
+				"#app": new URL("./src/app", import.meta.url).pathname,
+				"#www": new URL("./src/www", import.meta.url).pathname,
+			},
+		},
+	},
+	integrations: [
 		react({ babel: { plugins: ["babel-plugin-react-compiler"] } }),
-		tailwindcss(),
-		VitePWA({
+		pwa({
 			registerType: "prompt",
 			manifest: {
-				id: "/alkalye/",
+				id: "/app/",
 				name: "Alkalye",
 				short_name: "Alkalye",
 				description:
 					"A beautiful markdown editor, on the web. E2E encrypted, realtime collaboration and sync, great on desktop and mobile.",
-				start_url: "/",
+				start_url: "/app/",
 				display: "standalone",
 				background_color: "#ffffff",
 				theme_color: "#000000",
 				orientation: "portrait-primary",
-				scope: "/",
+				scope: "/app/",
 				lang: "en",
 				icons: [
 					{
@@ -43,7 +58,7 @@ export default defineConfig({
 				],
 				file_handlers: [
 					{
-						action: "/local",
+						action: "/app/local",
 						accept: {
 							"text/markdown": [".md", ".markdown"],
 							"text/plain": [".txt"],
@@ -53,30 +68,18 @@ export default defineConfig({
 			},
 			workbox: {
 				globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
-				navigateFallback: "index.html",
-				navigateFallbackDenylist: [/^\/invite\.html$/],
-				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024, // 5 MiB
+				navigateFallback: "app/index.html",
+				navigateFallbackDenylist: [/^\/invite$/, /^\/invite\//],
+				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 			},
 		}),
 	],
-	build: {
-		rollupOptions: {
-			input: {
-				main: resolve(__dirname, "index.html"),
-				invite: resolve(__dirname, "invite.html"),
-			},
-		},
-	},
-	resolve: {
-		alias: {
-			"@": path.resolve(__dirname, "./src"),
-		},
-	},
-	test: {
-		exclude: ["node_modules", ".reference"],
-		environment: "jsdom",
-		sequence: {
-			shuffle: false,
+	env: {
+		schema: {
+			PUBLIC_JAZZ_SYNC_SERVER: envField.string({
+				context: "client",
+				access: "public",
+			}),
 		},
 	},
 })

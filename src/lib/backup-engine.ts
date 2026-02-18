@@ -1,4 +1,4 @@
-import { co, Group, Account, FileStream } from "jazz-tools"
+import { co, Group, Account } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
@@ -296,7 +296,7 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 					blob = original.toBlob()
 				}
 			} else if (asset.type === "video" && asset.video?.$isLoaded) {
-				blob = await asset.video.toBlob()
+				blob = asset.video.toBlob()
 			}
 
 			if (blob) {
@@ -820,7 +820,7 @@ async function syncExistingAssetFromFile(
 	}
 
 	if (existing.type === "video") {
-		let stream = await FileStream.createFromBlob(fileAsset.blob, {
+		let stream = await co.fileStream().createFromBlob(fileAsset.blob, {
 			owner: doc.$jazz.owner,
 		})
 		existing.$jazz.applyDiff({
@@ -846,7 +846,7 @@ async function createAssetFromBlob(
 ) {
 	let isVideo = assetFile.blob.type.startsWith("video/")
 	if (isVideo) {
-		let video = await FileStream.createFromBlob(assetFile.blob, {
+		let video = await co.fileStream().createFromBlob(assetFile.blob, {
 			owner,
 		})
 		return VideoAsset.create(

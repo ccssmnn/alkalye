@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react"
-import { co, Group, FileStream } from "jazz-tools"
+import { co, Group } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useAccount } from "jazz-tools/react"
 import { toast } from "sonner"
@@ -313,10 +313,10 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 				newAssets.$jazz.push(newAsset)
 				newAssetId = newAsset.$jazz.id
 			} else if (asset.type === "video" && asset.video?.$isLoaded) {
-				let blob = await asset.video.toBlob()
+				let blob = asset.video.toBlob()
 				if (!blob) continue
 
-				let newVideo = await FileStream.createFromBlob(blob, { owner })
+				let newVideo = await co.fileStream().createFromBlob(blob, { owner })
 
 				let newAsset = VideoAsset.create(
 					{
