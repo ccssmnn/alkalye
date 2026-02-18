@@ -222,7 +222,7 @@ function SearchFilterBar({
 	let { viewMode, setViewMode } = useFolderStore()
 
 	return (
-		<div className="border-border flex items-center gap-1 border-b px-2 pb-2">
+		<div className="border-border flex items-center gap-1 border-b p-2">
 			<div className="relative flex-1">
 				<Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
 				<Input
