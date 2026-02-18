@@ -18,6 +18,8 @@ import {
 import { useCleanupDeleted } from "@/lib/use-cleanup-deleted"
 import { init } from "@plausible-analytics/tracker"
 
+export { PWA, buildSyncConfig }
+
 init({ domain: "alkalye.com" })
 
 let router = createRouter({
@@ -33,6 +35,44 @@ declare module "@tanstack/react-router" {
 	interface Register {
 		router: typeof router
 	}
+}
+
+type JazzSyncProps = Parameters<typeof JazzReactProvider>[0]["sync"]
+type JazzSyncConfig = NonNullable<JazzSyncProps>
+type SyncPeer = JazzSyncConfig["peer"]
+
+function buildSyncConfig(): JazzSyncConfig {
+	let syncServer = PUBLIC_JAZZ_SYNC_SERVER
+	if (!isSyncPeer(syncServer)) {
+		throw new Error("PUBLIC_JAZZ_SYNC_SERVER must be a ws:// or wss:// URL")
+	}
+
+	let syncConfig: JazzSyncConfig = {
+		peer: syncServer,
+		when: "always",
+	}
+
+	return syncConfig
+}
+
+function PWA() {
+	return (
+		<StrictMode>
+			<JazzReactProvider
+				AccountSchema={UserAccount}
+				sync={buildSyncConfig()}
+				onAnonymousAccountDiscarded={migrateAnonymousData}
+				fallback={<SplashScreenStatic />}
+			>
+				<RouterWithJazz />
+			</JazzReactProvider>
+		</StrictMode>
+	)
+}
+
+function isSyncPeer(value: string | undefined): value is SyncPeer {
+	if (!value) return false
+	return value.startsWith("ws://") || value.startsWith("wss://")
 }
 
 function ContextPWAProvider({ children }: { children: React.ReactNode }) {
@@ -61,41 +101,3 @@ function RouterWithJazz() {
 		</ContextPWAProvider>
 	)
 }
-
-export function PWA() {
-	return (
-		<StrictMode>
-			<JazzReactProvider
-				AccountSchema={UserAccount}
-				sync={buildSyncConfig()}
-				onAnonymousAccountDiscarded={migrateAnonymousData}
-				fallback={<SplashScreenStatic />}
-			>
-				<RouterWithJazz />
-			</JazzReactProvider>
-		</StrictMode>
-	)
-}
-
-function buildSyncConfig(): JazzSyncConfig {
-	let syncServer = PUBLIC_JAZZ_SYNC_SERVER
-	if (!isSyncPeer(syncServer)) {
-		throw new Error("PUBLIC_JAZZ_SYNC_SERVER must be a ws:// or wss:// URL")
-	}
-
-	let syncConfig: JazzSyncConfig = {
-		peer: syncServer,
-		when: "always",
-	}
-
-	return syncConfig
-}
-
-function isSyncPeer(value: string | undefined): value is SyncPeer {
-	if (!value) return false
-	return value.startsWith("ws://") || value.startsWith("wss://")
-}
-
-type JazzSyncProps = Parameters<typeof JazzReactProvider>[0]["sync"]
-type JazzSyncConfig = NonNullable<JazzSyncProps>
-type SyncPeer = JazzSyncConfig["peer"]
