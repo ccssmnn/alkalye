@@ -6,6 +6,7 @@ import tailwindcss from "@tailwindcss/vite"
 import { tanstackRouter } from "@tanstack/router-plugin/vite"
 
 export default defineConfig({
+	site: "https://www.alkalye.com",
 	adapter: vercel(),
 	devToolbar: { enabled: false },
 	vite: {
