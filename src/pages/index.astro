@@ -90,6 +90,11 @@ let aiWorkflow = [
 <!doctype html>
 <html lang="en" class="bg-background text-foreground">
 	<head>
+		<script is:inline>
+			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+				document.documentElement.classList.add("dark")
+			}
+		</script>
 		<title>{pageTitle}</title>
 		<meta charset="UTF-8" />
 		<meta
@@ -102,11 +107,6 @@ let aiWorkflow = [
 		<link rel="apple-touch-icon" href="/icons/alkalye-icon.png" />
 		<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
 		<meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
-		<script is:inline>
-			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
-				document.documentElement.classList.add("dark")
-			}
-		</script>
 		<script is:inline>
 			let isStandalone = window.matchMedia("(display-mode: standalone)").matches
 			let isIOSStandalone = window.navigator.standalone === true
