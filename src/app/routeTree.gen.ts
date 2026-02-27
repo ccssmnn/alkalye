@@ -17,6 +17,7 @@ import { Route as LocalRouteImport } from './routes/local'
 import { Route as InviteRouteImport } from './routes/invite'
 import { Route as ImprintRouteImport } from './routes/imprint'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AgentsRouteImport } from './routes/agents'
 import { Route as TutorSlugRouteImport } from './routes/tutor.$slug'
 import { Route as SpacesSpaceIdIndexRouteImport } from './routes/spaces.$spaceId.index'
 import { Route as DocIdIndexRouteImport } from './routes/doc.$id.index'
@@ -67,6 +68,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgentsRoute = AgentsRouteImport.update({
+  id: '/agents',
+  path: '/agents',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TutorSlugRoute = TutorSlugRouteImport.update({
   id: '/tutor/$slug',
   path: '/tutor/$slug',
@@ -115,6 +121,7 @@ const SpacesSpaceIdDocIdIndexRoute = SpacesSpaceIdDocIdIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRoute
   '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
   '/local': typeof LocalRoute
@@ -134,6 +141,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRoute
   '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
   '/local': typeof LocalRoute
@@ -154,6 +162,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agents': typeof AgentsRoute
   '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
   '/local': typeof LocalRoute
@@ -175,6 +184,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agents'
     | '/imprint'
     | '/invite'
     | '/local'
@@ -194,6 +204,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/agents'
     | '/imprint'
     | '/invite'
     | '/local'
@@ -213,6 +224,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agents'
     | '/imprint'
     | '/invite'
     | '/local'
@@ -233,6 +245,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgentsRoute: typeof AgentsRoute
   ImprintRoute: typeof ImprintRoute
   InviteRoute: typeof InviteRoute
   LocalRoute: typeof LocalRoute
@@ -309,6 +322,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agents': {
+      id: '/agents'
+      path: '/agents'
+      fullPath: '/agents'
+      preLoaderRoute: typeof AgentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tutor/$slug': {
       id: '/tutor/$slug'
       path: '/tutor/$slug'
@@ -377,6 +397,7 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgentsRoute: AgentsRoute,
   ImprintRoute: ImprintRoute,
   InviteRoute: InviteRoute,
   LocalRoute: LocalRoute,
