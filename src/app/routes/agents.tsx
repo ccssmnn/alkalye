@@ -1,11 +1,27 @@
-import { useMemo, useState, useCallback, useEffect, type FormEvent } from "react"
+import { useState, type FormEvent } from "react"
 import { co } from "jazz-tools"
 import { createFileRoute } from "@tanstack/react-router"
-import { useAccount } from "jazz-tools/react"
-import { UserAccount, Space, Document, createSpaceDocument } from "@/schema"
+import { useAccount, usePassphraseAuth } from "jazz-tools/react"
+import { UserAccount, Space, Document, createSpaceDocument, getRandomWriterName } from "@/schema"
 import { createPersonalDocument } from "@/lib/documents"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { parseFrontmatter } from "@/editor/frontmatter"
+import { wordlist } from "@/lib/wordlist"
+import {
+	AGENT_ACTIONS,
+	AGENT_ACTION_LABELS,
+	type AgentAction,
+	type AgentActionParams,
+	getActionFormFields,
+	parseActionParams,
+	parseAgentAction,
+	runAuthAction,
+} from "./agents-contract"
+import {
+	AGENTS_STABLE_IDS,
+	makeAgentFieldId,
+	makeAgentFieldTestId,
+} from "./agents-automation"
 
 export { Route }
 
@@ -13,46 +29,9 @@ let Route = createFileRoute("/agents")({
 	component: AgentsRoute,
 })
 
-type AgentAction =
-	| "listSpaces"
-	| "listDocs"
-	| "getDoc"
-	| "createDoc"
-	| "updateDoc"
-	| "appendDoc"
-	| "setFrontmatter"
-	| "findDocByTitle"
-	| "clearLog"
-
-type ActionParams = {
-	spaceId?: string
-	docId?: string
-	title?: string
-	content?: string
-	query?: string
-	frontmatterJson?: string
-}
-
-type AgentRequest = {
-	type: "alkalye:agents:request"
-	requestId: string
-	action: AgentAction
-	params?: ActionParams
-}
-
-type AgentResponse = {
-	type: "alkalye:agents:response"
-	requestId: string
-	action: AgentAction
-	ok: boolean
-	result?: unknown
-	error?: string
-}
-
 type LogEntry = {
 	id: string
 	at: string
-	source: "ui" | "message"
 	requestId: string
 	action: AgentAction
 	ok: boolean
@@ -65,24 +44,79 @@ let meResolve = {
 		documents: { $each: { content: true } },
 		spaces: { $each: { documents: { $each: { content: true } } } },
 	},
-} as const
+}
 
-/**
- * /agents prototype
- *
- * Message protocol:
- * - request:  { type: "alkalye:agents:request", requestId, action, params }
- * - response: { type: "alkalye:agents:response", requestId, action, ok, result|error }
- */
 function AgentsRoute() {
 	let me = useAccount(UserAccount, { resolve: meResolve })
+	let auth = usePassphraseAuth({ wordlist })
 	let [action, setAction] = useState<AgentAction>("listSpaces")
-	let [params, setParams] = useState<ActionParams>({})
+	let [params, setParams] = useState<Record<string, string>>({})
 	let [logs, setLogs] = useState<LogEntry[]>([])
 
-	let actionFields = useMemo(() => getActionFields(action), [action])
+	let actionFields = getActionFormFields(action)
 
-	let appendLog = useCallback((entry: Omit<LogEntry, "id" | "at">) => {
+	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+		event.preventDefault()
+		let requestId = crypto.randomUUID()
+		let parsed = parseActionParams(action, params)
+		if (!parsed.ok) {
+			appendLog({
+				requestId,
+				action,
+				ok: false,
+				error: parsed.error,
+			})
+			return
+		}
+		await runAction(action, parsed.data, requestId)
+	}
+
+	async function runAction(
+		actionToRun: AgentAction,
+		input: AgentActionParams,
+		requestId: string,
+	) {
+		if (actionToRun === "clearLog") {
+			setLogs([])
+			return
+		}
+
+		try {
+			if (actionToRun === "createAccount" || actionToRun === "signIn") {
+				let result = await runAuthAction(actionToRun, input, auth, getRandomWriterName)
+				appendLog({
+					requestId,
+					action: actionToRun,
+					ok: true,
+					result,
+				})
+				return
+			}
+
+			let loadedMe = await me.$jazz.ensureLoaded({ resolve: meResolve })
+			if (!loadedMe.root) {
+				throw new Error("User root is not loaded")
+			}
+
+			let result = await executeAction(loadedMe, actionToRun, input)
+			appendLog({
+				requestId,
+				action: actionToRun,
+				ok: true,
+				result,
+			})
+		} catch (error) {
+			let message = error instanceof Error ? error.message : String(error)
+			appendLog({
+				requestId,
+				action: actionToRun,
+				ok: false,
+				error: message,
+			})
+		}
+	}
+
+	function appendLog(entry: Omit<LogEntry, "id" | "at">) {
 		setLogs(current => [
 			{
 				id: crypto.randomUUID(),
@@ -91,101 +125,25 @@ function AgentsRoute() {
 			},
 			...current,
 		])
-	}, [])
-
-	let runAction = useCallback(
-		async (
-			actionToRun: AgentAction,
-			input: ActionParams,
-			source: "ui" | "message",
-			requestId: string,
-		): Promise<AgentResponse> => {
-			if (actionToRun === "clearLog") {
-				setLogs([])
-				return {
-					type: "alkalye:agents:response",
-					requestId,
-					action: actionToRun,
-					ok: true,
-					result: { cleared: true },
-				}
-			}
-
-			try {
-				let loadedMe = await me.$jazz.ensureLoaded({ resolve: meResolve })
-				if (!loadedMe.root) {
-					throw new Error("User root is not loaded")
-				}
-
-				let result = await executeAction(loadedMe, actionToRun, input)
-				appendLog({
-					source,
-					requestId,
-					action: actionToRun,
-					ok: true,
-					result,
-				})
-				return {
-					type: "alkalye:agents:response",
-					requestId,
-					action: actionToRun,
-					ok: true,
-					result,
-				}
-			} catch (error) {
-				let message = error instanceof Error ? error.message : String(error)
-				appendLog({
-					source,
-					requestId,
-					action: actionToRun,
-					ok: false,
-					error: message,
-				})
-				return {
-					type: "alkalye:agents:response",
-					requestId,
-					action: actionToRun,
-					ok: false,
-					error: message,
-				}
-			}
-		},
-		[appendLog, me],
-	)
-
-	useEffect(() => {
-		async function onMessage(event: MessageEvent<unknown>) {
-			let data = event.data
-			if (!isAgentRequest(data)) return
-
-			let response = await runAction(
-				data.action,
-				data.params ?? {},
-				"message",
-				data.requestId,
-			)
-
-			if (event.source && "postMessage" in event.source) {
-				;(event.source as Window).postMessage(response, "*")
-			}
-		}
-
-		window.addEventListener("message", onMessage)
-		return () => window.removeEventListener("message", onMessage)
-	}, [runAction])
-
-	async function handleSubmit(e: FormEvent<HTMLFormElement>) {
-		e.preventDefault()
-		let requestId = crypto.randomUUID()
-		await runAction(action, params, "ui", requestId)
 	}
 
-	function updateParam<K extends keyof ActionParams>(key: K, value: string) {
+	function handleActionChange(value: string) {
+		let nextAction = parseAgentAction(value)
+		if (!nextAction) return
+		setAction(nextAction)
+		setParams({})
+	}
+
+	function updateParam(key: string, value: string) {
 		setParams(current => ({ ...current, [key]: value }))
 	}
 
 	return (
-		<main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4" data-testid="agents-page" id="agents-page">
+		<main
+			className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4"
+			data-testid={AGENTS_STABLE_IDS.page}
+			id={AGENTS_STABLE_IDS.page}
+		>
 			<title>Agents</title>
 			<h1 className="text-xl font-semibold">Agents</h1>
 			<p className="text-muted-foreground text-sm">
@@ -193,52 +151,56 @@ function AgentsRoute() {
 			</p>
 
 			<form
-				id="agents-form"
-				data-testid="agents-form"
+				id={AGENTS_STABLE_IDS.form}
+				data-testid={AGENTS_STABLE_IDS.form}
 				onSubmit={handleSubmit}
 				className="border-border grid gap-3 rounded border p-3"
 			>
-				<label className="grid gap-1" htmlFor="agents-action-select">
+				<label className="grid gap-1" htmlFor={AGENTS_STABLE_IDS.actionSelect}>
 					<span className="text-sm font-medium">Action</span>
 					<select
-						id="agents-action-select"
-						data-testid="agents-action-select"
+						id={AGENTS_STABLE_IDS.actionSelect}
+						data-testid={AGENTS_STABLE_IDS.actionSelect}
 						value={action}
-						onChange={e => setAction(e.target.value as AgentAction)}
+						onChange={event => handleActionChange(event.target.value)}
 						className="border-border bg-background rounded border px-2 py-1 text-sm"
 					>
-						{ACTIONS.map(actionName => (
+						{AGENT_ACTIONS.map(actionName => (
 							<option key={actionName} value={actionName}>
-								{actionName}
+								{AGENT_ACTION_LABELS[actionName]}
 							</option>
 						))}
 					</select>
 				</label>
 
 				<div
-					id="agents-dynamic-fields"
-					data-testid="agents-dynamic-fields"
+					id={AGENTS_STABLE_IDS.dynamicFields}
+					data-testid={AGENTS_STABLE_IDS.dynamicFields}
 					className="grid gap-2"
 				>
 					{actionFields.map(field => (
-						<label key={field.key} className="grid gap-1" htmlFor={`agents-field-${field.key}`}>
+						<label
+							key={field.key}
+							className="grid gap-1"
+							htmlFor={makeAgentFieldId(field.key)}
+						>
 							<span className="text-sm font-medium">{field.label}</span>
 							{field.multiline ? (
 								<textarea
-									id={`agents-field-${field.key}`}
-									data-testid={`agents-field-${field.key}`}
+									id={makeAgentFieldId(field.key)}
+									data-testid={makeAgentFieldTestId(field.key)}
 									value={params[field.key] ?? ""}
-									onChange={e => updateParam(field.key, e.target.value)}
+									onChange={event => updateParam(field.key, event.target.value)}
 									placeholder={field.placeholder}
 									className="border-border bg-background min-h-24 rounded border px-2 py-1 font-mono text-xs"
 								/>
 							) : (
 								<input
-									id={`agents-field-${field.key}`}
-									data-testid={`agents-field-${field.key}`}
+									id={makeAgentFieldId(field.key)}
+									data-testid={makeAgentFieldTestId(field.key)}
 									type="text"
 									value={params[field.key] ?? ""}
-									onChange={e => updateParam(field.key, e.target.value)}
+									onChange={event => updateParam(field.key, event.target.value)}
 									placeholder={field.placeholder}
 									className="border-border bg-background rounded border px-2 py-1 text-sm"
 								/>
@@ -248,8 +210,8 @@ function AgentsRoute() {
 				</div>
 
 				<button
-					id="agents-submit"
-					data-testid="agents-submit"
+					id={AGENTS_STABLE_IDS.submit}
+					data-testid={AGENTS_STABLE_IDS.submit}
 					type="submit"
 					className="bg-primary text-primary-foreground w-fit rounded px-3 py-1.5 text-sm"
 				>
@@ -257,20 +219,29 @@ function AgentsRoute() {
 				</button>
 			</form>
 
-			<section className="border-border rounded border p-3" id="agents-log" data-testid="agents-log">
+			<section
+				className="border-border rounded border p-3"
+				id={AGENTS_STABLE_IDS.log}
+				data-testid={AGENTS_STABLE_IDS.log}
+			>
 				<h2 className="mb-2 text-sm font-semibold">Result log</h2>
-				<ul className="grid gap-2" id="agents-log-list" data-testid="agents-log-list">
-					{logs.length === 0 && <li className="text-muted-foreground text-sm">No results yet.</li>}
+				<ul
+					className="grid gap-2"
+					id={AGENTS_STABLE_IDS.logList}
+					data-testid={AGENTS_STABLE_IDS.logList}
+				>
+					{logs.length === 0 && (
+						<li className="text-muted-foreground text-sm">No results yet.</li>
+					)}
 					{logs.map(entry => (
 						<li
 							key={entry.id}
 							className="bg-muted/30 rounded border p-2"
-							data-testid="agents-log-entry"
+							data-testid={AGENTS_STABLE_IDS.logEntry}
 						>
 							<div className="mb-1 flex flex-wrap gap-2 text-xs">
 								<strong>{entry.action}</strong>
 								<span>{entry.ok ? "ok" : "error"}</span>
-								<span>source: {entry.source}</span>
 								<span>requestId: {entry.requestId}</span>
 							</div>
 							<pre className="overflow-auto text-xs">
@@ -292,86 +263,10 @@ function AgentsRoute() {
 	)
 }
 
-let ACTIONS: AgentAction[] = [
-	"listSpaces",
-	"listDocs",
-	"getDoc",
-	"createDoc",
-	"updateDoc",
-	"appendDoc",
-	"setFrontmatter",
-	"findDocByTitle",
-	"clearLog",
-]
-
-function getActionFields(action: AgentAction): Array<{
-	key: keyof ActionParams
-	label: string
-	placeholder?: string
-	multiline?: boolean
-}> {
-	switch (action) {
-		case "listDocs":
-			return [
-				{
-					key: "spaceId",
-					label: "spaceId (optional)",
-					placeholder: "Leave empty to list personal docs",
-				},
-			]
-		case "getDoc":
-			return [{ key: "docId", label: "docId" }]
-		case "createDoc":
-			return [
-				{ key: "spaceId", label: "spaceId (optional)" },
-				{ key: "title", label: "title (optional)" },
-				{ key: "content", label: "content", multiline: true },
-			]
-		case "updateDoc":
-			return [
-				{ key: "docId", label: "docId" },
-				{ key: "content", label: "content", multiline: true },
-			]
-		case "appendDoc":
-			return [
-				{ key: "docId", label: "docId" },
-				{ key: "content", label: "contentToAppend", multiline: true },
-			]
-		case "setFrontmatter":
-			return [
-				{ key: "docId", label: "docId" },
-				{
-					key: "frontmatterJson",
-					label: "frontmatter JSON",
-					placeholder: '{"title":"New title","pinned":true}',
-					multiline: true,
-				},
-			]
-		case "findDocByTitle":
-			return [
-				{ key: "query", label: "query" },
-				{ key: "spaceId", label: "spaceId (optional)" },
-			]
-		case "clearLog":
-		case "listSpaces":
-			return []
-	}
-}
-
-function isAgentRequest(value: unknown): value is AgentRequest {
-	if (!value || typeof value !== "object") return false
-	let maybe = value as Partial<AgentRequest>
-	return (
-		maybe.type === "alkalye:agents:request" &&
-		typeof maybe.requestId === "string" &&
-		typeof maybe.action === "string"
-	)
-}
-
 async function executeAction(
 	me: co.loaded<typeof UserAccount, typeof meResolve>,
 	action: AgentAction,
-	params: ActionParams,
+	params: AgentActionParams,
 ): Promise<unknown> {
 	switch (action) {
 		case "listSpaces": {
@@ -477,7 +372,7 @@ async function executeAction(
 		case "findDocByTitle": {
 			let query = (params.query ?? "").trim().toLowerCase()
 			if (!query) throw new Error("query is required")
-			let docs = [] as Array<{ id: string; content: string; scope: string }>
+			let docs: Array<{ id: string; content: string; scope: string }> = []
 			if (params.spaceId) {
 				let space = await Space.load(params.spaceId, {
 					resolve: { documents: { $each: { content: true } } },
@@ -509,8 +404,10 @@ async function executeAction(
 				}))
 				.filter(doc => doc.title.toLowerCase().includes(query))
 		}
+		case "createAccount":
+		case "signIn":
 		case "clearLog":
-			return { cleared: true }
+			return { handledInRoute: true }
 	}
 }
 
@@ -524,17 +421,20 @@ function parseFrontmatterPatch(input: string): Record<string, string | boolean |
 	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
 		throw new Error("frontmatterJson must be a JSON object")
 	}
-	let entries = Object.entries(parsed as Record<string, unknown>)
+	let entries = Object.entries(parsed)
 	for (let [, value] of entries) {
-		if (
-			value !== null &&
-			typeof value !== "string" &&
-			typeof value !== "boolean"
-		) {
+		if (value !== null && typeof value !== "string" && typeof value !== "boolean") {
 			throw new Error("frontmatter values must be string, boolean or null")
 		}
 	}
-	return parsed as Record<string, string | boolean | null>
+
+	let patch: Record<string, string | boolean | null> = {}
+	for (let [key, value] of entries) {
+		if (value === null || typeof value === "string" || typeof value === "boolean") {
+			patch[key] = value
+		}
+	}
+	return patch
 }
 
 function applyFrontmatterPatch(

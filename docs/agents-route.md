@@ -1,20 +1,13 @@
 # `/agents` prototype route
 
-This route provides a browser-native automation surface for humans and agents.
+This route provides a browser-native automation surface for humans and agents through forms only.
 
-## Message protocol
+## Form-driven contract
 
-`window.postMessage` requests:
-
-```ts
-{ type: "alkalye:agents:request", requestId, action, params }
-```
-
-Response mirrors request id for correlation:
-
-```ts
-{ type: "alkalye:agents:response", requestId, action, ok, result?: unknown, error?: string }
-```
+- No `window.postMessage` protocol.
+- Actions are submitted through `agents-form`.
+- Every action has a dedicated Zod schema in `src/app/routes/agents-contract.ts`.
+- Dynamic fields are derived from those schemas.
 
 ## Available actions
 
@@ -26,14 +19,20 @@ Response mirrors request id for correlation:
 - `appendDoc`
 - `setFrontmatter`
 - `findDocByTitle`
+- `createAccount`
+- `signIn`
 - `clearLog`
 
 ## UI contract
 
-The page contains stable IDs / `data-testid` attributes for automation:
+Stable IDs / `data-testid` attributes for automation:
 
+- `agents-page`
+- `agents-form`
 - `agents-action-select`
 - `agents-dynamic-fields`
 - `agents-submit`
+- `agents-log`
 - `agents-log-list`
 - `agents-log-entry`
+- `agents-field-<fieldKey>`
