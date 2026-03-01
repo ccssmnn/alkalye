@@ -1,27 +1,26 @@
-import { useState, type FormEvent } from "react"
-import { co } from "jazz-tools"
+import { useEffect, useState, type FormEvent } from "react"
 import { createFileRoute } from "@tanstack/react-router"
 import { useAccount, usePassphraseAuth } from "jazz-tools/react"
-import { UserAccount, Space, Document, createSpaceDocument, getRandomWriterName } from "@/schema"
-import { createPersonalDocument } from "@/lib/documents"
-import { getDocumentTitle } from "@/lib/document-utils"
-import { parseFrontmatter } from "@/editor/frontmatter"
+import { UserAccount } from "@/schema"
 import { wordlist } from "@/lib/wordlist"
 import {
 	AGENT_ACTIONS,
-	AGENT_ACTION_LABELS,
 	type AgentAction,
 	type AgentActionParams,
+	AGENT_DEFAULT_CONTEXT,
+	buildAgentUtilities,
+	executeAgentAction,
 	getActionFormFields,
+	getActionLabel,
+	getActionDescription,
 	parseActionParams,
 	parseAgentAction,
-	runAuthAction,
-} from "./agents-contract"
+} from "@/app/agents/actions"
 import {
 	AGENTS_STABLE_IDS,
 	makeAgentFieldId,
 	makeAgentFieldTestId,
-} from "./agents-automation"
+} from "@/app/agents/automation"
 
 export { Route }
 
@@ -39,15 +38,14 @@ type LogEntry = {
 	error?: string
 }
 
-let meResolve = {
-	root: {
-		documents: { $each: { content: true } },
-		spaces: { $each: { documents: { $each: { content: true } } } },
-	},
+declare global {
+	interface Window {
+		alkalyeAgents?: ReturnType<typeof buildAgentUtilities>
+	}
 }
 
 function AgentsRoute() {
-	let me = useAccount(UserAccount, { resolve: meResolve })
+	let me = useAccount(UserAccount, { resolve: AGENT_DEFAULT_CONTEXT.meResolve })
 	let auth = usePassphraseAuth({ wordlist })
 	let [action, setAction] = useState<AgentAction>("listSpaces")
 	let [params, setParams] = useState<Record<string, string>>({})
@@ -55,64 +53,68 @@ function AgentsRoute() {
 
 	let actionFields = getActionFormFields(action)
 
+	useEffect(() => {
+		for (let field of actionFields) {
+			if (!field.defaultValue) continue
+			setParams(current => {
+				if (current[field.key] !== undefined) return current
+				return { ...current, [field.key]: field.defaultValue! }
+			})
+		}
+	}, [actionFields])
+
+	async function runAction(
+		actionToRun: AgentAction,
+		input: AgentActionParams,
+		requestId = crypto.randomUUID(),
+	) {
+		try {
+			let loadedMe = await (me as any).$jazz.ensureLoaded({ resolve: AGENT_DEFAULT_CONTEXT.meResolve })
+			if (!loadedMe.root) {
+				throw new Error("User root is not loaded")
+			}
+
+			let result = await executeAgentAction(actionToRun, input, {
+				me: loadedMe,
+				auth,
+				getFallbackName: AGENT_DEFAULT_CONTEXT.defaultFallbackName,
+			})
+
+			if (result && typeof result === "object" && "clearLog" in result) {
+				setLogs([])
+				return result
+			}
+
+			appendLog({ requestId, action: actionToRun, ok: true, result })
+			return result
+		} catch (error) {
+			let message = error instanceof Error ? error.message : String(error)
+			appendLog({ requestId, action: actionToRun, ok: false, error: message })
+			throw error
+		}
+	}
+
+	useEffect(() => {
+		window.alkalyeAgents = buildAgentUtilities((nextAction, nextParams = {}) =>
+			runAction(nextAction, nextParams),
+		)
+		return () => {
+			delete window.alkalyeAgents
+		}
+	}, [me, auth])
+
 	async function handleSubmit(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault()
 		let requestId = crypto.randomUUID()
 		let parsed = parseActionParams(action, params)
 		if (!parsed.ok) {
-			appendLog({
-				requestId,
-				action,
-				ok: false,
-				error: parsed.error,
-			})
+			appendLog({ requestId, action, ok: false, error: parsed.error })
 			return
 		}
-		await runAction(action, parsed.data, requestId)
-	}
-
-	async function runAction(
-		actionToRun: AgentAction,
-		input: AgentActionParams,
-		requestId: string,
-	) {
-		if (actionToRun === "clearLog") {
-			setLogs([])
-			return
-		}
-
 		try {
-			if (actionToRun === "createAccount" || actionToRun === "signIn") {
-				let result = await runAuthAction(actionToRun, input, auth, getRandomWriterName)
-				appendLog({
-					requestId,
-					action: actionToRun,
-					ok: true,
-					result,
-				})
-				return
-			}
-
-			let loadedMe = await me.$jazz.ensureLoaded({ resolve: meResolve })
-			if (!loadedMe.root) {
-				throw new Error("User root is not loaded")
-			}
-
-			let result = await executeAction(loadedMe, actionToRun, input)
-			appendLog({
-				requestId,
-				action: actionToRun,
-				ok: true,
-				result,
-			})
-		} catch (error) {
-			let message = error instanceof Error ? error.message : String(error)
-			appendLog({
-				requestId,
-				action: actionToRun,
-				ok: false,
-				error: message,
-			})
+			await runAction(action, parsed.data, requestId)
+		} catch {
+			// logging is handled in runAction
 		}
 	}
 
@@ -167,11 +169,12 @@ function AgentsRoute() {
 					>
 						{AGENT_ACTIONS.map(actionName => (
 							<option key={actionName} value={actionName}>
-								{AGENT_ACTION_LABELS[actionName]}
+								{getActionLabel(actionName)}
 							</option>
 						))}
 					</select>
 				</label>
+				<p className="text-muted-foreground text-xs">{getActionDescription(action)}</p>
 
 				<div
 					id={AGENTS_STABLE_IDS.dynamicFields}
@@ -179,13 +182,9 @@ function AgentsRoute() {
 					className="grid gap-2"
 				>
 					{actionFields.map(field => (
-						<label
-							key={field.key}
-							className="grid gap-1"
-							htmlFor={makeAgentFieldId(field.key)}
-						>
+						<label key={field.key} className="grid gap-1" htmlFor={makeAgentFieldId(field.key)}>
 							<span className="text-sm font-medium">{field.label}</span>
-							{field.multiline ? (
+							{field.kind === "textarea" ? (
 								<textarea
 									id={makeAgentFieldId(field.key)}
 									data-testid={makeAgentFieldTestId(field.key)}
@@ -194,6 +193,20 @@ function AgentsRoute() {
 									placeholder={field.placeholder}
 									className="border-border bg-background min-h-24 rounded border px-2 py-1 font-mono text-xs"
 								/>
+							) : field.kind === "select" ? (
+								<select
+									id={makeAgentFieldId(field.key)}
+									data-testid={makeAgentFieldTestId(field.key)}
+									value={params[field.key] ?? field.defaultValue ?? ""}
+									onChange={event => updateParam(field.key, event.target.value)}
+									className="border-border bg-background rounded border px-2 py-1 text-sm"
+								>
+									{field.options?.map(option => (
+										<option key={option.value} value={option.value}>
+											{option.label}
+										</option>
+									))}
+								</select>
 							) : (
 								<input
 									id={makeAgentFieldId(field.key)}
@@ -225,14 +238,8 @@ function AgentsRoute() {
 				data-testid={AGENTS_STABLE_IDS.log}
 			>
 				<h2 className="mb-2 text-sm font-semibold">Result log</h2>
-				<ul
-					className="grid gap-2"
-					id={AGENTS_STABLE_IDS.logList}
-					data-testid={AGENTS_STABLE_IDS.logList}
-				>
-					{logs.length === 0 && (
-						<li className="text-muted-foreground text-sm">No results yet.</li>
-					)}
+				<ul className="grid gap-2" id={AGENTS_STABLE_IDS.logList} data-testid={AGENTS_STABLE_IDS.logList}>
+					{logs.length === 0 && <li className="text-muted-foreground text-sm">No results yet.</li>}
 					{logs.map(entry => (
 						<li
 							key={entry.id}
@@ -261,207 +268,4 @@ function AgentsRoute() {
 			</section>
 		</main>
 	)
-}
-
-async function executeAction(
-	me: co.loaded<typeof UserAccount, typeof meResolve>,
-	action: AgentAction,
-	params: AgentActionParams,
-): Promise<unknown> {
-	switch (action) {
-		case "listSpaces": {
-			let spaces = me.root.spaces?.$isLoaded ? [...me.root.spaces] : []
-			return spaces
-				.filter(space => space?.$isLoaded)
-				.map(space => ({
-					id: space.$jazz.id,
-					name: space.name,
-					docCount: space.documents?.length ?? 0,
-				}))
-		}
-		case "listDocs": {
-			if (params.spaceId) {
-				let space = await Space.load(params.spaceId, {
-					resolve: { documents: { $each: { content: true } } },
-				})
-				if (!space?.$isLoaded || !space.documents?.$isLoaded) {
-					throw new Error("Space not found or inaccessible")
-				}
-				return [...space.documents]
-					.filter(doc => doc?.$isLoaded)
-					.map(doc => ({
-						id: doc.$jazz.id,
-						title: getDocumentTitle(doc.content?.toString() ?? ""),
-						updatedAt: doc.updatedAt,
-					}))
-			}
-			return [...me.root.documents]
-				.filter(doc => doc?.$isLoaded)
-				.map(doc => ({
-					id: doc.$jazz.id,
-					title: getDocumentTitle(doc.content?.toString() ?? ""),
-					updatedAt: doc.updatedAt,
-				}))
-		}
-		case "getDoc": {
-			if (!params.docId) throw new Error("docId is required")
-			let doc = await Document.load(params.docId, { resolve: { content: true } })
-			if (!doc?.$isLoaded) throw new Error("Document not found")
-			return {
-				id: doc.$jazz.id,
-				title: getDocumentTitle(doc.content?.toString() ?? ""),
-				content: doc.content?.toString() ?? "",
-				updatedAt: doc.updatedAt,
-			}
-		}
-		case "createDoc": {
-			let title = (params.title ?? "").trim()
-			let content = params.content ?? ""
-			if (title && !content.trim()) {
-				content = `# ${title}\n\n`
-			}
-			if (params.spaceId) {
-				let space = await Space.load(params.spaceId, { resolve: { documents: true } })
-				if (!space?.$isLoaded || !space.documents?.$isLoaded) {
-					throw new Error("Space not found or inaccessible")
-				}
-				let newDoc = createSpaceDocument(space.$jazz.owner, content)
-				space.documents.$jazz.push(newDoc)
-				return { id: newDoc.$jazz.id, spaceId: space.$jazz.id }
-			}
-			let newDoc = await createPersonalDocument(me, content)
-			return { id: newDoc.$jazz.id }
-		}
-		case "updateDoc": {
-			if (!params.docId) throw new Error("docId is required")
-			if (params.content === undefined) throw new Error("content is required")
-			let doc = await Document.load(params.docId, { resolve: { content: true } })
-			if (!doc?.$isLoaded) throw new Error("Document not found")
-			doc.content?.applyDiff(doc.content.toString(), params.content)
-			doc.$jazz.set("updatedAt", new Date())
-			return { id: doc.$jazz.id, updatedAt: doc.updatedAt }
-		}
-		case "appendDoc": {
-			if (!params.docId) throw new Error("docId is required")
-			if (!params.content) throw new Error("content is required")
-			let doc = await Document.load(params.docId, { resolve: { content: true } })
-			if (!doc?.$isLoaded) throw new Error("Document not found")
-			let current = doc.content?.toString() ?? ""
-			let separator = current.endsWith("\n") || current.length === 0 ? "" : "\n"
-			let next = `${current}${separator}${params.content}`
-			doc.content?.applyDiff(current, next)
-			doc.$jazz.set("updatedAt", new Date())
-			return { id: doc.$jazz.id, updatedAt: doc.updatedAt }
-		}
-		case "setFrontmatter": {
-			if (!params.docId) throw new Error("docId is required")
-			if (!params.frontmatterJson) throw new Error("frontmatterJson is required")
-			let patch = parseFrontmatterPatch(params.frontmatterJson)
-			let doc = await Document.load(params.docId, { resolve: { content: true } })
-			if (!doc?.$isLoaded) throw new Error("Document not found")
-			let current = doc.content?.toString() ?? ""
-			let next = applyFrontmatterPatch(current, patch)
-			doc.content?.applyDiff(current, next)
-			doc.$jazz.set("updatedAt", new Date())
-			return {
-				id: doc.$jazz.id,
-				updatedAt: doc.updatedAt,
-				frontmatter: parseFrontmatter(next).frontmatter,
-			}
-		}
-		case "findDocByTitle": {
-			let query = (params.query ?? "").trim().toLowerCase()
-			if (!query) throw new Error("query is required")
-			let docs: Array<{ id: string; content: string; scope: string }> = []
-			if (params.spaceId) {
-				let space = await Space.load(params.spaceId, {
-					resolve: { documents: { $each: { content: true } } },
-				})
-				if (!space?.$isLoaded || !space.documents?.$isLoaded) {
-					throw new Error("Space not found or inaccessible")
-				}
-				docs = [...space.documents]
-					.filter(doc => doc?.$isLoaded)
-					.map(doc => ({
-						id: doc.$jazz.id,
-						content: doc.content?.toString() ?? "",
-						scope: `space:${space.$jazz.id}`,
-					}))
-			} else {
-				docs = [...me.root.documents]
-					.filter(doc => doc?.$isLoaded)
-					.map(doc => ({
-						id: doc.$jazz.id,
-						content: doc.content?.toString() ?? "",
-						scope: "personal",
-					}))
-			}
-			return docs
-				.map(doc => ({
-					id: doc.id,
-					title: getDocumentTitle(doc.content),
-					scope: doc.scope,
-				}))
-				.filter(doc => doc.title.toLowerCase().includes(query))
-		}
-		case "createAccount":
-		case "signIn":
-		case "clearLog":
-			return { handledInRoute: true }
-	}
-}
-
-function parseFrontmatterPatch(input: string): Record<string, string | boolean | null> {
-	let parsed: unknown
-	try {
-		parsed = JSON.parse(input)
-	} catch {
-		throw new Error("frontmatterJson must be valid JSON")
-	}
-	if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-		throw new Error("frontmatterJson must be a JSON object")
-	}
-	let entries = Object.entries(parsed)
-	for (let [, value] of entries) {
-		if (value !== null && typeof value !== "string" && typeof value !== "boolean") {
-			throw new Error("frontmatter values must be string, boolean or null")
-		}
-	}
-
-	let patch: Record<string, string | boolean | null> = {}
-	for (let [key, value] of entries) {
-		if (value === null || typeof value === "string" || typeof value === "boolean") {
-			patch[key] = value
-		}
-	}
-	return patch
-}
-
-function applyFrontmatterPatch(
-	content: string,
-	patch: Record<string, string | boolean | null>,
-): string {
-	let parsed = parseFrontmatter(content)
-	let current = { ...(parsed.frontmatter ?? {}) }
-
-	for (let [key, value] of Object.entries(patch)) {
-		if (value === null) {
-			delete current[key]
-		} else {
-			current[key] = value
-		}
-	}
-
-	let body = parsed.body
-	let entries = Object.entries(current)
-	if (entries.length === 0) return body
-
-	let yaml = entries
-		.map(([key, value]) => {
-			if (typeof value === "boolean") return `${key}: ${value ? "true" : "false"}`
-			return `${key}: ${JSON.stringify(value)}`
-		})
-		.join("\n")
-
-	return `---\n${yaml}\n---\n\n${body}`
 }

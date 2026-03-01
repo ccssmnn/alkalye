@@ -1,4 +1,4 @@
-import type { AgentAction } from "./agents-contract"
+import type { AgentAction } from "./actions"
 
 export {
 	AGENTS_STABLE_IDS,
