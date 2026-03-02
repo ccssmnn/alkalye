@@ -1,6 +1,8 @@
-import { Link } from "@tanstack/react-router"
+import { Link, useRouter } from "@tanstack/react-router"
 import { FileX, FolderLock, FolderSearch, ShieldOff } from "lucide-react"
+import { useIsAuthenticated } from "jazz-tools/react"
 import { Button } from "@/components/ui/button"
+import { AuthForm } from "@/components/auth-form"
 import {
 	Empty,
 	EmptyHeader,
@@ -41,6 +43,9 @@ function DocumentNotFound() {
 }
 
 function DocumentUnauthorized() {
+	let isAuthenticated = useIsAuthenticated()
+	let router = useRouter()
+
 	return (
 		<div className="bg-background flex min-h-dvh items-center justify-center">
 			<Empty>
@@ -50,13 +55,21 @@ function DocumentUnauthorized() {
 					</EmptyMedia>
 					<EmptyTitle>Access denied</EmptyTitle>
 					<EmptyDescription>
-						You don&apos;t have permission to view this document.
+						{isAuthenticated
+							? "You don't have permission to view this document."
+							: "Sign in to access this document."}
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<Button nativeButton={false} render={<Link to="/" />}>
-						Go to App
-					</Button>
+					{isAuthenticated ? (
+						<Button nativeButton={false} render={<Link to="/" />}>
+							Go to App
+						</Button>
+					) : (
+						<div className="w-full max-w-sm">
+							<AuthForm onSuccess={() => router.invalidate()} />
+						</div>
+					)}
 				</EmptyContent>
 			</Empty>
 		</div>
@@ -87,6 +100,9 @@ function SpaceNotFound() {
 }
 
 function SpaceUnauthorized() {
+	let isAuthenticated = useIsAuthenticated()
+	let router = useRouter()
+
 	return (
 		<div className="bg-background flex min-h-dvh items-center justify-center">
 			<Empty>
@@ -96,13 +112,21 @@ function SpaceUnauthorized() {
 					</EmptyMedia>
 					<EmptyTitle>Access denied</EmptyTitle>
 					<EmptyDescription>
-						You don&apos;t have permission to view this space.
+						{isAuthenticated
+							? "You don't have permission to view this space."
+							: "Sign in to access this space."}
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					<Button nativeButton={false} render={<Link to="/" />}>
-						Go to App
-					</Button>
+					{isAuthenticated ? (
+						<Button nativeButton={false} render={<Link to="/" />}>
+							Go to App
+						</Button>
+					) : (
+						<div className="w-full max-w-sm">
+							<AuthForm onSuccess={() => router.invalidate()} />
+						</div>
+					)}
 				</EmptyContent>
 			</Empty>
 		</div>
