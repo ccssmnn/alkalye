@@ -37,6 +37,7 @@ import {
 } from "@/components/ui/dialog"
 import { Field, FieldError, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { UserAccount, Theme, ThemeAsset, Settings } from "@/schema"
 import { parseThemeZip, type ThemeUploadError } from "@/lib/theme-upload"
@@ -982,11 +983,11 @@ function SignedInView() {
 						<div className="text-muted-foreground mb-2 text-xs">
 							Recovery phrase
 						</div>
-						<textarea
+						<Textarea
 							readOnly
 							value={auth.passphrase}
 							className="bg-background border-border mb-3 w-full resize-none rounded-md border p-3 font-mono text-sm"
-							rows={3}
+							minRows={3}
 						/>
 						<div className="flex gap-2">
 							<Button onClick={handleCopy} variant="outline" size="sm">

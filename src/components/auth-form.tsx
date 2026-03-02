@@ -2,6 +2,7 @@ import { useState } from "react"
 import { usePassphraseAuth } from "jazz-tools/react"
 import { Copy, Check, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { Textarea } from "@/components/ui/textarea"
 import { wordlist } from "@/lib/wordlist"
 import { getRandomWriterName } from "@/schema"
 
@@ -82,11 +83,11 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 						<span className="text-foreground font-bold">No email required</span>{" "}
 						- just save this phrase to access your notes anywhere.
 					</p>
-					<textarea
+					<Textarea
 						readOnly
 						value={currentPassphrase}
 						className="bg-background border-border mb-3 w-full resize-none rounded-md border p-3 font-mono text-sm"
-						rows={3}
+						minRows={3}
 					/>
 					<div className="mb-3 flex gap-2">
 						<Button
@@ -139,12 +140,12 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 					<p className="text-muted-foreground mb-4 text-sm">
 						Enter the recovery phrase from when you created your account.
 					</p>
-					<textarea
+					<Textarea
 						value={loginPassphrase}
 						onChange={e => setLoginPassphrase(e.target.value)}
 						placeholder="word1 word2 word3 ..."
 						className="bg-background border-border mb-3 w-full resize-none rounded-md border p-3 font-mono text-sm"
-						rows={3}
+						minRows={3}
 					/>
 					{error && <p className="text-destructive mb-3 text-sm">{error}</p>}
 					<div className="flex gap-2">
