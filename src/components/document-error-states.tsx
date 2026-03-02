@@ -1,8 +1,9 @@
+import { useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { FileX, FolderLock, FolderSearch, ShieldOff } from "lucide-react"
 import { useIsAuthenticated } from "jazz-tools/react"
 import { Button } from "@/components/ui/button"
-import { AuthForm } from "@/components/auth-form"
+import { AuthDialog } from "@/components/auth-form"
 import {
 	Empty,
 	EmptyHeader,
@@ -34,7 +35,7 @@ function DocumentNotFound() {
 				</EmptyHeader>
 				<EmptyContent>
 					<Button nativeButton={false} render={<Link to="/" />}>
-						Go to App
+						Go Home
 					</Button>
 				</EmptyContent>
 			</Empty>
@@ -45,6 +46,7 @@ function DocumentNotFound() {
 function DocumentUnauthorized() {
 	let isAuthenticated = useIsAuthenticated()
 	let router = useRouter()
+	let [authOpen, setAuthOpen] = useState(false)
 
 	return (
 		<div className="bg-background flex min-h-dvh items-center justify-center">
@@ -61,15 +63,23 @@ function DocumentUnauthorized() {
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					{isAuthenticated ? (
+					<div className="flex w-full flex-col items-center gap-3">
 						<Button nativeButton={false} render={<Link to="/" />}>
-							Go to App
+							Go Home
 						</Button>
-					) : (
-						<div className="w-full max-w-sm">
-							<AuthForm onSuccess={() => router.invalidate()} />
-						</div>
-					)}
+						{!isAuthenticated && (
+							<>
+								<Button variant="outline" onClick={() => setAuthOpen(true)}>
+									Sign in
+								</Button>
+								<AuthDialog
+									open={authOpen}
+									onOpenChange={setAuthOpen}
+									onSuccess={() => router.invalidate()}
+								/>
+							</>
+						)}
+					</div>
 				</EmptyContent>
 			</Empty>
 		</div>
@@ -91,7 +101,7 @@ function SpaceNotFound() {
 				</EmptyHeader>
 				<EmptyContent>
 					<Button nativeButton={false} render={<Link to="/" />}>
-						Go to App
+						Go Home
 					</Button>
 				</EmptyContent>
 			</Empty>
@@ -102,6 +112,7 @@ function SpaceNotFound() {
 function SpaceUnauthorized() {
 	let isAuthenticated = useIsAuthenticated()
 	let router = useRouter()
+	let [authOpen, setAuthOpen] = useState(false)
 
 	return (
 		<div className="bg-background flex min-h-dvh items-center justify-center">
@@ -118,15 +129,23 @@ function SpaceUnauthorized() {
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
-					{isAuthenticated ? (
+					<div className="flex w-full flex-col items-center gap-3">
 						<Button nativeButton={false} render={<Link to="/" />}>
-							Go to App
+							Go Home
 						</Button>
-					) : (
-						<div className="w-full max-w-sm">
-							<AuthForm onSuccess={() => router.invalidate()} />
-						</div>
-					)}
+						{!isAuthenticated && (
+							<>
+								<Button variant="outline" onClick={() => setAuthOpen(true)}>
+									Sign in
+								</Button>
+								<AuthDialog
+									open={authOpen}
+									onOpenChange={setAuthOpen}
+									onSuccess={() => router.invalidate()}
+								/>
+							</>
+						)}
+					</div>
 				</EmptyContent>
 			</Empty>
 		</div>

@@ -3,7 +3,7 @@ import { createFileRoute, useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { AuthForm } from "@/components/auth-form"
+import { AuthDialog } from "@/components/auth-form"
 import { UserAccount } from "@/schema"
 import { acceptDocumentInvite, type DocInviteData } from "@/lib/documents"
 import { acceptSpaceInvite, type SpaceInviteData } from "@/lib/spaces"
@@ -220,6 +220,8 @@ function NeedsAuthState({
 	onAuthSuccess: () => void
 	isSpace: boolean
 }) {
+	let [authOpen, setAuthOpen] = useState(false)
+
 	return (
 		<div className="space-y-6">
 			<div className="space-y-2 text-center">
@@ -235,7 +237,16 @@ function NeedsAuthState({
 						: "Sign in to join this document and start collaborating."}
 				</p>
 			</div>
-			<AuthForm onSuccess={onAuthSuccess} />
+			<div className="flex justify-center">
+				<Button size="sm" onClick={() => setAuthOpen(true)}>
+					Sign in
+				</Button>
+			</div>
+			<AuthDialog
+				open={authOpen}
+				onOpenChange={setAuthOpen}
+				onSuccess={onAuthSuccess}
+			/>
 		</div>
 	)
 }

@@ -2,14 +2,54 @@ import { useState } from "react"
 import { usePassphraseAuth } from "jazz-tools/react"
 import { Copy, Check, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+	Dialog,
+	DialogContent,
+	DialogHeader,
+	DialogTitle,
+	DialogDescription,
+} from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { wordlist } from "@/lib/wordlist"
 import { getRandomWriterName } from "@/schema"
 
-export { AuthForm }
+export { AuthForm, AuthDialog }
 
 interface AuthFormProps {
 	onSuccess?: () => void
+}
+
+interface AuthDialogProps {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	onSuccess?: () => void
+	title?: string
+	description?: string
+}
+
+function AuthDialog({
+	open,
+	onOpenChange,
+	onSuccess,
+	title = "Sign in",
+	description,
+}: AuthDialogProps) {
+	function handleSuccess() {
+		onOpenChange(false)
+		onSuccess?.()
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={onOpenChange}>
+			<DialogContent>
+				<DialogHeader>
+					<DialogTitle>{title}</DialogTitle>
+					{description && <DialogDescription>{description}</DialogDescription>}
+				</DialogHeader>
+				<AuthForm onSuccess={handleSuccess} />
+			</DialogContent>
+		</Dialog>
+	)
 }
 
 function AuthForm({ onSuccess }: AuthFormProps) {
@@ -52,7 +92,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 	}
 
 	return (
-		<div className="bg-muted/30 rounded-lg p-4">
+		<div>
 			{step === "initial" && (
 				<>
 					<p className="text-muted-foreground mb-4 text-sm">

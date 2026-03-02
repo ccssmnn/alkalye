@@ -229,7 +229,7 @@ function SearchFilterBar({
 					placeholder="Search..."
 					value={search}
 					onChange={e => onSearchChange(e.target.value)}
-					className="h-8 pl-8"
+					className="h-10 pl-8 pointer-fine:h-9"
 				/>
 			</div>
 			<Tooltip>

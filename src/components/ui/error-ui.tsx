@@ -60,13 +60,13 @@ function ErrorUI({
 					<p className="text-muted-foreground text-sm">{description}</p>
 					<a
 						href="mailto:assmann@hey.com"
-						className="text-primary block text-sm hover:underline"
+						className="text-primary block text-sm pointer-fine:hover:underline"
 					>
 						Report this issue →
 					</a>
 					{error && (
 						<details className="group">
-							<summary className="text-muted-foreground hover:text-foreground cursor-pointer text-sm font-medium">
+							<summary className="text-muted-foreground pointer-fine:hover:text-foreground cursor-pointer text-sm font-medium">
 								Show error details
 							</summary>
 							<div className="mt-3 space-y-3">
@@ -94,7 +94,7 @@ function ErrorUI({
 								</div>
 								{error.stack && (
 									<details>
-										<summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs font-medium">
+										<summary className="text-muted-foreground pointer-fine:hover:text-foreground cursor-pointer text-xs font-medium">
 											Stack Trace
 										</summary>
 										<pre className="bg-muted mt-2 max-h-40 overflow-auto rounded p-3 text-xs select-text">
@@ -104,7 +104,7 @@ function ErrorUI({
 								)}
 								{componentStack && (
 									<details>
-										<summary className="text-muted-foreground hover:text-foreground cursor-pointer text-xs font-medium">
+										<summary className="text-muted-foreground pointer-fine:hover:text-foreground cursor-pointer text-xs font-medium">
 											Component Stack
 										</summary>
 										<pre className="bg-muted mt-2 max-h-40 overflow-auto rounded p-3 text-xs select-text">

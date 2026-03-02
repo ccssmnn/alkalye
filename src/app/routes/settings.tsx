@@ -52,7 +52,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import { useTheme, ThemeToggle } from "@/lib/theme"
-import { AuthForm } from "@/components/auth-form"
+import { AuthDialog } from "@/components/auth-form"
 import {
 	useEditorSettings,
 	DEFAULT_EDITOR_SETTINGS,
@@ -644,6 +644,7 @@ function SyncSection({ isAuthenticated }: SyncSectionProps) {
 
 function SignInView() {
 	let navigate = useNavigate()
+	let [authOpen, setAuthOpen] = useState(false)
 
 	return (
 		<section>
@@ -654,7 +655,14 @@ function SignInView() {
 				<CloudOff className="size-4" />
 				<span className="text-sm">Local only</span>
 			</div>
-			<AuthForm onSuccess={() => navigate({ to: "/" })} />
+			<Button onClick={() => setAuthOpen(true)} size="sm" variant="outline">
+				Sign in
+			</Button>
+			<AuthDialog
+				open={authOpen}
+				onOpenChange={setAuthOpen}
+				onSuccess={() => navigate({ to: "/" })}
+			/>
 		</section>
 	)
 }

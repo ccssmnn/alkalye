@@ -217,19 +217,19 @@ function EditorToolbar({
 							shortcutAlt="L"
 							onClick={() => editor.current?.toggleBulletList()}
 						/>
-						<ToolbarButton
-							icon={<ListTodo />}
-							label="Task List"
-							shortcutAlt="⇧L"
-							onClick={() => editor.current?.toggleTaskList()}
-						/>
-						<ToolbarButton
-							icon={<Link2 />}
-							label="Link"
-							shortcut="K"
-							onClick={() => editor.current?.insertLink()}
-						/>
 						<span className="hidden md:contents">
+							<ToolbarButton
+								icon={<ListTodo />}
+								label="Task List"
+								shortcutAlt="⇧L"
+								onClick={() => editor.current?.toggleTaskList()}
+							/>
+							<ToolbarButton
+								icon={<Link2 />}
+								label="Link"
+								shortcut="K"
+								onClick={() => editor.current?.insertLink()}
+							/>
 							{content !== undefined && onThemeChange && (
 								<>
 									<ThemePicker
