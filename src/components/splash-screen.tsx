@@ -6,6 +6,9 @@ export { SplashScreen, SplashScreenStatic, useSplashDelay }
 declare global {
 	interface Window {
 		__pageLoadTime?: number
+		__alkalyeReady?: boolean
+		__alkalyeReadyAt?: number
+		__alkalyeReadyRoute?: string
 	}
 }
 

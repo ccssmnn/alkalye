@@ -51,20 +51,30 @@ let metaDescription =
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="preload" href="/docs/welcome.md" as="fetch" crossorigin />
 	</head>
-	<body class="selection:bg-brand selection:text-white">
+	<body class="selection:bg-brand selection:text-white" data-alkalye-ready="false">
 		<div id="splash" class="bg-background fixed inset-0 z-50 flex items-center justify-center">
 			<div class="text-foreground bg-background flex size-48 flex-col items-center justify-center rounded-3xl font-mono text-4xl font-bold tracking-tighter">
 				Alkalye
 			</div>
+			<p class="sr-only" role="status" aria-live="polite">
+				Automation hint: app is booting. Wait for body data-alkalye-ready to
+				equal true or window.__alkalyeReady to equal true before interacting
+				with the editor.
+			</p>
 		</div>
 		<PWA client:only="react" />
 		<script>
 			let appWindow = window as typeof window & {
 				__pwaColdStartRedirect?: boolean
+				__alkalyeReady?: boolean
+				__alkalyeReadyAt?: number
+				__alkalyeReadyRoute?: string
 			}
 			let appNavigator = window.navigator as Navigator & { standalone?: boolean }
 
 			window.__pageLoadTime = Date.now()
+			appWindow.__alkalyeReady = false
+			appWindow.__alkalyeReadyRoute = "boot"
 			;(function () {
 				let isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent)
 				if (!isIOS) return

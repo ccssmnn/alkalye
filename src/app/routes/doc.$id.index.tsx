@@ -82,6 +82,13 @@ import { useTrackLastOpened } from "@/lib/use-track-last-opened"
 import { printToPdf } from "@/lib/print-to-pdf"
 export { Route }
 
+function setAutomationReadyState(ready: boolean, route: string) {
+	window.__alkalyeReady = ready
+	window.__alkalyeReadyRoute = route
+	if (ready) window.__alkalyeReadyAt = Date.now()
+	document.body.dataset.alkalyeReady = ready ? "true" : "false"
+}
+
 let Route = createFileRoute("/doc/$id/")({
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, { resolve })
@@ -154,6 +161,11 @@ function EditorPage() {
 				<EmptyHeader>
 					<Loader2 className="text-muted-foreground size-8 animate-spin" />
 					<EmptyTitle>Loading document...</EmptyTitle>
+					<p className="sr-only" role="status" aria-live="polite">
+						Redirecting to a space document. Automation hint: do not interact
+						while loading. Wait for body data-alkalye-ready to equal true or
+						window.__alkalyeReady to equal true.
+					</p>
 				</EmptyHeader>
 			</Empty>
 		)
@@ -197,6 +209,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		content: string
 		cursor: { from: number; to?: number } | null
 	} | null>(null)
+
+	useEffect(() => {
+		setAutomationReadyState(true, "personal-doc")
+		return () => setAutomationReadyState(false, "personal-doc")
+	}, [])
 
 	let { theme, setTheme } = useTheme()
 	let {
@@ -384,6 +401,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	return (
 		<>
 			<title>{docTitle}</title>
+			<p className="sr-only" role="status" aria-live="polite">
+				Editor ready. Automation signal is active: body data-alkalye-ready is
+				true, window.__alkalyeReady is true, and window.__alkalyeReadyRoute is
+				personal-doc.
+			</p>
 			<ListSidebar
 				header={
 					<>

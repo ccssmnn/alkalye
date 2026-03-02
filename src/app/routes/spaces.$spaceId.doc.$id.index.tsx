@@ -85,6 +85,13 @@ import { printToPdf } from "@/lib/print-to-pdf"
 
 export { Route }
 
+function setAutomationReadyState(ready: boolean, route: string) {
+	window.__alkalyeReady = ready
+	window.__alkalyeReadyRoute = route
+	if (ready) window.__alkalyeReadyAt = Date.now()
+	document.body.dataset.alkalyeReady = ready ? "true" : "false"
+}
+
 let Route = createFileRoute("/spaces/$spaceId/doc/$id/")({
 	loader: async ({ params, context }) => {
 		let [space, doc] = await Promise.all([
@@ -211,6 +218,11 @@ function SpaceEditorContent({
 		content: string
 		cursor: { from: number; to?: number } | null
 	} | null>(null)
+
+	useEffect(() => {
+		setAutomationReadyState(true, "space-doc")
+		return () => setAutomationReadyState(false, "space-doc")
+	}, [])
 
 	let { theme, setTheme } = useTheme()
 	let {
@@ -396,6 +408,11 @@ function SpaceEditorContent({
 	return (
 		<>
 			<title>{docTitle}</title>
+			<p className="sr-only" role="status" aria-live="polite">
+				Editor ready. Automation signal is active: body data-alkalye-ready is
+				true, window.__alkalyeReady is true, and window.__alkalyeReadyRoute is
+				space-doc.
+			</p>
 			<ListSidebar
 				header={
 					<>
