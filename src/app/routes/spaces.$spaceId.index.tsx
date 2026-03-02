@@ -1,6 +1,10 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
 import { Group, type ResolveQuery } from "jazz-tools"
 import { Space, createSpaceDocument } from "@/schema"
+import {
+	SpaceNotFound,
+	SpaceUnauthorized,
+} from "@/components/document-error-states"
 
 export { Route }
 
@@ -12,8 +16,12 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 	loader: async ({ params }) => {
 		let space = await Space.load(params.spaceId, { resolve: spaceQuery })
 
-		if (!space.$isLoaded || !space.documents?.$isLoaded) {
-			throw redirect({ to: "/" })
+		if (!space.$isLoaded) {
+			return { loadingState: space.$jazz.loadingState }
+		}
+
+		if (!space.documents?.$isLoaded) {
+			return { loadingState: "error" as const }
 		}
 
 		// Find most recent non-deleted doc
@@ -52,4 +60,16 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 			params: { spaceId: params.spaceId, id: newDoc.$jazz.id },
 		})
 	},
+	component: SpaceIndexPage,
 })
+
+function SpaceIndexPage() {
+	let data = Route.useLoaderData()
+
+	if (data.loadingState === "unauthorized") {
+		return <SpaceUnauthorized />
+	}
+
+	// Treat all other loading states as not found
+	return <SpaceNotFound />
+}
