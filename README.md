@@ -1,6 +1,6 @@
 # Alkalye
 
-Beautiful, End-to-end encrypted markdown editor with real-time collaboration and presentation mode.
+Beautiful, end-to-end encrypted markdown editor with real-time collaboration and presentation mode.
 
 **[alkalye.com](https://alkalye.com)**
 
@@ -12,14 +12,18 @@ Beautiful, End-to-end encrypted markdown editor with real-time collaboration and
 - **Teleprompter Mode** — Present with auto-scrolling text
 - **Offline-First** — Works without internet, syncs when back online (PWA)
 - **Focus Mode** — Distraction-free writing environment
-- **Image Assets** — Upload and embed images in your documents
+- **Media Assets** — Upload and embed images and videos in your documents
+- **HTML/CSS Themes** — Custom document themes with HTML templates and CSS styling
+- **PDF Export** — Export documents as formatted PDFs
+- **Time Machine** — Browse document history and restore previous versions
 - **Portable** — Settings stored in frontmatter, export as standard `.md` files anytime
 
 ## Tech Stack
 
 - [Jazz](https://jazz.tools) for local-first sync and encryption
-- Tanstack Router + React 19 + Vite 7
-- Tailwind CSS + shadcn/ui
+- [Astro](https://astro.build) 5 + React 19
+- [Tanstack Router](https://tanstack.com/router) for routing
+- Tailwind CSS 4 + shadcn/ui (base-lyra style)
 - CodeMirror 6 editor
 
 ## Development

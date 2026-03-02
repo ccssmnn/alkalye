@@ -1,12 +1,21 @@
 # Agent Instructions
 
-Offline-capable PWA built with Jazz (local-first sync) and React.
+Offline-capable PWA built with Jazz (local-first sync), Astro, and React.
 
 ## Essentials
 
 - **Bun** - use `bun install`, `bun add`, `bun run` (no npm/yarn)
 - **Verify:** `bun run check` (lint, types, format, tests)
 - **React Compiler** - never use `useMemo`, `useCallback`, `React.memo`
+
+## Architecture
+
+- **Framework:** Astro 5 with React 19 integration
+- **Routing:** Tanstack Router (auto-generated route tree)
+- **Data:** Jazz (CoValues for documents, spaces, themes, presence)
+- **Storage:** IndexedDB via idb-keyval + Jazz sync
+- **PWA:** vite-plugin-pwa with offline caching and file handlers
+- **Testing:** Vitest + happy-dom/jsdom
 
 ## Style
 
