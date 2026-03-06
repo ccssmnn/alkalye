@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
 import { wordlist } from "@/lib/wordlist"
+import { testIds } from "@/lib/test-ids"
 import { getRandomWriterName } from "@/schema"
 
 export { AuthForm, AuthDialog }
@@ -41,7 +42,7 @@ function AuthDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent>
+			<DialogContent data-testid={testIds.auth.dialog}>
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					{description && <DialogDescription>{description}</DialogDescription>}
@@ -68,8 +69,18 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 	}
 
 	async function handleCopy() {
-		await navigator.clipboard.writeText(currentPassphrase)
-		setIsCopied(true)
+		try {
+			await navigator.clipboard.writeText(currentPassphrase)
+			setError("")
+			setIsCopied(true)
+		} catch (e) {
+			setIsCopied(false)
+			setError(
+				e instanceof Error
+					? e.message
+					: "Could not copy recovery phrase. Please copy it manually.",
+			)
+		}
 	}
 
 	async function handleRegister() {
@@ -101,13 +112,18 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 						to sync your notes across devices and collaborate with others.
 					</p>
 					<div className="flex flex-col justify-end gap-2">
-						<Button onClick={() => setStep("create")} size="sm">
+						<Button
+							onClick={() => setStep("create")}
+							size="sm"
+							data-testid={testIds.auth.initialCreateAccount}
+						>
 							Create new account
 						</Button>
 						<Button
 							onClick={() => setStep("login")}
 							variant="outline"
 							size="sm"
+							data-testid={testIds.auth.initialSignIn}
 						>
 							Sign in
 						</Button>
@@ -126,6 +142,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 					<Textarea
 						readOnly
 						value={currentPassphrase}
+						data-testid={testIds.auth.createPassphrase}
 						className="bg-background border-border mb-3 w-full resize-none rounded-md border p-3 font-mono text-sm"
 						minRows={3}
 					/>
@@ -135,6 +152,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							variant="outline"
 							size="sm"
 							className="flex-1"
+							data-testid={testIds.auth.createCopy}
 						>
 							{isCopied ? (
 								<>
@@ -148,17 +166,30 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 								</>
 							)}
 						</Button>
-						<Button onClick={handleReroll} variant="outline" size="sm">
+						<Button
+							onClick={handleReroll}
+							variant="outline"
+							size="sm"
+							data-testid={testIds.auth.createReroll}
+						>
 							<RefreshCw className="size-3.5" />
 						</Button>
 					</div>
-					{error && <p className="text-destructive mb-3 text-sm">{error}</p>}
+					{error && (
+						<p
+							className="text-destructive mb-3 text-sm"
+							data-testid={testIds.auth.createError}
+						>
+							{error}
+						</p>
+					)}
 					<div className="mt-12 flex justify-end gap-2">
 						<Button
 							onClick={() => setStep("initial")}
 							variant="ghost"
 							size="sm"
 							className="flex-1"
+							data-testid={testIds.auth.createBack}
 						>
 							Back
 						</Button>
@@ -167,6 +198,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							size="sm"
 							disabled={!isCopied}
 							className="flex-1"
+							data-testid={testIds.auth.createSubmit}
 						>
 							Create account
 						</Button>
@@ -184,10 +216,18 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 						value={loginPassphrase}
 						onChange={e => setLoginPassphrase(e.target.value)}
 						placeholder="word1 word2 word3 ..."
+						data-testid={testIds.auth.loginPassphrase}
 						className="bg-background border-border mb-3 w-full resize-none rounded-md border p-3 font-mono text-sm"
 						minRows={3}
 					/>
-					{error && <p className="text-destructive mb-3 text-sm">{error}</p>}
+					{error && (
+						<p
+							className="text-destructive mb-3 text-sm"
+							data-testid={testIds.auth.loginError}
+						>
+							{error}
+						</p>
+					)}
 					<div className="flex gap-2">
 						<Button
 							onClick={() => {
@@ -197,6 +237,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							variant="ghost"
 							size="sm"
 							className="flex-1"
+							data-testid={testIds.auth.loginBack}
 						>
 							Back
 						</Button>
@@ -205,6 +246,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							size="sm"
 							disabled={!loginPassphrase.trim()}
 							className="flex-1"
+							data-testid={testIds.auth.loginSubmit}
 						>
 							Sign in
 						</Button>

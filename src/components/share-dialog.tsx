@@ -37,6 +37,7 @@ import {
 	getPublicLink,
 	type Collaborator,
 } from "@/lib/documents"
+import { testIds } from "@/lib/test-ids"
 
 export { ShareDialog }
 
@@ -210,7 +211,7 @@ function ShareDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent>
+			<DialogContent data-testid={testIds.collab.docShareDialog}>
 				<DialogHeader>
 					<DialogTitle>Share document</DialogTitle>
 					<DialogDescription>
@@ -245,6 +246,7 @@ function ShareDialog({
 										type="text"
 										value={inviteLink}
 										readOnly
+										data-testid={testIds.collab.docShareInviteLinkInput}
 										className="flex-1 truncate bg-transparent outline-none"
 									/>
 									<Button
@@ -278,6 +280,7 @@ function ShareDialog({
 									className="flex-1"
 									onClick={() => handleCreateLink("writer")}
 									disabled={loading}
+									data-testid={testIds.collab.docShareInviteWriterButton}
 								>
 									<LinkIcon className="mr-1 size-3.5" />
 									Can edit
@@ -288,6 +291,7 @@ function ShareDialog({
 									className="flex-1"
 									onClick={() => handleCreateLink("reader")}
 									disabled={loading}
+									data-testid={testIds.collab.docShareInviteReaderButton}
 								>
 									<LinkIcon className="mr-1 size-3.5" />
 									Can view
@@ -405,6 +409,8 @@ function ShareDialog({
 								<li
 									key={invite.inviteGroupId}
 									className="text-muted-foreground flex items-center justify-between py-1 text-sm"
+									data-testid={testIds.collab.docSharePendingInviteRow}
+									data-invite-group-id={invite.inviteGroupId}
 								>
 									<span>Pending invite</span>
 									<Button
@@ -412,6 +418,8 @@ function ShareDialog({
 										size="icon-sm"
 										onClick={() => handleRevoke(invite.inviteGroupId)}
 										aria-label="Revoke invite"
+										data-testid={testIds.collab.docSharePendingInviteRevoke}
+										data-invite-group-id={invite.inviteGroupId}
 									>
 										<Trash2 className="text-destructive size-3" />
 									</Button>

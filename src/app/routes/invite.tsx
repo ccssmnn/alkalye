@@ -7,6 +7,7 @@ import { AuthDialog } from "@/components/auth-form"
 import { UserAccount } from "@/schema"
 import { acceptDocumentInvite, type DocInviteData } from "@/lib/documents"
 import { acceptSpaceInvite, type SpaceInviteData } from "@/lib/spaces"
+import { testIds } from "@/lib/test-ids"
 
 export { Route }
 
@@ -182,7 +183,10 @@ function LoadingState({
 	isSpace: boolean
 }) {
 	return (
-		<div className="space-y-4 text-center">
+		<div
+			className="space-y-4 text-center"
+			data-testid={testIds.invite.successState}
+		>
 			<Loader2 className="text-muted-foreground mx-auto size-12 animate-spin" />
 			<p className="text-muted-foreground text-sm">
 				{status === "loading"
@@ -238,7 +242,11 @@ function NeedsAuthState({
 				</p>
 			</div>
 			<div className="flex justify-center">
-				<Button size="sm" onClick={() => setAuthOpen(true)}>
+				<Button
+					size="sm"
+					onClick={() => setAuthOpen(true)}
+					data-testid={testIds.invite.signInButton}
+				>
 					Sign in
 				</Button>
 			</div>
@@ -253,7 +261,10 @@ function NeedsAuthState({
 
 function RevokedState() {
 	return (
-		<div className="space-y-6 text-center">
+		<div
+			className="space-y-6 text-center"
+			data-testid={testIds.invite.errorState}
+		>
 			<AlertCircle className="text-muted-foreground mx-auto size-12" />
 			<div className="space-y-2">
 				<h1 className="text-lg font-semibold">Sorry, this invite expired :(</h1>

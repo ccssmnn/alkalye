@@ -36,6 +36,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { UserAccount, Space, createSpace } from "@/schema"
 import { getSpaceGroup } from "@/lib/spaces"
+import { testIds } from "@/lib/test-ids"
 
 export { SpaceSelector, SpaceInitials }
 
@@ -90,6 +91,7 @@ function SpaceSelector() {
 								variant="ghost"
 								className="flex-1 justify-between"
 								nativeButton
+								data-testid={testIds.space.selectorTrigger}
 							>
 								<span className="inline-flex items-center gap-3">
 									{isInSpace && currentSpace.$isLoaded ? (
@@ -107,6 +109,7 @@ function SpaceSelector() {
 						<Button
 							variant="ghost"
 							size="icon"
+							data-testid={testIds.space.settingsButton}
 							render={
 								<Link
 									to="/spaces/$spaceId/settings"
@@ -130,6 +133,8 @@ function SpaceSelector() {
 					{spaces.map(space => (
 						<DropdownMenuItem
 							key={space.$jazz.id}
+							data-testid={testIds.space.listItem}
+							data-space-id={space.$jazz.id}
 							render={
 								<Link
 									to="/spaces/$spaceId"
@@ -163,7 +168,10 @@ function SpaceSelector() {
 							{canAddToSpaces && (
 								<AddToSpacesMenuItem space={currentSpaceFromUrl!} me={me} />
 							)}
-							<DropdownMenuItem onClick={() => setDialogOpen(true)}>
+							<DropdownMenuItem
+								onClick={() => setDialogOpen(true)}
+								data-testid={testIds.space.createButton}
+							>
 								<Plus className="size-4" />
 								<span>New Space</span>
 							</DropdownMenuItem>
@@ -264,7 +272,7 @@ function CreateSpaceDialog({
 			onOpenChange={onOpenChange}
 			onOpenChangeComplete={handleOpenChangeComplete}
 		>
-			<DialogContent>
+			<DialogContent data-testid={testIds.space.createDialog}>
 				<DialogHeader>
 					<DialogTitle>Create space</DialogTitle>
 					<DialogDescription>
@@ -278,6 +286,7 @@ function CreateSpaceDialog({
 						<Input
 							ref={inputRef}
 							id="space-name"
+							data-testid={testIds.space.createNameInput}
 							placeholder="My Space"
 							value={name}
 							onChange={e => setName(e.target.value)}
@@ -294,7 +303,12 @@ function CreateSpaceDialog({
 						>
 							Cancel
 						</Button>
-						<Button type="submit" size="sm" disabled={!name.trim()}>
+						<Button
+							type="submit"
+							size="sm"
+							disabled={!name.trim()}
+							data-testid={testIds.space.createSubmit}
+						>
 							Create
 						</Button>
 					</DialogFooter>

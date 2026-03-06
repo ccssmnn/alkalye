@@ -16,6 +16,7 @@ import {
 	isDocumentPublic,
 	type Collaborator,
 } from "@/lib/documents"
+import { testIds } from "@/lib/test-ids"
 
 export { SidebarCollaboration }
 
@@ -68,6 +69,7 @@ function SidebarCollaboration({
 								onClick={() => setShareOpen(true)}
 								className="gap-2"
 								nativeButton
+								data-testid={testIds.collab.docShareOpenButton}
 							>
 								<Lock className="size-4" />
 								<span>Private</span>
@@ -81,6 +83,7 @@ function SidebarCollaboration({
 								onClick={() => setShareOpen(true)}
 								className="gap-2"
 								nativeButton
+								data-testid={testIds.collab.docShareOpenButton}
 							>
 								<Users className="size-4" />
 								<span>Shared</span>
@@ -106,6 +109,7 @@ function SidebarCollaboration({
 								onClick={() => setShareOpen(true)}
 								className="gap-2"
 								nativeButton
+								data-testid={testIds.collab.docShareOpenButton}
 							>
 								<Globe className="size-4 text-green-600 dark:text-green-400" />
 								<span>Public</span>

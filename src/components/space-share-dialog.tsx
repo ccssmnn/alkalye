@@ -42,6 +42,7 @@ import {
 	makeSpacePrivate,
 	getSpaceGroup,
 } from "@/lib/spaces"
+import { testIds } from "@/lib/test-ids"
 
 export { SpaceShareDialog }
 export type { SpaceShareDialogProps }
@@ -199,7 +200,7 @@ function SpaceShareDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={setOpen}>
-			<DialogContent>
+			<DialogContent data-testid={testIds.space.shareDialog}>
 				<DialogHeader>
 					<DialogTitle>Share space</DialogTitle>
 					<DialogDescription>
@@ -237,6 +238,7 @@ function SpaceShareDialog({
 										type="text"
 										value={inviteLink}
 										readOnly
+										data-testid={testIds.space.shareInviteLinkInput}
 										className="flex-1 truncate bg-transparent outline-none"
 									/>
 									<Button
@@ -276,6 +278,7 @@ function SpaceShareDialog({
 										className="flex-1"
 										onClick={() => handleCreateLink("writer")}
 										disabled={loading}
+										data-testid={testIds.space.shareWriterInviteButton}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
 										Writer
@@ -286,6 +289,7 @@ function SpaceShareDialog({
 										className="flex-1"
 										onClick={() => handleCreateLink("reader")}
 										disabled={loading}
+										data-testid={testIds.space.shareReaderInviteButton}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
 										Reader
@@ -424,6 +428,8 @@ function SpaceShareDialog({
 								<li
 									key={invite.inviteGroupId}
 									className="text-muted-foreground flex items-center justify-between py-1 text-sm"
+									data-testid={testIds.space.sharePendingInviteRow}
+									data-invite-group-id={invite.inviteGroupId}
 								>
 									<span>Pending invite</span>
 									<Button
@@ -431,6 +437,8 @@ function SpaceShareDialog({
 										size="icon-sm"
 										onClick={() => handleRevoke(invite.inviteGroupId)}
 										aria-label="Revoke invite"
+										data-testid={testIds.space.sharePendingInviteRevoke}
+										data-invite-group-id={invite.inviteGroupId}
 									>
 										<Trash2 className="text-destructive size-3" />
 									</Button>
