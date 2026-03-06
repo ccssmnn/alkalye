@@ -1,0 +1,17 @@
+{
+	"headless": true,
+	"steps": [
+		{ "task": "auth.waitForEditorBoot" },
+		{ "task": "auth.createAccount" },
+		{
+			"task": "doc.create",
+			"args": {
+				"title": "Skill Script Doc",
+				"body": "Created by run-task.ts",
+				"tags": ["skill", "script"],
+				"path": "automation"
+			}
+		},
+		{ "task": "doc.list", "args": { "search": "Skill Script Doc" } }
+	]
+}

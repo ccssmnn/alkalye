@@ -43,6 +43,7 @@ import {
 	isSpaceMember,
 	type SpaceMember,
 } from "@/lib/spaces"
+import { testIds } from "@/lib/test-ids"
 
 export { Route }
 
@@ -222,6 +223,7 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 						onChange={handleNameChange}
 						disabled={!isAdmin}
 						className="text-lg font-medium"
+						data-testid={testIds.space.settingsNameInput}
 					/>
 				</div>
 				<SpaceAvatarUpload space={space} isAdmin={isAdmin} />
@@ -552,6 +554,7 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 						variant="outline"
 						size="sm"
 						onClick={() => setShareOpen(true)}
+						data-testid={testIds.space.inviteButton}
 					>
 						<UserRoundPlus />
 						Invite
@@ -804,6 +807,7 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 							size="sm"
 							disabled={!canDelete}
 							onClick={() => setDeleteDialogOpen(true)}
+							data-testid={testIds.space.dangerDeleteButton}
 						>
 							Delete
 						</Button>
@@ -887,6 +891,7 @@ function PermanentDeleteSpaceDialog({
 							onChange={e => setNameInput(e.target.value)}
 							placeholder={spaceName}
 							autoComplete="off"
+							data-testid={testIds.space.dangerDeleteNameInput}
 						/>
 					</div>
 					<div>
@@ -902,6 +907,7 @@ function PermanentDeleteSpaceDialog({
 							onChange={e => setConfirmInput(e.target.value)}
 							placeholder={CONFIRM_PHRASE}
 							autoComplete="off"
+							data-testid={testIds.space.dangerDeletePhraseInput}
 						/>
 					</div>
 				</div>
@@ -913,6 +919,7 @@ function PermanentDeleteSpaceDialog({
 						variant="destructive"
 						onClick={handleConfirm}
 						disabled={!canDelete}
+						data-testid={testIds.space.dangerDeleteConfirmButton}
 					>
 						Delete permanently
 					</Button>

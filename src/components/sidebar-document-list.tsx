@@ -75,6 +75,7 @@ import { ShareDialog } from "@/components/share-dialog"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { testIds } from "@/lib/test-ids"
 
 export { SidebarDocumentList }
 export type { LoadedDocument }
@@ -180,7 +181,10 @@ function SidebarDocumentList({
 				deletedCount={deletedDocs.length}
 				hasNonDefaultFilters={hasNonDefaultFilters}
 			/>
-			<SidebarGroup className="flex-1">
+			<SidebarGroup
+				className="flex-1"
+				data-testid={testIds.sidebar.documentList}
+			>
 				<SidebarGroupContent className="flex min-h-0 flex-1 flex-col">
 					<DocumentListContent
 						docs={filteredDocs}
@@ -226,6 +230,7 @@ function SearchFilterBar({
 			<div className="relative flex-1">
 				<Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
 				<Input
+					data-testid={testIds.doc.searchInput}
 					placeholder="Search..."
 					value={search}
 					onChange={e => onSearchChange(e.target.value)}
@@ -493,7 +498,14 @@ function DocumentItem({
 		: { to: "/doc/$id" as const, params: { id: docId } }
 
 	return (
-		<SidebarMenuItem>
+		<SidebarMenuItem
+			data-testid={testIds.doc.listItem}
+			data-doc-id={docId}
+			data-doc-title={title}
+			data-doc-tags={tags.join(",")}
+			data-doc-path={path ?? ""}
+			data-doc-date={doc.updatedAt}
+		>
 			<ContextMenu>
 				<ContextMenuTrigger
 					render={
@@ -611,11 +623,17 @@ function DocumentItem({
 						<Download />
 						Download
 					</ContextMenuItem>
-					<ContextMenuItem onClick={() => setShareOpen(true)}>
+					<ContextMenuItem
+						onClick={() => setShareOpen(true)}
+						data-testid={testIds.doc.shareButton}
+					>
 						<Users />
 						Share
 					</ContextMenuItem>
-					<ContextMenuItem onClick={() => onDuplicate(doc)}>
+					<ContextMenuItem
+						onClick={() => onDuplicate(doc)}
+						data-testid={testIds.doc.duplicateButton}
+					>
 						<Copy />
 						Duplicate
 					</ContextMenuItem>
@@ -635,6 +653,7 @@ function DocumentItem({
 						<ContextMenuItem
 							onClick={() => setDeleteOpen(true)}
 							variant="destructive"
+							data-testid={testIds.doc.deleteButton}
 						>
 							<Trash2 />
 							Delete
@@ -671,6 +690,7 @@ function DocumentItem({
 				confirmLabel="Delete"
 				variant="destructive"
 				onConfirm={() => onDelete(doc)}
+				confirmTestId={testIds.dialog.deleteConfirm}
 			/>
 			<ConfirmDialog
 				open={leaveOpen}

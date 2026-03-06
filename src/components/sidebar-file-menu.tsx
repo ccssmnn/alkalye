@@ -16,6 +16,7 @@ import {
 	DropdownMenuShortcut,
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { testIds } from "@/lib/test-ids"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
 import { FileText } from "lucide-react"
@@ -114,7 +115,10 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 				<DropdownMenu>
 					<DropdownMenuTrigger
 						render={
-							<SidebarMenuButton nativeButton>
+							<SidebarMenuButton
+								nativeButton
+								data-testid={testIds.doc.fileMenuButton}
+							>
 								<FileText className="size-4" />
 								<span>File</span>
 							</SidebarMenuButton>
@@ -194,6 +198,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeDuplicate(doc, me, spaceId, navigate)}
+							data-testid={testIds.doc.duplicateButton}
 						>
 							Duplicate
 						</DropdownMenuItem>
@@ -202,6 +207,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 							<DropdownMenuItem
 								onClick={() => setDeleteOpen(true)}
 								className="text-destructive focus:text-destructive"
+								data-testid={testIds.doc.deleteButton}
 							>
 								Delete
 							</DropdownMenuItem>
@@ -234,6 +240,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 				confirmLabel="Delete"
 				variant="destructive"
 				onConfirm={makeDelete(doc, navigate)}
+				confirmTestId={testIds.dialog.deleteConfirm}
 			/>
 			<ConfirmDialog
 				open={leaveOpen}

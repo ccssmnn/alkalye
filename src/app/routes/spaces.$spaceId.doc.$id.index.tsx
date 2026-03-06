@@ -82,6 +82,7 @@ import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
 import { printToPdf } from "@/lib/print-to-pdf"
+import { testIds } from "@/lib/test-ids"
 
 export { Route }
 
@@ -425,6 +426,7 @@ function SpaceEditorContent({
 						<Button
 							size="sm"
 							nativeButton={false}
+							data-testid={testIds.doc.newButton}
 							render={
 								<Link
 									to="/new"

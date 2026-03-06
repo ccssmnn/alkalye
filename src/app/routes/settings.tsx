@@ -67,6 +67,7 @@ import {
 	TooltipContent,
 } from "@/components/ui/tooltip"
 import { useIsOnline } from "@/lib/use-online"
+import { testIds } from "@/lib/test-ids"
 
 export { Route }
 
@@ -655,7 +656,12 @@ function SignInView() {
 				<CloudOff className="size-4" />
 				<span className="text-sm">Local only</span>
 			</div>
-			<Button onClick={() => setAuthOpen(true)} size="sm" variant="outline">
+			<Button
+				onClick={() => setAuthOpen(true)}
+				size="sm"
+				variant="outline"
+				data-testid={testIds.auth.settingsSignIn}
+			>
 				Sign in
 			</Button>
 			<AuthDialog
@@ -1029,7 +1035,12 @@ function SignedInView() {
 						>
 							Show recovery phrase
 						</Button>
-						<Button onClick={() => logOut()} variant="ghost" size="sm">
+						<Button
+							onClick={() => logOut()}
+							variant="ghost"
+							size="sm"
+							data-testid={testIds.auth.settingsSignOut}
+						>
 							Sign out
 						</Button>
 					</div>

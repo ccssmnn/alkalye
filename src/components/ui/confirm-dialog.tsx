@@ -22,6 +22,8 @@ interface ConfirmDialogProps {
 	variant?: "default" | "destructive"
 	onConfirm: () => void
 	children?: ReactNode
+	confirmTestId?: string
+	cancelTestId?: string
 }
 
 function ConfirmDialog({
@@ -34,6 +36,8 @@ function ConfirmDialog({
 	variant = "default",
 	onConfirm,
 	children,
+	confirmTestId,
+	cancelTestId,
 }: ConfirmDialogProps) {
 	function handleConfirm() {
 		onConfirm()
@@ -49,12 +53,17 @@ function ConfirmDialog({
 				</DialogHeader>
 				{children}
 				<DialogFooter>
-					<Button variant="outline" onClick={() => onOpenChange(false)}>
+					<Button
+						variant="outline"
+						onClick={() => onOpenChange(false)}
+						data-testid={cancelTestId}
+					>
 						{cancelLabel}
 					</Button>
 					<Button
 						variant={variant === "destructive" ? "destructive" : "default"}
 						onClick={handleConfirm}
+						data-testid={confirmTestId}
 					>
 						{confirmLabel}
 					</Button>

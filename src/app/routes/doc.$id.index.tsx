@@ -80,6 +80,7 @@ import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
 import { printToPdf } from "@/lib/print-to-pdf"
+import { testIds } from "@/lib/test-ids"
 export { Route }
 
 function setAutomationReadyState(ready: boolean, route: string) {
@@ -418,6 +419,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 						<Button
 							size="sm"
 							nativeButton={false}
+							data-testid={testIds.doc.newButton}
 							render={
 								<Link
 									to="/new"
@@ -458,7 +460,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					}}
 				/>
 			</ListSidebar>
-			<div className="markdown-editor flex-1" ref={containerRef}>
+			<div
+				className="markdown-editor flex-1"
+				ref={containerRef}
+				data-testid={testIds.doc.editor}
+			>
 				<MarkdownEditor
 					key={docId}
 					ref={editor}
