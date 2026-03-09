@@ -6,6 +6,7 @@
 	"scripts": {
 		"dev": "astro dev",
 		"build": "astro check && astro build",
+		"cli": "bun run src/cli/main.ts",
 		"check": "bun x concurrently \"bun run check:lint\" \"bun run check:types\" \"bun run check:format\" \"bun run check:test\"",
 		"check:lint": "eslint .",
 		"check:types": "astro check",
@@ -19,7 +20,8 @@
 		"test:e2e:headed": "playwright test --headed",
 		"preview": "astro preview",
 		"format": "prettier --write .",
-		"test": "vitest"
+		"test": "vitest",
+		"test:cli": "bun vitest run src/cli"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.1.0",
