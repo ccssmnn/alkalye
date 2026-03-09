@@ -490,12 +490,17 @@ function DocumentItem({
 	let docId = doc.$jazz.id
 
 	// Build link props based on whether we're in a space context
+	// Pass search query to open find panel when document loads
+	let searchParam = searchQuery.trim()
+		? { find: true, q: searchQuery.trim() }
+		: undefined
 	let docLinkProps = spaceId
 		? {
 				to: "/spaces/$spaceId/doc/$id" as const,
 				params: { spaceId, id: docId },
+				search: searchParam,
 			}
-		: { to: "/doc/$id" as const, params: { id: docId } }
+		: { to: "/doc/$id" as const, params: { id: docId }, search: searchParam }
 
 	return (
 		<SidebarMenuItem

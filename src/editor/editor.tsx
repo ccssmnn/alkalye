@@ -64,6 +64,7 @@ import { findExtension, selectMatch } from "./find-extension"
 import { FindPanel } from "./find-panel"
 
 import { useIsMobile } from "@/lib/use-mobile"
+import { useFindPanel } from "@/hooks/use-find-panel"
 import {
 	Dialog,
 	DialogContent,
@@ -211,16 +212,18 @@ function MarkdownEditor(
 	let navigate = useNavigate()
 	let isMobile = useIsMobile()
 
+	// Find panel state is URL-driven via hook
+	let { findOpen, findQuery, findCase, findFuzzy, setFind } = useFindPanel()
+	let findPanelOpen = findOpen
+	let findPanelOpenRef = useRef(false)
+
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
 	let readOnlyCompartment = useRef(new Compartment())
 	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
-	let [findPanelOpen, setFindPanelOpen] = useState(false)
-	let [findInitialQuery, setFindInitialQuery] = useState<string | undefined>()
 	let [findPanelHeight, setFindPanelHeight] = useState(0)
-	let findPanelOpenRef = useRef(false)
 	let [mediaPreviewOpen, setMediaPreviewOpen] = useState(false)
 	let [mediaPreview, setMediaPreview] = useState<{
 		url: string
@@ -394,8 +397,12 @@ function MarkdownEditor(
 					},
 					{
 						key: "Mod-f",
-						run: () => {
-							setFindPanelOpen(true)
+						run: view => {
+							let selectedText = view.state.sliceDoc(
+								view.state.selection.main.from,
+								view.state.selection.main.to,
+							)
+							setFind({ open: true, q: selectedText || undefined })
 							return true
 						},
 						preventDefault: true,
@@ -635,18 +642,16 @@ function MarkdownEditor(
 	}
 
 	function openFind(initialQuery?: string) {
-		if (initialQuery === undefined && view) {
-			let { from, to } = view.state.selection.main
-			if (from !== to) {
-				initialQuery = view.state.sliceDoc(from, to)
-			}
+		if (initialQuery) {
+			setFind({ open: true, q: initialQuery })
+		} else {
+			// Just open, keep existing query
+			setFind({ open: true })
 		}
-		setFindInitialQuery(initialQuery)
-		setFindPanelOpen(true)
 	}
 
 	function closeFind() {
-		setFindPanelOpen(false)
+		setFind({ open: false })
 	}
 
 	useImperativeHandle(ref, () => ({
@@ -816,10 +821,14 @@ function MarkdownEditor(
 		<>
 			{findPanelOpen && (
 				<FindPanel
-					key={findInitialQuery}
 					view={view}
-					initialQuery={findInitialQuery}
-					onClose={() => setFindPanelOpen(false)}
+					query={findQuery}
+					caseSensitive={findCase}
+					fuzzy={findFuzzy}
+					onQueryChange={q => setFind({ q })}
+					onCaseChange={caseSensitive => setFind({ case: caseSensitive })}
+					onFuzzyChange={fuzzy => setFind({ fuzzy })}
+					onClose={closeFind}
 					onHeightChange={setFindPanelHeight}
 				/>
 			)}

@@ -18,23 +18,45 @@ export { FindPanel }
 
 interface FindPanelProps {
 	view: EditorView | null
-	initialQuery?: string
+	query?: string
+	caseSensitive?: boolean
+	fuzzy?: boolean
+	onQueryChange?: (query: string) => void
+	onCaseChange?: (caseSensitive: boolean) => void
+	onFuzzyChange?: (fuzzy: boolean) => void
 	onClose: () => void
 	onHeightChange?: (height: number) => void
 }
 
 function FindPanel({
 	view,
-	initialQuery,
+	query: controlledQuery,
+	caseSensitive: controlledCaseSensitive,
+	fuzzy: controlledFuzzy,
+	onQueryChange,
+	onCaseChange,
+	onFuzzyChange,
 	onClose,
 	onHeightChange,
 }: FindPanelProps) {
 	let { rightOpen, isMobile } = useSidebar()
 	let inputRef = useRef<HTMLInputElement>(null)
 	let panelRef = useRef<HTMLDivElement>(null)
-	let [query, setQuery] = useState(initialQuery ?? lastQuery)
-	let [caseSensitive, setCaseSensitive] = useState(lastCaseSensitive)
-	let [fuzzy, setFuzzy] = useState(lastFuzzy)
+
+	// Use controlled values or local state with persistence
+	let isControlled = controlledQuery !== undefined
+	let [localQuery, setLocalQuery] = useState(controlledQuery ?? lastQuery)
+	let [localCaseSensitive, setLocalCaseSensitive] = useState(
+		controlledCaseSensitive ?? lastCaseSensitive,
+	)
+	let [localFuzzy, setLocalFuzzy] = useState(controlledFuzzy ?? lastFuzzy)
+
+	let query = isControlled ? (controlledQuery ?? "") : localQuery
+	let caseSensitive = isControlled
+		? (controlledCaseSensitive ?? false)
+		: localCaseSensitive
+	let fuzzy = isControlled ? (controlledFuzzy ?? false) : localFuzzy
+
 	let [matchInfo, setMatchInfo] = useState({ current: 0, total: 0 })
 
 	let closeRef = useRef(onClose)
@@ -177,7 +199,13 @@ function FindPanel({
 					ref={inputRef}
 					type="text"
 					value={query}
-					onChange={e => setQuery(e.target.value)}
+					onChange={e => {
+						if (isControlled) {
+							onQueryChange?.(e.target.value)
+						} else {
+							setLocalQuery(e.target.value)
+						}
+					}}
 					onKeyDown={handleKeyDown}
 					placeholder="Find..."
 					className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-7 flex-1 rounded-none border bg-transparent px-2 text-xs outline-none focus-visible:ring-1 md:w-48 md:flex-none"
@@ -204,7 +232,13 @@ function FindPanel({
 							<Button
 								size="icon-xs"
 								variant={caseSensitive ? "secondary" : "ghost"}
-								onClick={() => setCaseSensitive(!caseSensitive)}
+								onClick={() => {
+									if (isControlled) {
+										onCaseChange?.(!caseSensitive)
+									} else {
+										setLocalCaseSensitive(!caseSensitive)
+									}
+								}}
 							>
 								<CaseSensitive className="size-3.5" />
 							</Button>
@@ -219,7 +253,13 @@ function FindPanel({
 							<Button
 								size="xs"
 								variant={fuzzy ? "secondary" : "ghost"}
-								onClick={() => setFuzzy(!fuzzy)}
+								onClick={() => {
+									if (isControlled) {
+										onFuzzyChange?.(!fuzzy)
+									} else {
+										setLocalFuzzy(!fuzzy)
+									}
+								}}
 								className="px-1.5 font-mono"
 							>
 								.*

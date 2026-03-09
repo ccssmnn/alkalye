@@ -6,6 +6,7 @@ import {
 	Link,
 	useLocation,
 } from "@tanstack/react-router"
+import { z } from "zod"
 import { co, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
@@ -93,7 +94,15 @@ function setAutomationReadyState(ready: boolean, route: string) {
 	document.body.dataset.alkalyeReady = ready ? "true" : "false"
 }
 
+let findSearchSchema = z.object({
+	find: z.boolean().optional(),
+	q: z.string().optional(),
+	case: z.boolean().optional(),
+	fuzzy: z.boolean().optional(),
+})
+
 let Route = createFileRoute("/spaces/$spaceId/doc/$id/")({
+	validateSearch: findSearchSchema,
 	loader: async ({ params, context }) => {
 		let [space, doc] = await Promise.all([
 			Space.load(params.spaceId, { resolve: spaceResolve }),

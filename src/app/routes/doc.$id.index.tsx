@@ -9,6 +9,7 @@ import {
 import { co, Group } from "jazz-tools"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
+import { z } from "zod"
 import {
 	makeUploadImage,
 	makeUploadVideo,
@@ -90,7 +91,15 @@ function setAutomationReadyState(ready: boolean, route: string) {
 	document.body.dataset.alkalyeReady = ready ? "true" : "false"
 }
 
+let findSearchSchema = z.object({
+	find: z.boolean().optional(),
+	q: z.string().optional(),
+	case: z.boolean().optional(),
+	fuzzy: z.boolean().optional(),
+})
+
 let Route = createFileRoute("/doc/$id/")({
+	validateSearch: findSearchSchema,
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, { resolve })
 		if (!doc.$isLoaded) {
@@ -680,7 +689,7 @@ function handleDuplicateDocument(
 	)
 	me.root.documents.$jazz.push(newDoc)
 	if (isMobile) setLeftOpenMobile(false)
-	navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
+	navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id }, search: {} })
 }
 
 function getPersonalDocs(
