@@ -11,11 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as WelcomeRouteImport } from './routes/welcome'
 import { Route as SettingsRouteImport } from './routes/settings'
-import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as NewRouteImport } from './routes/new'
 import { Route as LocalRouteImport } from './routes/local'
 import { Route as InviteRouteImport } from './routes/invite'
-import { Route as ImprintRouteImport } from './routes/imprint'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as TutorSlugRouteImport } from './routes/tutor.$slug'
 import { Route as SpacesSpaceIdIndexRouteImport } from './routes/spaces.$spaceId.index'
@@ -37,11 +35,6 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
-const PrivacyRoute = PrivacyRouteImport.update({
-  id: '/privacy',
-  path: '/privacy',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const NewRoute = NewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -55,11 +48,6 @@ const LocalRoute = LocalRouteImport.update({
 const InviteRoute = InviteRouteImport.update({
   id: '/invite',
   path: '/invite',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ImprintRoute = ImprintRouteImport.update({
-  id: '/imprint',
-  path: '/imprint',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -115,11 +103,9 @@ const SpacesSpaceIdDocIdIndexRoute = SpacesSpaceIdDocIdIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
   '/local': typeof LocalRoute
   '/new': typeof NewRoute
-  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/welcome': typeof WelcomeRoute
   '/tutor/$slug': typeof TutorSlugRoute
@@ -134,11 +120,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
   '/local': typeof LocalRoute
   '/new': typeof NewRoute
-  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/welcome': typeof WelcomeRoute
   '/tutor/$slug': typeof TutorSlugRoute
@@ -154,11 +138,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/imprint': typeof ImprintRoute
   '/invite': typeof InviteRoute
   '/local': typeof LocalRoute
   '/new': typeof NewRoute
-  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
   '/welcome': typeof WelcomeRoute
   '/tutor/$slug': typeof TutorSlugRoute
@@ -175,11 +157,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/imprint'
     | '/invite'
     | '/local'
     | '/new'
-    | '/privacy'
     | '/settings'
     | '/welcome'
     | '/tutor/$slug'
@@ -194,11 +174,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/imprint'
     | '/invite'
     | '/local'
     | '/new'
-    | '/privacy'
     | '/settings'
     | '/welcome'
     | '/tutor/$slug'
@@ -213,11 +191,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/imprint'
     | '/invite'
     | '/local'
     | '/new'
-    | '/privacy'
     | '/settings'
     | '/welcome'
     | '/tutor/$slug'
@@ -233,11 +209,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ImprintRoute: typeof ImprintRoute
   InviteRoute: typeof InviteRoute
   LocalRoute: typeof LocalRoute
   NewRoute: typeof NewRoute
-  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
   WelcomeRoute: typeof WelcomeRoute
   TutorSlugRoute: typeof TutorSlugRoute
@@ -267,13 +241,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/privacy': {
-      id: '/privacy'
-      path: '/privacy'
-      fullPath: '/privacy'
-      preLoaderRoute: typeof PrivacyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/new': {
       id: '/new'
       path: '/new'
@@ -293,13 +260,6 @@ declare module '@tanstack/react-router' {
       path: '/invite'
       fullPath: '/invite'
       preLoaderRoute: typeof InviteRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/imprint': {
-      id: '/imprint'
-      path: '/imprint'
-      fullPath: '/imprint'
-      preLoaderRoute: typeof ImprintRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -377,11 +337,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ImprintRoute: ImprintRoute,
   InviteRoute: InviteRoute,
   LocalRoute: LocalRoute,
   NewRoute: NewRoute,
-  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
   WelcomeRoute: WelcomeRoute,
   TutorSlugRoute: TutorSlugRoute,

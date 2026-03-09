@@ -97,19 +97,11 @@ function HelpMenu({
 						Twitter
 						<ExternalLink className="ml-auto size-3 opacity-50" />
 					</DropdownMenuItem>
-				</DropdownMenuGroup>
-				<DropdownMenuSeparator />
-				<DropdownMenuGroup>
-					<DropdownMenuLabel>Legal</DropdownMenuLabel>
 					<DropdownMenuItem
-						render={<Link to="/imprint" onClick={onNavigate} />}
+						render={<a href="/" target="_blank" rel="noopener noreferrer" />}
 					>
-						Imprint
-					</DropdownMenuItem>
-					<DropdownMenuItem
-						render={<Link to="/privacy" onClick={onNavigate} />}
-					>
-						Privacy
+						Website
+						<ExternalLink className="ml-auto size-3 opacity-50" />
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 			</DropdownMenuContent>

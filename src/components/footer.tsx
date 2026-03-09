@@ -1,5 +1,4 @@
 import { Bird } from "lucide-react"
-import { Link } from "@tanstack/react-router"
 
 export { Footer }
 
@@ -38,18 +37,18 @@ function Footer() {
 					</svg>
 					<span className="sr-only">GitHub</span>
 				</a>
-				<Link
-					to="/privacy"
+				<a
+					href="/privacy"
 					className="hover:text-foreground p-1 transition-colors"
 				>
 					Privacy
-				</Link>
-				<Link
-					to="/imprint"
+				</a>
+				<a
+					href="/imprint"
 					className="hover:text-foreground p-1 transition-colors"
 				>
 					Imprint
-				</Link>
+				</a>
 			</div>
 		</footer>
 	)
