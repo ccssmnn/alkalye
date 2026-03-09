@@ -5,7 +5,6 @@ import { runCli } from "./commands"
 import type { CliResult, RuntimeDeps } from "./types"
 
 let deps: RuntimeDeps = {
-	fetch,
 	env,
 	readFile,
 	readStdin,
@@ -20,29 +19,14 @@ async function safeRun(args: string[]): Promise<CliResult> {
 	try {
 		return await runCli(args, deps)
 	} catch {
-		return {
-			ok: false,
-			command: "cli",
-			error: {
-				code: "internal_error",
-				message: "Unhandled CLI error",
-			},
-		}
+		return { ok: false, command: "cli", error: { code: "internal_error", message: "Unhandled CLI error" } }
 	}
 }
 
 async function readStdin(): Promise<string> {
 	let chunks: Buffer[] = []
-	for await (let chunk of stdin) {
-		if (typeof chunk === "string") {
-			chunks.push(Buffer.from(chunk))
-		} else {
-			chunks.push(chunk)
-		}
-	}
+	for await (let chunk of stdin) chunks.push(typeof chunk === "string" ? Buffer.from(chunk) : chunk)
 	return Buffer.concat(chunks).toString("utf-8")
 }
 
-function writeJson(result: CliResult): void {
-	stdout.write(`${JSON.stringify(result)}\n`)
-}
+function writeJson(result: CliResult): void { stdout.write(`${JSON.stringify(result)}\n`) }

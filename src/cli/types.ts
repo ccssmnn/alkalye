@@ -40,9 +40,8 @@ export type DocsAction =
 export type ParsedArgs = {
 	command: "auth" | "docs"
 	action: AuthAction | DocsAction
-	baseUrl: string
+	syncUrl: string
 	timeoutMs: number
-	headless: boolean
 	spaceId?: string
 	docId?: string
 	title?: string
@@ -55,17 +54,12 @@ export type ParsedArgs = {
 	passphraseFile?: string
 	passphraseStdin: boolean
 	name?: string
+	sessionFile?: string
+	sessionAccountId?: string
+	sessionSecret?: string
 }
 
-export type FetchInit = Parameters<typeof fetch>[1]
-
-export type FetchLike = (
-	input: string,
-	init?: FetchInit,
-) => Promise<Response>
-
 export type RuntimeDeps = {
-	fetch: FetchLike
 	env: Record<string, string | undefined>
 	readFile: (path: string) => Promise<string>
 	readStdin: () => Promise<string>

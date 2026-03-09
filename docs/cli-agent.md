@@ -1,59 +1,39 @@
-# Alkalye Agent CLI Prototype
+# Alkalye Jazz CLI
 
-This prototype CLI provides machine-readable JSON output for agent workflows.
+CLI now talks to the Jazz sync endpoint directly (no `/api/agent/v1`).
 
 ## Run
 
 ```bash
-bun run cli -- auth status
+bun run cli -- auth sign-in --passphrase-env ALK_PASS
 ```
 
-`stdout` always contains one JSON object:
-
-- success
-
-```json
-{"ok":true,"command":"auth.status","data":{}}
-```
-
-- failure
-
-```json
-{"ok":false,"command":"docs.create","error":{"code":"missing_required_option","message":"Missing required option --space-id"}}
-```
+Outputs one JSON object on stdout.
 
 ## Global flags
 
-- `--base-url <url>`: backend base URL (default `https://www.alkalye.com/api/agent/v1`)
-- `--timeout <ms>`: request timeout in milliseconds
-- `--headless` / `--no-headless`: sets `x-alk-headless` request header
+- `--sync-url <wss://...>` Jazz sync endpoint (default `wss://sync.alkalye.com`)
+- `--timeout <ms>` reserved for future sync waits
+
+## Auth material
+
+For any docs command, provide one of:
+
+- `--session-account-id <co_...> --session-secret <sealerSecret_...>`
+- `--session-file <json-file>` containing `{ "accountID": "...", "accountSecret": "..." }`
+- passphrase flags (`--passphrase`, `--passphrase-env`, `--passphrase-file`, `--passphrase-stdin`)
 
 ## Auth commands
 
-- `auth sign-in`
-- `auth sign-out`
+- `auth sign-in` (derives session credentials from passphrase)
+- `auth create-account` (prepares deterministic account credentials from passphrase)
 - `auth status`
-- `auth create-account`
+- `auth sign-out`
 
-Passphrase sources:
-
-- `--passphrase "word1 word2 ..."`
-- `--passphrase-env ALK_PASS`
-- `--passphrase-file /secure/path/passphrase.txt`
-- `--passphrase-stdin`
-
-Examples:
+Example:
 
 ```bash
-bun run cli -- auth sign-in --passphrase-env ALK_PASS
-printf 'word1 word2 word3' | bun run cli -- auth sign-in --passphrase-stdin
-bun run cli -- auth create-account --name "Agent Writer" --passphrase-file /tmp/passphrase.txt
-```
-
-If backend create-account is unavailable, CLI returns:
-
-```json
-{"ok":false,"command":"auth.create-account","error":{"code":"not_supported","message":"Operation not supported by backend"}}
+bun run cli -- auth sign-in --passphrase-env ALK_PASS > /tmp/alk-session.json
 ```
 
 ## Docs commands
@@ -66,23 +46,4 @@ If backend create-account is unavailable, CLI returns:
 - `docs delete --doc-id <id> [--soft-delete|--hard-delete]`
 - `docs upsert --space-id <id> --title <title> --content <content>`
 
-Upsert behavior:
-
-1. list/search docs in the space by title
-2. update exact title match if found
-3. create if no exact title match exists
-
-Examples:
-
-```bash
-bun run cli -- docs create --space-id sp_123 --title "Spec" --content "v1"
-bun run cli -- docs update --doc-id doc_123 --append --content "\nnew note"
-bun run cli -- docs list --space-id sp_123 --query roadmap
-bun run cli -- docs upsert --space-id sp_123 --title "Roadmap" --content "Q2 plan"
-```
-
-## Safety notes
-
-- Prefer env/file/stdin passphrase sources over shell history.
-- `--hard-delete` requests permanent delete and may be irreversible.
-- Non-2xx HTTP responses are mapped into JSON errors with status/details when available.
+Upsert uses title matching from document heading (`# Title`).
