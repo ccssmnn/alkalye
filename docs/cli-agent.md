@@ -25,15 +25,21 @@ For any docs command, provide one of:
 
 ## Auth commands
 
-- `auth sign-in` (derives session credentials from passphrase)
-- `auth create-account` (prepares deterministic account credentials from passphrase)
+- `auth sign-in` (derives session credentials from passphrase and optionally persists via `--session-file`)
+- `auth create-account` (creates account on sync server for passphrase-derived credentials; supports `--session-file` persistence)
 - `auth status`
 - `auth sign-out`
 
 Example:
 
 ```bash
-bun run cli -- auth sign-in --passphrase-env ALK_PASS > /tmp/alk-session.json
+bun run cli -- auth sign-in --passphrase-env ALK_PASS --session-file /tmp/alk-session.json
+```
+
+Local smoke test (idempotent, creates a temporary space when `ALK_TEST_SPACE_ID` is unset):
+
+```bash
+ALK_SYNC_URL=ws://127.0.0.1:4200 bun run test:cli:smoke
 ```
 
 ## Docs commands

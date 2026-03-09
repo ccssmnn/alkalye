@@ -30,6 +30,8 @@
         "astro": "^5.16.15",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
+        "cojson": "^0.20.4",
+        "cojson-transport-ws": "^0.20.4",
         "dompurify": "^3.3.1",
         "fast-myers-diff": "^3.2.0",
         "idb-keyval": "^6.2.2",
@@ -1130,7 +1132,7 @@
 
     "code-block-writer": ["code-block-writer@13.0.3", "", {}, "sha512-Oofo0pq3IKnsFtuHqSF7TqBfr71aeyZDVJ0HpmqB7FBM2qEigL0iPONSCZSO9pE9dZTAxANe5XHG9Uy0YMv8cg=="],
 
-    "cojson": ["cojson@0.14.28", "", { "dependencies": { "@noble/ciphers": "^1.3.0", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "jazz-crypto-rs": "0.0.7", "neverthrow": "^7.0.1", "queueueue": "^4.1.2", "unicode-segmenter": "^0.12.0" } }, "sha512-aIp4/66KHG5/E/mTrpIB5w3iYklweKOK/d4phKOMndAQy+UawvaZqvEmUteQ8XbTDNp7KZZD5g4p0uIy8BAi8A=="],
+    "cojson": ["cojson@0.20.4", "", { "dependencies": { "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "cojson-core-napi": "0.20.4", "cojson-core-rn": "0.20.4", "cojson-core-wasm": "0.20.4", "unicode-segmenter": "^0.12.0" } }, "sha512-rMEihUacQQ4osJUi7WIOTniVo5Nbhf9Aj/hovhu13rAaDApzYFfVJqpJXcCpFwsMWi3IhYyRc5RTI7YGoJCRTA=="],
 
     "cojson-core-napi": ["cojson-core-napi@0.20.4", "", { "optionalDependencies": { "cojson-core-napi-darwin-arm64": "0.20.4", "cojson-core-napi-darwin-x64": "0.20.4", "cojson-core-napi-linux-arm-gnueabihf": "0.20.4", "cojson-core-napi-linux-arm64-gnu": "0.20.4", "cojson-core-napi-linux-arm64-musl": "0.20.4", "cojson-core-napi-linux-x64-gnu": "0.20.4", "cojson-core-napi-linux-x64-musl": "0.20.4" } }, "sha512-ldI/t3zlqQ92n+FMjkhx5N4nT9x83zTNsoXxaBTQpB1+pVtjXlArlhMlaZLJmjR+cZdt8cTKfAmtd2aI+V0zUQ=="],
 
@@ -1156,7 +1158,7 @@
 
     "cojson-storage-indexeddb": ["cojson-storage-indexeddb@0.20.4", "", { "dependencies": { "cojson": "0.20.4" } }, "sha512-uyTKhpN4TkBqVqD8qZz/MgMkcZ2vHcdY1EFqaCkV4Y8MP39hJTfP+XYJTGDqzi9YC+ZQArJU0ks8HgUYKLk14w=="],
 
-    "cojson-transport-ws": ["cojson-transport-ws@0.14.28", "", { "dependencies": { "cojson": "0.14.28" } }, "sha512-VUa3X8OltO0dqXmps4+KOJvdwJ2ztzr+Aiin9wsBcWEiK7K5r7ae/hEwqjnrOS/8jOX/C0V2jBdx645nGwBQRA=="],
+    "cojson-transport-ws": ["cojson-transport-ws@0.20.4", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "cojson": "0.20.4" } }, "sha512-FhucYIgvx/QTUKbAqphqGopGfxU4Ecsf1OmgFvSTBh2lChbFNYtF6GzXEvyuWMhOEcuhpsmjiF1vhYSC7yUbGw=="],
 
     "color-convert": ["color-convert@2.0.1", "", { "dependencies": { "color-name": "~1.1.4" } }, "sha512-RRECPsj7iu/xb5oKYcsFHSppFNnsj/52OVTRKb4zP5onXwVF3zVmmToNcOfGC+CRDpfK/U584fMg38ZHCaElKQ=="],
 
@@ -2822,7 +2824,7 @@
 
     "cliui/wrap-ansi": ["wrap-ansi@7.0.0", "", { "dependencies": { "ansi-styles": "^4.0.0", "string-width": "^4.1.0", "strip-ansi": "^6.0.0" } }, "sha512-YVGIj2kamLSTxw6NsZjoBxfSwsn0ycdesmc4p+Q21c5zPuZ1pl+NfxVdxPtdHvmNVOQ6XSYG4AUtyt/Fi7D16Q=="],
 
-    "cojson-storage-indexeddb/cojson": ["cojson@0.20.4", "", { "dependencies": { "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "cojson-core-napi": "0.20.4", "cojson-core-rn": "0.20.4", "cojson-core-wasm": "0.20.4", "unicode-segmenter": "^0.12.0" } }, "sha512-rMEihUacQQ4osJUi7WIOTniVo5Nbhf9Aj/hovhu13rAaDApzYFfVJqpJXcCpFwsMWi3IhYyRc5RTI7YGoJCRTA=="],
+    "cojson-storage/cojson": ["cojson@0.14.28", "", { "dependencies": { "@noble/ciphers": "^1.3.0", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "jazz-crypto-rs": "0.0.7", "neverthrow": "^7.0.1", "queueueue": "^4.1.2", "unicode-segmenter": "^0.12.0" } }, "sha512-aIp4/66KHG5/E/mTrpIB5w3iYklweKOK/d4phKOMndAQy+UawvaZqvEmUteQ8XbTDNp7KZZD5g4p0uIy8BAi8A=="],
 
     "csso/css-tree": ["css-tree@2.2.1", "", { "dependencies": { "mdn-data": "2.0.28", "source-map-js": "^1.0.1" } }, "sha512-OA0mILzGc1kCOCSJerOeqDxDQ4HOh+G8NbOJFOTgOCzpw7fCBubk0fEyxp8AgOL/jvLgYA/uV0cMbe43ElF1JA=="],
 
@@ -2850,19 +2852,25 @@
 
     "import-fresh/resolve-from": ["resolve-from@4.0.0", "", {}, "sha512-pb/MYmXstAkysRFx8piNI1tGFNQIFA3vkE3Gq4EuA1dF6gHp/+vgZqsCGJapvy8N3Q+4o7FwvquPJcnZ7RYy4g=="],
 
+    "jazz-browser/cojson": ["cojson@0.14.28", "", { "dependencies": { "@noble/ciphers": "^1.3.0", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "jazz-crypto-rs": "0.0.7", "neverthrow": "^7.0.1", "queueueue": "^4.1.2", "unicode-segmenter": "^0.12.0" } }, "sha512-aIp4/66KHG5/E/mTrpIB5w3iYklweKOK/d4phKOMndAQy+UawvaZqvEmUteQ8XbTDNp7KZZD5g4p0uIy8BAi8A=="],
+
     "jazz-browser/cojson-storage-indexeddb": ["cojson-storage-indexeddb@0.14.28", "", { "dependencies": { "cojson": "0.14.28", "cojson-storage": "0.14.28" } }, "sha512-FHVEHU2JyN9v8Yu2VCq89+OuyzrXf+4yTx+bJLfP2Fy2Wihhiq/Q8Wko6WIsmhMB1NfSZ7TthymUPK6Y3ibEog=="],
+
+    "jazz-browser/cojson-transport-ws": ["cojson-transport-ws@0.14.28", "", { "dependencies": { "cojson": "0.14.28" } }, "sha512-VUa3X8OltO0dqXmps4+KOJvdwJ2ztzr+Aiin9wsBcWEiK7K5r7ae/hEwqjnrOS/8jOX/C0V2jBdx645nGwBQRA=="],
 
     "jazz-browser/jazz-tools": ["jazz-tools@0.14.28", "", { "dependencies": { "@scure/bip39": "^1.3.0", "cojson": "0.14.28", "fast-myers-diff": "^3.2.0", "zod": "3.25.28" } }, "sha512-T6HGV2zzDkITAfy5B/VcDbWyS9aZxihtqDVg5erU1VxfpH6SR0GKI9mTG+odCZ2zJVfzQDoanEY0StDmWNA5Ag=="],
 
     "jazz-browser-media-images/jazz-tools": ["jazz-tools@0.14.28", "", { "dependencies": { "@scure/bip39": "^1.3.0", "cojson": "0.14.28", "fast-myers-diff": "^3.2.0", "zod": "3.25.28" } }, "sha512-T6HGV2zzDkITAfy5B/VcDbWyS9aZxihtqDVg5erU1VxfpH6SR0GKI9mTG+odCZ2zJVfzQDoanEY0StDmWNA5Ag=="],
 
+    "jazz-react/cojson": ["cojson@0.14.28", "", { "dependencies": { "@noble/ciphers": "^1.3.0", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "jazz-crypto-rs": "0.0.7", "neverthrow": "^7.0.1", "queueueue": "^4.1.2", "unicode-segmenter": "^0.12.0" } }, "sha512-aIp4/66KHG5/E/mTrpIB5w3iYklweKOK/d4phKOMndAQy+UawvaZqvEmUteQ8XbTDNp7KZZD5g4p0uIy8BAi8A=="],
+
+    "jazz-react/cojson-transport-ws": ["cojson-transport-ws@0.14.28", "", { "dependencies": { "cojson": "0.14.28" } }, "sha512-VUa3X8OltO0dqXmps4+KOJvdwJ2ztzr+Aiin9wsBcWEiK7K5r7ae/hEwqjnrOS/8jOX/C0V2jBdx645nGwBQRA=="],
+
     "jazz-react/jazz-tools": ["jazz-tools@0.14.28", "", { "dependencies": { "@scure/bip39": "^1.3.0", "cojson": "0.14.28", "fast-myers-diff": "^3.2.0", "zod": "3.25.28" } }, "sha512-T6HGV2zzDkITAfy5B/VcDbWyS9aZxihtqDVg5erU1VxfpH6SR0GKI9mTG+odCZ2zJVfzQDoanEY0StDmWNA5Ag=="],
 
+    "jazz-react-core/cojson": ["cojson@0.14.28", "", { "dependencies": { "@noble/ciphers": "^1.3.0", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "jazz-crypto-rs": "0.0.7", "neverthrow": "^7.0.1", "queueueue": "^4.1.2", "unicode-segmenter": "^0.12.0" } }, "sha512-aIp4/66KHG5/E/mTrpIB5w3iYklweKOK/d4phKOMndAQy+UawvaZqvEmUteQ8XbTDNp7KZZD5g4p0uIy8BAi8A=="],
+
     "jazz-react-core/jazz-tools": ["jazz-tools@0.14.28", "", { "dependencies": { "@scure/bip39": "^1.3.0", "cojson": "0.14.28", "fast-myers-diff": "^3.2.0", "zod": "3.25.28" } }, "sha512-T6HGV2zzDkITAfy5B/VcDbWyS9aZxihtqDVg5erU1VxfpH6SR0GKI9mTG+odCZ2zJVfzQDoanEY0StDmWNA5Ag=="],
-
-    "jazz-tools/cojson": ["cojson@0.20.4", "", { "dependencies": { "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "cojson-core-napi": "0.20.4", "cojson-core-rn": "0.20.4", "cojson-core-wasm": "0.20.4", "unicode-segmenter": "^0.12.0" } }, "sha512-rMEihUacQQ4osJUi7WIOTniVo5Nbhf9Aj/hovhu13rAaDApzYFfVJqpJXcCpFwsMWi3IhYyRc5RTI7YGoJCRTA=="],
-
-    "jazz-tools/cojson-transport-ws": ["cojson-transport-ws@0.20.4", "", { "dependencies": { "@opentelemetry/api": "^1.9.0", "cojson": "0.20.4" } }, "sha512-FhucYIgvx/QTUKbAqphqGopGfxU4Ecsf1OmgFvSTBh2lChbFNYtF6GzXEvyuWMhOEcuhpsmjiF1vhYSC7yUbGw=="],
 
     "jazz-tools/zod": ["zod@4.1.11", "", {}, "sha512-WPsqwxITS2tzx1bzhIKsEs19ABD5vmCVa4xBo2tq/SrV4RNZtfws1EnCWQXM6yh8bD08a1idvkB5MZSBiZsjwg=="],
 
@@ -3085,6 +3093,8 @@
     "hast-util-from-html/parse5/entities": ["entities@6.0.1", "", {}, "sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g=="],
 
     "hast-util-raw/parse5/entities": ["entities@6.0.1", "", {}, "sha512-aN97NXWF6AWBTahfVOIrB/NShkzi5H7F9r1s9mD3cDj4Ko5f2qhhVoYMibXF7GlLveb/D2ioWay8lxI97Ven3g=="],
+
+    "jazz-browser-media-images/jazz-tools/cojson": ["cojson@0.14.28", "", { "dependencies": { "@noble/ciphers": "^1.3.0", "@noble/curves": "^1.9.1", "@noble/hashes": "^1.8.0", "@opentelemetry/api": "^1.9.0", "@scure/base": "1.2.1", "jazz-crypto-rs": "0.0.7", "neverthrow": "^7.0.1", "queueueue": "^4.1.2", "unicode-segmenter": "^0.12.0" } }, "sha512-aIp4/66KHG5/E/mTrpIB5w3iYklweKOK/d4phKOMndAQy+UawvaZqvEmUteQ8XbTDNp7KZZD5g4p0uIy8BAi8A=="],
 
     "jazz-browser-media-images/jazz-tools/zod": ["zod@3.25.28", "", {}, "sha512-/nt/67WYKnr5by3YS7LroZJbtcCBurDKKPBPWWzaxvVCGuG/NOsiKkrjoOhI8mJ+SQUXEbUzeB3S+6XDUEEj7Q=="],
 

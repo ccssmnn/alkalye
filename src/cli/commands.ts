@@ -1,4 +1,6 @@
 import { Buffer } from "node:buffer"
+import { createHash } from "node:crypto"
+import { dirname } from "node:path"
 import * as bip39 from "@scure/bip39"
 import { cojsonInternals } from "cojson"
 import { WasmCrypto } from "cojson/crypto/WasmCrypto"
@@ -34,6 +36,7 @@ async function runAuth(args: ParsedArgs, deps: RuntimeDeps): Promise<CliResult> 
 		if (!passphrase.ok || !passphrase.value) return failure(command, passphrase.code, passphrase.message)
 		try {
 			let creds = await credentialsFromPassphrase(passphrase.value)
+			await persistSessionIfRequested(args, deps, creds)
 			return success(command, { session: creds })
 		} catch {
 			return failure(command, "invalid_passphrase", "Invalid passphrase")
@@ -45,21 +48,25 @@ async function runAuth(args: ParsedArgs, deps: RuntimeDeps): Promise<CliResult> 
 		try {
 			let creds = await credentialsFromPassphrase(passphrase.value)
 			let crypto = await WasmCrypto.create()
-			let peerConn = await connectPeer(args.syncUrl)
+			let peerConn = connectPeer(args.syncUrl)
 			let context = await createJazzContextForNewAccount({
 				creationProps: { name: args.name ?? "CLI User" },
 				initialAgentSecret: creds.accountSecret,
-				peers: [peerConn.peer],
+				peers: peerConn.peers,
 				crypto,
 				sessionProvider: new MockSessionProvider(),
 				AccountSchema: UserAccount,
 			})
+			peerConn.setNode(context.node)
 			await context.account.$jazz.waitForAllCoValuesSync()
-			peerConn.stop()
+			await persistSessionIfRequested(args, deps, creds)
 			context.done()
+			peerConn.stop()
 			return success(command, { created: true, session: creds })
-		} catch {
-			return failure(command, "invalid_passphrase", "Invalid passphrase")
+		} catch (error) {
+			let message = error instanceof Error ? error.message : "Failed to create account"
+			let code = message === "sync_connect_timeout" ? "sync_connect_timeout" : "create_account_failed"
+			return failure(command, code, message)
 		}
 	}
 	return failure(command, "invalid_action", "Unsupported auth action")
@@ -182,34 +189,60 @@ function serializeDoc(doc: any): JsonValue {
 
 async function credentialsFromPassphrase(passphrase: string): Promise<{ accountID: string; accountSecret: string }> {
 	let crypto = await WasmCrypto.create()
-	let entropyHex = bip39.mnemonicToEntropy(passphrase, wordlist)
-	let secretSeed = Uint8Array.from(Buffer.from(entropyHex, "hex"))
-	let accountSecret = crypto.agentSecretFromSecretSeed(secretSeed)
+	let seed: Buffer
+	try {
+		let mnemonicSeed = Buffer.from(await bip39.mnemonicToSeed(passphrase, "", wordlist))
+		seed = mnemonicSeed.subarray(0, 32)
+	} catch {
+		seed = createHash("sha256").update(passphrase, "utf8").digest()
+	}
+	if (seed.length !== 32) {
+		seed = createHash("sha256").update(seed).digest()
+	}
+	let accountSecret = crypto.agentSecretFromSecretSeed(Uint8Array.from(seed))
 	let accountID = cojsonInternals.idforHeader(cojsonInternals.accountHeaderForInitialAgentSecret(accountSecret, crypto), crypto)
 	return { accountID, accountSecret }
 }
 
-async function connectPeer(syncUrl: string): Promise<{ peer: any; stop: () => void }> {
-	return await new Promise((resolve, reject) => {
-		let done = false
-		let wsPeer = new WebSocketPeerWithReconnection({
-			peer: syncUrl,
-			reconnectionTimeout: 100,
-			addPeer: peer => {
-				if (done) return
-				done = true
-				resolve({ peer, stop: () => wsPeer.disable() })
-			},
-			removePeer: () => {},
-		})
-		wsPeer.enable()
-		setTimeout(() => {
-			if (done) return
-			done = true
+function connectPeer(syncUrl: string): { peers: any[]; setNode: (node: any) => void; stop: () => void } {
+	let node: any | undefined = undefined
+	let peers: any[] = []
+	let timeout = setTimeout(() => {
+		if (peers.length === 0) {
 			wsPeer.disable()
-			reject(new Error("sync_connect_timeout"))
-		}, 5_000)
+		}
+	}, 10_000)
+	let wsPeer = new WebSocketPeerWithReconnection({
+		peer: syncUrl,
+		reconnectionTimeout: 100,
+		addPeer: peer => {
+			clearTimeout(timeout)
+			if (node) {
+				node.syncManager.addPeer(peer)
+			} else {
+				peers.push(peer)
+			}
+		},
+		removePeer: () => {},
 	})
+	wsPeer.enable()
+	return {
+		peers,
+		setNode(value: any) {
+			node = value
+		},
+		stop: () => {
+			clearTimeout(timeout)
+			wsPeer.disable()
+		},
+	}
+}
+
+async function persistSessionIfRequested(args: ParsedArgs, deps: RuntimeDeps, creds: { accountID: string; accountSecret: string }) {
+	if (!args.sessionFile) return
+	let dir = dirname(args.sessionFile)
+	await deps.mkdir(dir)
+	await deps.writeFile(args.sessionFile, `${JSON.stringify(creds, null, 2)}\n`)
 }
 
 async function resolveSession(args: ParsedArgs, deps: RuntimeDeps, required: boolean): Promise<{ ok: true; accountID: string; secret: string } | { ok: false; code: string; message: string }> {

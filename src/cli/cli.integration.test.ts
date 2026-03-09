@@ -29,6 +29,8 @@ function createDeps(): RuntimeDeps {
 	return {
 		env: {},
 		readFile: async () => "",
+		writeFile: async () => {},
+		mkdir: async () => {},
 		readStdin: async () => "",
 		now: () => "2026-03-09T00:00:00.000Z",
 	}

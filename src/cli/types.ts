@@ -62,6 +62,8 @@ export type ParsedArgs = {
 export type RuntimeDeps = {
 	env: Record<string, string | undefined>
 	readFile: (path: string) => Promise<string>
+	writeFile: (path: string, content: string) => Promise<void>
+	mkdir: (path: string) => Promise<void>
 	readStdin: () => Promise<string>
 	now: () => string
 }

@@ -1,12 +1,14 @@
 import { Buffer } from "node:buffer"
-import { readFile } from "node:fs/promises"
+import { mkdir, readFile, writeFile } from "node:fs/promises"
 import { argv, env, exit, stdin, stdout } from "node:process"
 import { runCli } from "./commands"
 import type { CliResult, RuntimeDeps } from "./types"
 
 let deps: RuntimeDeps = {
 	env,
-	readFile,
+	readFile: path => readFile(path, "utf8"),
+	writeFile,
+	mkdir: path => mkdir(path, { recursive: true }),
 	readStdin,
 	now: () => new Date().toISOString(),
 }

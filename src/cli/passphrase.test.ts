@@ -46,9 +46,10 @@ function baseArgs(overrides: Partial<ParsedArgs>): ParsedArgs {
 
 function deps(env: Record<string, string | undefined> = {}): RuntimeDeps {
 	return {
-		fetch: async () => new Response("{}"),
 		env,
 		readFile: async () => "alpha beta\n",
+		writeFile: async () => {},
+		mkdir: async () => {},
 		readStdin: async () => "stdin pass\n",
 		now: () => "2026-03-09T00:00:00.000Z",
 	}

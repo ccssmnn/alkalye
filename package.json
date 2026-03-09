@@ -21,7 +21,8 @@
 		"preview": "astro preview",
 		"format": "prettier --write .",
 		"test": "vitest",
-		"test:cli": "bun vitest run src/cli"
+		"test:cli": "bun vitest run src/cli",
+		"test:cli:smoke": "bash scripts/cli-smoke.sh"
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.1.0",
@@ -49,6 +50,8 @@
 		"astro": "^5.16.15",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
+		"cojson": "^0.20.4",
+		"cojson-transport-ws": "^0.20.4",
 		"dompurify": "^3.3.1",
 		"fast-myers-diff": "^3.2.0",
 		"idb-keyval": "^6.2.2",
