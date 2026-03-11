@@ -1,11 +1,11 @@
 name: alkalye
 icon: public/icons/alkalye-icon.png
 processes:
-  Jazz Sync Server:
-    command: bunx jazz-run sync
+  Lazygit:
+    command: lazygit
     working_dir: null
     auto_start: true
-    auto_restart: false
+    auto_restart: true
     restart_when_changed: []
     env: {}
   Dev Server:
@@ -13,5 +13,19 @@ processes:
     working_dir: null
     auto_start: true
     auto_restart: true
+    restart_when_changed: []
+    env: {}
+  Helix:
+    command: hx .
+    working_dir: null
+    auto_start: true
+    auto_restart: true
+    restart_when_changed: []
+    env: {}
+  Jazz Sync Server:
+    command: bunx jazz-run sync
+    working_dir: null
+    auto_start: true
+    auto_restart: false
     restart_when_changed: []
     env: {}

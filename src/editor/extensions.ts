@@ -7,6 +7,7 @@ import {
 } from "./theme"
 import { lineDecorations } from "./line-decorations"
 import { presentationDecorations } from "./presentation-decorations"
+import { wrappedIndent } from "./wrapped-indent"
 import {
 	keyboardAwareScrollMargins,
 	clickBelowContent,
@@ -36,6 +37,7 @@ let editorExtensions: Extension = [
 	editorTheme,
 	syntaxHighlighting(markdownHighlightStyle),
 	lineDecorations,
+	wrappedIndent,
 	syntaxHighlighting(codeHighlightStyle),
 	keyboardAwareScrollMargins,
 	preventBrowserScroll,
