@@ -1,4 +1,4 @@
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import type { MarkdownEditorRef } from "@/editor/editor"
 import { Button } from "@/components/ui/button"
@@ -29,11 +29,14 @@ import {
 	Check,
 	ListIcon,
 	Wrench,
+	ArrowUpToLine,
+	ArrowDownToLine,
 } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 import { isMac, altModKey } from "@/lib/platform"
 import { ThemePicker } from "@/components/theme-picker"
 import { PresetPicker } from "@/components/preset-picker"
+import { cn } from "@/lib/utils"
 
 export { EditorToolbar }
 
@@ -64,6 +67,8 @@ function EditorToolbar({
 	content,
 	onThemeChange,
 }: EditorToolbarProps) {
+	let [isAtTop, setIsAtTop] = useState(true)
+
 	useEffect(() => {
 		let viewport = window.visualViewport
 		if (!viewport) return
@@ -84,6 +89,60 @@ function EditorToolbar({
 			viewport.removeEventListener("scroll", onResize)
 		}
 	}, [containerRef])
+
+	useEffect(() => {
+		let canceled = false
+		let cleanup = () => {}
+
+		function attachScrollObserver() {
+			if (canceled) return
+			let view = editor.current?.getEditor()
+			if (!view) {
+				requestAnimationFrame(attachScrollObserver)
+				return
+			}
+
+			let scrollEl = view.scrollDOM
+			function updateScrollState() {
+				let top = scrollEl.scrollTop
+				setIsAtTop(top <= 1)
+			}
+
+			updateScrollState()
+			scrollEl.addEventListener("scroll", updateScrollState, { passive: true })
+			window.addEventListener("resize", updateScrollState)
+			let observer = new ResizeObserver(updateScrollState)
+			observer.observe(scrollEl)
+
+			cleanup = () => {
+				scrollEl.removeEventListener("scroll", updateScrollState)
+				window.removeEventListener("resize", updateScrollState)
+				observer.disconnect()
+			}
+		}
+
+		attachScrollObserver()
+		return () => {
+			canceled = true
+			cleanup()
+		}
+	}, [editor])
+
+	function scrollToTop() {
+		let view = editor.current?.getEditor()
+		if (!view) return
+		view.scrollDOM.scrollTop = 0
+	}
+
+	function scrollToBottom() {
+		let view = editor.current?.getEditor()
+		if (!view) return
+		let maxTop = Math.max(
+			0,
+			view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight,
+		)
+		view.scrollDOM.scrollTop = maxTop
+	}
 
 	return (
 		<div
@@ -247,9 +306,18 @@ function EditorToolbar({
 						</span>
 					</>
 				)}
-			</div>
-
-			<div className="border-border flex shrink-0 items-center gap-1 border-l p-2 md:border-l-0">
+				<ToolbarButton
+					icon={<ArrowUpToLine />}
+					label="Scroll to top"
+					onClick={scrollToTop}
+					className={isAtTop ? "hidden" : "hidden pointer-coarse:inline-flex"}
+				/>
+				<ToolbarButton
+					icon={<ArrowDownToLine />}
+					label="Scroll to bottom"
+					onClick={scrollToBottom}
+					className={isAtTop ? "hidden pointer-coarse:inline-flex" : "hidden"}
+				/>
 				{docId && (
 					<Tooltip>
 						<TooltipTrigger
@@ -288,6 +356,9 @@ function EditorToolbar({
 						</TooltipContent>
 					</Tooltip>
 				)}
+			</div>
+
+			<div className="border-border flex shrink-0 items-center gap-1 border-l p-2 md:border-l-0">
 				<ToolbarButton
 					icon={<Wrench />}
 					label="Document tools"
@@ -307,6 +378,7 @@ interface ToolbarButtonProps {
 	shortcutShift?: string
 	shortcutKey?: string
 	onClick: () => void
+	className?: string
 }
 
 function ToolbarButton({
@@ -317,6 +389,7 @@ function ToolbarButton({
 	shortcutShift,
 	shortcutKey,
 	onClick,
+	className,
 }: ToolbarButtonProps) {
 	return (
 		<Tooltip>
@@ -327,7 +400,7 @@ function ToolbarButton({
 						size="icon"
 						onClick={onClick}
 						aria-label={label}
-						className="shrink-0"
+						className={cn("shrink-0", className)}
 					>
 						{icon}
 					</Button>
