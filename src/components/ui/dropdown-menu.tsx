@@ -223,7 +223,7 @@ function DropdownMenuRadioItem({
 				data-slot="dropdown-menu-radio-item-indicator"
 			>
 				<MenuPrimitive.RadioItemIndicator>
-					<CheckIcon />
+					<span className="block size-2 rounded-full bg-current" />
 				</MenuPrimitive.RadioItemIndicator>
 			</span>
 			{children}

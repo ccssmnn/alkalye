@@ -56,6 +56,7 @@ import { AuthDialog } from "@/components/auth-form"
 import {
 	useEditorSettings,
 	DEFAULT_EDITOR_SETTINGS,
+	type EditorSettingsData,
 } from "@/lib/editor-settings"
 import { wordlist } from "@/lib/wordlist"
 import { Footer } from "@/components/footer"
@@ -594,7 +595,11 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 						onValueChange={handlePreviewThemeChange}
 					>
 						<SelectTrigger className="w-40">
-							<SelectValue />
+							<SelectValue>
+								{getThemeSelectLabel(
+									settings?.defaultPreviewTheme ?? "__none__",
+								)}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="__none__">None</SelectItem>
@@ -615,7 +620,11 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 						onValueChange={handleSlideshowThemeChange}
 					>
 						<SelectTrigger className="w-40">
-							<SelectValue />
+							<SelectValue>
+								{getThemeSelectLabel(
+									settings?.defaultSlideshowTheme ?? "__none__",
+								)}
+							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
 							<SelectItem value="__none__">None</SelectItem>
@@ -790,6 +799,26 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 						checked={settings.autoSortTasks}
 						onChange={v => setSettings({ autoSortTasks: v })}
 					/>
+
+					<div className="flex min-h-8 items-center justify-between gap-4">
+						<label htmlFor="stats-badge-unit" className="text-sm">
+							Stats badge
+						</label>
+						<Select
+							value={getStatsBadgeSelectValue(settings)}
+							onValueChange={makeHandleStatsBadgeUnitChange(setSettings)}
+						>
+							<SelectTrigger id="stats-badge-unit" className="w-40">
+								<SelectValue>{getStatsBadgeSelectLabel(settings)}</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="words">Words</SelectItem>
+								<SelectItem value="sentences">Sentences</SelectItem>
+								<SelectItem value="tasks">Tasks</SelectItem>
+								<SelectItem value="hide">Hide</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
 				</div>
 			</div>
 		</section>
@@ -907,6 +936,47 @@ function ToggleSetting({
 			<Switch id={id} checked={checked} onCheckedChange={onChange} />
 		</div>
 	)
+}
+
+function getThemeSelectLabel(value: string): string {
+	return value === "__none__" ? "None" : value
+}
+
+function getStatsBadgeUnitLabel(
+	value: EditorSettingsData["statsBadgeUnit"],
+): string {
+	switch (value) {
+		case "words":
+			return "Words"
+		case "sentences":
+			return "Sentences"
+		case "tasks":
+			return "Tasks"
+	}
+}
+
+function getStatsBadgeSelectValue(settings: EditorSettingsData): string {
+	return settings.showStatsBadge ? settings.statsBadgeUnit : "hide"
+}
+
+function getStatsBadgeSelectLabel(settings: EditorSettingsData): string {
+	return settings.showStatsBadge
+		? getStatsBadgeUnitLabel(settings.statsBadgeUnit)
+		: "Hide"
+}
+
+function makeHandleStatsBadgeUnitChange(
+	setSettings: (updates: Partial<EditorSettingsData>) => void,
+) {
+	return function handleStatsBadgeUnitChange(value: string | null) {
+		if (value === "hide") {
+			setSettings({ showStatsBadge: false })
+			return
+		}
+		if (value === "words" || value === "sentences" || value === "tasks") {
+			setSettings({ showStatsBadge: true, statsBadgeUnit: value })
+		}
+	}
 }
 
 function SyncNowSection() {
@@ -1130,8 +1200,6 @@ function AppSection() {
 		</section>
 	)
 }
-
-// Handler factories
 
 function makeExportTheme(
 	theme: co.loaded<typeof Theme, ThemeExportQuery>,

@@ -34,12 +34,15 @@ function applyEditorSettings(settings: EditorSettingsData) {
 applyEditorSettings(DEFAULTS)
 
 function useEditorSettings(settings: SettingsCoMap | null | undefined) {
-	let editorSettings = settings?.editor ?? DEFAULTS
+	let editorSettings = { ...DEFAULTS, ...settings?.editor }
 
 	function setSettings(updates: Partial<EditorSettingsData>) {
 		if (!settings) return
-		let newEditor = { ...settings.editor, ...updates }
-		settings.$jazz.set("editor", newEditor)
+		settings.$jazz.set("editor", {
+			...DEFAULTS,
+			...settings.editor,
+			...updates,
+		})
 	}
 
 	function resetSettings() {
@@ -48,8 +51,8 @@ function useEditorSettings(settings: SettingsCoMap | null | undefined) {
 	}
 
 	useEffect(() => {
-		applyEditorSettings(editorSettings)
-	}, [editorSettings])
+		applyEditorSettings({ ...DEFAULTS, ...settings?.editor })
+	}, [settings?.editor])
 
 	return { settings: editorSettings, setSettings, resetSettings }
 }

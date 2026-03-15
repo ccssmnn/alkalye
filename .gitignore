@@ -5,6 +5,7 @@ dist
 .env
 .env.local
 sync-db
+test-results
 example
 .claude
 .vercel

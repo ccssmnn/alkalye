@@ -31,6 +31,8 @@ let CursorEntry = z.object({
 
 let CursorFeed = co.feed(CursorEntry)
 
+let StatsBadgeUnit = z.enum(["words", "sentences", "tasks"])
+
 let EditorSettings = z.object({
 	lineWidth: z.number(),
 	lineHeight: z.number(),
@@ -40,6 +42,8 @@ let EditorSettings = z.object({
 	fadeDoneTasks: z.boolean(),
 	highlightCurrentLine: z.boolean(),
 	autoSortTasks: z.boolean(),
+	showStatsBadge: z.boolean(),
+	statsBadgeUnit: StatsBadgeUnit,
 })
 
 let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
@@ -51,6 +55,8 @@ let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
 	fadeDoneTasks: false,
 	highlightCurrentLine: true,
 	autoSortTasks: false,
+	showStatsBadge: true,
+	statsBadgeUnit: "words",
 }
 
 let Settings = co.map({

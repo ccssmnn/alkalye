@@ -79,6 +79,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
+import { EditorStatsBadge } from "@/components/editor-stats-badge"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
 import { printToPdf } from "@/lib/print-to-pdf"
 import { testIds } from "@/lib/test-ids"
@@ -505,6 +506,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					content={content}
 					onThemeChange={handleChange}
 				/>
+				<EditorStatsBadge content={content} settings={editorSettings} />
 			</div>
 			<DocumentSidebar
 				header={
