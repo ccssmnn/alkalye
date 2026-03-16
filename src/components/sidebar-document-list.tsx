@@ -917,7 +917,7 @@ async function loadDocumentAssets(
 	let docAssets: ExportAsset[] = []
 
 	if (loaded.assets?.$isLoaded) {
-		for (let asset of [...loaded.assets]) {
+		for (let asset of Array.from(loaded.assets)) {
 			if (
 				!asset?.$isLoaded ||
 				asset.type !== "image" ||

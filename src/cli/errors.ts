@@ -9,6 +9,7 @@ export {
 	PermissionError,
 	ValidationError,
 	FilesystemError,
+	UnexpectedCliError,
 	getExitCode,
 }
 
@@ -41,6 +42,10 @@ class ValidationError extends Data.TaggedError("ValidationError")<{
 }> {}
 
 class FilesystemError extends Data.TaggedError("FilesystemError")<{
+	message: string
+}> {}
+
+class UnexpectedCliError extends Data.TaggedError("UnexpectedCliError")<{
 	message: string
 }> {}
 

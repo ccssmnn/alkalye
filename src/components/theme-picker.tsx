@@ -38,7 +38,7 @@ function ThemePicker({ content, onThemeChange, disabled }: ThemePickerProps) {
 
 	let themes: LoadedTheme[] = []
 	if (me.$isLoaded && me.root?.themes?.$isLoaded) {
-		themes = [...me.root.themes].filter(
+		themes = Array.from(me.root.themes).filter(
 			(t): t is LoadedTheme => t?.$isLoaded === true,
 		)
 	}

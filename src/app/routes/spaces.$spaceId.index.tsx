@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router"
-import { Group, type ResolveQuery } from "jazz-tools"
-import { Space, createSpaceDocument } from "@/schema"
+import { co, Group, type ResolveQuery } from "jazz-tools"
+import { Document, Space, createSpaceDocument } from "@/schema"
 import {
 	SpaceNotFound,
 	SpaceUnauthorized,
@@ -25,11 +25,15 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 		}
 
 		// Find most recent non-deleted doc
-		let mostRecentDoc = [...space.documents]
-			.filter(d => d?.$isLoaded && !d.deletedAt)
+		let docs: co.loaded<typeof Document>[] = []
+		for (let doc of space.documents.values()) {
+			if (!doc?.$isLoaded || doc.deletedAt) continue
+			docs.push(doc)
+		}
+		let mostRecentDoc = docs
 			.sort(
 				(a, b) =>
-					new Date(b!.updatedAt).getTime() - new Date(a!.updatedAt).getTime(),
+					new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
 			)
 			.at(0)
 

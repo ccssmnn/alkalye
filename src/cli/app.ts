@@ -50,6 +50,7 @@ import {
 	CliUsageError,
 	NotFoundError,
 	PermissionError,
+	UnexpectedCliError,
 	ValidationError,
 } from "@/cli/errors"
 import { interpretEscapes, parseDocScope, parseScope } from "@/cli/parse"
@@ -1238,7 +1239,10 @@ function runCommand<A extends GlobalArgs>(
 				throw error
 			}
 		},
-		catch: error => error,
+		catch: error =>
+			new UnexpectedCliError({
+				message: getErrorMessage(error),
+			}),
 	})
 }
 

@@ -286,7 +286,7 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 
 	let assets: BackupDoc["assets"] = []
 	if (doc.assets?.$isLoaded) {
-		for (let asset of [...doc.assets]) {
+		for (let asset of Array.from(doc.assets)) {
 			if (!asset?.$isLoaded) continue
 
 			let blob: Blob | undefined

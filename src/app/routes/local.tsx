@@ -361,12 +361,15 @@ function LocalEditorContent({
 
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root?.documents?.$isLoaded) {
-		documents = [...me.root.documents]
-			.filter(d => d?.$isLoaded && !d.deletedAt)
-			.map(d => ({
-				id: d.$jazz.id,
-				title: getDocumentTitle(d.content?.toString() ?? ""),
-			}))
+		documents = Array.from(me.root.documents.values()).flatMap(d => {
+			if (!d?.$isLoaded || !d.content?.$isLoaded || d.deletedAt) return []
+			return [
+				{
+					id: d.$jazz.id,
+					title: getDocumentTitle(d.content.toString()),
+				},
+			]
+		})
 	}
 
 	useBlocker({

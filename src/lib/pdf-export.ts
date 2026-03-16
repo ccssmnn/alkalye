@@ -287,7 +287,7 @@ async function buildFontFaceRulesBase64(theme: LoadedTheme): Promise<string> {
 
 	let rules: string[] = []
 
-	for (let asset of [...theme.assets]) {
+	for (let asset of theme.assets.values()) {
 		if (!asset?.$isLoaded) continue
 		let loaded = asset as LoadedAsset
 		if (!loaded.data?.$isLoaded) continue

@@ -266,17 +266,19 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	// Get documents for wikilink autocomplete - personal docs only
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root.documents?.$isLoaded) {
-		documents = [...me.root.documents]
-			.filter(d => d?.$isLoaded && !d.deletedAt && d.$jazz.id !== docId)
-			.map(d => {
-				let content = d.content?.toString() ?? ""
-				return {
+		documents = Array.from(me.root.documents.values()).flatMap(d => {
+			if (!d?.$isLoaded || !d.content?.$isLoaded) return []
+			if (d.deletedAt || d.$jazz.id === docId) return []
+			let content = d.content.toString()
+			return [
+				{
 					id: d.$jazz.id,
 					title: getDocumentTitle(content),
 					path: getPath(content),
 					tags: getTags(content),
-				}
-			})
+				},
+			]
+		})
 	}
 
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
@@ -324,7 +326,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	// Get documents for wikilink insertion menu - personal docs only
 	let wikiLinkDocs: { id: string; title: string }[] = []
 	if (me.$isLoaded && me.root.documents?.$isLoaded) {
-		for (let d of [...me.root.documents]) {
+		for (let d of me.root.documents.values()) {
 			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
 			let title = getDocumentTitle(d)
 			wikiLinkDocs.push({ id: d.$jazz.id, title })
@@ -698,5 +700,10 @@ function getPersonalDocs(
 	me: LoadedMe,
 ): co.loaded<typeof Document, { content: true }>[] {
 	if (!me.$isLoaded) return []
-	return [...me.root.documents].filter(d => d?.$isLoaded === true)
+	let docs: co.loaded<typeof Document, { content: true }>[] = []
+	for (let doc of me.root.documents.values()) {
+		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
+		docs.push(doc)
+	}
+	return docs
 }
