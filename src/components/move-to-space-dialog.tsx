@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useForm } from "@tanstack/react-form"
-import { co, Group } from "jazz-tools"
+import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
 import { User, ArrowRight, Plus } from "lucide-react"
 import {
@@ -24,9 +24,9 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Document, UserAccount, createSpace } from "@/schema"
 import { getSpaceGroup } from "@/lib/spaces"
-import { getDocumentGroup } from "@/lib/documents"
+import { moveDocumentToSpace } from "@/lib/document-move"
 
-export { MoveToSpaceDialog, moveDocumentToSpace }
+export { MoveToSpaceDialog }
 export type { MoveToSpaceDialogProps }
 
 type LoadedDocument = co.loaded<typeof Document, { content: true }>
@@ -270,86 +270,6 @@ function MoveToSpaceDialog({
 			</DialogContent>
 		</Dialog>
 	)
-}
-
-type MoveUser = co.loaded<
-	typeof UserAccount,
-	{ root: { documents: true; spaces: { $each: { documents: true } } } }
->
-
-type MoveOptions = {
-	doc: LoadedDocument
-	destination: SpaceOption | null
-	currentSpaceId?: string
-	me: MoveUser
-}
-
-async function moveDocumentToSpace(opts: MoveOptions): Promise<void> {
-	let { doc, destination, currentSpaceId, me } = opts
-
-	let docGroup = getDocumentGroup(doc)
-	if (!docGroup) {
-		throw new Error("Document group not found")
-	}
-
-	if (currentSpaceId) {
-		let currentSpace = me.root.spaces?.find(s => s?.$jazz.id === currentSpaceId)
-		if (currentSpace?.$isLoaded && currentSpace.documents?.$isLoaded) {
-			let idx = currentSpace.documents.findIndex(
-				d => d?.$jazz.id === doc.$jazz.id,
-			)
-			if (idx !== -1) {
-				currentSpace.documents.$jazz.splice(idx, 1)
-			}
-		}
-	} else {
-		if (me.root.documents?.$isLoaded) {
-			let idx = me.root.documents.findIndex(d => d?.$jazz.id === doc.$jazz.id)
-			if (idx !== -1) {
-				me.root.documents.$jazz.splice(idx, 1)
-			}
-		}
-	}
-
-	if (destination) {
-		let targetSpace = me.root.spaces?.find(s => s?.$jazz.id === destination.id)
-		if (!targetSpace?.$isLoaded || !targetSpace.documents?.$isLoaded) {
-			throw new Error("Target space not found or not loaded")
-		}
-
-		let spaceGroup = getSpaceGroup(targetSpace)
-		if (!spaceGroup) {
-			throw new Error("Space group not found")
-		}
-
-		docGroup.addMember(spaceGroup)
-
-		let loadedDoc = await doc.$jazz.ensureLoaded({
-			resolve: { assets: { $each: true } },
-		})
-		if (loadedDoc.assets) {
-			let assetsOwner = loadedDoc.assets.$jazz.owner
-			if (assetsOwner instanceof Group) {
-				assetsOwner.addMember(spaceGroup)
-			}
-			for (let asset of loadedDoc.assets.values()) {
-				if (asset?.$isLoaded) {
-					let assetOwner = asset.$jazz.owner
-					if (assetOwner instanceof Group) {
-						assetOwner.addMember(spaceGroup)
-					}
-				}
-			}
-		}
-
-		doc.$jazz.set("spaceId", destination.id)
-		targetSpace.documents.$jazz.push(doc)
-	} else {
-		doc.$jazz.set("spaceId", undefined)
-		me.root.documents.$jazz.push(doc)
-	}
-
-	doc.$jazz.set("updatedAt", new Date())
 }
 
 // --- Helpers ---

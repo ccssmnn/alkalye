@@ -79,6 +79,15 @@ describe("Space Collaboration", () => {
 		expect(root.spaces?.some(s => s?.$jazz.id === space.$jazz.id)).toBe(true)
 	})
 
+	test("space invites use explicit base URL when provided", async () => {
+		let { link } = await createSpaceInvite(
+			space,
+			"writer",
+			"http://localhost:4321",
+		)
+		expect(link).toMatch(/^http:\/\/localhost:4321\/invite#\/space\//)
+	})
+
 	test("invited user can find space in personal spaces after accepting invite", async () => {
 		let { link: inviteLink } = await createSpaceInvite(space, "writer")
 		let inviteData = parseSpaceInviteLink(inviteLink)
