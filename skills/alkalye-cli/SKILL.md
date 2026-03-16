@@ -276,6 +276,22 @@ env ALKALYE_CLI_HOME=/tmp/actor-2 alkalye invite accept --link <invite-link> --s
 env ALKALYE_CLI_HOME=/tmp/actor-2 alkalye doc content <doc-id>
 ```
 
+## Editing Documents
+
+For non-trivial edits, pull the document to a local file, edit locally, then push back:
+
+```bash
+# Pull content to a local file
+alkalye doc content <doc-id> > draft.md
+
+# Edit the file with any tool (sed, your editor, AI, etc.)
+
+# Push the updated file back
+alkalye doc update <doc-id> --content-file draft.md --sync
+```
+
+This avoids constructing complex content inline and lets you use whatever editing tools you prefer.
+
 ## Tips
 
 - Use `--sync` on mutations when you need to guarantee the remote peer has the data before proceeding.

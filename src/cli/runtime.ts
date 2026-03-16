@@ -9,6 +9,7 @@ import { getDocumentTitle } from "@/lib/document-utils"
 import { moveDocumentToSpace } from "@/lib/document-move"
 import { parseSpaceInviteLink } from "@/lib/spaces"
 import { resolveCliConfig } from "@/cli/config"
+import type { CliConfig } from "@/cli/config"
 import {
 	AuthError,
 	CliUsageError,
@@ -42,62 +43,60 @@ export {
 	inspectInvite,
 	getOptionString,
 }
-export type { ActiveAccount, LoadedAccount, LoadedCliDocument }
+export type { JazzContext, LoadedAccount, LoadedCliDocument }
 
-type ActiveAccount = Awaited<
-	ReturnType<typeof createAuthenticatedJazz>
->["account"]
+type JazzContext = Awaited<ReturnType<typeof createAuthenticatedJazz>>
 type LoadedAccount = Awaited<ReturnType<typeof loadAccount>>
 type LoadedCliDocument = co.loaded<typeof Document, { content: true }>
 
 function runCommand<A extends GlobalArgs>(
 	command: string,
 	args: A,
-	handler: (
-		config: Awaited<ReturnType<typeof resolveCliConfig>>,
-	) => Promise<unknown>,
+	handler: (config: CliConfig) => Promise<unknown>,
 ) {
 	return Effect.tryPromise({
 		try: async () => {
-			let config: Awaited<ReturnType<typeof resolveCliConfig>> | undefined
-			try {
-				config = await resolveFlags(args)
-				let data = await handler(config)
-				if (config.quiet || data === undefined) return
-				await Effect.runPromise(
-					printData({
-						json: config.json,
-						command,
-						data,
-						meta: config.verbose
-							? {
-									serverUrl: config.serverUrl,
-									syncPeer: config.syncPeer,
-									timeoutMs: config.timeoutMs,
-									homeDir: config.homeDir,
-								}
-							: undefined,
-					}),
-				)
-			} catch (error) {
-				printError({
-					json: config?.json ?? args.json,
+			let config = await resolveFlags(args)
+			let data = await handler(config)
+			if (!config.quiet && data !== undefined) {
+				printData({
+					json: config.json,
 					command,
-					error: {
-						type: getErrorType(error),
-						message: getErrorMessage(error),
-					},
+					data,
+					meta: config.verbose
+						? {
+								serverUrl: config.serverUrl,
+								syncPeer: config.syncPeer,
+								timeoutMs: config.timeoutMs,
+								homeDir: config.homeDir,
+							}
+						: undefined,
 				})
-				throw error
 			}
 		},
 		catch: normalizeCliError,
-	})
+	}).pipe(
+		Effect.tapError(error =>
+			Effect.sync(() =>
+				printError({
+					json: args.json,
+					command,
+					error: { type: error._tag, message: error.message },
+				}),
+			),
+		),
+	)
 }
 
-async function loadAccount(account: ActiveAccount, timeoutMs: number = 10_000) {
-	await bestEffortRefresh(account, timeoutMs)
-	return account.$jazz.ensureLoaded({
+async function loadAccount(jazz: JazzContext, timeoutMs: number = 10_000) {
+	if (jazz.isConnected()) {
+		try {
+			await jazz.account.$jazz.waitForAllCoValuesSync({ timeout: timeoutMs })
+		} catch {
+			// offline or slow — continue with local data
+		}
+	}
+	return jazz.account.$jazz.ensureLoaded({
 		resolve: {
 			profile: true,
 			root: {
@@ -194,7 +193,7 @@ function summarizeDoc(
 }
 
 async function maybeSync(
-	account: ActiveAccount,
+	account: JazzContext["account"],
 	enabled: boolean,
 	timeoutMs: number,
 ) {
@@ -202,7 +201,10 @@ async function maybeSync(
 	await account.$jazz.waitForAllCoValuesSync({ timeout: timeoutMs })
 }
 
-async function syncMutation(account: ActiveAccount, timeoutMs: number) {
+async function syncMutation(
+	account: JazzContext["account"],
+	timeoutMs: number,
+) {
 	await account.$jazz.waitForAllCoValuesSync({ timeout: timeoutMs })
 }
 
@@ -262,14 +264,14 @@ function inspectInvite(link: string) {
 	try {
 		let invite = parseInviteLink(link)
 		return { kind: "doc" as const, ...invite }
-	} catch (error) {
-		void error
+	} catch {
+		// not a doc invite, try space
 	}
 	try {
 		let invite = parseSpaceInviteLink(link)
 		return { kind: "space" as const, ...invite }
-	} catch (error) {
-		void error
+	} catch {
+		// not a space invite either
 	}
 	throw new ValidationError({ message: "Invalid invite link" })
 }
@@ -307,14 +309,6 @@ function resolveFlags(args: GlobalArgs) {
 		timeout: getOptionNumber(args.timeout),
 		home: getOptionString(args.home),
 	})
-}
-
-async function bestEffortRefresh(account: ActiveAccount, timeoutMs: number) {
-	try {
-		await account.$jazz.waitForAllCoValuesSync({ timeout: timeoutMs })
-	} catch {
-		return
-	}
 }
 
 function collectDocsForScope(
@@ -361,15 +355,6 @@ async function readContentInput(
 
 function getOptionNumber(value: Option.Option<number> | undefined) {
 	return value && Option.isSome(value) ? value.value : undefined
-}
-
-function getErrorType(error: unknown): string {
-	return typeof error === "object" &&
-		error !== null &&
-		"_tag" in error &&
-		typeof error._tag === "string"
-		? error._tag
-		: "Error"
 }
 
 function getErrorMessage(error: unknown): string {

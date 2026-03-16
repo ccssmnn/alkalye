@@ -1,5 +1,4 @@
 import process from "node:process"
-import { Effect } from "effect"
 
 export { printData, printContent, printError }
 
@@ -8,7 +7,7 @@ function printData(args: {
 	command: string
 	data: unknown
 	meta?: unknown
-}): Effect.Effect<void> {
+}): void {
 	let text = args.json
 		? JSON.stringify(
 				{ ok: true, command: args.command, data: args.data, meta: args.meta },
@@ -16,16 +15,12 @@ function printData(args: {
 				2,
 			)
 		: formatHumanWithMeta(args.data, args.meta)
-	return Effect.sync(() => {
-		process.stdout.write(`${text}\n`)
-	})
+	process.stdout.write(`${text}\n`)
 }
 
-function printContent(content: string): Effect.Effect<void> {
-	return Effect.sync(() => {
-		process.stdout.write(content)
-		if (!content.endsWith("\n")) process.stdout.write("\n")
-	})
+function printContent(content: string): void {
+	process.stdout.write(content)
+	if (!content.endsWith("\n")) process.stdout.write("\n")
 }
 
 function printError(args: {

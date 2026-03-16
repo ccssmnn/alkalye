@@ -1,4 +1,17 @@
-export { renderCustomHelp }
+export { renderCustomHelp, descriptions }
+
+let descriptions = {
+	auth: "Passphrase authentication.",
+	account: "Account profile.",
+	doc: "Personal and shared document workflows.",
+	docShare: "Document sharing.",
+	docPublic: "Document public access.",
+	space: "Shared spaces and membership.",
+	spaceShare: "Space sharing.",
+	spacePublic: "Space public access.",
+	invite: "Inspect and accept invite links.",
+	sync: "Explicit remote sync commands.",
+} as const
 
 function renderCustomHelp(args: string[], version: string): string | undefined {
 	if (!args.includes("--help") && !args.includes("-h")) return undefined
@@ -30,7 +43,7 @@ type LeafDef = {
 
 let groups: Record<string, GroupDef> = {
 	auth: {
-		description: "Passphrase auth for alkalye.com.",
+		description: descriptions.auth,
 		sections: [
 			{
 				heading: "Commands",
@@ -50,20 +63,19 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	account: {
-		description: "Current account state.",
+		description: descriptions.account,
 		sections: [
 			{
 				heading: "Commands",
 				items: [
 					["show", "Show account profile with document and space counts"],
 					["rename", "Rename current account"],
-					["sync", "Flush current account state to remote peer"],
 				],
 			},
 		],
 	},
 	doc: {
-		description: "Work with personal and shared docs.",
+		description: descriptions.doc,
 		sections: [
 			{
 				heading: "Core commands",
@@ -91,7 +103,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	"doc share": {
-		description: "Document sharing.",
+		description: descriptions.docShare,
 		sections: [
 			{
 				heading: "Commands",
@@ -105,7 +117,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	"doc public": {
-		description: "Document public access.",
+		description: descriptions.docPublic,
 		sections: [
 			{
 				heading: "Commands",
@@ -118,7 +130,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	space: {
-		description: "Work with shared spaces.",
+		description: descriptions.space,
 		sections: [
 			{
 				heading: "Core commands",
@@ -143,7 +155,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	"space share": {
-		description: "Space sharing.",
+		description: descriptions.spaceShare,
 		sections: [
 			{
 				heading: "Commands",
@@ -157,7 +169,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	"space public": {
-		description: "Space public access.",
+		description: descriptions.spacePublic,
 		sections: [
 			{
 				heading: "Commands",
@@ -170,7 +182,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	invite: {
-		description: "Inspect and accept invites.",
+		description: descriptions.invite,
 		sections: [
 			{
 				heading: "Commands",
@@ -182,7 +194,7 @@ let groups: Record<string, GroupDef> = {
 		],
 	},
 	sync: {
-		description: "Remote sync.",
+		description: descriptions.sync,
 		sections: [
 			{
 				heading: "Commands",
@@ -246,11 +258,6 @@ let leaves: Record<string, LeafDef> = {
 		usage: "alkalye account rename --name <name>",
 		options: ["--name <name>   New display name"],
 	},
-	"account sync": {
-		summary: "Flush current account state to remote peer.",
-		usage: "alkalye account sync",
-	},
-
 	// doc
 	"doc list": {
 		summary: "List documents.",
@@ -482,7 +489,17 @@ let leaves: Record<string, LeafDef> = {
 // Renderers
 // ---------------------------------------------------------------------------
 
+let rootCommands: [name: string, summary: string][] = [
+	["auth", descriptions.auth],
+	["account", descriptions.account],
+	["doc", descriptions.doc],
+	["space", descriptions.space],
+	["invite", descriptions.invite],
+	["sync", descriptions.sync],
+]
+
 function renderRootHelp(version: string) {
+	let maxName = Math.max(...rootCommands.map(([name]) => name.length))
 	return [
 		`alkalye ${version}`,
 		"",
@@ -493,12 +510,9 @@ function renderRootHelp(version: string) {
 		"  alkalye <command> [options]",
 		"",
 		"Commands:",
-		"  auth      Passphrase authentication",
-		"  account   Account profile and sync state",
-		"  doc       Personal and shared document workflows",
-		"  space     Shared spaces and membership",
-		"  invite    Inspect and accept invite links",
-		"  sync      Explicit remote sync commands",
+		...rootCommands.map(
+			([name, summary]) => `  ${name.padEnd(maxName + 3)}${summary}`,
+		),
 		"",
 		"Global options:",
 		"  --json                Print machine-readable JSON",

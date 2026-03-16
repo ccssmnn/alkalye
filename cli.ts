@@ -2,19 +2,13 @@
 
 import { NodeContext, NodeRuntime } from "@effect/platform-node"
 import { Effect } from "effect"
-import { createRequire } from "node:module"
+import process from "node:process"
 import { cli } from "@/cli/app"
 import { getExitCode } from "@/cli/errors"
 import { renderCustomHelp } from "@/cli/help"
-import process from "node:process"
+import { version } from "@/cli/version"
 
-let packageJson = createRequire(import.meta.url)("./package.json") as {
-	version?: string
-}
-let help = renderCustomHelp(
-	process.argv.slice(2),
-	packageJson.version ?? "0.0.0",
-)
+let help = renderCustomHelp(process.argv.slice(2), version)
 
 if (help) {
 	process.stdout.write(`${help}\n`)

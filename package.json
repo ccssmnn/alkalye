@@ -10,7 +10,7 @@
 		"check:lint": "eslint .",
 		"check:types": "astro check",
 		"check:format": "prettier --check .",
-		"check:test": "bun test $(find src -name '*.test.ts' ! -name 'theme-sanitize.test.ts') && bun vitest run src/lib/theme-sanitize.test.ts",
+		"check:test": "bun vitest run",
 		"typecheck": "astro check",
 		"test:e2e": "playwright test",
 		"test:e2e:auth": "playwright test e2e/auth.spec.ts",

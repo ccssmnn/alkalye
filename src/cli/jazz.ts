@@ -50,6 +50,7 @@ async function createAuthenticatedJazz(config: CliConfig) {
 	return {
 		account: context.account,
 		authSecretStorage,
+		isConnected: () => peerState.isConnected(),
 		async done() {
 			context.done()
 			peerState.shutdown()
@@ -173,17 +174,21 @@ async function generatePassphrase(): Promise<string> {
 function createPeerState(syncPeer: string) {
 	let peers: Peer[] = []
 	let node: Loaded<typeof UserAccount>["$jazz"]["localNode"] | null = null
+	let connected = false
 	let websocketPeer = new WebSocketPeerWithReconnection({
 		peer: syncPeer,
 		reconnectionTimeout: 100,
 		addPeer(peer) {
+			connected = true
 			if (node) {
 				node.syncManager.addPeer(peer)
 				return
 			}
 			peers.push(peer)
 		},
-		removePeer() {},
+		removePeer() {
+			connected = false
+		},
 		WebSocketConstructor: WebSocket,
 	})
 	websocketPeer.enable()
@@ -199,6 +204,9 @@ function createPeerState(syncPeer: string) {
 		},
 		shutdown() {
 			websocketPeer.disable()
+		},
+		isConnected() {
+			return connected
 		},
 	}
 }

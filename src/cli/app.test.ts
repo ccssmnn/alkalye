@@ -1,5 +1,4 @@
-import { test, afterEach, describe } from "node:test"
-import assert from "node:assert/strict"
+import { afterEach, describe, expect, test } from "vitest"
 import { mkdtemp, rm } from "node:fs/promises"
 import { tmpdir } from "node:os"
 import { join } from "node:path"
@@ -24,51 +23,53 @@ describe("help", () => {
 	test("prints minimal root help", async () => {
 		let result = await runCli(["--help"])
 
-		assert.equal(result.exitCode, 0)
-		assert.match(result.stdout, /Collaborate with alkalye\.com from the CLI\./)
-		assert.match(result.stdout, /Built for scripts and AI agents\./)
-		assert.doesNotMatch(result.stdout, /doc doc share/)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(
+			/Collaborate with alkalye\.com from the CLI\./,
+		)
+		expect(result.stdout).toMatch(/Built for scripts and AI agents\./)
+		expect(result.stdout).not.toMatch(/doc doc share/)
 	})
 
 	test("prints leaf command help for doc create", async () => {
 		let result = await runCli(["doc", "create", "--help"])
 
-		assert.equal(result.exitCode, 0)
-		assert.match(result.stdout, /Create a document/)
-		assert.match(result.stdout, /--content/)
-		assert.match(result.stdout, /--stdin/)
-		assert.match(result.stdout, /--scope/)
-		assert.doesNotMatch(result.stdout, /\[0;1m/) // no ANSI from Effect
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(/Create a document/)
+		expect(result.stdout).toMatch(/--content/)
+		expect(result.stdout).toMatch(/--stdin/)
+		expect(result.stdout).toMatch(/--scope/)
+		expect(result.stdout).not.toMatch(/\[0;1m/) // no ANSI from Effect
 	})
 
 	test("prints leaf command help for doc rename", async () => {
 		let result = await runCli(["doc", "rename", "--help"])
 
-		assert.equal(result.exitCode, 0)
-		assert.match(result.stdout, /--title/)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(/--title/)
 	})
 
 	test("prints leaf command help for space share create", async () => {
 		let result = await runCli(["space", "share", "create", "--help"])
 
-		assert.equal(result.exitCode, 0)
-		assert.match(result.stdout, /Create an invite link/)
-		assert.match(result.stdout, /--role/)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(/Create an invite link/)
+		expect(result.stdout).toMatch(/--role/)
 	})
 
 	test("prints leaf command help for auth signup", async () => {
 		let result = await runCli(["auth", "signup", "--help"])
 
-		assert.equal(result.exitCode, 0)
-		assert.match(result.stdout, /Create account/)
-		assert.match(result.stdout, /--name/)
-		assert.match(result.stdout, /--passphrase-stdin/)
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(/Create account/)
+		expect(result.stdout).toMatch(/--name/)
+		expect(result.stdout).toMatch(/--passphrase-stdin/)
 	})
 
 	test("root help includes --quiet option", async () => {
 		let result = await runCli(["--help"])
 
-		assert.match(result.stdout, /--quiet/)
+		expect(result.stdout).toMatch(/--quiet/)
 	})
 })
 
@@ -78,10 +79,10 @@ describe("errors", () => {
 			ALKALYE_SYNC_PEER: "ws://localhost",
 		})
 
-		assert.equal(result.exitCode, 3)
-		assert.equal(result.stderr.trim(), "Not logged in")
-		assert.doesNotMatch(result.stderr, /UnknownException/)
-		assert.doesNotMatch(result.stderr, /Effect\.tryPromise/)
+		expect(result.exitCode).toBe(3)
+		expect(result.stderr.trim()).toBe("Not logged in")
+		expect(result.stderr).not.toMatch(/UnknownException/)
+		expect(result.stderr).not.toMatch(/Effect\.tryPromise/)
 	})
 
 	test("reports config discovery failure cleanly", async () => {
@@ -89,9 +90,9 @@ describe("errors", () => {
 			ALKALYE_SERVER: "http://127.0.0.1:9",
 		})
 
-		assert.equal(result.exitCode, 7)
-		assert.match(result.stderr, /\/\.well-known\/alkalye-cli\.json/)
-		assert.doesNotMatch(result.stderr, /UnknownException/)
+		expect(result.exitCode).toBe(7)
+		expect(result.stderr).toMatch(/\/\.well-known\/alkalye-cli\.json/)
+		expect(result.stderr).not.toMatch(/UnknownException/)
 	})
 
 	test("missing content source returns exit code 2", async () => {
@@ -99,8 +100,8 @@ describe("errors", () => {
 			ALKALYE_SYNC_PEER: "ws://localhost",
 		})
 
-		assert.equal(result.exitCode, 2)
-		assert.match(result.stderr, /--content/)
+		expect(result.exitCode).toBe(2)
+		expect(result.stderr).toMatch(/--content/)
 	})
 })
 
@@ -110,8 +111,8 @@ describe("quiet", () => {
 			ALKALYE_SYNC_PEER: "ws://localhost",
 		})
 
-		assert.equal(result.exitCode, 3)
-		assert.equal(result.stdout.trim(), "")
+		expect(result.exitCode).toBe(3)
+		expect(result.stdout.trim()).toBe("")
 	})
 
 	test("--quiet still outputs errors to stderr", async () => {
@@ -119,7 +120,7 @@ describe("quiet", () => {
 			ALKALYE_SYNC_PEER: "ws://localhost",
 		})
 
-		assert.match(result.stderr, /Not logged in/)
+		expect(result.stderr).toMatch(/Not logged in/)
 	})
 })
 
@@ -129,9 +130,8 @@ describe("command identity", () => {
 			ALKALYE_SYNC_PEER: "ws://localhost",
 		})
 
-		assert.equal(result.exitCode, 3)
-		assert.match(result.stderr, /"command": "sync\.flush"/)
-		assert.doesNotMatch(result.stderr, /"command": "account\.sync"/)
+		expect(result.exitCode).toBe(3)
+		expect(result.stderr).toMatch(/"command": "sync\.flush"/)
 	})
 })
 
