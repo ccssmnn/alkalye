@@ -30,7 +30,7 @@ function buildDocumentPublicLink(baseUrl: string, docId: string): string {
 }
 
 function buildSpacePublicLink(baseUrl: string, spaceId: string): string {
-	return `${trimTrailingSlash(baseUrl)}/app/spaces/${spaceId}`
+	return `${trimTrailingSlash(baseUrl)}/spaces/${spaceId}`
 }
 
 function trimTrailingSlash(value: string): string {

@@ -123,6 +123,18 @@ describe("quiet", () => {
 	})
 })
 
+describe("command identity", () => {
+	test("sync flush reports its own command name in json errors", async () => {
+		let result = await runCli(["sync", "flush", "--json"], {
+			ALKALYE_SYNC_PEER: "ws://localhost",
+		})
+
+		assert.equal(result.exitCode, 3)
+		assert.match(result.stderr, /"command": "sync\.flush"/)
+		assert.doesNotMatch(result.stderr, /"command": "account\.sync"/)
+	})
+})
+
 async function runCli(
 	args: string[],
 	env: Record<string, string> = {},
