@@ -1001,7 +1001,7 @@ function buildLocationFromRelativePath(
 
 async function hashBlob(blob: Blob): Promise<string> {
 	let buffer = await blob.arrayBuffer()
-	let hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
+	let hashBuffer = await crypto.subtle.digest("SHA-256", new Uint8Array(buffer))
 	let hashArray = Array.from(new Uint8Array(hashBuffer))
 	return hashArray
 		.map(b => b.toString(16).padStart(2, "0"))
