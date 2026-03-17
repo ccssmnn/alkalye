@@ -66,7 +66,7 @@ function getSpaceGroup(space: co.loaded<typeof Space>): Group | null {
 
 async function createSpaceInvite(
 	space: co.loaded<typeof Space>,
-	role: "writer" | "reader",
+	role: "admin" | "manager" | "writer" | "reader",
 	baseUrl?: string,
 ): Promise<SpaceInviteResult> {
 	let spaceGroup = getSpaceGroup(space)

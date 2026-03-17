@@ -895,7 +895,7 @@ let spaceShareCreate = Command.make(
 	{
 		...globalOptions,
 		spaceId: spaceIdArg,
-		role: roleOption,
+		role: spaceRoleOption,
 	},
 	args =>
 		runCommand("space.share.create", args, async config => {
