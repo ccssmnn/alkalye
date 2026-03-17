@@ -84,7 +84,7 @@ function buildThemeStyles(
 	let presetVariables = ""
 
 	if (theme.assets?.$isLoaded) {
-		for (let asset of [...theme.assets]) {
+		for (let asset of theme.assets.values()) {
 			if (!asset?.$isLoaded) continue
 			let loaded = asset as LoadedAsset
 			if (!loaded.data?.$isLoaded) continue
@@ -225,7 +225,7 @@ async function buildThemeStylesAsync(
 	await yieldToMain()
 
 	if (theme.assets?.$isLoaded) {
-		let assets = [...theme.assets]
+		let assets = Array.from(theme.assets.values())
 		for (let i = 0; i < assets.length; i++) {
 			let asset = assets[i]
 			if (!asset?.$isLoaded) continue

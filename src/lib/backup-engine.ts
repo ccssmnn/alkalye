@@ -286,7 +286,7 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 
 	let assets: BackupDoc["assets"] = []
 	if (doc.assets?.$isLoaded) {
-		for (let asset of [...doc.assets]) {
+		for (let asset of Array.from(doc.assets)) {
 			if (!asset?.$isLoaded) continue
 
 			let blob: Blob | undefined
@@ -1001,7 +1001,7 @@ function buildLocationFromRelativePath(
 
 async function hashBlob(blob: Blob): Promise<string> {
 	let buffer = await blob.arrayBuffer()
-	let hashBuffer = await crypto.subtle.digest("SHA-256", buffer)
+	let hashBuffer = await crypto.subtle.digest("SHA-256", new Uint8Array(buffer))
 	let hashArray = Array.from(new Uint8Array(hashBuffer))
 	return hashArray
 		.map(b => b.toString(16).padStart(2, "0"))

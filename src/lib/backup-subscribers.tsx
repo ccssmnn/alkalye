@@ -79,7 +79,11 @@ function BackupSubscriber() {
 		let docs = me.root?.documents
 		if (!docs?.$isLoaded) return
 
-		let activeDocs = [...docs].filter(d => d?.$isLoaded && !d.deletedAt)
+		let activeDocs: LoadedDocument[] = []
+		for (let doc of docs.values()) {
+			if (!doc?.$isLoaded || !doc.content?.$isLoaded || doc.deletedAt) continue
+			activeDocs.push(doc)
+		}
 		let contentHash = activeDocs
 			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
 			.sort()
@@ -99,10 +103,7 @@ function BackupSubscriber() {
 					return
 				}
 
-				let loadedDocs = activeDocs.filter(
-					(d): d is LoadedDocument => d?.$isLoaded === true,
-				)
-				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				let backupDocs = await Promise.all(activeDocs.map(prepareBackupDoc))
 				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
 				isPushingRef.current = true
 				await syncBackup(handle, backupDocs, scopeId)
@@ -232,7 +233,11 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
 
 		let docs = space.documents
-		let activeDocs = [...docs].filter(d => d?.$isLoaded && !d.deletedAt)
+		let activeDocs: LoadedDocument[] = []
+		for (let doc of docs.values()) {
+			if (!doc?.$isLoaded || !doc.content?.$isLoaded || doc.deletedAt) continue
+			activeDocs.push(doc)
+		}
 
 		let contentHash = activeDocs
 			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
@@ -251,10 +256,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 					return
 				}
 
-				let loadedDocs = activeDocs.filter(
-					(d): d is LoadedDocument => d?.$isLoaded === true,
-				)
-				let backupDocs = await Promise.all(loadedDocs.map(prepareBackupDoc))
+				let backupDocs = await Promise.all(activeDocs.map(prepareBackupDoc))
 				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
 				isPushingRef.current = true
 				await syncBackup(handle, backupDocs, scopeId)

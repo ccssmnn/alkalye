@@ -1,8 +1,9 @@
+import type { ComponentProps } from "react"
 import { cn } from "@/lib/utils"
 
 export { Progress }
 
-interface ProgressProps extends React.ComponentProps<"div"> {
+interface ProgressProps extends ComponentProps<"div"> {
 	value?: number
 	max?: number
 }

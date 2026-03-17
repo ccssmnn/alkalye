@@ -40,6 +40,15 @@ bunx jazz-sync run # start sync server
 bun run dev
 ```
 
+## CLI
+
+```bash
+chmod +x /path/to/alkalye/cli.ts
+ln -sf /path/to/alkalye/cli.ts ~/.local/bin/alkalye
+export PATH="$HOME/.local/bin:$PATH"
+alkalye --help
+```
+
 ## Contributing
 
 Contributions welcome! Please open an issue or PR.

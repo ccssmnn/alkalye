@@ -132,15 +132,13 @@ describe("findThemeByName", () => {
 		expect(findThemeByName(themes, "Elegant")).toBe(mockTheme)
 	})
 
-	it("finds theme regardless of $isLoaded state", () => {
-		// Note: findThemeByName does not check $isLoaded - it relies on the query
-		// to have already loaded the themes. Jazz ensures this via resolve queries.
+	it("skips unloaded themes", () => {
 		let unloadedTheme = { name: "Unloaded", $isLoaded: false }
 		let loadedTheme = { name: "Elegant", $isLoaded: true }
 		let themes = [unloadedTheme, loadedTheme] as unknown as Parameters<
 			typeof findThemeByName
 		>[0]
-		expect(findThemeByName(themes, "Unloaded")).toBe(unloadedTheme)
+		expect(findThemeByName(themes, "Unloaded")).toBeNull()
 		expect(findThemeByName(themes, "Elegant")).toBe(loadedTheme)
 	})
 })

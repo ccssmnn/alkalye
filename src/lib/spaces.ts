@@ -1,6 +1,7 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Space, UserAccount } from "@/schema"
 import { permanentlyDeleteSpace as deleteSpaceCoValue } from "@/lib/delete-covalue"
+import { buildSpaceInviteLink } from "@/lib/invite-links"
 
 export {
 	createSpaceInvite,
@@ -65,7 +66,8 @@ function getSpaceGroup(space: co.loaded<typeof Space>): Group | null {
 
 async function createSpaceInvite(
 	space: co.loaded<typeof Space>,
-	role: "writer" | "reader",
+	role: "admin" | "manager" | "writer" | "reader",
+	baseUrl?: string,
 ): Promise<SpaceInviteResult> {
 	let spaceGroup = getSpaceGroup(space)
 	if (!spaceGroup) {
@@ -80,9 +82,13 @@ async function createSpaceInvite(
 	spaceGroup.addMember(inviteGroup, role)
 
 	let inviteSecret = inviteGroup.$jazz.createInvite(role)
-	let baseURL = typeof window !== "undefined" ? window.location.origin : ""
-
-	let link = `${baseURL}/invite#/space/${space.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
+	let link = buildSpaceInviteLink({
+		baseUrl:
+			baseUrl ?? (typeof window !== "undefined" ? window.location.origin : ""),
+		spaceId: space.$jazz.id,
+		inviteGroupId: inviteGroup.$jazz.id,
+		inviteSecret,
+	})
 	return { link, inviteGroup }
 }
 

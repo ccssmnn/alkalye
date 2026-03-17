@@ -478,7 +478,7 @@ function makeDownload(doc: LoadedDocument, content: string) {
 	return async function handleDownload() {
 		let docAssets: ExportAsset[] = []
 		if (doc.assets?.$isLoaded) {
-			for (let asset of [...doc.assets]) {
+			for (let asset of Array.from(doc.assets)) {
 				if (
 					!asset?.$isLoaded ||
 					asset.type !== "image" ||
@@ -641,7 +641,7 @@ function getExistingFolders(me?: LoadedMe): string[] {
 	if (!me?.root?.documents?.$isLoaded) return []
 
 	let folders = new Set<string>()
-	let docs = [...me.root.documents]
+	let docs = Array.from(me.root.documents)
 	for (let doc of docs) {
 		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
 		let path = getPath(doc.content.toString())

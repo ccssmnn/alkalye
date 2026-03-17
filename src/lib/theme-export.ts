@@ -78,7 +78,7 @@ async function exportTheme(theme: LoadedThemeForExport): Promise<void> {
 	// Add font assets
 	if (theme.assets?.$isLoaded && theme.assets.length > 0) {
 		let fontsFolder = zip.folder("fonts")!
-		for (let asset of [...theme.assets]) {
+		for (let asset of Array.from(theme.assets)) {
 			if (!asset?.$isLoaded) continue
 			let themeAsset = asset as LoadedAsset
 			if (!themeAsset.data?.$isLoaded) continue

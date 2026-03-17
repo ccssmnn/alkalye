@@ -71,6 +71,15 @@ describe("Document Collaboration", () => {
 		expect(root.documents.some(d => d.$jazz.id === doc.$jazz.id)).toBe(true)
 	})
 
+	test("document invites use explicit base URL when provided", async () => {
+		let { link } = await createDocumentInvite(
+			doc,
+			"writer",
+			"http://localhost:4321",
+		)
+		expect(link).toMatch(/^http:\/\/localhost:4321\/invite#\/doc\//)
+	})
+
 	test("document removed from personal docs after permanent delete", async () => {
 		await permanentlyDeletePersonalDocument(doc, adminAccount)
 

@@ -33,6 +33,7 @@ import {
 	acceptDocumentInvite,
 	parseInviteLink,
 } from "@/lib/documents"
+import { moveDocumentToSpace } from "@/lib/document-move"
 
 describe("Space Collaboration", () => {
 	let adminAccount: co.loaded<typeof UserAccount>
@@ -77,6 +78,15 @@ describe("Space Collaboration", () => {
 			resolve: { root: { spaces: true } },
 		})
 		expect(root.spaces?.some(s => s?.$jazz.id === space.$jazz.id)).toBe(true)
+	})
+
+	test("space invites use explicit base URL when provided", async () => {
+		let { link } = await createSpaceInvite(
+			space,
+			"writer",
+			"http://localhost:4321",
+		)
+		expect(link).toMatch(/^http:\/\/localhost:4321\/invite#\/space\//)
 	})
 
 	test("invited user can find space in personal spaces after accepting invite", async () => {
@@ -1123,5 +1133,121 @@ describe("Space-Document Permission Cascade", () => {
 
 		// hasIndividualShares is true (doc-level invite exists)
 		expect(hasIndividualShares(welcomeDoc, spaceGroup.$jazz.id)).toBe(true)
+	})
+})
+
+describe("Document move permissions", () => {
+	let adminAccount: co.loaded<typeof UserAccount>
+	let firstSpace: co.loaded<typeof Space, { documents: true }>
+	let secondSpace: co.loaded<typeof Space, { documents: true }>
+	let collaborator: co.loaded<typeof UserAccount>
+	let doc: co.loaded<typeof Document, { content: true }>
+
+	beforeEach(async () => {
+		await setupJazzTestSync()
+
+		adminAccount = await createJazzTestAccount({
+			isCurrentActiveAccount: true,
+			AccountSchema: UserAccount,
+		})
+		collaborator = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+
+		let { root } = await adminAccount.$jazz.ensureLoaded({
+			resolve: { root: { spaces: { $each: { documents: true } } } },
+		})
+		firstSpace = await createSpace("First Space", root).$jazz.ensureLoaded({
+			resolve: { documents: true },
+		})
+		secondSpace = await createSpace("Second Space", root).$jazz.ensureLoaded({
+			resolve: { documents: true },
+		})
+
+		let firstGroup = getSpaceGroup(firstSpace)
+		if (!firstGroup) throw new Error("First space group not found")
+		doc = createSpaceDocument(firstGroup, "Moved content")
+		firstSpace.documents.$jazz.push(doc)
+	})
+
+	test("moving a doc between spaces revokes access from the old space", async () => {
+		let firstInvite = await createSpaceInvite(firstSpace, "writer")
+		await acceptSpaceInvite(
+			collaborator,
+			parseSpaceInviteLink(firstInvite.link),
+		)
+
+		let secondInvite = await createSpaceInvite(secondSpace, "writer")
+		await acceptSpaceInvite(
+			collaborator,
+			parseSpaceInviteLink(secondInvite.link),
+		)
+
+		let loadedAdmin = await adminAccount.$jazz.ensureLoaded({
+			resolve: {
+				root: {
+					documents: true,
+					spaces: { $each: { documents: { $each: { content: true } } } },
+				},
+			},
+		})
+
+		await moveDocumentToSpace({
+			doc,
+			destination: { id: secondSpace.$jazz.id, name: secondSpace.name },
+			currentSpaceId: firstSpace.$jazz.id,
+			me: loadedAdmin,
+		})
+
+		let docAsCollaborator = await Document.load(doc.$jazz.id, {
+			loadAs: collaborator,
+			resolve: { content: true },
+		})
+		expect(docAsCollaborator.$isLoaded).toBe(true)
+
+		let firstGroup = getSpaceGroup(firstSpace)
+		if (!firstGroup) throw new Error("First space group not found")
+		firstGroup.removeMember(collaborator)
+
+		await collaborator.$jazz.waitForAllCoValuesSync()
+
+		let afterRemoval = await Document.load(doc.$jazz.id, {
+			loadAs: collaborator,
+			resolve: { content: true },
+		})
+		expect(afterRemoval.$isLoaded).toBe(true)
+	})
+
+	test("moving a doc to personal revokes access from the old space", async () => {
+		let invite = await createSpaceInvite(firstSpace, "writer")
+		await acceptSpaceInvite(collaborator, parseSpaceInviteLink(invite.link))
+
+		let loadedAdmin = await adminAccount.$jazz.ensureLoaded({
+			resolve: {
+				root: {
+					documents: true,
+					spaces: { $each: { documents: { $each: { content: true } } } },
+				},
+			},
+		})
+
+		await moveDocumentToSpace({
+			doc,
+			destination: null,
+			currentSpaceId: firstSpace.$jazz.id,
+			me: loadedAdmin,
+		})
+
+		let firstGroup = getSpaceGroup(firstSpace)
+		if (!firstGroup) throw new Error("First space group not found")
+		firstGroup.removeMember(collaborator)
+
+		await collaborator.$jazz.waitForAllCoValuesSync()
+
+		let afterRemoval = await Document.load(doc.$jazz.id, {
+			loadAs: collaborator,
+			resolve: { content: true },
+		})
+		expect(afterRemoval.$jazz.loadingState).toBe("unauthorized")
 	})
 })

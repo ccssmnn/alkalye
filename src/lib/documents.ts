@@ -1,6 +1,10 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Document, UserAccount } from "@/schema"
 import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
+import {
+	buildDocumentInviteLink,
+	buildDocumentPublicLink,
+} from "@/lib/invite-links"
 
 export {
 	createPersonalDocument,
@@ -190,6 +194,7 @@ type DocumentInviteResult = {
 async function createDocumentInvite(
 	doc: co.loaded<typeof Document>,
 	role: "writer" | "reader",
+	baseUrl?: string,
 ): Promise<DocumentInviteResult> {
 	let docGroup = doc.$jazz.owner
 
@@ -201,9 +206,13 @@ async function createDocumentInvite(
 	docGroup.addMember(inviteGroup, role)
 
 	let inviteSecret = inviteGroup.$jazz.createInvite(role)
-	let baseURL = typeof window !== "undefined" ? window.location.origin : ""
-
-	let link = `${baseURL}/invite#/doc/${doc.$jazz.id}/invite/${inviteGroup.$jazz.id}/${inviteSecret}`
+	let link = buildDocumentInviteLink({
+		baseUrl:
+			baseUrl ?? (typeof window !== "undefined" ? window.location.origin : ""),
+		docId: doc.$jazz.id,
+		inviteGroupId: inviteGroup.$jazz.id,
+		inviteSecret,
+	})
 	return { link, inviteGroup }
 }
 
@@ -459,7 +468,7 @@ function makeDocumentPrivate(doc: LoadedDocument): void {
 
 function getPublicLink(doc: LoadedDocument): string {
 	let baseURL = typeof window !== "undefined" ? window.location.origin : ""
-	return `${baseURL}/doc/${doc.$jazz.id}`
+	return buildDocumentPublicLink(baseURL, doc.$jazz.id)
 }
 
 async function getDocumentOwner(

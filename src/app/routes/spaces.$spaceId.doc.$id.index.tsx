@@ -277,17 +277,19 @@ function SpaceEditorContent({
 	// Get documents from the space for wikilinks
 	let documents: WikilinkDoc[] = []
 	if (space.documents?.$isLoaded) {
-		documents = [...space.documents]
-			.filter(d => d?.$isLoaded && !d.deletedAt && d.$jazz.id !== docId)
-			.map(d => {
-				let content = d.content?.toString() ?? ""
-				return {
+		documents = Array.from(space.documents.values()).flatMap(d => {
+			if (!d?.$isLoaded || !d.content?.$isLoaded) return []
+			if (d.deletedAt || d.$jazz.id === docId) return []
+			let content = d.content.toString()
+			return [
+				{
 					id: d.$jazz.id,
 					title: getDocumentTitle(content),
 					path: getPath(content),
 					tags: getTags(content),
-				}
-			})
+				},
+			]
+		})
 	}
 
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly, { spaceId })
@@ -334,7 +336,7 @@ function SpaceEditorContent({
 
 	let wikiLinkDocs: { id: string; title: string }[] = []
 	if (space.documents?.$isLoaded) {
-		for (let d of [...space.documents]) {
+		for (let d of space.documents.values()) {
 			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
 			let title = getDocumentTitle(d)
 			wikiLinkDocs.push({ id: d.$jazz.id, title })
@@ -701,5 +703,10 @@ function getSpaceDocs(
 	space: LoadedSpace,
 ): co.loaded<typeof Document, { content: true }>[] {
 	if (!space.documents?.$isLoaded) return []
-	return [...space.documents].filter(d => d?.$isLoaded === true)
+	let docs: co.loaded<typeof Document, { content: true }>[] = []
+	for (let doc of space.documents.values()) {
+		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
+		docs.push(doc)
+	}
+	return docs
 }
