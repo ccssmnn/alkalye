@@ -14,7 +14,9 @@ let descriptions = {
 } as const
 
 function renderCustomHelp(args: string[], version: string): string | undefined {
-	if (!args.includes("--help") && !args.includes("-h")) return undefined
+	let isHelp =
+		args.length === 0 || args.includes("--help") || args.includes("-h")
+	if (!isHelp) return undefined
 
 	let path = args.filter(arg => !arg.startsWith("-")).join(" ")
 
