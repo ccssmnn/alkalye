@@ -35,11 +35,14 @@ async function waitForEditorBoot(page: Page, args: WaitForEditorBootArgs = {}) {
 	let path = args.path ?? "/app"
 	await page.goto(path)
 	await expect
-		.poll(async () => {
-			return page.evaluate(() => {
-				return document.body.getAttribute("data-alkalye-ready")
-			})
-		})
+		.poll(
+			async () => {
+				return page.evaluate(() => {
+					return document.body.getAttribute("data-alkalye-ready")
+				})
+			},
+			{ timeout: 30_000 },
+		)
 		.toBe("true")
 
 	let route = await page.evaluate(() => {

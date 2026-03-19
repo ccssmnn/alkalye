@@ -311,6 +311,7 @@ function ShareDialog({
 											type="text"
 											value={getPublicLink(currentDoc)}
 											readOnly
+											data-testid={testIds.collab.docPublicLinkInput}
 											className="flex-1 truncate bg-transparent outline-none"
 										/>
 										<Button
@@ -335,6 +336,7 @@ function ShareDialog({
 										className="w-full"
 										onClick={handleMakePrivate}
 										disabled={loading}
+										data-testid={testIds.collab.docPublicDisableButton}
 									>
 										<Lock className="mr-1 size-3.5" />
 										Make private
@@ -351,6 +353,7 @@ function ShareDialog({
 										className="w-full"
 										onClick={handleMakePublic}
 										disabled={loading}
+										data-testid={testIds.collab.docPublicEnableButton}
 									>
 										<Globe className="mr-1 size-3.5" />
 										Make public

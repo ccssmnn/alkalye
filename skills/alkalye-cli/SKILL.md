@@ -1,6 +1,6 @@
 ---
 name: alkalye-cli
-description: Set up and use the Alkalye CLI for auth, documents, spaces, and real-time collaboration. Covers installation, configuration, and the full command surface.
+description: Drive Alkalye via the command line for auth, documents, spaces, and collaboration. Manage documents, share with others, and collaborate — all from the terminal.
 compatibility: Requires Bun (>=1.0) and a reachable Jazz websocket sync peer.
 metadata:
   author: alkalye
@@ -38,17 +38,22 @@ Or run directly with `bun /path/to/alkalye/cli.ts ...`.
 
 ### 3. Configure the sync peer
 
-The CLI needs a Jazz websocket sync peer. Set it once via environment variable or pass it per-command:
+The CLI needs a Jazz websocket sync peer. The easiest way is to point at a server — the CLI auto-discovers the peer:
 
 ```bash
-# Environment (recommended)
-export ALKALYE_SYNC_PEER=ws://localhost:4200
+# Production (recommended for most use cases)
+export ALKALYE_SERVER=https://alkalye.com
 
 # Or per-command
-alkalye auth whoami --sync-peer ws://localhost:4200
+alkalye --server https://alkalye.com auth whoami
 ```
 
-For production, point `--server` at an Alkalye deployment and the CLI discovers the sync peer automatically.
+For local development, set the peer directly:
+
+```bash
+export ALKALYE_SYNC_PEER=ws://localhost:4200
+alkalye auth whoami --sync-peer ws://localhost:4200
+```
 
 ### 4. Symlink the skill (for agents)
 
@@ -261,7 +266,7 @@ Multi-actor collaboration pattern — each actor gets an isolated CLI home:
 
 ```bash
 # Actor 1: create account and document
-export ALKALYE_SYNC_PEER=ws://localhost:4200
+export ALKALYE_SERVER=https://alkalye.com
 env ALKALYE_CLI_HOME=/tmp/actor-1 alkalye auth signup --name "Owner" --json
 printf "# Shared Doc\nContent here." | env ALKALYE_CLI_HOME=/tmp/actor-1 alkalye doc create --stdin --sync --json
 
@@ -294,7 +299,7 @@ This avoids constructing complex content inline and lets you use whatever editin
 
 ## Tips
 
-- Use `--sync` on mutations when you need to guarantee the remote peer has the data before proceeding.
+- `--sync` is available on `doc create`, `doc update`, and `invite accept`. Use it when you need to guarantee the remote peer has the data before proceeding.
 - Use `--json` in scripts — parse with `jq` or your language's JSON parser.
 - Use `--quiet` for conditional checks: `alkalye auth whoami --quiet || alkalye auth signup --name Bot`.
 - Invite links require a base URL. Set `ALKALYE_BASE_URL` for local development.

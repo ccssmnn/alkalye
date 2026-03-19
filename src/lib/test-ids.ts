@@ -98,6 +98,9 @@ let testIds = {
 		docShareInviteLinkInput: "doc-share-invite-link-input",
 		docSharePendingInviteRow: "doc-share-pending-invite-row",
 		docSharePendingInviteRevoke: "doc-share-pending-invite-revoke",
+		docPublicEnableButton: "doc-public-enable-button",
+		docPublicDisableButton: "doc-public-disable-button",
+		docPublicLinkInput: "doc-public-link-input",
 	},
 	invite: {
 		signInButton: "invite-sign-in-button",

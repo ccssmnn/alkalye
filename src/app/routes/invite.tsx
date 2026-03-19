@@ -183,10 +183,7 @@ function LoadingState({
 	isSpace: boolean
 }) {
 	return (
-		<div
-			className="space-y-4 text-center"
-			data-testid={testIds.invite.successState}
-		>
+		<div className="space-y-4 text-center">
 			<Loader2 className="text-muted-foreground mx-auto size-12 animate-spin" />
 			<p className="text-muted-foreground text-sm">
 				{status === "loading"
@@ -201,7 +198,7 @@ function LoadingState({
 
 function SuccessState({ isSpace }: { isSpace: boolean }) {
 	return (
-		<div className="space-y-4 text-center">
+		<div className="space-y-4 text-center" data-testid={testIds.invite.successState}>
 			{isSpace ? (
 				<FolderOpen className="mx-auto size-12 text-green-600 dark:text-green-400" />
 			) : (
