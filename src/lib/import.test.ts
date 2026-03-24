@@ -5,10 +5,6 @@ import {
 	type FileWithPath,
 } from "./import"
 
-// =============================================================================
-// Helper functions
-// =============================================================================
-
 function createFile(name: string, content: string): File {
 	let file = new File([content], name, { type: "text/markdown" })
 	// Add text() method for Node environment compatibility
@@ -33,10 +29,6 @@ function createImageFile(name: string): File {
 		Promise.resolve("")
 	return file
 }
-
-// =============================================================================
-// Import Tests - Simple markdown files
-// =============================================================================
 
 describe("importMarkdownFiles - simple files", () => {
 	it("imports single markdown file", async () => {
@@ -73,10 +65,6 @@ describe("importMarkdownFiles - simple files", () => {
 		expect(results.map(r => r.name)).toEqual(["doc", "doc", "doc"])
 	})
 })
-
-// =============================================================================
-// Import Tests - Folder drag-drop (importFolderFiles)
-// =============================================================================
 
 describe("importFolderFiles - folder structure", () => {
 	it("imports simple markdown file from folder", async () => {
@@ -211,10 +199,6 @@ describe("importFolderFiles - folder structure", () => {
 	})
 })
 
-// =============================================================================
-// Asset reference handling
-// =============================================================================
-
 describe("asset reference handling", () => {
 	it("matches assets with relative path ./assets/", async () => {
 		let files: FileWithPath[] = [
@@ -262,10 +246,6 @@ describe("asset reference handling", () => {
 	})
 })
 
-// =============================================================================
-// Edge cases
-// =============================================================================
-
 describe("edge cases", () => {
 	it("skips hidden files (starting with .)", async () => {
 		let files: FileWithPath[] = [
@@ -310,10 +290,6 @@ describe("edge cases", () => {
 		expect(results[0].path).toBe("a/b/c/d/e") // doc folder stripped
 	})
 })
-
-// =============================================================================
-// Wikilink resolution tests
-// =============================================================================
 
 import { resolveWikilinksForImport } from "./import"
 
@@ -410,10 +386,6 @@ describe("resolveWikilinksForImport", () => {
 		expect(result).toBe("First [[co_new_a]] and again [[co_new_a]]")
 	})
 })
-
-// =============================================================================
-// Roundtrip scenarios (export -> import)
-// =============================================================================
 
 describe("wikilink roundtrip", () => {
 	it("preserves links through export and import cycle", () => {

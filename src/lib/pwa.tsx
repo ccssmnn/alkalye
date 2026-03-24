@@ -382,10 +382,6 @@ function GenericInstructions() {
 	)
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function subscribeToPWAInstalled(callback: () => void) {
 	let mediaQuery = window.matchMedia("(display-mode: standalone)")
 	mediaQuery.addEventListener("change", callback)

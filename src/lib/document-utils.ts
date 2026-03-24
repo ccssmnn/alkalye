@@ -101,10 +101,6 @@ function addCopyToTitle(content: string): string {
 	return `# ${title} (copy)\n\n${content}`
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function countMatches(text: string, query: string): number {
 	let q = query.toLowerCase()
 	let t = text.toLowerCase()

@@ -138,10 +138,6 @@ function ThemeMenuItems({ theme, setTheme }: ThemeToggleProps) {
 	)
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function getStoredTheme(): Theme {
 	let stored = localStorage.getItem("theme")
 	if (stored === "light" || stored === "dark" || stored === "system") {

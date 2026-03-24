@@ -5,10 +5,6 @@ import {
 	getRelativePath,
 } from "./export"
 
-// =============================================================================
-// getRelativePath tests
-// =============================================================================
-
 describe("getRelativePath", () => {
 	it("returns title only when both docs at root", () => {
 		expect(getRelativePath(null, null, "My Doc")).toBe("My Doc")
@@ -55,10 +51,6 @@ describe("getRelativePath", () => {
 		expect(getRelativePath(null, null, "My: Doc?")).toBe("My_ Doc_")
 	})
 })
-
-// =============================================================================
-// transformWikilinksForExport tests
-// =============================================================================
 
 describe("transformWikilinksForExport", () => {
 	let docs = [
@@ -115,10 +107,6 @@ describe("transformWikilinksForExport", () => {
 	})
 })
 
-// =============================================================================
-// stripBacklinksFrontmatter tests
-// =============================================================================
-
 describe("stripBacklinksFrontmatter", () => {
 	it("removes backlinks field from frontmatter", () => {
 		let content = `---
@@ -173,10 +161,6 @@ Content`
 		expect(result).toBe("\nContent")
 	})
 })
-
-// =============================================================================
-// Roundtrip scenarios
-// =============================================================================
 
 describe("export wikilink roundtrip scenarios", () => {
 	it("handles doc linking to non-exported doc (keeps ID)", () => {

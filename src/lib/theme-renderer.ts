@@ -334,10 +334,6 @@ function tryRenderTemplateWithContent(
 	}
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function getCacheKey(themeId: string, presetName: string | null): string {
 	return `${themeId}:${presetName ?? "__default__"}`
 }

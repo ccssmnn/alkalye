@@ -14,10 +14,6 @@ async function createZip(
 	return new File([blob], "theme.zip", { type: "application/zip" })
 }
 
-// =============================================================================
-// Theme.json Validation
-// =============================================================================
-
 describe("validateThemeJson", () => {
 	it("validates a correct theme.json", () => {
 		let json = JSON.stringify({
@@ -128,10 +124,6 @@ describe("validateThemeJson", () => {
 	})
 })
 
-// =============================================================================
-// Theme Zip Parsing - Basic Upload
-// =============================================================================
-
 describe("parseThemeZip - basic upload", () => {
 	it("parses a valid theme zip with theme.json at root", async () => {
 		let file = await createZip({
@@ -198,10 +190,6 @@ describe("parseThemeZip - basic upload", () => {
 	})
 })
 
-// =============================================================================
-// Theme Zip Parsing - CSS
-// =============================================================================
-
 describe("parseThemeZip - CSS handling", () => {
 	it("returns error when CSS file is missing", async () => {
 		let file = await createZip({
@@ -250,10 +238,6 @@ h1 { color: red; }
 		}
 	})
 })
-
-// =============================================================================
-// Theme Zip Parsing - Presets
-// =============================================================================
 
 describe("parseThemeZip - presets", () => {
 	it("parses presets.json when specified", async () => {
@@ -425,10 +409,6 @@ describe("parseThemeZip - presets", () => {
 	})
 })
 
-// =============================================================================
-// Theme Zip Parsing - Fonts
-// =============================================================================
-
 describe("parseThemeZip - fonts", () => {
 	it("extracts font files listed in theme.json", async () => {
 		let fontData = new Uint8Array([0, 1, 2, 3, 4, 5]) // Mock font data
@@ -513,10 +493,6 @@ describe("parseThemeZip - fonts", () => {
 	})
 })
 
-// =============================================================================
-// Theme Zip Parsing - Templates
-// =============================================================================
-
 describe("parseThemeZip - templates", () => {
 	it("parses HTML template when specified", async () => {
 		let file = await createZip({
@@ -596,10 +572,6 @@ describe("parseThemeZip - templates", () => {
 	})
 })
 
-// =============================================================================
-// Theme Zip Parsing - Thumbnails
-// =============================================================================
-
 describe("parseThemeZip - thumbnails", () => {
 	it("extracts thumbnail when specified", async () => {
 		let pngData = new Uint8Array([0x89, 0x50, 0x4e, 0x47]) // PNG magic bytes
@@ -642,10 +614,6 @@ describe("parseThemeZip - thumbnails", () => {
 		}
 	})
 })
-
-// =============================================================================
-// Error Messages
-// =============================================================================
 
 describe("parseThemeZip - error messages", () => {
 	it("provides helpful error for missing name field", async () => {

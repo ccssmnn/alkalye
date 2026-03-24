@@ -68,10 +68,6 @@ function sanitizeHtml(html: string): SanitizeResult {
 	}
 }
 
-// =============================================================================
-// Helper functions and constants (used by exported functions above)
-// =============================================================================
-
 let trustedFontDomains = [
 	"fonts.googleapis.com",
 	"fonts.gstatic.com",

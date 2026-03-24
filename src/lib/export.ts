@@ -242,10 +242,6 @@ async function exportDocumentsAsZip(docs: ExportDoc[]) {
 	URL.revokeObjectURL(url)
 }
 
-// =============================================================================
-// Wikilink transformation for export
-// =============================================================================
-
 type DocPathInfo = {
 	id: string
 	title: string

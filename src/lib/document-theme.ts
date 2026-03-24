@@ -173,10 +173,6 @@ function useDocumentTheme(
 	return { theme, preset, warning, isLoading: false }
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 let themesQuery = {
 	root: {
 		settings: true,

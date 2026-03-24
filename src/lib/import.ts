@@ -204,10 +204,6 @@ async function importFolderFiles(
 	return results
 }
 
-// =============================================================================
-// Wikilink resolution for import
-// =============================================================================
-
 type ImportedDocInfo = {
 	/** Original title from import (filename without extension) */
 	title: string
@@ -241,10 +237,6 @@ function resolveWikilinksForImport(
 		return match
 	})
 }
-
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
 
 async function importZipFile(file: File): Promise<ImportedFile[]> {
 	let zip = await JSZip.loadAsync(file)

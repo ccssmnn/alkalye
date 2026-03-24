@@ -16,10 +16,6 @@ import {
 	createMockFile,
 } from "./backup-test-helpers"
 
-// =============================================================================
-// Compute Doc Locations
-// =============================================================================
-
 describe("computeDocLocations", () => {
 	function createDoc(input: {
 		id: string
@@ -170,10 +166,6 @@ describe("computeDocLocations", () => {
 	})
 })
 
-// =============================================================================
-// Transform Content for Backup
-// =============================================================================
-
 describe("transformContentForBackup", () => {
 	it("transforms asset: references to assets paths", () => {
 		let assetFiles = new Map([
@@ -197,10 +189,6 @@ describe("transformContentForBackup", () => {
 		expect(result).toBe("![A](asset:missing)")
 	})
 })
-
-// =============================================================================
-// Compute Expected Structure
-// =============================================================================
 
 describe("computeExpectedStructure", () => {
 	it("includes parent directories and markdown files", () => {
@@ -240,10 +228,6 @@ describe("computeExpectedStructure", () => {
 		expect(expected.expectedPaths.has("work/Note/assets")).toBe(true)
 	})
 })
-
-// =============================================================================
-// Transform Content for Import
-// =============================================================================
 
 describe("transformContentForImport", () => {
 	it("transforms asset paths to asset: references", () => {
@@ -291,10 +275,6 @@ describe("transformContentForImport", () => {
 		expect(result).toBe(`![Unknown](assets/unknown.jpg)`)
 	})
 })
-
-// =============================================================================
-// Manifest Read/Write
-// =============================================================================
 
 describe("readManifest", () => {
 	it("returns null when manifest file does not exist", async () => {
@@ -391,10 +371,6 @@ describe("writeManifest", () => {
 		expect(written!.entries[0].docId).toBe("doc1")
 	})
 })
-
-// =============================================================================
-// Scan Backup Folder
-// =============================================================================
 
 describe("scanBackupFolder", () => {
 	it("scans markdown files at root level", async () => {

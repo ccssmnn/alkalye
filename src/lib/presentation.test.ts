@@ -5,10 +5,6 @@ import {
 	type PresentationItem,
 } from "./presentation"
 
-// =============================================================================
-// Helper functions for testing
-// =============================================================================
-
 function getBlocks(items: PresentationItem[]) {
 	return items
 		.filter(i => i.type === "block")
@@ -36,11 +32,6 @@ function isLineHighlighted(
 			lineNum <= i.block.endLine,
 	)
 }
-
-// =============================================================================
-// iA Presenter Compatibility Tests
-// Based on: https://ia.net/presenter/support/basics/markdown
-// =============================================================================
 
 describe("parsePresentation - slide content detection (iA rules)", () => {
 	describe("headings (always on slide)", () => {
@@ -459,10 +450,6 @@ describe("parsePresentation - slide content extraction", () => {
 	})
 })
 
-// =============================================================================
-// Visual Blocks Tests (iA Presenter layout feature)
-// =============================================================================
-
 describe("parsePresentation - visual blocks", () => {
 	it("creates single block when no blank lines", () => {
 		let items = parsePresentation("## Carl Assmann\n# Amazing TypeScript Talk")
@@ -877,11 +864,6 @@ describe("edge cases", () => {
 	})
 })
 
-// =============================================================================
-// Editor Decoration Tests
-// These test that only the correct lines are highlighted in the editor
-// =============================================================================
-
 describe("editor decorations - line highlighting", () => {
 	// Helper to get all highlighted line numbers
 	function getHighlightedLines(items: PresentationItem[]): number[] {
@@ -1080,7 +1062,6 @@ notes`
 		let content = `# Title
   - visible
   - also visible
-
 
 - teleprompter
 - also teleprompter`

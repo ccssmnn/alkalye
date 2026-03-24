@@ -258,10 +258,6 @@ function openPrintWindow(html: string): void {
 	}
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function renderTemplateWithContent(
 	template: string,
 	content: string,

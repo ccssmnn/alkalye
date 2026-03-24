@@ -8,10 +8,6 @@ function useIsMobile() {
 	return useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot)
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function getSnapshot() {
 	return window.innerWidth < MOBILE_BREAKPOINT
 }

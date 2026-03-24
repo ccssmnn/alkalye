@@ -377,10 +377,6 @@ async function migrateAnonymousData(
 	}
 }
 
-// =============================================================================
-// Helper data (used by exported functions above)
-// =============================================================================
-
 let adjectives = [
 	"Wandering",
 	"Dreaming",

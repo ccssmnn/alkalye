@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { sanitizeCss, sanitizeHtml } from "./theme-sanitize"
 
-// =============================================================================
-// CSS Sanitization Tests
-// =============================================================================
-
 describe("sanitizeCss", () => {
 	it("passes through safe CSS unchanged", () => {
 		let css = `
@@ -221,10 +217,6 @@ body {
 		expect(result.sanitized).toContain("/* removed: javascript: */")
 	})
 })
-
-// =============================================================================
-// HTML Sanitization Tests
-// =============================================================================
 
 describe("sanitizeHtml", () => {
 	it("passes through safe HTML unchanged", () => {

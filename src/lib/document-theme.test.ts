@@ -1,10 +1,6 @@
 import { describe, it, expect } from "vitest"
 import { getThemeName, getPresetName, findThemeByName } from "./document-theme"
 
-// =============================================================================
-// Theme Name Parsing from Frontmatter
-// =============================================================================
-
 describe("getThemeName", () => {
 	it("returns null when no frontmatter", () => {
 		expect(getThemeName("# Hello World")).toBe(null)
@@ -60,10 +56,6 @@ theme: dark
 	})
 })
 
-// =============================================================================
-// Preset Name Parsing from Frontmatter
-// =============================================================================
-
 describe("getPresetName", () => {
 	it("returns null when no frontmatter", () => {
 		expect(getPresetName("# Hello")).toBe(null)
@@ -86,10 +78,6 @@ preset: Dawn
 		expect(getPresetName(content)).toBe("Dawn")
 	})
 })
-
-// =============================================================================
-// Find Theme By Name
-// =============================================================================
 
 describe("findThemeByName", () => {
 	it("returns null for null themes list", () => {
@@ -142,10 +130,6 @@ describe("findThemeByName", () => {
 		expect(findThemeByName(themes, "Elegant")).toBe(loadedTheme)
 	})
 })
-
-// =============================================================================
-// Default Theme Behavior (documented via integration tests)
-// =============================================================================
 
 /**
  * NOTE: useDocumentTheme is a React hook that requires Jazz context.

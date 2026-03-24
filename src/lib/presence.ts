@@ -11,6 +11,7 @@ import {
 } from "@codemirror/view"
 import {
 	RangeSetBuilder,
+	type ChangeSet,
 	type Extension,
 	StateField,
 	StateEffect,
@@ -133,21 +134,83 @@ function usePresence({ doc, enabled = true }: UsePresenceOptions) {
 	}
 }
 
-let remoteCursorsField = StateField.define<RemoteCursor[]>({
+type CursorPosition = { position: number; selectionEnd?: number }
+
+type CursorFieldState = {
+	cursors: RemoteCursor[]
+	sourcePositions: Map<string, CursorPosition>
+}
+
+let setRemoteCursorsEffect = StateEffect.define<RemoteCursor[]>()
+
+let remoteCursorsField = StateField.define<CursorFieldState>({
 	create() {
-		return []
+		return { cursors: [], sourcePositions: new Map() }
 	},
-	update(value, tr) {
+	update(state, tr) {
 		for (let effect of tr.effects) {
 			if (effect.is(setRemoteCursorsEffect)) {
-				return effect.value
+				return reconcileIncomingCursors(state, effect.value)
 			}
 		}
-		return value
+		if (tr.docChanged && state.cursors.length > 0) {
+			return {
+				...state,
+				cursors: mapCursorsThroughChanges(state.cursors, tr.changes),
+			}
+		}
+		return state
 	},
 })
 
-let setRemoteCursorsEffect = StateEffect.define<RemoteCursor[]>()
+function reconcileIncomingCursors(
+	prev: CursorFieldState,
+	incoming: RemoteCursor[],
+): CursorFieldState {
+	let sourcePositions = new Map<string, CursorPosition>()
+
+	let cursors = incoming.map(cursor => {
+		sourcePositions.set(cursor.id, {
+			position: cursor.position,
+			selectionEnd: cursor.selectionEnd,
+		})
+
+		let prevSource = prev.sourcePositions.get(cursor.id)
+		let sourceUnchanged =
+			prevSource &&
+			prevSource.position === cursor.position &&
+			prevSource.selectionEnd === cursor.selectionEnd
+
+		if (sourceUnchanged) {
+			let mapped = prev.cursors.find(c => c.id === cursor.id)
+			if (mapped) {
+				return {
+					...cursor,
+					position: mapped.position,
+					selectionEnd: mapped.selectionEnd,
+				}
+			}
+		}
+
+		return cursor
+	})
+
+	return { cursors, sourcePositions }
+}
+
+function mapCursorsThroughChanges(
+	cursors: RemoteCursor[],
+	changes: ChangeSet,
+): RemoteCursor[] {
+	return cursors.map(cursor => ({
+		...cursor,
+		position: changes.mapPos(cursor.position, 1),
+		selectionEnd:
+			cursor.selectionEnd !== undefined
+				? changes.mapPos(cursor.selectionEnd, 1)
+				: undefined,
+	}))
+}
 
 let cursorDecorationPlugin = ViewPlugin.fromClass(
 	class {
@@ -156,33 +219,36 @@ let cursorDecorationPlugin = ViewPlugin.fromClass(
 
 		constructor(view: EditorView) {
 			this.view = view
-			let cursors = view.state.field(remoteCursorsField)
+			let { cursors } = view.state.field(remoteCursorsField)
 			this.decorations = buildCursorDecorations(cursors, view.state.doc.length)
 		}
 
 		update(update: ViewUpdate) {
-			let cursors = update.state.field(remoteCursorsField)
-			let oldCursors = update.startState.field(remoteCursorsField)
-			if (cursors !== oldCursors || update.docChanged) {
+			let { cursors } = update.state.field(remoteCursorsField)
+			let prev = update.startState.field(remoteCursorsField)
+			if (cursors !== prev.cursors || update.docChanged) {
 				this.decorations = buildCursorDecorations(
 					cursors,
 					update.state.doc.length,
 				)
 
-				// Force Safari to repaint removed cursor elements
-				if (cursors !== oldCursors) {
-					requestAnimationFrame(() => {
-						this.view.contentDOM.style.transform = "translateZ(0)"
-						requestAnimationFrame(() => {
-							this.view.contentDOM.style.transform = ""
-						})
-					})
+				if (cursors !== prev.cursors) {
+					forceSafariRepaint(this.view)
 				}
 			}
 		}
 	},
 	{ decorations: v => v.decorations },
 )
+
+function forceSafariRepaint(view: EditorView) {
+	requestAnimationFrame(() => {
+		view.contentDOM.style.transform = "translateZ(0)"
+		requestAnimationFrame(() => {
+			view.contentDOM.style.transform = ""
+		})
+	})
+}
 
 let cursorStyles = EditorView.baseTheme({
 	".cm-remote-cursor": {
@@ -230,10 +296,6 @@ function dispatchRemoteCursors(view: EditorView, cursors: RemoteCursor[]) {
 	})
 }
 
-// =============================================================================
-// Helper functions (used by exported functions above)
-// =============================================================================
-
 function getColorForId(id: string): string {
 	let hash = 0
 	for (let i = 0; i < id.length; i++) {
@@ -251,8 +313,6 @@ function computeRemoteCursors(
 		return []
 
 	let now = Date.now()
-
-	// Group by user ID, keeping only the most recent cursor per user
 	let latestByUser = new Map<
 		string,
 		{
@@ -261,8 +321,7 @@ function computeRemoteCursors(
 		}
 	>()
 
-	let entries = Object.entries(doc.cursors.perSession)
-	for (let [sessionId, entry] of entries) {
+	for (let [sessionId, entry] of Object.entries(doc.cursors.perSession)) {
 		if (sessionId === mySessionId) continue
 		if (!entry || !entry.value) continue
 
@@ -270,7 +329,6 @@ function computeRemoteCursors(
 		if (age > STALE_CURSOR_MS) continue
 
 		let userId = entry.by?.$jazz.id ?? sessionId
-
 		let existing = latestByUser.get(userId)
 		if (!existing || entry.madeAt.getTime() > existing.entry.madeAt.getTime()) {
 			latestByUser.set(userId, { sessionId, entry })
@@ -280,9 +338,8 @@ function computeRemoteCursors(
 	let cursors: RemoteCursor[] = []
 	for (let [userId, { sessionId, entry }] of latestByUser) {
 		let name = "Anonymous"
-		let by = entry.by
-		if (by?.profile?.$isLoaded) {
-			name = by.profile.name
+		if (entry.by?.profile?.$isLoaded) {
+			name = entry.by.profile.name
 		}
 
 		cursors.push({
@@ -313,14 +370,14 @@ class CursorWidget extends WidgetType {
 		wrapper.className = "cm-remote-cursor"
 		wrapper.style.setProperty("--cursor-color", this.color)
 
-		let cursor = document.createElement("span")
-		cursor.className = "cm-remote-cursor-caret"
+		let caret = document.createElement("span")
+		caret.className = "cm-remote-cursor-caret"
 
 		let label = document.createElement("span")
 		label.className = "cm-remote-cursor-label"
 		label.textContent = this.name
 
-		wrapper.appendChild(cursor)
+		wrapper.appendChild(caret)
 		wrapper.appendChild(label)
 
 		return wrapper
