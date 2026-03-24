@@ -134,6 +134,16 @@ function usePresence({ doc, enabled = true }: UsePresenceOptions) {
 	}
 }
 
+function createPresenceExtension(): Extension {
+	return [remoteCursorsField, cursorDecorationPlugin, cursorStyles]
+}
+
+function dispatchRemoteCursors(view: EditorView, cursors: RemoteCursor[]) {
+	view.dispatch({
+		effects: setRemoteCursorsEffect.of(cursors),
+	})
+}
+
 type CursorPosition = { position: number; selectionEnd?: number }
 
 type CursorFieldState = {
@@ -285,16 +295,6 @@ let cursorStyles = EditorView.baseTheme({
 		mixBlendMode: "multiply",
 	},
 })
-
-function createPresenceExtension(): Extension {
-	return [remoteCursorsField, cursorDecorationPlugin, cursorStyles]
-}
-
-function dispatchRemoteCursors(view: EditorView, cursors: RemoteCursor[]) {
-	view.dispatch({
-		effects: setRemoteCursorsEffect.of(cursors),
-	})
-}
 
 function getColorForId(id: string): string {
 	let hash = 0

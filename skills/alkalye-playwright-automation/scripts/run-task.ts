@@ -245,9 +245,9 @@ async function enablePublicAccess(
 ) {
 	await openShareDialog(page, args)
 	await page.getByTestId(testIds.collab.docPublicEnableButton).click()
-	await expect(
-		page.getByTestId(testIds.collab.docPublicLinkInput),
-	).toBeVisible({ timeout: 10_000 })
+	await expect(page.getByTestId(testIds.collab.docPublicLinkInput)).toBeVisible(
+		{ timeout: 10_000 },
+	)
 	let link = await page
 		.getByTestId(testIds.collab.docPublicLinkInput)
 		.inputValue()
@@ -272,9 +272,7 @@ async function getPublicLink(
 ) {
 	await openShareDialog(page, args)
 	let input = page.getByTestId(testIds.collab.docPublicLinkInput)
-	let isPublic = await input
-		.isVisible({ timeout: 2_000 })
-		.catch(() => false)
+	let isPublic = await input.isVisible({ timeout: 2_000 }).catch(() => false)
 	if (!isPublic) {
 		return { ok: true, docId: args.docId, public: false, link: null }
 	}
@@ -282,10 +280,7 @@ async function getPublicLink(
 	return { ok: true, docId: args.docId, public: true, link }
 }
 
-async function acceptInviteAsCurrentUser(
-	page: Page,
-	args: { link: string },
-) {
+async function acceptInviteAsCurrentUser(page: Page, args: { link: string }) {
 	await page.goto(args.link)
 	await expect(page).toHaveURL(/\/app\/invite/)
 

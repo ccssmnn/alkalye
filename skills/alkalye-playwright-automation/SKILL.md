@@ -44,72 +44,72 @@ Output is JSON: `{ ok: true, baseURL, steps: [{ task, result }] }`.
 
 Payload options:
 
-| Field      | Default                     | Description                    |
-| ---------- | --------------------------- | ------------------------------ |
-| `baseURL`  | `$PLAYWRIGHT_BASE_URL` or `http://127.0.0.1:4173` | Target Alkalye instance |
-| `headless` | `true`                      | Run browser headlessly         |
-| `steps`    | (required)                  | Array of `{ task, args? }`     |
+| Field      | Default                                           | Description                |
+| ---------- | ------------------------------------------------- | -------------------------- |
+| `baseURL`  | `$PLAYWRIGHT_BASE_URL` or `http://127.0.0.1:4173` | Target Alkalye instance    |
+| `headless` | `true`                                            | Run browser headlessly     |
+| `steps`    | (required)                                        | Array of `{ task, args? }` |
 
 ## Available tasks
 
 ### Auth
 
-| Task                      | Args                                | Returns                |
-| ------------------------- | ----------------------------------- | ---------------------- |
-| `auth.waitForEditorBoot`  | `path?`                             | boot confirmation      |
-| `auth.openSettings`       | `fromPath?`                         | —                      |
-| `auth.createAccount`      | `openSettings?`                     | passphrase, account ID |
-| `auth.signIn`             | `passphrase`, `openSettings?`       | account ID             |
-| `auth.signOut`            | `openSettings?`                     | —                      |
+| Task                     | Args                          | Returns                |
+| ------------------------ | ----------------------------- | ---------------------- |
+| `auth.waitForEditorBoot` | `path?`                       | boot confirmation      |
+| `auth.openSettings`      | `fromPath?`                   | —                      |
+| `auth.createAccount`     | `openSettings?`               | passphrase, account ID |
+| `auth.signIn`            | `passphrase`, `openSettings?` | account ID             |
+| `auth.signOut`           | `openSettings?`               | —                      |
 
 ### Documents
 
-| Task             | Args                                              | Returns          |
-| ---------------- | ------------------------------------------------- | ---------------- |
-| `doc.create`     | `title?`, `body?`, `content?`, `tags?`, `path?`, `spaceId?` | doc metadata |
-| `doc.readById`   | `id`, `spaceId?`                                  | doc with content |
-| `doc.updateById` | `id`, `title?`, `body?`, `content?`, `tags?`, `path?`, `spaceId?` | updated doc |
-| `doc.list`       | `search?`, `spaceId?`                             | doc array        |
-| `doc.deleteById` | `id`, `spaceId?`                                  | confirmation     |
+| Task             | Args                                                              | Returns          |
+| ---------------- | ----------------------------------------------------------------- | ---------------- |
+| `doc.create`     | `title?`, `body?`, `content?`, `tags?`, `path?`, `spaceId?`       | doc metadata     |
+| `doc.readById`   | `id`, `spaceId?`                                                  | doc with content |
+| `doc.updateById` | `id`, `title?`, `body?`, `content?`, `tags?`, `path?`, `spaceId?` | updated doc      |
+| `doc.list`       | `search?`, `spaceId?`                                             | doc array        |
+| `doc.deleteById` | `id`, `spaceId?`                                                  | confirmation     |
 
 ### Spaces
 
-| Task                 | Args                        | Returns             |
-| -------------------- | --------------------------- | ------------------- |
-| `space.create`       | `name`                      | space metadata      |
-| `space.readById`     | `spaceId`                   | space with members  |
-| `space.updateById`   | `spaceId`, `name`           | updated space       |
-| `space.list`         | —                           | space array         |
-| `space.deleteById`   | `spaceId`                   | confirmation        |
-| `space.createInvite` | `spaceId`, `role`           | invite link         |
-| `space.listInvites`  | `spaceId`                   | invite array        |
-| `space.revokeInvite` | `spaceId`, `inviteGroupId?` | confirmation        |
-| `space.acceptInvite` | `link`                      | space ID            |
+| Task                 | Args                        | Returns            |
+| -------------------- | --------------------------- | ------------------ |
+| `space.create`       | `name`                      | space metadata     |
+| `space.readById`     | `spaceId`                   | space with members |
+| `space.updateById`   | `spaceId`, `name`           | updated space      |
+| `space.list`         | —                           | space array        |
+| `space.deleteById`   | `spaceId`                   | confirmation       |
+| `space.createInvite` | `spaceId`, `role`           | invite link        |
+| `space.listInvites`  | `spaceId`                   | invite array       |
+| `space.revokeInvite` | `spaceId`, `inviteGroupId?` | confirmation       |
+| `space.acceptInvite` | `link`                      | space ID           |
 
 ### Document collaboration
 
-| Task                       | Args                                   | Returns        |
-| -------------------------- | -------------------------------------- | -------------- |
-| `collab.doc.createInvite`  | `docId`, `spaceId?`, `role`            | invite link    |
-| `collab.doc.listInvites`   | `docId`, `spaceId?`                    | invite array   |
-| `collab.doc.revokeInvite`  | `docId`, `spaceId?`, `inviteGroupId?`  | confirmation   |
-| `collab.doc.acceptInvite`  | `link`                                 | doc ID (creates new account) |
+| Task                      | Args                                  | Returns                      |
+| ------------------------- | ------------------------------------- | ---------------------------- |
+| `collab.doc.createInvite` | `docId`, `spaceId?`, `role`           | invite link                  |
+| `collab.doc.listInvites`  | `docId`, `spaceId?`                   | invite array                 |
+| `collab.doc.revokeInvite` | `docId`, `spaceId?`, `inviteGroupId?` | confirmation                 |
+| `collab.doc.acceptInvite` | `link`                                | doc ID (creates new account) |
 
 ### Invites
 
-| Task             | Args   | Returns                    |
-| ---------------- | ------ | -------------------------- |
-| `invite.accept`  | `link` | doc/space ID + redirect URL |
+| Task            | Args   | Returns                     |
+| --------------- | ------ | --------------------------- |
+| `invite.accept` | `link` | doc/space ID + redirect URL |
 
 `invite.accept` accepts a doc or space invite as the **currently logged-in user**. Use this for collaboration flows where you've already created an account via `auth.createAccount` or `auth.signIn`. The older `collab.doc.acceptInvite` and `space.acceptInvite` tasks create a fresh account in a new browser context — use `invite.accept` instead for multi-step workflows.
 
 ### Public access
 
-| Task                 | Args                  | Returns                    |
-| -------------------- | --------------------- | -------------------------- |
-| `doc.public.enable`  | `docId`, `spaceId?`   | public link                |
-| `doc.public.disable` | `docId`, `spaceId?`   | confirmation               |
-| `doc.public.link`    | `docId`, `spaceId?`   | public link (or null)      |
+| Task                 | Args                | Returns               |
+| -------------------- | ------------------- | --------------------- |
+| `doc.public.enable`  | `docId`, `spaceId?` | public link           |
+| `doc.public.disable` | `docId`, `spaceId?` | confirmation          |
+| `doc.public.link`    | `docId`, `spaceId?` | public link (or null) |
 
 ## Writing custom scripts
 
