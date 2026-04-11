@@ -264,8 +264,8 @@ let cursorStyles = EditorView.baseTheme({
 	".cm-remote-cursor": {
 		position: "relative",
 		display: "inline",
-		marginLeft: "-1px",
-		marginRight: "-1px",
+		width: "0",
+		overflow: "visible",
 	},
 	".cm-remote-cursor-caret": {
 		position: "absolute",
