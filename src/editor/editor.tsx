@@ -532,8 +532,39 @@ function MarkdownEditor(
 			return event.dataTransfer?.types.includes("Files") ?? false
 		}
 
+		// CodeMirror's dropCursor observer is attached to .cm-content, so it
+		// never fires when the drag is over .cm-scroller whitespace. Forward
+		// synthetic events on .cm-content so the cursor still shows and clears.
+		function forwardToContentDOM(type: string, event: DragEvent) {
+			if (!view) return
+			view.contentDOM.dispatchEvent(
+				new DragEvent(type, {
+					bubbles: false,
+					cancelable: true,
+					clientX: event.clientX,
+					clientY: event.clientY,
+				}),
+			)
+		}
+
 		function handleDragOver(event: DragEvent) {
-			if (isFileDrag(event)) event.preventDefault()
+			if (!isFileDrag(event)) return
+			event.preventDefault()
+			if (
+				view &&
+				event.target instanceof Node &&
+				!view.contentDOM.contains(event.target)
+			) {
+				forwardToContentDOM("dragover", event)
+			}
+		}
+
+		function handleDragLeave(event: DragEvent) {
+			if (!isFileDrag(event) || !dom) return
+			let related = event.relatedTarget
+			let leaving =
+				!related || (related instanceof Node && !dom.contains(related))
+			if (leaving) forwardToContentDOM("dragend", event)
 		}
 
 		function handleDrop(event: DragEvent) {
@@ -544,6 +575,7 @@ function MarkdownEditor(
 			// (PDFs, videos, etc) don't fall through to file:// navigation.
 			event.preventDefault()
 			event.stopPropagation()
+			forwardToContentDOM("dragend", event)
 
 			if (!view || view.state.readOnly) return
 			let upload = uploadImageRef.current
@@ -585,9 +617,11 @@ function MarkdownEditor(
 		// Capture phase so our preventDefault runs before CodeMirror's
 		// own drop handler on .cm-content.
 		dom.addEventListener("dragover", handleDragOver, true)
+		dom.addEventListener("dragleave", handleDragLeave, true)
 		dom.addEventListener("drop", handleDrop, true)
 		return () => {
 			dom.removeEventListener("dragover", handleDragOver, true)
+			dom.removeEventListener("dragleave", handleDragLeave, true)
 			dom.removeEventListener("drop", handleDrop, true)
 		}
 	}, [view])

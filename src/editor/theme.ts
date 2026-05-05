@@ -52,6 +52,9 @@ let editorTheme: Extension = EditorView.theme({
 	".cm-activeLine": {
 		backgroundColor: "var(--editor-active-line-bg, transparent)",
 	},
+	".cm-dropCursor": {
+		borderLeftColor: "var(--brand)",
+	},
 	".cm-gutters": {
 		backgroundColor: "var(--editor-background, #fafaf8)",
 		color: "var(--editor-muted, #999)",
