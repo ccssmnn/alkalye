@@ -15,6 +15,7 @@ import {
 	keymap,
 	placeholder as placeholderExt,
 	highlightActiveLine,
+	dropCursor,
 } from "@codemirror/view"
 import {
 	deleteMarkupBackward,
@@ -445,6 +446,7 @@ function MarkdownEditor(
 			}),
 			editorExtensions,
 			highlightActiveLine(),
+			dropCursor(),
 			EditorView.lineWrapping,
 			EditorView.updateListener.of(update => {
 				if (update.docChanged) {
