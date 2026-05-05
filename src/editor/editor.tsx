@@ -237,6 +237,7 @@ function MarkdownEditor(
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
 	let uploadImageRef = useRef(onUploadImage)
+	let activeDropsRef = useRef<Set<{ pos: number }>>(new Set())
 
 	useEffect(() => {
 		callbacksRef.current = { onChange, onCursorChange, onFocus, onBlur }
@@ -446,8 +447,16 @@ function MarkdownEditor(
 			highlightActiveLine(),
 			EditorView.lineWrapping,
 			EditorView.updateListener.of(update => {
-				if (update.docChanged && callbacksRef.current.onChange) {
-					callbacksRef.current.onChange(update.state.doc.toString())
+				if (update.docChanged) {
+					if (callbacksRef.current.onChange) {
+						callbacksRef.current.onChange(update.state.doc.toString())
+					}
+					// Map drop targets through any concurrent transaction so
+					// images dropped while another upload is awaiting still
+					// land at the intended position.
+					for (let drop of activeDropsRef.current) {
+						drop.pos = update.changes.mapPos(drop.pos, 1)
+					}
 				}
 				if (update.selectionSet && callbacksRef.current.onCursorChange) {
 					let { from, to } = update.state.selection.main
@@ -544,24 +553,29 @@ function MarkdownEditor(
 			let dropPos =
 				view.posAtCoords({ x: event.clientX, y: event.clientY }) ??
 				view.state.doc.length
+			let drop = { pos: dropPos }
+			activeDropsRef.current.add(drop)
 
 			void (async () => {
-				let pos = dropPos
-				for (let file of images) {
-					try {
-						let result = await upload(file)
-						if (!view.contentDOM.isConnected) return
-						let text = `![${result.name}](asset:${result.id})`
-						pos = Math.min(pos, view.state.doc.length)
-						view.dispatch({
-							changes: { from: pos, insert: text },
-							selection: { anchor: pos + text.length },
-						})
-						pos = view.state.selection.main.head
-					} catch (err) {
-						console.error("Image upload failed:", err)
-						toast.error(`Failed to upload ${file.name}`)
+				try {
+					for (let file of images) {
+						try {
+							let result = await upload(file)
+							if (!view.contentDOM.isConnected) return
+							let text = `![${result.name}](asset:${result.id})`
+							let docLength = view.state.doc.length
+							let pos = Math.max(0, Math.min(drop.pos, docLength))
+							view.dispatch({
+								changes: { from: pos, insert: text },
+								selection: { anchor: pos + text.length },
+							})
+						} catch (err) {
+							console.error("Image upload failed:", err)
+							toast.error(`Failed to upload ${file.name}`)
+						}
 					}
+				} finally {
+					activeDropsRef.current.delete(drop)
 				}
 			})()
 		}
