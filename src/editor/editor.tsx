@@ -1,6 +1,7 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
 import { ImageOff } from "lucide-react"
+import { toast } from "sonner"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
 import {
@@ -527,36 +528,51 @@ function MarkdownEditor(
 		function handleDrop(event: DragEvent) {
 			let files = event.dataTransfer?.files
 			if (!files || files.length === 0) return
+
+			// Always preventDefault on file drops so non-image files
+			// (PDFs, videos, etc) don't fall through to file:// navigation.
+			event.preventDefault()
+			event.stopPropagation()
+
+			if (!view || view.state.readOnly) return
+			let upload = uploadImageRef.current
+			if (!upload) return
+
 			let images = Array.from(files).filter(f => f.type.startsWith("image/"))
 			if (images.length === 0) return
 
-			event.preventDefault()
-			let upload = uploadImageRef.current
-			if (!upload || !view) return
-
 			let dropPos =
 				view.posAtCoords({ x: event.clientX, y: event.clientY }) ??
-				view.state.selection.main.head
+				view.state.doc.length
 
 			void (async () => {
 				let pos = dropPos
 				for (let file of images) {
-					let result = await upload(file)
-					let text = `![${result.name}](asset:${result.id})`
-					view.dispatch({
-						changes: { from: pos, insert: text },
-						selection: { anchor: pos + text.length },
-					})
-					pos += text.length
+					try {
+						let result = await upload(file)
+						if (!view.contentDOM.isConnected) return
+						let text = `![${result.name}](asset:${result.id})`
+						pos = Math.min(pos, view.state.doc.length)
+						view.dispatch({
+							changes: { from: pos, insert: text },
+							selection: { anchor: pos + text.length },
+						})
+						pos = view.state.selection.main.head
+					} catch (err) {
+						console.error("Image upload failed:", err)
+						toast.error(`Failed to upload ${file.name}`)
+					}
 				}
 			})()
 		}
 
-		dom.addEventListener("dragover", handleDragOver)
-		dom.addEventListener("drop", handleDrop)
+		// Capture phase so our preventDefault runs before CodeMirror's
+		// own drop handler on .cm-content.
+		dom.addEventListener("dragover", handleDragOver, true)
+		dom.addEventListener("drop", handleDrop, true)
 		return () => {
-			dom.removeEventListener("dragover", handleDragOver)
-			dom.removeEventListener("drop", handleDrop)
+			dom.removeEventListener("dragover", handleDragOver, true)
+			dom.removeEventListener("drop", handleDrop, true)
 		}
 	}, [view])
 
