@@ -235,9 +235,14 @@ function MarkdownEditor(
 	findPanelOpenRef.current = findPanelOpen
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
+	let uploadImageRef = useRef(onUploadImage)
 
 	useEffect(() => {
 		callbacksRef.current = { onChange, onCursorChange, onFocus, onBlur }
+	})
+
+	useEffect(() => {
+		uploadImageRef.current = onUploadImage
 	})
 
 	useEffect(() => {
@@ -506,6 +511,54 @@ function MarkdownEditor(
 			dispatchRemoteCursors(view, remoteCursors)
 		}
 	}, [view, remoteCursors])
+
+	useEffect(() => {
+		let dom = containerRef.current
+		if (!dom || !view) return
+
+		function isFileDrag(event: DragEvent) {
+			return event.dataTransfer?.types.includes("Files") ?? false
+		}
+
+		function handleDragOver(event: DragEvent) {
+			if (isFileDrag(event)) event.preventDefault()
+		}
+
+		function handleDrop(event: DragEvent) {
+			let files = event.dataTransfer?.files
+			if (!files || files.length === 0) return
+			let images = Array.from(files).filter(f => f.type.startsWith("image/"))
+			if (images.length === 0) return
+
+			event.preventDefault()
+			let upload = uploadImageRef.current
+			if (!upload || !view) return
+
+			let dropPos =
+				view.posAtCoords({ x: event.clientX, y: event.clientY }) ??
+				view.state.selection.main.head
+
+			void (async () => {
+				let pos = dropPos
+				for (let file of images) {
+					let result = await upload(file)
+					let text = `![${result.name}](asset:${result.id})`
+					view.dispatch({
+						changes: { from: pos, insert: text },
+						selection: { anchor: pos + text.length },
+					})
+					pos += text.length
+				}
+			})()
+		}
+
+		dom.addEventListener("dragover", handleDragOver)
+		dom.addEventListener("drop", handleDrop)
+		return () => {
+			dom.removeEventListener("dragover", handleDragOver)
+			dom.removeEventListener("drop", handleDrop)
+		}
+	}, [view])
 
 	useEffect(() => {
 		if (!view) return
