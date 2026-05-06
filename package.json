@@ -4,7 +4,8 @@
 	"version": "0.0.1",
 	"type": "module",
 	"scripts": {
-		"dev": "astro dev",
+		"dev": "portless run astro dev",
+		"dev:sync": "portless alkalye-sync sh -c 'bunx jazz-run sync --port \"$PORT\" --host \"$HOST\"'",
 		"build": "astro check && astro build",
 		"check": "bun x concurrently \"bun run check:lint\" \"bun run check:types\" \"bun run check:format\" \"bun run check:test\"",
 		"check:lint": "eslint .",
@@ -111,6 +112,7 @@
 		"globals": "^17.1.0",
 		"happy-dom": "^20.3.7",
 		"jsdom": "^27.4.0",
+		"portless": "^0.12.0",
 		"prettier": "^3.8.1",
 		"prettier-plugin-tailwindcss": "^0.7.2",
 		"typescript": "~5.9.3",
