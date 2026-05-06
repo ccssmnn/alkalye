@@ -593,10 +593,7 @@ function MarkdownEditor(
 
 			function insertAtTarget(text: string) {
 				if (!activeView.contentDOM.isConnected) return
-				let pos = Math.max(
-					0,
-					Math.min(target.pos, activeView.state.doc.length),
-				)
+				let pos = Math.max(0, Math.min(target.pos, activeView.state.doc.length))
 				activeView.dispatch({
 					changes: { from: pos, insert: text },
 					selection: { anchor: pos + text.length },
