@@ -1,7 +1,7 @@
 import { EditorView, ViewPlugin } from "@codemirror/view"
 import { type Extension } from "@codemirror/state"
 
-export { fileDropCursor }
+export { fileDropCursor, clearFileDropCursor }
 
 type CursorRect = { left: number; top: number; height: number }
 
@@ -102,3 +102,10 @@ let fileDropCursorTheme = EditorView.theme({
 })
 
 let fileDropCursor: Extension = [fileDropCursorPlugin, fileDropCursorTheme]
+
+// The container-level drop handler in editor.tsx calls stopPropagation, so
+// the plugin's own drop/dragend listener on scrollDOM never fires. Callers
+// that intercept the drop must clear the cursor explicitly.
+function clearFileDropCursor(view: EditorView) {
+	view.plugin(fileDropCursorPlugin)?.setPos(null)
+}

@@ -63,7 +63,7 @@ import { createBacklinkDecorations } from "./backlink-decorations"
 import { createImageDecorations } from "./image-decorations"
 import { findExtension, selectMatch } from "./find-extension"
 import { FindPanel } from "./find-panel"
-import { fileDropCursor } from "./file-drop-cursor"
+import { fileDropCursor, clearFileDropCursor } from "./file-drop-cursor"
 
 import { useIsMobile } from "@/lib/use-mobile"
 import { useFindPanel } from "@/hooks/use-find-panel"
@@ -554,6 +554,7 @@ function MarkdownEditor(
 	useEffect(() => {
 		let dom = containerRef.current
 		if (!dom || !view) return
+		let activeView = view
 
 		function isFileDrag(event: DragEvent) {
 			return event.dataTransfer?.types.includes("Files") ?? false
@@ -572,8 +573,11 @@ function MarkdownEditor(
 			event.preventDefault()
 			event.stopPropagation()
 
-			if (!view || view.state.readOnly) return
-			let activeView = view
+			// stopPropagation prevents the file-drop-cursor plugin's own
+			// drop listener on scrollDOM from firing, so clear it here.
+			clearFileDropCursor(activeView)
+
+			if (activeView.state.readOnly) return
 			let uploadImage = uploadImageRef.current
 			let uploadVideo = uploadVideoRef.current
 
