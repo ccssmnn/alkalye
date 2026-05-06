@@ -3,11 +3,11 @@ import { type Extension } from "@codemirror/state"
 
 export { fileDropCursor }
 
-// Custom drop cursor for file drags. The built-in dropCursor() attaches
-// its observers to .cm-content, so it never fires when the drag is over
-// .cm-scroller whitespace (margins, area below the last line). This plugin
-// attaches listeners directly to view.scrollDOM, which covers the entire
-// editor area.
+type CursorRect = { left: number; top: number; height: number }
+
+// Built-in dropCursor() binds to .cm-content, so file drags over scroller
+// whitespace (margins, below the last line) never show a caret. We bind
+// to scrollDOM so the cursor tracks across the entire editor area.
 let fileDropCursorPlugin = ViewPlugin.fromClass(
 	class {
 		view: EditorView
@@ -51,7 +51,7 @@ let fileDropCursorPlugin = ViewPlugin.fromClass(
 			})
 		}
 
-		measure() {
+		measure(): CursorRect | null {
 			if (this.pos == null) return null
 			let rect = this.view.coordsAtPos(this.pos)
 			if (!rect) return null
@@ -63,7 +63,7 @@ let fileDropCursorPlugin = ViewPlugin.fromClass(
 			}
 		}
 
-		draw(rect: { left: number; top: number; height: number } | null) {
+		draw(rect: CursorRect | null) {
 			if (!rect) {
 				if (this.cursor) {
 					this.cursor.remove()
@@ -101,6 +101,4 @@ let fileDropCursorTheme = EditorView.theme({
 	},
 })
 
-function fileDropCursor(): Extension {
-	return [fileDropCursorPlugin, fileDropCursorTheme]
-}
+let fileDropCursor: Extension = [fileDropCursorPlugin, fileDropCursorTheme]

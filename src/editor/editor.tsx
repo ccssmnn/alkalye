@@ -102,6 +102,8 @@ type RemoteCursor = {
 	selectionEnd?: number
 }
 
+type DropTarget = { pos: number }
+
 type Asset = {
 	id: string
 	name: string
@@ -238,7 +240,7 @@ function MarkdownEditor(
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
 	let uploadImageRef = useRef(onUploadImage)
-	let activeDropsRef = useRef<Set<{ pos: number }>>(new Set())
+	let activeDropsRef = useRef<Set<DropTarget>>(new Set())
 
 	useEffect(() => {
 		callbacksRef.current = { onChange, onCursorChange, onFocus, onBlur }
@@ -452,11 +454,11 @@ function MarkdownEditor(
 					if (callbacksRef.current.onChange) {
 						callbacksRef.current.onChange(update.state.doc.toString())
 					}
-					// Map drop targets through any concurrent transaction so
-					// images dropped while another upload is awaiting still
-					// land at the intended position.
-					for (let drop of activeDropsRef.current) {
-						drop.pos = update.changes.mapPos(drop.pos, 1)
+					// Keep in-flight drop targets aligned with the live doc so
+					// images dropped while uploads await still land at the
+					// originally-pointed position.
+					for (let target of activeDropsRef.current) {
+						target.pos = update.changes.mapPos(target.pos, 1)
 					}
 				}
 				if (update.selectionSet && callbacksRef.current.onCursorChange) {
@@ -487,7 +489,7 @@ function MarkdownEditor(
 			),
 			createImageDecorations(imageResolver, handleImagePreview),
 			findExtension,
-			fileDropCursor(),
+			fileDropCursor,
 		]
 
 		if (initRef.current.placeholder) {
@@ -555,8 +557,8 @@ function MarkdownEditor(
 			let dropPos =
 				view.posAtCoords({ x: event.clientX, y: event.clientY }) ??
 				view.state.doc.length
-			let drop = { pos: dropPos }
-			activeDropsRef.current.add(drop)
+			let target: DropTarget = { pos: dropPos }
+			activeDropsRef.current.add(target)
 
 			void (async () => {
 				try {
@@ -565,8 +567,7 @@ function MarkdownEditor(
 							let result = await upload(file)
 							if (!view.contentDOM.isConnected) return
 							let text = `![${result.name}](asset:${result.id})`
-							let docLength = view.state.doc.length
-							let pos = Math.max(0, Math.min(drop.pos, docLength))
+							let pos = Math.max(0, Math.min(target.pos, view.state.doc.length))
 							view.dispatch({
 								changes: { from: pos, insert: text },
 								selection: { anchor: pos + text.length },
@@ -577,7 +578,7 @@ function MarkdownEditor(
 						}
 					}
 				} finally {
-					activeDropsRef.current.delete(drop)
+					activeDropsRef.current.delete(target)
 				}
 			})()
 		}
