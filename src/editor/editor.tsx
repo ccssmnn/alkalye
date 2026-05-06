@@ -63,6 +63,7 @@ import { createBacklinkDecorations } from "./backlink-decorations"
 import { createImageDecorations } from "./image-decorations"
 import { findExtension, selectMatch } from "./find-extension"
 import { FindPanel } from "./find-panel"
+import { fileDropCursor } from "./file-drop-cursor"
 
 import { useIsMobile } from "@/lib/use-mobile"
 import { useFindPanel } from "@/hooks/use-find-panel"
@@ -486,6 +487,7 @@ function MarkdownEditor(
 			),
 			createImageDecorations(imageResolver, handleImagePreview),
 			findExtension,
+			fileDropCursor(),
 		]
 
 		if (initRef.current.placeholder) {
