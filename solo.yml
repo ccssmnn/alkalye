@@ -23,7 +23,7 @@ processes:
     restart_when_changed: []
     env: {}
   Jazz Sync Server:
-    command: bunx jazz-run sync
+    command: bun run dev:sync
     working_dir: null
     auto_start: true
     auto_restart: false

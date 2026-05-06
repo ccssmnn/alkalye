@@ -1,7 +1,7 @@
 import { defineConfig, devices } from "@playwright/test"
 
-let port = Number.parseInt(process.env.PLAYWRIGHT_PORT ?? "4173", 10)
-let baseUrl = `http://127.0.0.1:${port}`
+let appUrl = "https://alkalye-e2e.localhost"
+let syncUrl = "https://alkalye-sync-e2e.localhost"
 
 export default defineConfig({
 	testDir: "./e2e",
@@ -13,7 +13,8 @@ export default defineConfig({
 	retries: process.env.CI ? 2 : 0,
 	reporter: "list",
 	use: {
-		baseURL: baseUrl,
+		baseURL: appUrl,
+		ignoreHTTPSErrors: true,
 		trace: "on-first-retry",
 		permissions: ["clipboard-read", "clipboard-write"],
 	},
@@ -23,10 +24,21 @@ export default defineConfig({
 			use: { ...devices["Desktop Chrome"] },
 		},
 	],
-	webServer: {
-		command: `sh -c 'if ! lsof -iTCP:4200 -sTCP:LISTEN >/dev/null 2>&1; then bunx jazz-run sync --in-memory & fi; bun run dev --host 127.0.0.1 --port ${port}'`,
-		url: `${baseUrl}/app`,
-		reuseExistingServer: !process.env.CI,
-		timeout: 120_000,
-	},
+	webServer: [
+		{
+			command: `portless alkalye-sync-e2e sh -c 'bunx jazz-run sync --in-memory --port "$PORT" --host "$HOST"'`,
+			url: syncUrl,
+			reuseExistingServer: !process.env.CI,
+			ignoreHTTPSErrors: true,
+			timeout: 60_000,
+		},
+		{
+			command: `portless alkalye-e2e astro dev`,
+			url: `${appUrl}/app`,
+			env: { PUBLIC_JAZZ_SYNC_SERVER: syncUrl.replace(/^https/, "wss") },
+			reuseExistingServer: !process.env.CI,
+			ignoreHTTPSErrors: true,
+			timeout: 120_000,
+		},
+	],
 })

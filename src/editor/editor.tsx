@@ -1,6 +1,7 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
 import { ImageOff } from "lucide-react"
+import { toast } from "sonner"
 import { useDocTitles } from "@/lib/doc-resolver"
 import { parseWikiLinks } from "./wikilink-parser"
 import {
@@ -62,6 +63,7 @@ import { createBacklinkDecorations } from "./backlink-decorations"
 import { createImageDecorations } from "./image-decorations"
 import { findExtension, selectMatch } from "./find-extension"
 import { FindPanel } from "./find-panel"
+import { fileDropCursor } from "./file-drop-cursor"
 
 import { useIsMobile } from "@/lib/use-mobile"
 import { useFindPanel } from "@/hooks/use-find-panel"
@@ -79,6 +81,10 @@ import {
 	WikiLinkAction,
 	type FloatingActionsRef,
 } from "@/components/floating-actions"
+import {
+	UploadProgressDialog,
+	type UploadPhase,
+} from "@/components/upload-progress-dialog"
 
 export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "./frontmatter"
@@ -99,6 +105,8 @@ type RemoteCursor = {
 	position: number
 	selectionEnd?: number
 }
+
+type DropTarget = { pos: number }
 
 type Asset = {
 	id: string
@@ -127,12 +135,26 @@ interface MarkdownEditorProps {
 	// Callbacks (optional = feature detection)
 	onCreateDocument?: (title: string) => Promise<string>
 	onUploadImage?: (file: File) => Promise<{ id: string; name: string }>
+	onUploadVideo?: (
+		file: File,
+		options: {
+			onProgress: (p: { phase: UploadPhase; progress: number }) => void
+			signal: AbortSignal
+		},
+	) => Promise<{ id: string; name: string }>
 
 	// Config
 	placeholder?: string
 	readOnly?: boolean
 	className?: string
 	autoSortTasks?: boolean
+}
+
+type VideoUploadState = {
+	fileName: string
+	phase: UploadPhase
+	progress: number
+	abortController: AbortController
 }
 
 interface MarkdownEditorRef {
@@ -202,6 +224,7 @@ function MarkdownEditor(
 		remoteCursors,
 		onCreateDocument,
 		onUploadImage,
+		onUploadVideo,
 		placeholder,
 		readOnly,
 		className,
@@ -230,14 +253,26 @@ function MarkdownEditor(
 		alt: string
 		assetId: string | null
 	} | null>(null)
+	let [videoUpload, setVideoUpload] = useState<VideoUploadState | null>(null)
 
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
 	findPanelOpenRef.current = findPanelOpen
 	let dataRef = useRef({ assets, documents })
 	let autoSortRef = useRef(autoSortTasks ?? false)
+	let uploadImageRef = useRef(onUploadImage)
+	let uploadVideoRef = useRef(onUploadVideo)
+	let activeDropsRef = useRef<Set<DropTarget>>(new Set())
 
 	useEffect(() => {
 		callbacksRef.current = { onChange, onCursorChange, onFocus, onBlur }
+	})
+
+	useEffect(() => {
+		uploadImageRef.current = onUploadImage
+	})
+
+	useEffect(() => {
+		uploadVideoRef.current = onUploadVideo
 	})
 
 	useEffect(() => {
@@ -440,8 +475,16 @@ function MarkdownEditor(
 			highlightActiveLine(),
 			EditorView.lineWrapping,
 			EditorView.updateListener.of(update => {
-				if (update.docChanged && callbacksRef.current.onChange) {
-					callbacksRef.current.onChange(update.state.doc.toString())
+				if (update.docChanged) {
+					if (callbacksRef.current.onChange) {
+						callbacksRef.current.onChange(update.state.doc.toString())
+					}
+					// Keep in-flight drop targets aligned with the live doc so
+					// images dropped while uploads await still land at the
+					// originally-pointed position.
+					for (let target of activeDropsRef.current) {
+						target.pos = update.changes.mapPos(target.pos, 1)
+					}
 				}
 				if (update.selectionSet && callbacksRef.current.onCursorChange) {
 					let { from, to } = update.state.selection.main
@@ -471,6 +514,7 @@ function MarkdownEditor(
 			),
 			createImageDecorations(imageResolver, handleImagePreview),
 			findExtension,
+			fileDropCursor,
 		]
 
 		if (initRef.current.placeholder) {
@@ -506,6 +550,114 @@ function MarkdownEditor(
 			dispatchRemoteCursors(view, remoteCursors)
 		}
 	}, [view, remoteCursors])
+
+	useEffect(() => {
+		let dom = containerRef.current
+		if (!dom || !view) return
+
+		function isFileDrag(event: DragEvent) {
+			return event.dataTransfer?.types.includes("Files") ?? false
+		}
+
+		function handleDragOver(event: DragEvent) {
+			if (isFileDrag(event)) event.preventDefault()
+		}
+
+		function handleDrop(event: DragEvent) {
+			let files = event.dataTransfer?.files
+			if (!files || files.length === 0) return
+
+			// Always preventDefault on file drops so unsupported files
+			// (PDFs, etc) don't fall through to file:// navigation.
+			event.preventDefault()
+			event.stopPropagation()
+
+			if (!view || view.state.readOnly) return
+			let activeView = view
+			let uploadImage = uploadImageRef.current
+			let uploadVideo = uploadVideoRef.current
+
+			let images = uploadImage
+				? Array.from(files).filter(f => f.type.startsWith("image/"))
+				: []
+			let videos = uploadVideo
+				? Array.from(files).filter(f => f.type.startsWith("video/"))
+				: []
+			if (images.length === 0 && videos.length === 0) return
+
+			let dropPos =
+				activeView.posAtCoords({ x: event.clientX, y: event.clientY }) ??
+				activeView.state.doc.length
+			let target: DropTarget = { pos: dropPos }
+			activeDropsRef.current.add(target)
+
+			function insertAtTarget(text: string) {
+				if (!activeView.contentDOM.isConnected) return
+				let pos = Math.max(0, Math.min(target.pos, activeView.state.doc.length))
+				activeView.dispatch({
+					changes: { from: pos, insert: text },
+					selection: { anchor: pos + text.length },
+				})
+			}
+
+			void (async () => {
+				try {
+					if (uploadImage) {
+						for (let file of images) {
+							try {
+								let result = await uploadImage(file)
+								insertAtTarget(`![${result.name}](asset:${result.id})`)
+							} catch (err) {
+								console.error("Image upload failed:", err)
+								toast.error(`Failed to upload ${file.name}`)
+							}
+						}
+					}
+					if (uploadVideo) {
+						for (let file of videos) {
+							let abortController = new AbortController()
+							setVideoUpload({
+								fileName: file.name,
+								phase: "compressing",
+								progress: 0,
+								abortController,
+							})
+							try {
+								let result = await uploadVideo(file, {
+									onProgress: p =>
+										setVideoUpload(prev =>
+											prev
+												? { ...prev, phase: p.phase, progress: p.progress }
+												: null,
+										),
+									signal: abortController.signal,
+								})
+								insertAtTarget(`![${result.name}](asset:${result.id})`)
+							} catch (err) {
+								if (!abortController.signal.aborted) {
+									console.error("Video upload failed:", err)
+									toast.error(`Failed to upload ${file.name}`)
+								}
+							} finally {
+								setVideoUpload(null)
+							}
+						}
+					}
+				} finally {
+					activeDropsRef.current.delete(target)
+				}
+			})()
+		}
+
+		// Capture phase so our preventDefault runs before CodeMirror's
+		// own drop handler on .cm-content.
+		dom.addEventListener("dragover", handleDragOver, true)
+		dom.addEventListener("drop", handleDrop, true)
+		return () => {
+			dom.removeEventListener("dragover", handleDragOver, true)
+			dom.removeEventListener("drop", handleDrop, true)
+		}
+	}, [view])
 
 	useEffect(() => {
 		if (!view) return
@@ -862,6 +1014,19 @@ function MarkdownEditor(
 					</>
 				)}
 			</FloatingActions>
+
+			{videoUpload && (
+				<UploadProgressDialog
+					open={true}
+					fileName={videoUpload.fileName}
+					phase={videoUpload.phase}
+					progress={videoUpload.progress}
+					onCancel={() => {
+						videoUpload.abortController.abort()
+						setVideoUpload(null)
+					}}
+				/>
+			)}
 
 			<Dialog
 				open={mediaPreviewOpen}
