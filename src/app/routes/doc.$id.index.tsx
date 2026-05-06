@@ -490,6 +490,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					remoteCursors={remoteCursors}
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
+					onUploadVideo={canUploadVideo ? makeUploadVideo(doc) : undefined}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 				/>
 				<EditorToolbar
