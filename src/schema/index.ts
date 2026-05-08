@@ -274,9 +274,10 @@ function createSpace(
 	let group = Group.create()
 	let now = new Date()
 
-	// Create welcome document with its own group (space group as admin)
+	// Welcome doc is created without spaceId (space.$jazz.id isn't known yet);
+	// it's set right after space creation below.
 	let welcomeContent = getSpaceWelcomeContent(name)
-	let welcomeDoc = createSpaceDocument(group, welcomeContent)
+	let welcomeDoc = createSpaceDocument(group, undefined, welcomeContent)
 
 	let space = Space.create(
 		{
@@ -287,6 +288,8 @@ function createSpace(
 		},
 		group,
 	)
+
+	welcomeDoc.$jazz.set("spaceId", space.$jazz.id)
 
 	if (!userRoot.spaces) {
 		userRoot.$jazz.set(
@@ -301,6 +304,7 @@ function createSpace(
 
 function createSpaceDocument(
 	spaceGroup: Group,
+	spaceId: string | undefined,
 	content: string = "",
 ): co.loaded<typeof Document, { content: true }> {
 	// Create a document-specific group with space group as parent (no role = inherit)
@@ -314,6 +318,7 @@ function createSpaceDocument(
 		{
 			version: 1,
 			content: co.plainText().create(content, docGroup),
+			spaceId,
 			createdAt: now,
 			updatedAt: now,
 		},

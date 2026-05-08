@@ -56,6 +56,26 @@ test("space CRUD + invite helpers return JSON", async ({ page }) => {
 	expect(removed.ok).toBe(true)
 })
 
+test("reloading root returns to last opened space doc", async ({ page }) => {
+	await waitForEditorBoot(page)
+	await createAccount(page)
+
+	let created = await createSpace(page, { name: "Reload Space" })
+	await expect
+		.poll(() => page.url(), { timeout: 10_000 })
+		.toMatch(new RegExp(`/app/spaces/${created.id}/doc/`))
+	await waitForEditorBoot(page)
+
+	// Give useTrackLastOpened effect time to persist to IndexedDB.
+	await page.waitForTimeout(2000)
+
+	await page.goto("/app/")
+	await waitForEditorBoot(page)
+	await expect
+		.poll(() => page.url(), { timeout: 10_000 })
+		.toMatch(new RegExp(`/app/spaces/${created.id}/doc/`))
+})
+
 test("space invite accept helper returns JSON", async ({ page }) => {
 	await waitForEditorBoot(page)
 	await createAccount(page)

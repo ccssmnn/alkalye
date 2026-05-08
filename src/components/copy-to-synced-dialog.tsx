@@ -76,7 +76,7 @@ function CopyToSyncedDialog({
 		let space = createSpace(newSpaceName, me.root)
 		if (!space.documents?.$isLoaded) return false
 
-		let newDoc = createSpaceDocument(space.$jazz.owner, content)
+		let newDoc = createSpaceDocument(space.$jazz.owner, space.$jazz.id, content)
 		space.documents.$jazz.push(newDoc)
 
 		onCopy?.({ id: space.$jazz.id, name: newSpaceName })
@@ -123,7 +123,7 @@ function CopyToSyncedDialog({
 		let space = spaces.find(s => s.$jazz.id === spaceId)
 		if (!space?.documents?.$isLoaded) return false
 
-		let newDoc = createSpaceDocument(space.$jazz.owner, content)
+		let newDoc = createSpaceDocument(space.$jazz.owner, space.$jazz.id, content)
 		space.documents.$jazz.push(newDoc)
 
 		onCopy?.({ id: space.$jazz.id, name: space.name })

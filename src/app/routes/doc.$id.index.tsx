@@ -649,7 +649,11 @@ function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
 
 		if (space?.documents?.$isLoaded) {
 			// Space context: create doc with its own group (space group as admin)
-			let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
+			let newDoc = createSpaceDocument(
+				space.$jazz.owner,
+				space.$jazz.id,
+				`# ${title}\n\n`,
+			)
 			space.documents.$jazz.push(newDoc)
 			return newDoc.$jazz.id
 		}

@@ -33,7 +33,7 @@ let Route = createFileRoute("/new")({
 				throw redirect({ to: "/" })
 			}
 
-			let newDoc = createSpaceDocument(space.$jazz.owner, "")
+			let newDoc = createSpaceDocument(space.$jazz.owner, spaceId, "")
 			space.documents.$jazz.push(newDoc)
 
 			throw redirect({

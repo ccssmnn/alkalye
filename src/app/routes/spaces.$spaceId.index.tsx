@@ -56,7 +56,7 @@ let Route = createFileRoute("/spaces/$spaceId/")({
 		}
 
 		// User can write - create new doc with its own group
-		let newDoc = createSpaceDocument(space.$jazz.owner, "")
+		let newDoc = createSpaceDocument(space.$jazz.owner, params.spaceId, "")
 		space.documents.$jazz.push(newDoc)
 
 		throw redirect({

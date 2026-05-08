@@ -637,7 +637,7 @@ describe("Space-Document Permission Cascade", () => {
 		})
 		if (!loadedSpace?.$isLoaded) throw new Error("Space not loaded")
 
-		let newDoc = createSpaceDocument(spaceGroup, "New content")
+		let newDoc = createSpaceDocument(spaceGroup, space.$jazz.id, "New content")
 
 		// Verify the doc's group has spaceGroup as a parent
 		let docGroup = newDoc.$jazz.owner
@@ -689,7 +689,11 @@ describe("Space-Document Permission Cascade", () => {
 		let spaceGroup = getSpaceGroup(space)
 		if (!spaceGroup) throw new Error("Space group not found")
 
-		let secondDoc = createSpaceDocument(spaceGroup, "Second doc content")
+		let secondDoc = createSpaceDocument(
+			spaceGroup,
+			space.$jazz.id,
+			"Second doc content",
+		)
 		loadedSpace.documents.$jazz.push(secondDoc)
 
 		// Add docOnlyUser directly to the welcome doc's group only
@@ -1166,7 +1170,7 @@ describe("Document move permissions", () => {
 
 		let firstGroup = getSpaceGroup(firstSpace)
 		if (!firstGroup) throw new Error("First space group not found")
-		doc = createSpaceDocument(firstGroup, "Moved content")
+		doc = createSpaceDocument(firstGroup, firstSpace.$jazz.id, "Moved content")
 		firstSpace.documents.$jazz.push(doc)
 	})
 

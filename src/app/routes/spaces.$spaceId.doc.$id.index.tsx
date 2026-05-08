@@ -295,6 +295,7 @@ function SpaceEditorContent({
 	let { syncBacklinks } = useBacklinkSync(docId, readOnly, { spaceId })
 	useEditorSettings(editorSettings)
 	useTrackLastOpened(me, doc)
+	useHealSpaceDocIds(space, spaceId)
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
@@ -656,7 +657,11 @@ function SettingsButton() {
 function makeCreateDocument(space: LoadedSpace) {
 	return async function handleCreateDocument(title: string): Promise<string> {
 		if (!space.documents?.$isLoaded) throw new Error("Space not loaded")
-		let newDoc = createSpaceDocument(space.$jazz.owner, `# ${title}\n\n`)
+		let newDoc = createSpaceDocument(
+			space.$jazz.owner,
+			space.$jazz.id,
+			`# ${title}\n\n`,
+		)
 		space.documents.$jazz.push(newDoc)
 		return newDoc.$jazz.id
 	}
@@ -673,13 +678,29 @@ function handleDuplicateDocument(
 	if (!space.documents?.$isLoaded) return
 	let content = doc.content?.toString() ?? ""
 	let newContent = addCopyToTitle(content)
-	let newDoc = createSpaceDocument(space.$jazz.owner, newContent)
+	let newDoc = createSpaceDocument(
+		space.$jazz.owner,
+		space.$jazz.id,
+		newContent,
+	)
 	space.documents.$jazz.push(newDoc)
 	if (isMobile) setLeftOpenMobile(false)
 	navigate({
 		to: "/spaces/$spaceId/doc/$id",
 		params: { spaceId, id: newDoc.$jazz.id },
 	})
+}
+
+function useHealSpaceDocIds(space: LoadedSpace, spaceId: string) {
+	useEffect(() => {
+		if (!space.documents?.$isLoaded) return
+		for (let d of space.documents.values()) {
+			if (!d?.$isLoaded || !d.content?.$isLoaded) continue
+			if (d.spaceId === spaceId) continue
+			if (!canEdit(d)) continue
+			d.$jazz.set("spaceId", spaceId)
+		}
+	}, [space.documents, spaceId])
 }
 
 type LoadedSpace = co.loaded<typeof Space, typeof spaceResolve>
