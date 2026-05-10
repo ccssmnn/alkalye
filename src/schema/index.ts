@@ -4,6 +4,11 @@ import {
 	Settings,
 	DEFAULT_EDITOR_SETTINGS,
 } from "@/app/features/settings/lib/schema"
+import { getRandomWriterName } from "@/app/features/onboarding/lib/random-writer-name"
+import {
+	fetchWelcomeContent,
+	getSpaceWelcomeContent,
+} from "@/app/features/onboarding/lib/welcome-content"
 
 export {
 	ImageAsset,
@@ -16,12 +21,13 @@ export {
 	UserAccount,
 	CursorEntry,
 	CursorFeed,
-	getRandomWriterName,
 	createSpace,
 	createSpaceDocument,
 }
 
 export { migrateAnonymousData } from "@/app/features/auth/lib/migrate-anonymous-data"
+
+export { getRandomWriterName } from "@/app/features/onboarding/lib/random-writer-name"
 
 export {
 	Settings,
@@ -190,12 +196,6 @@ let UserAccount = co
 		}
 	})
 
-function getRandomWriterName(): string {
-	let adjIndex = Math.floor(Math.random() * adjectives.length)
-	let nameIndex = Math.floor(Math.random() * writerNames.length)
-	return `${adjectives[adjIndex]} ${writerNames[nameIndex]}`
-}
-
 function createSpace(
 	name: string,
 	userRoot: co.loaded<typeof UserRoot, { spaces: true }>,
@@ -255,88 +255,4 @@ function createSpaceDocument(
 	)
 
 	return doc as co.loaded<typeof Document, { content: true }>
-}
-
-let adjectives = [
-	"Wandering",
-	"Dreaming",
-	"Curious",
-	"Pensive",
-	"Restless",
-	"Eloquent",
-	"Brooding",
-	"Whimsical",
-	"Melancholy",
-	"Luminous",
-	"Wistful",
-	"Serene",
-	"Fierce",
-	"Gentle",
-	"Bold",
-	"Quiet",
-	"Wild",
-	"Tender",
-	"Radiant",
-	"Somber",
-]
-
-let writerNames = [
-	"Hemingway",
-	"Woolf",
-	"Borges",
-	"Austen",
-	"Kafka",
-	"Tolstoy",
-	"Dickinson",
-	"Márquez",
-	"Plath",
-	"Orwell",
-	"Dostoevsky",
-	"Brontë",
-	"Neruda",
-	"Camus",
-	"Sappho",
-	"Rumi",
-	"Murasaki",
-	"Cervantes",
-	"Poe",
-	"Whitman",
-	"Yeats",
-	"Rilke",
-	"Tagore",
-	"Pessoa",
-	"Lispector",
-	"Baldwin",
-	"Achebe",
-	"Atwood",
-	"Morrison",
-	"Rushdie",
-]
-
-let FALLBACK_WELCOME_CONTENT = `# Welcome to Alkalye
-
-A beautiful markdown editor. Private by design.
-
-Your words are end-to-end encrypted. Collaborate in real-time. Works on any device.
-
-**Get started:** Edit this document, create a new one, or open a tutor from the Help menu.
-`
-
-function getSpaceWelcomeContent(spaceName: string): string {
-	return `# Welcome to ${spaceName}
-
-This is your new shared space. Documents here are shared with all space members.
-
-**Get started:** Edit this document or create a new one.
-`
-}
-
-async function fetchWelcomeContent(): Promise<string> {
-	try {
-		let response = await fetch("/docs/welcome.md")
-		if (!response.ok) return FALLBACK_WELCOME_CONTENT
-		return await response.text()
-	} catch {
-		return FALLBACK_WELCOME_CONTENT
-	}
 }

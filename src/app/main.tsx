@@ -9,7 +9,7 @@ import {
 	SplashScreen,
 	SplashScreenStatic,
 	useSplashDelay,
-} from "@/components/splash-screen"
+} from "@/app/features/onboarding"
 import { PWAContext, usePWAProvider, PWAInstallHint } from "@/lib/pwa"
 import { BackupSubscriber, SpacesBackupSubscriber } from "@/app/features/backup"
 import { useCleanupDeleted } from "@/lib/use-cleanup-deleted"

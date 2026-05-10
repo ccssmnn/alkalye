@@ -2,7 +2,7 @@ import { redirect } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
 import { UserAccount, Document } from "@/schema"
 
-export { loadOrCreateDoc, documentsQuery }
+export { loadOrCreateDocFromUrl }
 
 let documentsQuery = {
 	root: {
@@ -10,7 +10,7 @@ let documentsQuery = {
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
-async function loadOrCreateDoc(
+async function loadOrCreateDocFromUrl(
 	me: co.loaded<typeof UserAccount> | null,
 	contentUrl: string,
 ): Promise<never> {
