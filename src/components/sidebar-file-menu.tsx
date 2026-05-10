@@ -33,11 +33,15 @@ import {
 import { unfoldEffect } from "@codemirror/language"
 import { getPresentationMode } from "@/lib/presentation"
 import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
-import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
+import {
+	exportDocument,
+	saveDocumentAs,
+	printToPdf,
+	type ExportAsset,
+} from "@/app/features/import-export"
 import type { MarkdownEditorRef } from "@/editor/editor"
 
 import { type LoadedThemes } from "@/app/features/themes"
-import { printToPdf } from "@/lib/print-to-pdf"
 
 export { SidebarFileMenu }
 

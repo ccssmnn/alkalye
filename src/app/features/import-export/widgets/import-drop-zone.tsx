@@ -5,7 +5,7 @@ import {
 	importFolderFiles,
 	readFolderEntries,
 	type ImportedFile,
-} from "@/lib/import"
+} from "../lib/import"
 
 export { ImportDropZone }
 

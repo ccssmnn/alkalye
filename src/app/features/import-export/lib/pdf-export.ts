@@ -1,11 +1,72 @@
+import { Marked } from "marked"
 import { type co } from "jazz-tools"
 import { type Theme, type ThemeAsset } from "@/schema"
-import { type ThemesQuery, type ThemePresetType } from "@/app/features/themes"
+import { parseFrontmatter } from "@/editor/frontmatter"
+import {
+	findThemeByName,
+	getThemeName,
+	getPresetName,
+	findPresetByName,
+	getThemePresets,
+	findPresetByAppearance,
+	type LoadedThemes,
+	type ThemesQuery,
+	type ThemePresetType,
+} from "@/app/features/themes"
+import { getDocumentTitle } from "@/lib/document-utils"
 
-export { buildPrintableHtml, openPrintWindow }
+export { printToPdf }
 
 type LoadedTheme = co.loaded<typeof Theme, ThemesQuery["$each"]>
 type LoadedAsset = co.loaded<typeof ThemeAsset, { data: true }>
+
+async function printToPdf(params: {
+	content: string
+	themes: LoadedThemes | undefined
+	defaultPreviewTheme: string | null
+}) {
+	let { content, themes, defaultPreviewTheme } = params
+	let { body } = parseFrontmatter(content)
+	let title = getDocumentTitle(content)
+
+	let themeName = getThemeName(content)
+	let presetName = getPresetName(content)
+
+	let isAppearanceOnlyTheme = themeName === "light" || themeName === "dark"
+	let effectiveThemeName = isAppearanceOnlyTheme ? null : themeName
+
+	if (!effectiveThemeName && defaultPreviewTheme) {
+		effectiveThemeName = defaultPreviewTheme
+	}
+
+	let theme = effectiveThemeName
+		? findThemeByName(themes ?? null, effectiveThemeName)
+		: null
+	let preset = null
+
+	if (theme && presetName) {
+		preset = findPresetByName(theme, presetName)
+	} else if (theme) {
+		preset = findPresetByAppearance(theme, "light")
+		if (!preset) {
+			let presets = getThemePresets(theme)
+			preset = presets[0] ?? null
+		}
+	}
+
+	let marked = new Marked()
+	marked.setOptions({ gfm: true, breaks: true })
+	let htmlContent = await marked.parse(body)
+
+	let printableHtml = await buildPrintableHtml({
+		title,
+		htmlContent,
+		theme,
+		preset,
+	})
+
+	openPrintWindow(printableHtml)
+}
 
 async function buildPrintableHtml(params: {
 	title: string

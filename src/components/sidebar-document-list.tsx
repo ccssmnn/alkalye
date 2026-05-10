@@ -70,7 +70,7 @@ import {
 } from "@/lib/documents"
 import { useFolderStore, FolderRow } from "@/components/folder"
 import { getPresentationMode } from "@/lib/presentation"
-import { exportDocument, type ExportAsset } from "@/lib/export"
+import { exportDocument, type ExportAsset } from "@/app/features/import-export"
 import { ShareDialog } from "@/app/features/sharing"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"

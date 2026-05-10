@@ -84,7 +84,7 @@ import {
 import {
 	UploadProgressDialog,
 	type UploadPhase,
-} from "@/components/upload-progress-dialog"
+} from "@/app/features/import-export"
 
 export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "./frontmatter"

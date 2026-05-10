@@ -7,7 +7,7 @@ import { createHighlighter, type Highlighter } from "shiki"
 import {
 	createWikilinkExtension,
 	type WikilinkTitleResolver,
-} from "@/lib/marked-wikilink"
+} from "@/app/features/import-export"
 import { parseFrontmatter } from "@/editor/frontmatter"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/app/components/appearance"

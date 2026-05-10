@@ -44,7 +44,7 @@ import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 import {
 	SidebarImportExport,
 	handleImportFiles,
-} from "@/components/sidebar-import-export"
+} from "@/app/features/import-export"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
@@ -83,7 +83,7 @@ import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
 import { EditorStatsBadge } from "@/components/editor-stats-badge"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
-import { printToPdf } from "@/lib/print-to-pdf"
+import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/lib/test-ids"
 
 export { Route }

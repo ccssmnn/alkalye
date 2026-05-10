@@ -4,8 +4,7 @@ import {
 	SidebarFooter,
 	SidebarHeader,
 } from "@/components/ui/sidebar"
-import { ImportDropZone } from "@/components/import-drop-zone"
-import type { ImportedFile } from "@/lib/import"
+import { ImportDropZone, type ImportedFile } from "@/app/features/import-export"
 
 export { ListSidebar }
 

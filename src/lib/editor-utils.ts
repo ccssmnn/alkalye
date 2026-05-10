@@ -9,7 +9,7 @@ import {
 } from "@/lib/video-conversion"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { copyDocumentToMyList } from "@/lib/documents"
-import { saveDocumentAs } from "@/lib/export"
+import { saveDocumentAs } from "@/app/features/import-export"
 import { useCoState, useAccount } from "jazz-tools/react"
 import { toast } from "sonner"
 

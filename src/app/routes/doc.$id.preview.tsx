@@ -28,7 +28,7 @@ import {
 	useDocTitles,
 	type ResolvedDoc,
 } from "@/lib/doc-resolver"
-import { printToPdf } from "@/lib/print-to-pdf"
+import { printToPdf } from "@/app/features/import-export"
 
 export { Route }
 

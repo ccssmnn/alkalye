@@ -35,7 +35,7 @@ import { Button } from "@/components/ui/button"
 import {
 	UploadProgressDialog,
 	type UploadPhase,
-} from "@/components/upload-progress-dialog"
+} from "@/app/features/import-export"
 import {
 	Image as ImageIcon,
 	Pencil,

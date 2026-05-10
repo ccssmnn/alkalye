@@ -22,17 +22,17 @@ import {
 	importMarkdownFiles,
 	resolveWikilinksForImport,
 	type ImportedFile,
-} from "@/lib/import"
+} from "../lib/import"
 import {
 	exportDocumentsAsZip,
 	transformWikilinksForExport,
 	stripBacklinksFrontmatter,
 	type ExportAsset,
-} from "@/lib/export"
+} from "../lib/export"
 import {
 	ImportProgressDialog,
 	type ImportProgress,
-} from "@/components/import-progress-dialog"
+} from "./import-progress-dialog"
 import type { LoadedDocument } from "@/components/sidebar-document-list"
 import { Link } from "@tanstack/react-router"
 
