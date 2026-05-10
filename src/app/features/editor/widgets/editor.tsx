@@ -3,7 +3,7 @@ import { diff } from "fast-myers-diff"
 import { ImageOff } from "lucide-react"
 import { toast } from "sonner"
 import { useDocTitles } from "@/lib/doc-resolver"
-import { parseWikiLinks } from "./wikilink-parser"
+import { parseWikiLinks } from "../lib/wikilink-parser"
 import {
 	EditorState,
 	Compartment,
@@ -34,8 +34,8 @@ import {
 import { syntaxTree } from "@codemirror/language"
 import { useNavigate } from "@tanstack/react-router"
 import { Image as JazzImage } from "jazz-tools/react"
-import { editorExtensions } from "./extensions"
-import { createPresenceExtension, dispatchRemoteCursors } from "@/lib/presence"
+import { editorExtensions } from "../lib/extensions"
+import { createPresenceExtension, dispatchRemoteCursors } from "../lib/presence"
 import {
 	insertCodeBlock,
 	insertImage,
@@ -55,17 +55,17 @@ import {
 	toggleStrikethrough,
 	toggleTaskCompleteWithSort,
 	toggleTaskList,
-} from "./commands"
-import { createBracketsExtension } from "./autocomplete-brackets"
-import { createLinkDecorations } from "./link-decorations"
-import { createWikilinkDecorations } from "./wikilink-decorations"
-import { createBacklinkDecorations } from "./backlink-decorations"
-import { findExtension, selectMatch } from "./find-extension"
+} from "../lib/commands"
+import { createBracketsExtension } from "../lib/autocomplete-brackets"
+import { createLinkDecorations } from "../lib/link-decorations"
+import { createWikilinkDecorations } from "../lib/wikilink-decorations"
+import { createBacklinkDecorations } from "../lib/backlink-decorations"
+import { findExtension, selectMatch } from "../lib/find-extension"
 import { FindPanel } from "./find-panel"
-import { fileDropCursor, clearFileDropCursor } from "./file-drop-cursor"
+import { fileDropCursor, clearFileDropCursor } from "../lib/file-drop-cursor"
 
 import { useIsMobile } from "@/lib/use-mobile"
-import { useFindPanel } from "@/hooks/use-find-panel"
+import { useFindPanel } from "../hooks/use-find-panel"
 import {
 	Dialog,
 	DialogContent,
@@ -79,14 +79,14 @@ import {
 	ImageAction,
 	WikiLinkAction,
 	type FloatingActionsRef,
-} from "@/components/floating-actions"
+} from "./floating-actions"
 import {
 	UploadProgressDialog,
 	type UploadPhase,
 } from "@/app/features/import-export"
 
 export { MarkdownEditor, useMarkdownEditorRef }
-export { parseFrontmatter } from "./frontmatter"
+export { parseFrontmatter } from "../lib/frontmatter"
 export type { MarkdownEditorProps, MarkdownEditorRef, WikilinkDoc }
 
 type WikilinkDoc = {

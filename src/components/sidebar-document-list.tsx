@@ -4,7 +4,11 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
 import { UserAccount, Document } from "@/schema"
-import { togglePinned, getTags, getPath } from "@/editor/frontmatter"
+import {
+	togglePinned,
+	getTags,
+	getPath,
+} from "@/app/features/editor/lib/frontmatter"
 import {
 	getDocumentTitle,
 	isDocumentPinned,

@@ -30,7 +30,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Document } from "@/schema"
-import { parseFrontmatter, getPath } from "@/editor/frontmatter"
+import {
+	parseFrontmatter,
+	getPath,
+} from "@/app/features/editor/lib/frontmatter"
 
 export { FolderRow, useFolderStore }
 export type { FolderState }

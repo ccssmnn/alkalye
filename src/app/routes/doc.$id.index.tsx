@@ -12,10 +12,10 @@ import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import { z } from "zod"
 import {
 	handleSaveCopy,
-	setupKeyboardShortcuts,
 	resolve,
 	type LoadedDocument,
 } from "@/lib/editor-utils"
+import { setupKeyboardShortcuts } from "@/app/features/editor"
 import {
 	makeUploadImage,
 	makeUploadVideo,
@@ -33,12 +33,12 @@ import {
 	MarkdownEditor,
 	useMarkdownEditorRef,
 	type WikilinkDoc,
-} from "@/editor/editor"
-import "@/editor/editor.css"
-import { useEditorSettings } from "@/lib/editor-settings"
+} from "@/app/features/editor"
+import "@/app/features/editor/widgets/editor.css"
+import { useEditorSettings } from "@/app/features/editor"
 import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
-import { getPath, getTags } from "@/editor/frontmatter"
-import { EditorToolbar } from "@/components/editor-toolbar"
+import { getPath, getTags } from "@/app/features/editor"
+import { EditorToolbar } from "@/app/features/editor"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
@@ -65,7 +65,7 @@ import {
 import { canEdit, isDocumentPublic, getDocumentGroup } from "@/lib/documents"
 import { deletePersonalDocument } from "@/lib/documents"
 import { useBacklinkSync } from "@/lib/backlink-sync"
-import { usePresence } from "@/lib/presence"
+import { usePresence } from "@/app/features/editor"
 import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { HelpCircle, Loader2, Search, Settings, Plus } from "lucide-react"
 
@@ -75,8 +75,8 @@ import {
 	presentationExtensions,
 } from "@/app/features/presentation"
 import { SidebarFileMenu } from "@/components/sidebar-file-menu"
-import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
-import { SidebarFormatMenu } from "@/components/sidebar-format-menu"
+import { SidebarEditMenu } from "@/app/features/editor"
+import { SidebarFormatMenu } from "@/app/features/editor"
 import { SidebarCollaboration } from "@/app/features/sharing"
 import { ThemeToggle, useTheme } from "@/app/components/appearance"
 import {
@@ -87,7 +87,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { usePWA } from "@/lib/pwa"
 import { HelpMenu } from "@/components/help-menu"
-import { EditorStatsBadge } from "@/components/editor-stats-badge"
+import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "@/lib/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/lib/test-ids"

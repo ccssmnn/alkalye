@@ -61,7 +61,7 @@ import {
 	useEditorSettings,
 	DEFAULT_EDITOR_SETTINGS,
 	type EditorSettingsData,
-} from "@/lib/editor-settings"
+} from "@/app/features/editor"
 import { Footer } from "@/components/footer"
 import { usePWA, useIsPWAInstalled, PWAInstallDialog } from "@/lib/pwa"
 import { BackupSettings } from "@/app/features/backup"

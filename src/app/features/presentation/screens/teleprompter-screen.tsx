@@ -15,7 +15,7 @@ import {
 	EmptyContent,
 } from "@/components/ui/empty"
 import { Button } from "@/components/ui/button"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { parseWikiLinks } from "@/app/features/editor"
 import {
 	resolveDocTitles,
 	useDocTitles,

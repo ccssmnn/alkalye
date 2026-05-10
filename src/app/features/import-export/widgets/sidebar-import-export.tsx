@@ -4,7 +4,7 @@ import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { compressVideo, canEncodeVideo } from "@/app/features/assets"
 import { getDocumentTitle } from "@/lib/document-utils"
-import { getPath } from "@/editor/frontmatter"
+import { getPath } from "@/app/features/editor/lib/frontmatter"
 import { Button } from "@/components/ui/button"
 import {
 	DropdownMenu,

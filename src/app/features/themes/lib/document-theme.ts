@@ -1,6 +1,6 @@
 import { useAccount } from "jazz-tools/react"
 import { z } from "zod"
-import { parseFrontmatter } from "@/editor/frontmatter"
+import { parseFrontmatter } from "@/app/features/editor/lib/frontmatter"
 import { UserAccount } from "@/schema"
 import { type Theme, ThemePreset } from "./schema"
 import { type co } from "jazz-tools"

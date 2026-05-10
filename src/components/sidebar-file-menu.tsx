@@ -29,7 +29,7 @@ import {
 	togglePinned,
 	getFrontmatterRange,
 	getPath,
-} from "@/editor/frontmatter"
+} from "@/app/features/editor/lib/frontmatter"
 import { unfoldEffect } from "@codemirror/language"
 import { getPresentationMode } from "@/app/features/presentation"
 import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
@@ -39,7 +39,7 @@ import {
 	printToPdf,
 	type ExportAsset,
 } from "@/app/features/import-export"
-import type { MarkdownEditorRef } from "@/editor/editor"
+import type { MarkdownEditorRef } from "@/app/features/editor/widgets/editor"
 
 import { type LoadedThemes } from "@/app/features/themes"
 

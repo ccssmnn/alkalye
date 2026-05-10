@@ -7,12 +7,12 @@ import {
 	MarkdownEditor,
 	useMarkdownEditorRef,
 	type WikilinkDoc,
-} from "@/editor/editor"
+} from "@/app/features/editor"
 import { presentationExtensions } from "@/app/features/presentation"
-import "@/editor/editor.css"
-import { useEditorSettings } from "@/lib/editor-settings"
+import "@/app/features/editor/widgets/editor.css"
+import { useEditorSettings } from "@/app/features/editor"
 import { getDocumentTitle } from "@/lib/document-utils"
-import { EditorToolbar } from "@/components/editor-toolbar"
+import { EditorToolbar } from "@/app/features/editor"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
@@ -68,8 +68,8 @@ import {
 	TooltipTrigger,
 } from "@/components/ui/tooltip"
 import { HelpMenu } from "@/components/help-menu"
-import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
-import { SidebarFormatMenu } from "@/components/sidebar-format-menu"
+import { SidebarEditMenu } from "@/app/features/editor"
+import { SidebarFormatMenu } from "@/app/features/editor"
 import {
 	useLocalFileStore,
 	openLocalFile,
@@ -93,7 +93,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { modKey, altModKey } from "@/lib/platform"
 import { Preview } from "@/components/preview"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { parseWikiLinks } from "@/app/features/editor"
 import { useDocTitles, type ResolvedDoc } from "@/lib/doc-resolver"
 import { toast } from "sonner"
 import { tryCatch } from "@/lib/utils"

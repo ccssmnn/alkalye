@@ -17,7 +17,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Paintbrush, Check, Sun, Moon } from "lucide-react"
 import { UserAccount } from "@/schema"
-import { parseFrontmatter, setPreset } from "@/editor/frontmatter"
+import {
+	parseFrontmatter,
+	setPreset,
+} from "@/app/features/editor/lib/frontmatter"
 import { Theme } from "../lib/schema"
 import { getThemePresets, type ThemePresetType } from "../lib/document-theme"
 

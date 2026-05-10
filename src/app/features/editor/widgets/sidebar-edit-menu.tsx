@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Undo2 } from "lucide-react"
 import { isMac, modKey, altModKey } from "@/lib/platform"
-import type { MarkdownEditorRef } from "@/editor/editor"
+import type { MarkdownEditorRef } from "./editor"
 
 export { SidebarEditMenu }
 

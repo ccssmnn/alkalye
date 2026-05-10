@@ -17,8 +17,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Type } from "lucide-react"
 import { modKey, altModKey } from "@/lib/platform"
-import { WikiLinkDialog } from "@/components/floating-actions"
-import type { MarkdownEditorRef } from "@/editor/editor"
+import { WikiLinkDialog } from "./floating-actions"
+import type { MarkdownEditorRef } from "./editor"
 
 export { SidebarFormatMenu }
 

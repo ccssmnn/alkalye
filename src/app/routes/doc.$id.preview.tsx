@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useTheme, ThemeSubmenu } from "@/app/components/appearance"
 import { Preview } from "@/components/preview"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { parseWikiLinks } from "@/app/features/editor"
 import {
 	resolveDocTitles,
 	useDocTitles,

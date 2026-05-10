@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { Link } from "@tanstack/react-router"
-import type { MarkdownEditorRef } from "@/editor/editor"
+import type { MarkdownEditorRef } from "./editor"
 import { Button } from "@/components/ui/button"
 import {
 	Tooltip,

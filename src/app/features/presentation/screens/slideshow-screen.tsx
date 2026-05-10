@@ -6,7 +6,7 @@ import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "@/components/document-error-states"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { parseWikiLinks } from "@/app/features/editor"
 import {
 	resolveDocTitles,
 	useDocTitles,

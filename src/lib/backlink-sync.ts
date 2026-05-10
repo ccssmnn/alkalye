@@ -1,7 +1,11 @@
 import { useRef, useEffect } from "react"
 import { Document, Space, UserAccount } from "@/schema"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
-import { getBacklinks, addBacklink, removeBacklink } from "@/editor/frontmatter"
+import { parseWikiLinks } from "@/app/features/editor/lib/wikilink-parser"
+import {
+	getBacklinks,
+	addBacklink,
+	removeBacklink,
+} from "@/app/features/editor/lib/frontmatter"
 import { co } from "jazz-tools"
 import { useAccount, useCoState } from "jazz-tools/react"
 

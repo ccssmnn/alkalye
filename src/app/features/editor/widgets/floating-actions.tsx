@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useSidebar } from "@/components/ui/sidebar"
 import { syntaxTree } from "@codemirror/language"
 import type { EditorView } from "@codemirror/view"
-import type { MarkdownEditorRef } from "@/editor/editor"
+import type { MarkdownEditorRef } from "./editor"
 import { Button } from "@/components/ui/button"
 import {
 	Tooltip,
@@ -31,7 +31,7 @@ import {
 	Plus,
 	FileSymlinkIcon,
 } from "lucide-react"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
+import { parseWikiLinks } from "../lib/wikilink-parser"
 import { useNavigate } from "@tanstack/react-router"
 import { Combobox } from "@base-ui/react/combobox"
 import {

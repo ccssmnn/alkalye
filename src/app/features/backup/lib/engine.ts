@@ -2,7 +2,10 @@ import { co, Group, Account } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { getDocumentTitle } from "@/lib/document-utils"
-import { getPath, parseFrontmatter } from "@/editor/frontmatter"
+import {
+	getPath,
+	parseFrontmatter,
+} from "@/app/features/editor/lib/frontmatter"
 import {
 	computeDocLocations,
 	transformContentForBackup,

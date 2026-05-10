@@ -1,4 +1,4 @@
-import { parseFrontmatter } from "@/editor/frontmatter"
+import { parseFrontmatter } from "@/app/features/editor/lib/frontmatter"
 import { parseSearchTerms } from "@/components/ui/text-highlight"
 
 export {

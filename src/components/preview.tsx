@@ -8,7 +8,7 @@ import {
 	createWikilinkExtension,
 	type WikilinkTitleResolver,
 } from "@/app/features/import-export"
-import { parseFrontmatter } from "@/editor/frontmatter"
+import { parseFrontmatter } from "@/app/features/editor/lib/frontmatter"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { useResolvedTheme } from "@/app/components/appearance"
 import {

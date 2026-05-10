@@ -18,7 +18,10 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Palette, Check } from "lucide-react"
 import { UserAccount } from "@/schema"
-import { parseFrontmatter, setTheme } from "@/editor/frontmatter"
+import {
+	parseFrontmatter,
+	setTheme,
+} from "@/app/features/editor/lib/frontmatter"
 import { Theme } from "../lib/schema"
 
 export { ThemePicker }

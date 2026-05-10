@@ -1,7 +1,7 @@
 import { Marked } from "marked"
 import { type co } from "jazz-tools"
 import { type Theme, type ThemeAsset } from "@/schema"
-import { parseFrontmatter } from "@/editor/frontmatter"
+import { parseFrontmatter } from "@/app/features/editor/lib/frontmatter"
 import {
 	findThemeByName,
 	getThemeName,

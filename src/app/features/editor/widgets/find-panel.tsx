@@ -12,7 +12,7 @@ import {
 import { Kbd } from "@/components/ui/kbd"
 import { isMac } from "@/lib/platform"
 import { useSidebar } from "@/components/ui/sidebar"
-import { setFindQuery, selectMatch, getFindState } from "./find-extension"
+import { setFindQuery, selectMatch, getFindState } from "../lib/find-extension"
 
 export { FindPanel }
 
