@@ -492,6 +492,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					onUploadImage={makeUploadImage(doc)}
 					onUploadVideo={canUploadVideo ? makeUploadVideo(doc) : undefined}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
+					extensions={[]}
 				/>
 				<EditorToolbar
 					editor={editor}

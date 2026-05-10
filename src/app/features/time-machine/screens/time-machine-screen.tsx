@@ -324,6 +324,7 @@ function TimeMachineContent({
 					assets={[]}
 					documents={[]}
 					remoteCursors={[]}
+					extensions={[]}
 				/>
 				<TimeMachineToolbar
 					editDate={currentEdit?.madeAt ?? doc.createdAt}

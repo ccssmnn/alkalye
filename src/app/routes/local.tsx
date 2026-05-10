@@ -632,6 +632,7 @@ function LocalEditorContent({
 					placeholder="Start writing..."
 					documents={documents}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
+					extensions={[]}
 				/>
 				<EditorToolbar
 					editor={editor}

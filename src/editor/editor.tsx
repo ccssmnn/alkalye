@@ -143,6 +143,9 @@ interface MarkdownEditorProps {
 		},
 	) => Promise<{ id: string; name: string }>
 
+	// Extension slot for feature-supplied codemirror extensions
+	extensions?: Extension[]
+
 	// Config
 	placeholder?: string
 	readOnly?: boolean
@@ -225,6 +228,7 @@ function MarkdownEditor(
 		onCreateDocument,
 		onUploadImage,
 		onUploadVideo,
+		extensions: externalExtensions,
 		placeholder,
 		readOnly,
 		className,
@@ -356,6 +360,7 @@ function MarkdownEditor(
 		placeholder,
 		readOnly,
 		isMobile,
+		externalExtensions,
 	})
 
 	useEffect(() => {
@@ -515,6 +520,7 @@ function MarkdownEditor(
 			createImageDecorations(imageResolver, handleImagePreview),
 			findExtension,
 			fileDropCursor,
+			...(initRef.current.externalExtensions ?? []),
 		]
 
 		if (initRef.current.placeholder) {
