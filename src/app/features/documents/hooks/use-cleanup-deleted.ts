@@ -1,9 +1,12 @@
 import { useEffect, useRef } from "react"
 import { useAccount } from "jazz-tools/react"
 import { type co, type ResolveQuery } from "jazz-tools"
-import { Document, UserAccount } from "@/schema"
-import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
-import { PERMANENT_DELETE_DAYS } from "@/lib/document-utils"
+import { Document } from "../lib/schema"
+import { UserAccount } from "@/schema"
+import {
+	permanentlyDeleteDocument,
+	PERMANENT_DELETE_DAYS,
+} from "../lib/delete-covalue"
 
 export { useCleanupDeleted }
 

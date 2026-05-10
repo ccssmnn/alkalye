@@ -1,5 +1,5 @@
 import { Group, co } from "jazz-tools"
-import { Document } from "@/schema/document"
+import { Document } from "@/app/features/documents/lib/schema"
 import { Space } from "./schema"
 import { createSpaceDocument, type UserRoot } from "@/schema"
 import { getSpaceWelcomeContent } from "@/app/features/onboarding/lib/welcome-content"

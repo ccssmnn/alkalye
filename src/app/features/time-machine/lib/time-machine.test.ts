@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, test } from "vitest"
 import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
 import { Document, UserAccount } from "@/schema"
-import { createPersonalDocument } from "@/lib/documents"
+import { createPersonalDocument } from "@/app/features/documents/lib/documents"
 import {
 	getEditHistory,
 	getContentAtEdit,

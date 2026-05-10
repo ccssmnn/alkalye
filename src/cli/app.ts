@@ -16,7 +16,7 @@ import {
 	permanentlyDeletePersonalDocument,
 	restorePersonalDocument,
 	revokeDocumentInvite,
-} from "@/lib/documents"
+} from "@/app/features/documents/lib/documents"
 import {
 	acceptSpaceInvite,
 	changeSpaceCollaboratorRole,
@@ -34,8 +34,8 @@ import {
 	permanentlyDeleteSpace,
 	revokeSpaceInvite,
 } from "@/app/features/spaces"
-import { getDocumentTitle } from "@/lib/document-utils"
-import { moveDocumentToSpace } from "@/lib/document-move"
+import { getDocumentTitle } from "@/app/features/documents/lib/title"
+import { moveDocumentToSpace } from "@/app/features/documents/lib/document-move"
 import {
 	buildDocumentPublicLink,
 	buildSpacePublicLink,
@@ -520,7 +520,8 @@ let docPurge = Command.make(
 					doc => doc?.$jazz.id === located.doc.$jazz.id,
 				)
 				if (index !== -1) located.space.documents.$jazz.splice(index, 1)
-				let deleteModule = await import("@/lib/delete-covalue")
+				let deleteModule =
+					await import("@/app/features/documents/lib/delete-covalue")
 				await deleteModule.permanentlyDeleteDocument(located.doc)
 			} else {
 				let result = await permanentlyDeletePersonalDocument(

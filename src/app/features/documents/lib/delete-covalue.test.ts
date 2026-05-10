@@ -5,7 +5,7 @@ import { Document, UserAccount } from "@/schema"
 import {
 	permanentlyDeleteDocument,
 	permanentlyDeleteSpace,
-} from "@/lib/delete-covalue"
+} from "./delete-covalue"
 import { createSpace } from "@/schema"
 
 describe("permanentlyDeleteDocument", () => {

@@ -30,7 +30,7 @@ import {
 import {
 	SpaceNotFound,
 	SpaceUnauthorized,
-} from "@/components/document-error-states"
+} from "@/app/features/documents/widgets/document-error-states"
 import { SpaceBackupSettings } from "@/app/features/backup"
 import {
 	getSpaceGroup,

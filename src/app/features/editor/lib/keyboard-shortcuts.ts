@@ -1,8 +1,8 @@
 import type { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle } from "@/app/features/documents/lib/title"
 import { saveDocumentAs } from "@/app/features/import-export"
-import type { MaybeDocWithContent } from "@/lib/editor-utils"
+import type { MaybeDocWithContent } from "@/app/features/documents/lib/queries"
 
 export { setupKeyboardShortcuts }
 

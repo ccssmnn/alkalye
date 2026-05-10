@@ -32,8 +32,8 @@ import {
 	createDocumentInvite,
 	acceptDocumentInvite,
 	parseInviteLink,
-} from "@/lib/documents"
-import { moveDocumentToSpace } from "@/lib/document-move"
+} from "@/app/features/documents/lib/documents"
+import { moveDocumentToSpace } from "@/app/features/documents/lib/document-move"
 
 describe("Space Collaboration", () => {
 	let adminAccount: co.loaded<typeof UserAccount>

@@ -6,7 +6,7 @@ import { Document } from "@/schema"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "@/components/document-error-states"
+} from "@/app/features/documents/widgets/document-error-states"
 import {
 	Empty,
 	EmptyHeader,
@@ -20,7 +20,7 @@ import {
 	resolveDocTitles,
 	useDocTitles,
 	type ResolvedDoc,
-} from "@/lib/doc-resolver"
+} from "@/app/features/documents/lib/wikilink-titles"
 import { Teleprompter, groupBySlide } from "../widgets/teleprompter"
 import { parsePresentation } from "../lib/presentation"
 import { useScreenWakeLock } from "../lib/screen-wake-lock"

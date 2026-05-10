@@ -1,10 +1,9 @@
 import { co, type ResolveQuery } from "jazz-tools"
-import { useNavigate } from "@tanstack/react-router"
-import { Document, UserAccount } from "@/schema"
-import { copyDocumentToMyList } from "@/lib/documents"
 import { useCoState, useAccount } from "jazz-tools/react"
+import { Document } from "./schema"
+import { UserAccount } from "@/schema"
 
-export { handleSaveCopy, loaderResolve, resolve, settingsResolve, meResolve }
+export { loaderResolve, resolve, settingsResolve, meResolve }
 export type { LoadedDocument, MaybeDocWithContent, LoadedMe }
 
 type LoadedDocument = co.loaded<typeof Document, typeof resolve>
@@ -38,24 +37,3 @@ let meResolve = {
 		settings: true,
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
-
-async function handleSaveCopy(
-	doc: LoadedDocument,
-	me: co.loaded<typeof UserAccount, { root: { documents: true } }>,
-	setSaveCopyState: (state: "idle" | "saving" | "saved") => void,
-	navigate: ReturnType<typeof useNavigate>,
-) {
-	if (!me.$isLoaded) return
-	setSaveCopyState("saving")
-
-	try {
-		let newDoc = await copyDocumentToMyList(doc, me)
-		setSaveCopyState("saved")
-		setTimeout(() => {
-			navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id } })
-		}, 1000)
-	} catch (e) {
-		console.error("Failed to save copy:", e)
-		setSaveCopyState("idle")
-	}
-}

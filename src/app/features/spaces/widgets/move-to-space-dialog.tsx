@@ -24,7 +24,7 @@ import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Document, UserAccount, createSpace } from "@/schema"
 import { getSpaceGroup } from "../lib/spaces"
-import { moveDocumentToSpace } from "@/lib/document-move"
+import { moveDocumentToSpace } from "@/app/features/documents/lib/document-move"
 
 export { MoveToSpaceDialog }
 export type { MoveToSpaceDialogProps }

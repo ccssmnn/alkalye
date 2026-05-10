@@ -16,12 +16,12 @@ import { Document, UserAccount, Asset, ImageAsset, Space } from "@/schema"
 import { MarkdownEditor, useMarkdownEditorRef } from "@/app/features/editor"
 import "@/app/features/editor/widgets/editor.css"
 import { useEditorSettings } from "@/app/features/editor"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle } from "@/app/features/documents/lib/title"
 import { getSpaceGroup } from "@/app/features/spaces"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "@/components/document-error-states"
+} from "@/app/features/documents/widgets/document-error-states"
 
 import { Button } from "@/components/ui/button"
 import {

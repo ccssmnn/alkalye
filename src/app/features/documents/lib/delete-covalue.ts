@@ -1,13 +1,25 @@
 import { deleteCoValues, type ID, type CoValue } from "jazz-tools"
-import { Document, Space, Theme } from "@/schema"
+import { Document } from "./schema"
+import { Space } from "@/app/features/spaces/lib/schema"
+import { Theme } from "@/app/features/themes/lib/schema"
 
 export {
 	permanentlyDeleteDocument,
 	permanentlyDeleteSpace,
 	permanentlyDeleteTheme,
+	getDaysUntilPermanentDelete,
+	PERMANENT_DELETE_DAYS,
 }
 
 export type { Deletable }
+
+let PERMANENT_DELETE_DAYS = 30
+
+function getDaysUntilPermanentDelete(deletedAt: Date): number {
+	let diff = Date.now() - new Date(deletedAt).getTime()
+	let daysSinceDelete = Math.floor(diff / (1000 * 60 * 60 * 24))
+	return Math.max(0, PERMANENT_DELETE_DAYS - daysSinceDelete)
+}
 
 /** Minimal interface for items that can be permanently deleted */
 type Deletable = { $jazz: { id: ID<CoValue> } }

@@ -6,7 +6,7 @@ import {
 	loadTeleprompterWikilinkCache,
 	type TeleprompterLoaderData,
 } from "@/app/features/presentation"
-import { type ResolvedDoc } from "@/lib/doc-resolver"
+import { type ResolvedDoc } from "@/app/features/documents"
 
 export { Route }
 

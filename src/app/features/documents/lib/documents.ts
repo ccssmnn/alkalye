@@ -1,6 +1,7 @@
 import { Group, co, type ID } from "jazz-tools"
-import { Document, UserAccount } from "@/schema"
-import { permanentlyDeleteDocument } from "@/lib/delete-covalue"
+import { Document } from "./schema"
+import { UserAccount } from "@/schema"
+import { permanentlyDeleteDocument } from "./delete-covalue"
 import {
 	buildDocumentInviteLink,
 	buildDocumentPublicLink,

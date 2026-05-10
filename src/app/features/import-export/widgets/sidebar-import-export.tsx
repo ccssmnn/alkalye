@@ -3,7 +3,7 @@ import { Group, co } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { compressVideo, canEncodeVideo } from "@/app/features/assets"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle } from "@/app/features/documents/lib/title"
 import { getPath } from "@/app/features/editor/lib/frontmatter"
 import { Button } from "@/components/ui/button"
 import {
@@ -33,7 +33,7 @@ import {
 	ImportProgressDialog,
 	type ImportProgress,
 } from "./import-progress-dialog"
-import type { LoadedDocument } from "@/components/sidebar-document-list"
+import type { LoadedDocument } from "@/app/features/documents/widgets/sidebar-document-list"
 import { Link } from "@tanstack/react-router"
 
 export { SidebarImportExport, handleImportFiles }

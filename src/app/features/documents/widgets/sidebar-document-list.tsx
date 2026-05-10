@@ -14,9 +14,9 @@ import {
 	isDocumentPinned,
 	formatRelativeDate,
 	countContentMatches,
-	getDaysUntilPermanentDelete,
-} from "@/lib/document-utils"
-import { permanentlyDeletePersonalDocument } from "@/lib/documents"
+} from "../lib/title"
+import { getDaysUntilPermanentDelete } from "../lib/delete-covalue"
+import { permanentlyDeletePersonalDocument } from "../lib/documents"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -71,12 +71,12 @@ import {
 	hasIndividualShares,
 	getDocumentGroup,
 	leavePersonalDocument,
-} from "@/lib/documents"
-import { useFolderStore, FolderRow } from "@/components/folder"
+} from "../lib/documents"
+import { useFolderStore, FolderRow } from "./folder"
 import { getPresentationMode } from "@/app/features/presentation"
 import { exportDocument, type ExportAsset } from "@/app/features/import-export"
 import { ShareDialog } from "@/app/features/sharing"
-import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
+import { MoveToFolderDialog } from "./move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { testIds } from "@/lib/test-ids"

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { Document } from "@/schema"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { Document } from "./schema"
+import { getDocumentTitle } from "./title"
 import { getPresentationMode } from "@/app/features/presentation"
 
 export { resolveDocTitle, resolveDocTitles, useDocTitle, useDocTitles }

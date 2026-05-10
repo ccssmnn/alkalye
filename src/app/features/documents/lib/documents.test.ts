@@ -25,7 +25,7 @@ import {
 	getSharingStatus,
 	hasIndividualShares,
 	getDocumentOwner,
-} from "@/lib/documents"
+} from "./documents"
 import type { co } from "jazz-tools"
 
 describe("Document Collaboration", () => {

@@ -1,5 +1,6 @@
 import { useRef, useEffect } from "react"
-import { Document, Space, UserAccount } from "@/schema"
+import { Document } from "./schema"
+import { Space, UserAccount } from "@/schema"
 import { parseWikiLinks } from "@/app/features/editor/lib/wikilink-parser"
 import {
 	getBacklinks,

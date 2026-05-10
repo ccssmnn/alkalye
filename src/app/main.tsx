@@ -12,7 +12,7 @@ import {
 } from "@/app/features/onboarding"
 import { PWAContext, usePWAProvider, PWAInstallHint } from "@/lib/pwa"
 import { BackupSubscriber, SpacesBackupSubscriber } from "@/app/features/backup"
-import { useCleanupDeleted } from "@/lib/use-cleanup-deleted"
+import { useCleanupDeleted } from "@/app/features/documents"
 import { init } from "@plausible-analytics/tracker"
 
 export { PWA, buildSyncConfig }

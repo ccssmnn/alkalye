@@ -17,13 +17,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { testIds } from "@/lib/test-ids"
-import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
+import { MoveToFolderDialog } from "./move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"
-import { canEdit, getDocumentGroup } from "@/lib/documents"
-import { leavePersonalDocument } from "@/lib/documents"
+import { canEdit, getDocumentGroup } from "../lib/documents"
+import { leavePersonalDocument } from "../lib/documents"
 import {
 	parseFrontmatter,
 	togglePinned,
@@ -32,7 +32,7 @@ import {
 } from "@/app/features/editor/lib/frontmatter"
 import { unfoldEffect } from "@codemirror/language"
 import { getPresentationMode } from "@/app/features/presentation"
-import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
+import { getDocumentTitle, addCopyToTitle } from "../lib/title"
 import {
 	exportDocument,
 	saveDocumentAs,

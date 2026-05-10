@@ -6,7 +6,7 @@ import {
 	loadSlideshowWikilinkCache,
 	type SlideshowLoaderData,
 } from "@/app/features/presentation"
-import { type ResolvedDoc } from "@/lib/doc-resolver"
+import { type ResolvedDoc } from "@/app/features/documents"
 
 export { Route }
 

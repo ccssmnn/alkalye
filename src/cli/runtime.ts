@@ -4,9 +4,12 @@ import process from "node:process"
 import { Effect } from "effect"
 import * as Option from "effect/Option"
 import { co } from "jazz-tools"
-import { createPersonalDocument, parseInviteLink } from "@/lib/documents"
-import { getDocumentTitle } from "@/lib/document-utils"
-import { moveDocumentToSpace } from "@/lib/document-move"
+import {
+	createPersonalDocument,
+	parseInviteLink,
+} from "@/app/features/documents/lib/documents"
+import { getDocumentTitle } from "@/app/features/documents/lib/title"
+import { moveDocumentToSpace } from "@/app/features/documents/lib/document-move"
 import { parseSpaceInviteLink } from "@/app/features/spaces"
 import { resolveCliConfig } from "@/cli/config"
 import type { CliConfig } from "@/cli/config"

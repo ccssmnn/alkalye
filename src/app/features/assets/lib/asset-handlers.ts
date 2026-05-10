@@ -2,7 +2,7 @@ import { co } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { useCoState } from "jazz-tools/react"
 import { Asset, ImageAsset, VideoAsset } from "./schema"
-import { Document } from "@/schema/document"
+import { Document } from "@/app/features/documents/lib/schema"
 import { compressVideo } from "./video-conversion"
 
 export {

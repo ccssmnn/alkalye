@@ -13,7 +13,7 @@ import {
 	type ThemesQuery,
 	type ThemePresetType,
 } from "@/app/features/themes"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle } from "@/app/features/documents/lib/title"
 
 export { printToPdf }
 

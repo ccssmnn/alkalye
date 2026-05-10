@@ -4,7 +4,7 @@ import { Document, Space, createSpaceDocument } from "@/schema"
 import {
 	SpaceNotFound,
 	SpaceUnauthorized,
-} from "@/components/document-error-states"
+} from "@/app/features/documents/widgets/document-error-states"
 
 export { SpaceListScreen, spaceListLoader, spaceListResolve }
 

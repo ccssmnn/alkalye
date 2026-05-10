@@ -2,7 +2,7 @@ import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
 import { ImageOff } from "lucide-react"
 import { toast } from "sonner"
-import { useDocTitles } from "@/lib/doc-resolver"
+import { useDocTitles } from "@/app/features/documents/lib/wikilink-titles"
 import { parseWikiLinks } from "../lib/wikilink-parser"
 import {
 	EditorState,

@@ -1,6 +1,7 @@
 import { useEffect } from "react"
 import { co, type MaybeLoaded } from "jazz-tools"
-import { Document, UserAccount } from "@/schema"
+import { Document } from "../lib/schema"
+import { UserAccount } from "@/schema"
 
 export { useTrackLastOpened }
 

@@ -7,11 +7,7 @@ export {
 	isDocumentPinned,
 	formatRelativeDate,
 	countContentMatches,
-	getDaysUntilPermanentDelete,
-	PERMANENT_DELETE_DAYS,
 }
-
-let PERMANENT_DELETE_DAYS = 30
 
 function getDocumentTitle(
 	doc: string | { content?: { toString(): string } },
@@ -62,12 +58,6 @@ function countContentMatches(content: string, query: string): number {
 		total += countMatches(body, term)
 	}
 	return total
-}
-
-function getDaysUntilPermanentDelete(deletedAt: Date): number {
-	let diff = Date.now() - new Date(deletedAt).getTime()
-	let daysSinceDelete = Math.floor(diff / (1000 * 60 * 60 * 24))
-	return Math.max(0, PERMANENT_DELETE_DAYS - daysSinceDelete)
 }
 
 function addCopyToTitle(content: string): string {

@@ -1,6 +1,6 @@
 import { useEffect, useState, useRef } from "react"
 import { Image as JazzImage } from "jazz-tools/react"
-import { getDocumentTitle } from "@/lib/document-utils"
+import { getDocumentTitle } from "../lib/title"
 import { Marked } from "marked"
 import markedShiki from "marked-shiki"
 import { createHighlighter, type Highlighter } from "shiki"
@@ -9,7 +9,7 @@ import {
 	type WikilinkTitleResolver,
 } from "@/app/features/import-export"
 import { parseFrontmatter } from "@/app/features/editor/lib/frontmatter"
-import { type ResolvedDoc } from "@/lib/doc-resolver"
+import { type ResolvedDoc } from "../lib/wikilink-titles"
 import { useResolvedTheme } from "@/app/components/appearance"
 import {
 	useDocumentTheme,

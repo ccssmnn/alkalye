@@ -1,5 +1,5 @@
 import { co, z } from "jazz-tools"
-import { Document } from "@/schema/document"
+import { Document } from "@/app/features/documents/lib/schema"
 
 export { Space }
 

@@ -5,14 +5,14 @@ import { Document } from "@/schema"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "@/components/document-error-states"
+} from "@/app/features/documents/widgets/document-error-states"
 import { parseWikiLinks } from "@/app/features/editor"
 import {
 	resolveDocTitles,
 	useDocTitles,
 	type ResolvedDoc,
-} from "@/lib/doc-resolver"
-import { canEdit } from "@/lib/documents"
+} from "@/app/features/documents/lib/wikilink-titles"
+import { canEdit } from "@/app/features/documents/lib/documents"
 import { Slideshow, type Slide } from "../widgets/slideshow"
 import { parsePresentation, type PresentationItem } from "../lib/presentation"
 import { useScreenWakeLock } from "../lib/screen-wake-lock"
