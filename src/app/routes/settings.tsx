@@ -40,8 +40,12 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Switch } from "@/components/ui/switch"
 import { UserAccount, Theme, ThemeAsset, Settings } from "@/schema"
-import { parseThemeZip, type ThemeUploadError } from "@/lib/theme-upload"
-import { exportTheme, type ThemeExportQuery } from "@/lib/theme-export"
+import {
+	parseThemeZip,
+	exportTheme,
+	type ThemeUploadError,
+	type ThemeExportQuery,
+} from "@/app/features/themes"
 import { createImage } from "jazz-tools/media"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import {
@@ -51,7 +55,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select"
-import { useTheme, ThemeToggle } from "@/lib/theme"
+import { useTheme, ThemeToggle } from "@/app/components/appearance"
 import { AuthDialog } from "@/components/auth-form"
 import {
 	useEditorSettings,

@@ -10,7 +10,7 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { AuthDialog } from "@/components/auth-form"
-import { ThemeSubmenu, useTheme } from "@/lib/theme"
+import { ThemeSubmenu, useTheme } from "@/app/components/appearance"
 import { usePWA } from "@/lib/pwa"
 import { useIsOnline } from "@/lib/use-online"
 import { UserAccount } from "@/schema"

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { sanitizeCss, sanitizeHtml } from "./theme-sanitize"
+import { sanitizeCss, sanitizeHtml } from "./sanitize"
 
 describe("sanitizeCss", () => {
 	it("passes through safe CSS unchanged", () => {

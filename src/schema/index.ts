@@ -1,4 +1,5 @@
 import { Group, co, z } from "jazz-tools"
+import { Theme } from "@/app/features/themes/lib/schema"
 
 export {
 	ImageAsset,
@@ -18,11 +19,14 @@ export {
 	getRandomWriterName,
 	createSpace,
 	createSpaceDocument,
+}
+
+export {
 	Theme,
 	ThemeAsset,
 	ThemePreset,
 	ThemeType,
-}
+} from "@/app/features/themes/lib/schema"
 
 let CursorEntry = z.object({
 	position: z.number(),
@@ -63,55 +67,6 @@ let Settings = co.map({
 	editor: EditorSettings,
 	defaultPreviewTheme: z.string().optional(),
 	defaultSlideshowTheme: z.string().optional(),
-})
-
-// Theme types: 'preview' for document preview, 'slideshow' for presentations, 'both' for both
-let ThemeType = z.enum(["preview", "slideshow", "both"])
-
-// Color preset for slideshow themes
-let ThemePreset = z.object({
-	name: z.string(),
-	appearance: z.enum(["light", "dark"]),
-	colors: z.object({
-		background: z.string(),
-		foreground: z.string(),
-		accent: z.string(),
-		// Additional accent colors for richer color palettes (accent-2 through accent-6)
-		accents: z.array(z.string()).optional(),
-		heading: z.string().optional(),
-		link: z.string().optional(),
-		codeBackground: z.string().optional(),
-	}),
-	fonts: z
-		.object({
-			title: z.string().optional(),
-			body: z.string().optional(),
-		})
-		.optional(),
-})
-
-// Asset stored within a theme (fonts, images)
-let ThemeAsset = co.map({
-	name: z.string(),
-	mimeType: z.string(),
-	data: co.fileStream(),
-	createdAt: z.date(),
-})
-
-// Theme schema for custom themes
-let Theme = co.map({
-	version: z.literal(1),
-	name: z.string(),
-	author: z.string().optional(),
-	description: z.string().optional(),
-	type: ThemeType,
-	css: co.plainText(),
-	template: co.optional(co.plainText()),
-	presets: z.string().optional(),
-	assets: co.optional(co.list(ThemeAsset)),
-	thumbnail: co.optional(co.image()),
-	createdAt: z.date(),
-	updatedAt: z.date(),
 })
 
 let ImageAsset = co.map({

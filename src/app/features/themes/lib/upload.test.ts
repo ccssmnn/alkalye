@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest"
 import JSZip from "jszip"
-import { parseThemeZip, validateThemeJson } from "./theme-upload"
+import { parseThemeZip, validateThemeJson } from "./upload"
 
 // Helper to create a zip file from object mapping paths to contents
 async function createZip(

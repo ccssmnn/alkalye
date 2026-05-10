@@ -20,7 +20,7 @@ import {
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { useTheme, ThemeSubmenu } from "@/lib/theme"
+import { useTheme, ThemeSubmenu } from "@/app/components/appearance"
 import { Preview } from "@/components/preview"
 import { parseWikiLinks } from "@/editor/wikilink-parser"
 import {

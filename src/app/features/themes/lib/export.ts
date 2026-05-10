@@ -1,8 +1,8 @@
 import JSZip from "jszip"
 import { type co, FileStream } from "jazz-tools"
-import { Theme, ThemeAsset, ThemePreset, ThemeType } from "@/schema"
 import { z } from "zod"
-import { sanitizeFilename } from "./export"
+import { Theme, ThemeAsset, ThemePreset, ThemeType } from "./schema"
+import { sanitizeFilename } from "@/lib/export"
 
 export { exportTheme, type ThemeExportQuery }
 

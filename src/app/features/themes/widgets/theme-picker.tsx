@@ -17,8 +17,9 @@ import {
 	DropdownMenuGroup,
 } from "@/components/ui/dropdown-menu"
 import { Palette, Check } from "lucide-react"
-import { Theme, UserAccount } from "@/schema"
+import { UserAccount } from "@/schema"
 import { parseFrontmatter, setTheme } from "@/editor/frontmatter"
+import { Theme } from "../lib/schema"
 
 export { ThemePicker }
 

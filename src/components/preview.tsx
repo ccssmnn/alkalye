@@ -10,13 +10,14 @@ import {
 } from "@/lib/marked-wikilink"
 import { parseFrontmatter } from "@/editor/frontmatter"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
-import { useResolvedTheme } from "@/lib/theme"
-import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
+import { useResolvedTheme } from "@/app/components/appearance"
 import {
+	useDocumentTheme,
 	tryCachedThemeStylesAsync,
 	tryRenderTemplateWithContent,
+	type ResolvedTheme,
 	type ThemeStyles,
-} from "@/lib/theme-renderer"
+} from "@/app/features/themes"
 import { TriangleAlert } from "lucide-react"
 
 export { Preview }

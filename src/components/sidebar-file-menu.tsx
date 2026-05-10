@@ -36,7 +36,7 @@ import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import { exportDocument, saveDocumentAs, type ExportAsset } from "@/lib/export"
 import type { MarkdownEditorRef } from "@/editor/editor"
 
-import { type LoadedThemes } from "@/lib/document-theme"
+import { type LoadedThemes } from "@/app/features/themes"
 import { printToPdf } from "@/lib/print-to-pdf"
 
 export { SidebarFileMenu }

@@ -72,7 +72,7 @@ import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
 import { SidebarFormatMenu } from "@/components/sidebar-format-menu"
 import { SidebarCollaboration } from "@/components/sidebar-collaboration"
 import { SidebarAssets, type SidebarAsset } from "@/components/sidebar-assets"
-import { ThemeToggle, useTheme } from "@/lib/theme"
+import { ThemeToggle, useTheme } from "@/app/components/appearance"
 import {
 	Tooltip,
 	TooltipContent,

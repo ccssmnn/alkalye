@@ -60,7 +60,7 @@ import {
 	type Theme,
 	useResolvedTheme,
 	ThemeSubmenu,
-} from "@/lib/theme"
+} from "@/app/components/appearance"
 import {
 	Tooltip,
 	TooltipContent,

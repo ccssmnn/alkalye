@@ -1,5 +1,5 @@
 import { type co } from "jazz-tools"
-import { type Theme, type ThemeAsset } from "@/schema"
+import { type Theme, type ThemeAsset } from "./schema"
 import { type ThemesQuery, type ThemePresetType } from "./document-theme"
 
 export {
@@ -107,35 +107,7 @@ function buildThemeStyles(
 	}
 
 	if (preset) {
-		let vars: string[] = []
-		let { colors, fonts } = preset
-
-		vars.push(`--preset-background: ${colors.background}`)
-		vars.push(`--preset-foreground: ${colors.foreground}`)
-		vars.push(`--preset-accent: ${colors.accent}`)
-
-		vars.push(`--preset-accent-1: ${colors.accent}`)
-		if (colors.accents) {
-			for (let i = 0; i < Math.min(colors.accents.length, 5); i++) {
-				vars.push(`--preset-accent-${i + 2}: ${colors.accents[i]}`)
-			}
-		}
-
-		if (colors.heading) vars.push(`--preset-heading: ${colors.heading}`)
-		if (colors.link) vars.push(`--preset-link: ${colors.link}`)
-		if (colors.codeBackground)
-			vars.push(`--preset-code-background: ${colors.codeBackground}`)
-
-		if (fonts?.title) vars.push(`--preset-font-title: ${fonts.title}`)
-		if (fonts?.body) vars.push(`--preset-font-body: ${fonts.body}`)
-
-		vars.push(`--preset-appearance: ${preset.appearance}`)
-
-		vars.push(`--theme-background: ${colors.background}`)
-		vars.push(`--theme-foreground: ${colors.foreground}`)
-		vars.push(`--theme-accent: ${colors.accent}`)
-
-		presetVariables = `:root {\n\t${vars.join(";\n\t")};\n}`
+		presetVariables = buildPresetVariables(preset)
 	}
 
 	let css = theme.css?.toString() ?? ""

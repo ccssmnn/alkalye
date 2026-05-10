@@ -1,6 +1,6 @@
 import { type co } from "jazz-tools"
 import { type Theme, type ThemeAsset } from "@/schema"
-import { type ThemesQuery, type ThemePresetType } from "./document-theme"
+import { type ThemesQuery, type ThemePresetType } from "@/app/features/themes"
 
 export { buildPrintableHtml, openPrintWindow }
 

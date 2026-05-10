@@ -1,7 +1,8 @@
 import { useAccount } from "jazz-tools/react"
 import { z } from "zod"
 import { parseFrontmatter } from "@/editor/frontmatter"
-import { type Theme, ThemePreset, UserAccount } from "@/schema"
+import { UserAccount } from "@/schema"
+import { type Theme, ThemePreset } from "./schema"
 import { type co } from "jazz-tools"
 
 export {
@@ -11,6 +12,7 @@ export {
 	getThemePresets,
 	findPresetByName,
 	findPresetByAppearance,
+	resolveDocumentTheme,
 	useDocumentTheme,
 }
 
@@ -102,49 +104,36 @@ function findPresetByName(
 	return null
 }
 
-function useDocumentTheme(
-	content: string,
-	mode: ThemeMode = "preview",
-	appearance?: Appearance | null,
-): ResolvedTheme {
-	let me = useAccount(UserAccount, { resolve: themesQuery })
+function resolveDocumentTheme(params: {
+	content: string
+	themes: LoadedThemes | null | undefined
+	defaultThemeName: string | null
+	appearance?: Appearance | null
+}): Omit<ResolvedTheme, "isLoading"> {
+	let { content, themes, defaultThemeName, appearance } = params
 
 	let themeName = getThemeName(content)
 	let presetName = getPresetName(content)
 
-	if (!me.$isLoaded || !me.root?.themes) {
-		return { theme: null, preset: null, warning: null, isLoading: true }
-	}
-
 	let isAppearanceOnlyTheme = themeName === "light" || themeName === "dark"
-	let effectiveThemeName = isAppearanceOnlyTheme ? null : themeName
-	if (!effectiveThemeName) {
-		let settings = me.root.settings
-		if (settings) {
-			effectiveThemeName =
-				mode === "slideshow"
-					? (settings.defaultSlideshowTheme ?? null)
-					: (settings.defaultPreviewTheme ?? null)
-		}
-	}
+	let effectiveThemeName = isAppearanceOnlyTheme
+		? null
+		: (themeName ?? defaultThemeName)
 
 	if (!effectiveThemeName) {
-		return { theme: null, preset: null, warning: null, isLoading: false }
+		return { theme: null, preset: null, warning: null }
 	}
 
-	let themes = me.root.themes
-
-	let theme = findThemeByName(themes as LoadedThemes, effectiveThemeName)
+	let theme = findThemeByName(themes ?? null, effectiveThemeName)
 	if (!theme) {
 		if (themeName && !isAppearanceOnlyTheme) {
 			return {
 				theme: null,
 				preset: null,
 				warning: `Theme "${effectiveThemeName}" not found. Upload it in Settings > Themes.`,
-				isLoading: false,
 			}
 		}
-		return { theme: null, preset: null, warning: null, isLoading: false }
+		return { theme: null, preset: null, warning: null }
 	}
 
 	let preset: ThemePresetType | null = null
@@ -170,7 +159,35 @@ function useDocumentTheme(
 		}
 	}
 
-	return { theme, preset, warning, isLoading: false }
+	return { theme, preset, warning }
+}
+
+function useDocumentTheme(
+	content: string,
+	mode: ThemeMode = "preview",
+	appearance?: Appearance | null,
+): ResolvedTheme {
+	let me = useAccount(UserAccount, { resolve: themesQuery })
+
+	if (!me.$isLoaded || !me.root?.themes) {
+		return { theme: null, preset: null, warning: null, isLoading: true }
+	}
+
+	let settings = me.root.settings
+	let defaultThemeName = settings
+		? mode === "slideshow"
+			? (settings.defaultSlideshowTheme ?? null)
+			: (settings.defaultPreviewTheme ?? null)
+		: null
+
+	let resolved = resolveDocumentTheme({
+		content,
+		themes: me.root.themes as LoadedThemes,
+		defaultThemeName,
+		appearance,
+	})
+
+	return { ...resolved, isLoading: false }
 }
 
 let themesQuery = {

@@ -34,8 +34,7 @@ import {
 } from "lucide-react"
 import { Kbd } from "@/components/ui/kbd"
 import { isMac, altModKey } from "@/lib/platform"
-import { ThemePicker } from "@/components/theme-picker"
-import { PresetPicker } from "@/components/preset-picker"
+import { ThemePicker, PresetPicker } from "@/app/features/themes"
 import { cn } from "@/lib/utils"
 
 export { EditorToolbar }

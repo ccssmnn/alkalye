@@ -1,7 +1,7 @@
 import JSZip from "jszip"
 import { z } from "zod"
-import { ThemeType, ThemePreset } from "@/schema"
-import { sanitizeCss, sanitizeHtml } from "./theme-sanitize"
+import { ThemeType, ThemePreset } from "./schema"
+import { sanitizeCss, sanitizeHtml } from "./sanitize"
 
 export {
 	parseThemeZip,

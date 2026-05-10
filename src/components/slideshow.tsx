@@ -26,13 +26,14 @@ import {
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-import { useResolvedTheme } from "@/lib/theme"
+import { useResolvedTheme } from "@/app/components/appearance"
 import { EllipsisIcon, TriangleAlert } from "lucide-react"
-import { useDocumentTheme, type ResolvedTheme } from "@/lib/document-theme"
 import {
+	useDocumentTheme,
 	tryCachedThemeStylesAsync,
+	type ResolvedTheme,
 	type ThemeStyles,
-} from "@/lib/theme-renderer"
+} from "@/app/features/themes"
 
 export { Slideshow }
 export type { Slide, HighlightRange }
