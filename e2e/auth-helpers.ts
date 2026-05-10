@@ -1,5 +1,5 @@
 import { expect, type Page } from "@playwright/test"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export {
 	waitForEditorBoot,

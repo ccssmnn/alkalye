@@ -7,14 +7,14 @@ import {
 } from "../lib/presentation"
 import { type ResolvedDoc } from "@/app/features/documents/lib/wikilink-titles"
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { cn } from "@/lib/utils"
+} from "@/app/components/ui/tooltip"
+import { cn } from "@/app/lib/cn"
 
 export { Teleprompter, groupBySlide }
 export type { SlideGroup, HighlightRange }

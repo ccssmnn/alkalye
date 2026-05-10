@@ -23,7 +23,7 @@ import {
 	DocumentUnauthorized,
 } from "@/app/features/documents/widgets/document-error-states"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -35,7 +35,7 @@ import {
 	DropdownMenuSub,
 	DropdownMenuSubTrigger,
 	DropdownMenuSubContent,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import {
 	getEditHistory,
 	getContentAtEdit,
@@ -45,16 +45,19 @@ import {
 	type DayGroup,
 	type EditHistoryItem,
 } from "../lib/time-machine"
-import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
-import { SidebarProvider } from "@/components/ui/sidebar"
+import {
+	ConfirmDialog,
+	useConfirmDialog,
+} from "@/app/components/ui/confirm-dialog"
+import { SidebarProvider } from "@/app/components/ui/sidebar"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipProvider,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
-import { cn } from "@/lib/utils"
+} from "@/app/components/ui/tooltip"
+import { Kbd } from "@/app/components/ui/kbd"
+import { cn } from "@/app/lib/cn"
 
 export { TimeMachineScreen, resolve, settingsResolve }
 export type { ViewMode }

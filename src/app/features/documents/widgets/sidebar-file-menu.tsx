@@ -6,7 +6,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,13 +14,13 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
-} from "@/components/ui/dropdown-menu"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { testIds } from "@/lib/test-ids"
+} from "@/app/components/ui/dropdown-menu"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { testIds } from "@/app/lib/test-ids"
 import { MoveToFolderDialog } from "./move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { FileText } from "lucide-react"
-import { modKey } from "@/lib/platform"
+import { modKey } from "@/app/lib/platform"
 import { Document, UserAccount } from "@/schema"
 import { canEdit, getDocumentGroup } from "../lib/documents"
 import { leavePersonalDocument } from "../lib/documents"

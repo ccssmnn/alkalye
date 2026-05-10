@@ -5,18 +5,18 @@ import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { compressVideo, canEncodeVideo } from "@/app/features/assets"
 import { getDocumentTitle } from "@/app/features/documents/lib/title"
 import { getPath } from "@/app/features/editor/lib/frontmatter"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/app/components/ui/tooltip"
 import { Download, FileUp, MoreHorizontal, Upload } from "lucide-react"
 import {
 	importMarkdownFiles,

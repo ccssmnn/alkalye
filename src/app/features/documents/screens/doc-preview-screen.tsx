@@ -4,14 +4,14 @@ import { useCoState, useAccount } from "jazz-tools/react"
 import { type ResolveQuery } from "jazz-tools"
 import { Document, UserAccount } from "@/schema"
 import { getDocumentTitle } from "../lib/title"
-import { altModKey } from "@/lib/platform"
+import { altModKey } from "@/app/lib/platform"
 import { EllipsisIcon, Pencil } from "lucide-react"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "../widgets/document-error-states"
 
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -19,7 +19,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import { useTheme, ThemeSubmenu } from "@/app/components/appearance"
 import { Preview } from "../widgets/preview"
 import { parseWikiLinks } from "@/app/features/editor"

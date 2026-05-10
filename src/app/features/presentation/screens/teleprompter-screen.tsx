@@ -13,8 +13,8 @@ import {
 	EmptyTitle,
 	EmptyDescription,
 	EmptyContent,
-} from "@/components/ui/empty"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/empty"
+import { Button } from "@/app/components/ui/button"
 import { parseWikiLinks } from "@/app/features/editor"
 import {
 	resolveDocTitles,

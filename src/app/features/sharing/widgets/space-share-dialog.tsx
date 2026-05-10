@@ -19,16 +19,16 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/app/components/ui/dialog"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/select"
+import { Badge } from "@/app/components/ui/badge"
+import { Button } from "@/app/components/ui/button"
 import { Space, UserAccount } from "@/schema"
 import {
 	createSpaceInvite,
@@ -42,7 +42,7 @@ import {
 	makeSpacePrivate,
 	getSpaceGroup,
 } from "@/app/features/spaces/lib/spaces"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export { SpaceShareDialog }
 export type { SpaceShareDialogProps }

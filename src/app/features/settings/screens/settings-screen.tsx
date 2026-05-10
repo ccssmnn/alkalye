@@ -27,18 +27,18 @@ import {
 } from "lucide-react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 	DialogFooter,
-} from "@/components/ui/dialog"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Switch } from "@/components/ui/switch"
+} from "@/app/components/ui/dialog"
+import { Field, FieldError, FieldLabel } from "@/app/components/ui/field"
+import { Input } from "@/app/components/ui/input"
+import { Textarea } from "@/app/components/ui/textarea"
+import { Switch } from "@/app/components/ui/switch"
 import { UserAccount, Theme, ThemeAsset, Settings } from "@/schema"
 import {
 	parseThemeZip,
@@ -47,14 +47,14 @@ import {
 	type ThemeExportQuery,
 } from "@/app/features/themes"
 import { createImage } from "jazz-tools/media"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
+} from "@/app/components/ui/select"
 import { useTheme, ThemeToggle } from "@/app/components/appearance"
 import { AuthDialog, wordlist } from "@/app/features/auth"
 import {
@@ -62,16 +62,17 @@ import {
 	DEFAULT_EDITOR_SETTINGS,
 	type EditorSettingsData,
 } from "@/app/features/editor"
-import { Footer } from "@/components/footer"
-import { usePWA, useIsPWAInstalled, PWAInstallDialog } from "@/lib/pwa"
+import { Footer } from "@/app/components/footer"
+import { usePWA, PWAInstallDialog } from "@/app/lib/pwa"
+import { useIsPWAInstalled } from "@/app/lib/platform"
 import { BackupSettings } from "@/app/features/backup"
 import {
 	Tooltip,
 	TooltipTrigger,
 	TooltipContent,
-} from "@/components/ui/tooltip"
-import { useIsOnline } from "@/lib/use-online"
-import { testIds } from "@/lib/test-ids"
+} from "@/app/components/ui/tooltip"
+import { useIsOnline } from "@/app/hooks/use-online"
+import { testIds } from "@/app/lib/test-ids"
 
 export { SettingsScreen, settingsQuery }
 export type { LoadedAccount, SettingsLoaderData, SettingsSearch }

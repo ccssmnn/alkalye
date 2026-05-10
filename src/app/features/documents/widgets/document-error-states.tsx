@@ -2,7 +2,7 @@ import { useState } from "react"
 import { Link, useRouter } from "@tanstack/react-router"
 import { FileX, FolderLock, FolderSearch, ShieldOff } from "lucide-react"
 import { useIsAuthenticated } from "jazz-tools/react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import { AuthDialog } from "@/app/features/auth"
 import {
 	Empty,
@@ -11,7 +11,7 @@ import {
 	EmptyTitle,
 	EmptyDescription,
 	EmptyContent,
-} from "@/components/ui/empty"
+} from "@/app/components/ui/empty"
 
 export {
 	DocumentNotFound,

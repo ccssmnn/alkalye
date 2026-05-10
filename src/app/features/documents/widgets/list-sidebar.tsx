@@ -3,7 +3,7 @@ import {
 	SidebarContent,
 	SidebarFooter,
 	SidebarHeader,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import { ImportDropZone, type ImportedFile } from "@/app/features/import-export"
 
 export { ListSidebar }

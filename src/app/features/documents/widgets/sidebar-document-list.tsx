@@ -17,32 +17,32 @@ import {
 } from "../lib/title"
 import { getDaysUntilPermanentDelete } from "../lib/delete-covalue"
 import { permanentlyDeletePersonalDocument } from "../lib/documents"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { Button } from "@/app/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/app/components/ui/tooltip"
 import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarGroup,
 	SidebarGroupContent,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+} from "@/app/components/ui/context-menu"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import {
 	FileText,
 	Users,
@@ -63,8 +63,11 @@ import {
 	SlidersHorizontal,
 	List,
 } from "lucide-react"
-import { TextHighlight, parseSearchTerms } from "@/components/ui/text-highlight"
-import { Spinner } from "@/components/ui/spinner"
+import {
+	TextHighlight,
+	parseSearchTerms,
+} from "@/app/components/ui/text-highlight"
+import { Spinner } from "@/app/components/ui/spinner"
 import {
 	getSharingStatus,
 	isDocumentPublic,
@@ -78,8 +81,8 @@ import { exportDocument, type ExportAsset } from "@/app/features/import-export"
 import { ShareDialog } from "@/app/features/sharing"
 import { MoveToFolderDialog } from "./move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/app/features/spaces"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { testIds } from "@/lib/test-ids"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { testIds } from "@/app/lib/test-ids"
 
 export { SidebarDocumentList }
 export type { LoadedDocument }

@@ -1,6 +1,6 @@
 import { chromium, expect, type Page } from "@playwright/test"
 import { readFile } from "node:fs/promises"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 import {
 	createAccount,
 	openSettings,

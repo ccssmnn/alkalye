@@ -1,24 +1,14 @@
-import { Group, co, z } from "jazz-tools"
+import { co, z } from "jazz-tools"
+import { Settings } from "@/app/features/settings/lib/schema"
 import { Theme } from "@/app/features/themes/lib/schema"
-import {
-	Settings,
-	DEFAULT_EDITOR_SETTINGS,
-} from "@/app/features/settings/lib/schema"
-import { getRandomWriterName } from "@/app/features/onboarding/lib/random-writer-name"
-import { fetchWelcomeContent } from "@/app/features/onboarding/lib/welcome-content"
-import { ImageAsset, VideoAsset, Asset } from "@/app/features/assets/lib/schema"
 import { Document } from "@/app/features/documents/lib/schema"
 import { Space } from "@/app/features/spaces/lib/schema"
+import { runAccountMigration } from "@/schema/migrations"
 
-export {
-	ImageAsset,
-	VideoAsset,
-	Asset,
-	Space,
-	UserProfile,
-	UserRoot,
-	UserAccount,
-}
+export { ImageAsset, VideoAsset, Asset } from "@/app/features/assets/lib/schema"
+
+export { Space } from "@/app/features/spaces/lib/schema"
+export { createSpace } from "@/app/features/spaces/lib/create-space"
 
 export {
 	Document,
@@ -26,8 +16,6 @@ export {
 	CursorFeed,
 } from "@/app/features/documents/lib/schema"
 export { createSpaceDocument } from "@/app/features/documents/lib/create-space-document"
-
-export { createSpace } from "@/app/features/spaces/lib/create-space"
 
 export { migrateAnonymousData } from "@/app/features/auth/lib/migrate-anonymous-data"
 
@@ -45,6 +33,8 @@ export {
 	ThemePreset,
 	ThemeType,
 } from "@/app/features/themes/lib/schema"
+
+export { UserProfile, UserRoot, UserAccount }
 
 let UserProfile = co.profile({
 	name: z.string(),
@@ -66,84 +56,4 @@ let UserAccount = co
 		profile: UserProfile,
 		root: UserRoot,
 	})
-	.withMigration(async (account, creationProps?: { name: string }) => {
-		if (!account.$jazz.has("root")) {
-			let root = UserRoot.create({
-				documents: co.list(Document).create([]),
-				migrationVersion: 1,
-			})
-			account.$jazz.set("root", root)
-		}
-
-		let { root } = await account.$jazz.ensureLoaded({
-			resolve: { root: true },
-		})
-
-		// Initialize documents list if not present
-		if (root && !root.$jazz.has("documents")) {
-			root.$jazz.set("documents", co.list(Document).create([]))
-		}
-
-		// Re-load with documents to check if welcome doc needed
-		let { root: rootWithDocs } = await account.$jazz.ensureLoaded({
-			resolve: { root: { documents: true } },
-		})
-
-		// Create welcome doc for new accounts with no documents
-		if (
-			rootWithDocs?.documents?.$isLoaded &&
-			rootWithDocs.documents.length === 0
-		) {
-			let welcomeContent = await fetchWelcomeContent()
-			let now = new Date()
-			let group = Group.create()
-			let welcomeDoc = Document.create(
-				{
-					version: 1,
-					content: co.plainText().create(welcomeContent, group),
-					createdAt: now,
-					updatedAt: now,
-				},
-				group,
-			)
-			rootWithDocs.documents.$jazz.push(welcomeDoc)
-		}
-
-		// Initialize settings with defaults if not present
-		if (root && !root.$jazz.has("settings")) {
-			root.$jazz.set(
-				"settings",
-				Settings.create({ editor: DEFAULT_EDITOR_SETTINGS }, root.$jazz.owner),
-			)
-		}
-
-		// Initialize empty spaces list if not present
-		if (root && !root.$jazz.has("spaces")) {
-			root.$jazz.set("spaces", co.list(Space).create([], root.$jazz.owner))
-		}
-
-		// Initialize inactive documents list if not present
-		if (root && !root.$jazz.has("inactiveDocuments")) {
-			root.$jazz.set(
-				"inactiveDocuments",
-				co.list(Document).create([], root.$jazz.owner),
-			)
-		}
-
-		// Initialize empty themes list if not present
-		if (root && !root.$jazz.has("themes")) {
-			root.$jazz.set("themes", co.list(Theme).create([], root.$jazz.owner))
-		}
-
-		if (!account.$jazz.has("profile")) {
-			let profileGroup = Group.create()
-			profileGroup.makePublic()
-			account.$jazz.set(
-				"profile",
-				UserProfile.create(
-					{ name: creationProps?.name ?? getRandomWriterName() },
-					profileGroup,
-				),
-			)
-		}
-	})
+	.withMigration(runAccountMigration)

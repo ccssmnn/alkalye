@@ -1,5 +1,5 @@
 import { EditorView, ViewPlugin } from "@codemirror/view"
-import { isTouchDevice } from "@/lib/platform"
+import { isTouchDevice } from "@/app/lib/platform"
 
 export { keyboardAwareScrollMargins, clickBelowContent, preventBrowserScroll }
 

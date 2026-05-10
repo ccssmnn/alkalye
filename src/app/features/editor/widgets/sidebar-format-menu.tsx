@@ -3,7 +3,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,9 +14,9 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import { Type } from "lucide-react"
-import { modKey, altModKey } from "@/lib/platform"
+import { modKey, altModKey } from "@/app/lib/platform"
 import { WikiLinkDialog } from "./floating-actions"
 import type { MarkdownEditorRef } from "./editor"
 

@@ -2,7 +2,7 @@ import { useState, useEffect, startTransition } from "react"
 import { useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import { AuthDialog } from "@/app/features/auth"
 import { UserAccount } from "@/schema"
 import {
@@ -10,7 +10,7 @@ import {
 	type DocInviteData,
 } from "@/app/features/documents/lib/documents"
 import { acceptSpaceInvite, type SpaceInviteData } from "@/app/features/spaces"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export { InviteScreen }
 

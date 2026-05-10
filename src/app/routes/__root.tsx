@@ -4,9 +4,9 @@ import {
 	redirect,
 	Link,
 } from "@tanstack/react-router"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { ErrorUI } from "@/components/ui/error-ui"
-import { Button } from "@/components/ui/button"
+import { TooltipProvider } from "@/app/components/ui/tooltip"
+import { ErrorUI } from "@/app/components/ui/error-ui"
+import { Button } from "@/app/components/ui/button"
 import {
 	Empty,
 	EmptyHeader,
@@ -14,7 +14,7 @@ import {
 	EmptyTitle,
 	EmptyDescription,
 	EmptyContent,
-} from "@/components/ui/empty"
+} from "@/app/components/ui/empty"
 import { FileQuestion } from "lucide-react"
 import type { UserAccount } from "@/schema"
 import type { co } from "jazz-tools"

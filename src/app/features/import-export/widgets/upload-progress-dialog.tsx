@@ -4,9 +4,9 @@ import {
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { Progress } from "@/components/ui/progress"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/dialog"
+import { Progress } from "@/app/components/ui/progress"
+import { Button } from "@/app/components/ui/button"
 
 export { UploadProgressDialog }
 export type { UploadPhase }

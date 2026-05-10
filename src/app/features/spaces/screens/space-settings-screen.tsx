@@ -7,11 +7,14 @@ import { ArrowLeft, Loader2, Trash2, Upload, UserRoundPlus } from "lucide-react"
 import Cropper from "react-easy-crop"
 import { Space, UserAccount } from "@/schema"
 import { SpaceShareDialog } from "@/app/features/sharing/widgets/space-share-dialog"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Badge } from "@/components/ui/badge"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
-import { ConfirmDialog, useConfirmDialog } from "@/components/ui/confirm-dialog"
+import { Button } from "@/app/components/ui/button"
+import { Input } from "@/app/components/ui/input"
+import { Badge } from "@/app/components/ui/badge"
+import { Empty, EmptyHeader, EmptyTitle } from "@/app/components/ui/empty"
+import {
+	ConfirmDialog,
+	useConfirmDialog,
+} from "@/app/components/ui/confirm-dialog"
 import {
 	Dialog,
 	DialogContent,
@@ -19,14 +22,14 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/app/components/ui/dialog"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
+} from "@/app/components/ui/select"
 import {
 	SpaceNotFound,
 	SpaceUnauthorized,
@@ -43,7 +46,7 @@ import {
 	type SpaceMember,
 } from "../lib/spaces"
 import { SpaceInitials } from "../widgets/space-selector"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export { SpaceSettingsScreen, spaceSettingsResolve }
 

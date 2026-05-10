@@ -1,22 +1,22 @@
 import { useEffect, useState, useRef, useImperativeHandle } from "react"
 import { createPortal } from "react-dom"
-import { useSidebar } from "@/components/ui/sidebar"
+import { useSidebar } from "@/app/components/ui/sidebar"
 import { syntaxTree } from "@codemirror/language"
 import type { EditorView } from "@codemirror/view"
 import type { MarkdownEditorRef } from "./editor"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
+} from "@/app/components/ui/tooltip"
+import { Kbd } from "@/app/components/ui/kbd"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import {
 	Check,
 	ExternalLink,
@@ -40,9 +40,9 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { cn } from "@/lib/utils"
-import { isMac } from "@/lib/platform"
+} from "@/app/components/ui/dialog"
+import { cn } from "@/app/lib/cn"
+import { isMac } from "@/app/lib/platform"
 
 export {
 	FloatingActions,

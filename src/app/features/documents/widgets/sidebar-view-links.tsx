@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router"
 import { co } from "jazz-tools"
-import { SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar"
+import { SidebarMenuButton, SidebarMenuItem } from "@/app/components/ui/sidebar"
 import { Eye } from "lucide-react"
 import { Document } from "@/schema"
 

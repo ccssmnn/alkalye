@@ -9,29 +9,29 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/app/components/ui/tooltip"
 import {
 	Dialog,
 	DialogContent,
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { Field, FieldError, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/dialog"
+import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
+import { Field, FieldError, FieldLabel } from "@/app/components/ui/field"
+import { Input } from "@/app/components/ui/input"
+import { Button } from "@/app/components/ui/button"
 import {
 	UploadProgressDialog,
 	type UploadPhase,

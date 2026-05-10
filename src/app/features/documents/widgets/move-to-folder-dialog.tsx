@@ -8,14 +8,14 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/dialog"
+import { Button } from "@/app/components/ui/button"
 import { Document } from "@/schema"
 import {
 	parseFrontmatter,
 	getPath,
 } from "@/app/features/editor/lib/frontmatter"
-import { cn } from "@/lib/utils"
+import { cn } from "@/app/lib/cn"
 
 export { MoveToFolderDialog }
 

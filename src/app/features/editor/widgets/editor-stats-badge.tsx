@@ -7,9 +7,9 @@ import {
 	DropdownMenuRadioItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useSidebar } from "@/components/ui/sidebar"
-import { Badge } from "@/components/ui/badge"
+} from "@/app/components/ui/dropdown-menu"
+import { useSidebar } from "@/app/components/ui/sidebar"
+import { Badge } from "@/app/components/ui/badge"
 import { DEFAULT_EDITOR_SETTINGS, Settings } from "@/schema"
 
 export { EditorStatsBadge }

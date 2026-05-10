@@ -1,11 +1,11 @@
 import { useAccount } from "jazz-tools/react"
 import { co } from "jazz-tools"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/app/components/ui/tooltip"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -14,7 +14,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuLabel,
 	DropdownMenuGroup,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import { Paintbrush, Check, Sun, Moon } from "lucide-react"
 import { UserAccount } from "@/schema"
 import {

@@ -10,18 +10,18 @@ import {
 	DialogFooter,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/dialog"
+import { Button } from "@/app/components/ui/button"
 import {
 	Select,
 	SelectContent,
 	SelectItem,
 	SelectTrigger,
 	SelectValue,
-} from "@/components/ui/select"
+} from "@/app/components/ui/select"
 import { SpaceInitials } from "./space-selector"
-import { Field, FieldLabel } from "@/components/ui/field"
-import { Input } from "@/components/ui/input"
+import { Field, FieldLabel } from "@/app/components/ui/field"
+import { Input } from "@/app/components/ui/input"
 import { Document, UserAccount, createSpace } from "@/schema"
 import { getSpaceGroup } from "../lib/spaces"
 import { moveDocumentToSpace } from "@/app/features/documents/lib/document-move"

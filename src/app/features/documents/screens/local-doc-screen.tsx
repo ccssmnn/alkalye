@@ -15,14 +15,14 @@ import { getDocumentTitle } from "../lib/title"
 import { EditorToolbar } from "@/app/features/editor"
 import { DocumentSidebar } from "../widgets/document-sidebar"
 import { ListSidebar } from "../widgets/list-sidebar"
-import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
+import { SidebarSyncStatus } from "@/app/components/sidebar-sync-status"
 import {
 	Empty,
 	EmptyHeader,
 	EmptyTitle,
 	EmptyDescription,
-} from "@/components/ui/empty"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/empty"
+import { Button } from "@/app/components/ui/button"
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -30,14 +30,14 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarSeparator,
-} from "@/components/ui/sidebar"
-import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
+import { SidebarProvider, useSidebar } from "@/app/components/ui/sidebar"
 import {
 	ContextMenu,
 	ContextMenuContent,
 	ContextMenuItem,
 	ContextMenuTrigger,
-} from "@/components/ui/context-menu"
+} from "@/app/components/ui/context-menu"
 import {
 	HelpCircle,
 	FileUp,
@@ -66,8 +66,8 @@ import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { HelpMenu } from "@/components/help-menu"
+} from "@/app/components/ui/tooltip"
+import { HelpMenu } from "@/app/components/help-menu"
 import { SidebarEditMenu } from "@/app/features/editor"
 import { SidebarFormatMenu } from "@/app/features/editor"
 import {
@@ -81,7 +81,7 @@ import {
 	closeLocalFile,
 	type LocalFileEntry,
 	getHandleFromDB,
-} from "@/lib/local-file"
+} from "@/app/lib/local-file"
 import { CopyToSyncedDialog } from "@/app/features/spaces"
 import {
 	DropdownMenu,
@@ -90,13 +90,13 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { modKey, altModKey } from "@/lib/platform"
+} from "@/app/components/ui/dropdown-menu"
+import { modKey, altModKey } from "@/app/lib/platform"
 import { Preview } from "../widgets/preview"
 import { parseWikiLinks } from "@/app/features/editor"
 import { useDocTitles, type ResolvedDoc } from "../lib/wikilink-titles"
 import { toast } from "sonner"
-import { tryCatch } from "@/lib/utils"
+import { tryCatch } from "@/app/lib/try-catch"
 
 export { LocalDocScreen }
 

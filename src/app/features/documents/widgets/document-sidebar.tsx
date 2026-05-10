@@ -3,7 +3,7 @@ import {
 	SidebarContent,
 	SidebarFooter,
 	SidebarHeader,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 
 export { DocumentSidebar }
 

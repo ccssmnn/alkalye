@@ -2,16 +2,16 @@ import { useEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { EditorView } from "@codemirror/view"
 import { X, ChevronUp, ChevronDown, CaseSensitive, Command } from "lucide-react"
-import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { cn } from "@/app/lib/cn"
+import { Button } from "@/app/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Kbd } from "@/components/ui/kbd"
-import { isMac } from "@/lib/platform"
-import { useSidebar } from "@/components/ui/sidebar"
+} from "@/app/components/ui/tooltip"
+import { Kbd } from "@/app/components/ui/kbd"
+import { isMac } from "@/app/lib/platform"
+import { useSidebar } from "@/app/components/ui/sidebar"
 import { setFindQuery, selectMatch, getFindState } from "../lib/find-extension"
 
 export { FindPanel }

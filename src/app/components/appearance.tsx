@@ -1,6 +1,6 @@
 import { useState, useEffect, useSyncExternalStore } from "react"
 import { Sun, Moon, SunMoon } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -10,12 +10,12 @@ import {
 	DropdownMenuSubContent,
 	DropdownMenuRadioGroup,
 	DropdownMenuRadioItem,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/app/components/ui/tooltip"
 
 export { useTheme, useResolvedTheme, ThemeToggle, ThemeSubmenu, ThemeMenuItems }
 export type { Theme }

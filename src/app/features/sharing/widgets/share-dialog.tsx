@@ -19,9 +19,9 @@ import {
 	DialogDescription,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
-import { Badge } from "@/components/ui/badge"
-import { Button } from "@/components/ui/button"
+} from "@/app/components/ui/dialog"
+import { Badge } from "@/app/components/ui/badge"
+import { Button } from "@/app/components/ui/button"
 import { Document, UserAccount } from "@/schema"
 import {
 	createDocumentInvite,
@@ -37,7 +37,7 @@ import {
 	getPublicLink,
 	type Collaborator,
 } from "@/app/features/documents/lib/documents"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export { ShareDialog }
 

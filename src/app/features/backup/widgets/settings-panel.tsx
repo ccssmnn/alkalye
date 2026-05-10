@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { FolderOpen, AlertCircle } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
+import { Button } from "@/app/components/ui/button"
+import { Switch } from "@/app/components/ui/switch"
+import { Label } from "@/app/components/ui/label"
 import {
 	useBackupStore,
 	enableBackup,

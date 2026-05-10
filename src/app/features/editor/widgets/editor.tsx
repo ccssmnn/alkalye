@@ -64,14 +64,14 @@ import { findExtension, selectMatch } from "../lib/find-extension"
 import { FindPanel } from "./find-panel"
 import { fileDropCursor, clearFileDropCursor } from "../lib/file-drop-cursor"
 
-import { useIsMobile } from "@/lib/use-mobile"
+import { useIsMobile } from "@/app/hooks/use-mobile"
 import { useFindPanel } from "../hooks/use-find-panel"
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
-} from "@/components/ui/dialog"
+} from "@/app/components/ui/dialog"
 import {
 	FloatingActions,
 	TaskAction,

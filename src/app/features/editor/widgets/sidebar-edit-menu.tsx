@@ -3,7 +3,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	useSidebar,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -11,9 +11,9 @@ import {
 	DropdownMenuTrigger,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 import { Undo2 } from "lucide-react"
-import { isMac, modKey, altModKey } from "@/lib/platform"
+import { isMac, modKey, altModKey } from "@/app/lib/platform"
 import type { MarkdownEditorRef } from "./editor"
 
 export { SidebarEditMenu }

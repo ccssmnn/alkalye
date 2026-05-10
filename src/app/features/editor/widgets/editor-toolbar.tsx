@@ -1,19 +1,19 @@
 import { useEffect, useState } from "react"
 import { Link } from "@tanstack/react-router"
 import type { MarkdownEditorRef } from "./editor"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
+} from "@/app/components/ui/tooltip"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
 	DropdownMenuItem,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Separator } from "@/components/ui/separator"
+} from "@/app/components/ui/dropdown-menu"
+import { Separator } from "@/app/components/ui/separator"
 import {
 	Bold,
 	Italic,
@@ -32,10 +32,10 @@ import {
 	ArrowUpToLine,
 	ArrowDownToLine,
 } from "lucide-react"
-import { Kbd } from "@/components/ui/kbd"
-import { isMac, altModKey } from "@/lib/platform"
+import { Kbd } from "@/app/components/ui/kbd"
+import { isMac, altModKey } from "@/app/lib/platform"
 import { ThemePicker, PresetPicker } from "@/app/features/themes"
-import { cn } from "@/lib/utils"
+import { cn } from "@/app/lib/cn"
 
 export { EditorToolbar }
 

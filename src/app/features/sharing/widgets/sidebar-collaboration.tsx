@@ -7,7 +7,7 @@ import {
 	SidebarMenu,
 	SidebarMenuButton,
 	SidebarMenuItem,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import { Globe, Lock, Users } from "lucide-react"
 import { ShareDialog } from "./share-dialog"
 import { Document, UserAccount } from "@/schema"
@@ -16,7 +16,7 @@ import {
 	isDocumentPublic,
 	type Collaborator,
 } from "@/app/features/documents/lib/documents"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export { SidebarCollaboration }
 

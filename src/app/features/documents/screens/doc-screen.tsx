@@ -39,7 +39,7 @@ import { DocumentSidebar } from "../widgets/document-sidebar"
 import { ListSidebar } from "../widgets/list-sidebar"
 import { SidebarDocumentList } from "../widgets/sidebar-document-list"
 import { SpaceSelector } from "@/app/features/spaces"
-import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
+import { SidebarSyncStatus } from "@/app/components/sidebar-sync-status"
 
 import {
 	SidebarImportExport,
@@ -49,7 +49,7 @@ import {
 	DocumentNotFound,
 	DocumentUnauthorized,
 } from "../widgets/document-error-states"
-import { Empty, EmptyHeader, EmptyTitle } from "@/components/ui/empty"
+import { Empty, EmptyHeader, EmptyTitle } from "@/app/components/ui/empty"
 import {
 	SidebarGroup,
 	SidebarGroupContent,
@@ -57,12 +57,12 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarSeparator,
-} from "@/components/ui/sidebar"
+} from "@/app/components/ui/sidebar"
 import { canEdit, isDocumentPublic, getDocumentGroup } from "../lib/documents"
 import { deletePersonalDocument } from "../lib/documents"
 import { useBacklinkSync } from "../lib/backlink-sync"
 import { usePresence } from "@/app/features/editor"
-import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
+import { SidebarProvider, useSidebar } from "@/app/components/ui/sidebar"
 import { HelpCircle, Loader2, Search, Settings, Plus } from "lucide-react"
 
 import { SidebarViewLinks } from "../widgets/sidebar-view-links"
@@ -79,14 +79,14 @@ import {
 	Tooltip,
 	TooltipContent,
 	TooltipTrigger,
-} from "@/components/ui/tooltip"
-import { Button } from "@/components/ui/button"
-import { usePWA } from "@/lib/pwa"
-import { HelpMenu } from "@/components/help-menu"
+} from "@/app/components/ui/tooltip"
+import { Button } from "@/app/components/ui/button"
+import { usePWA } from "@/app/lib/pwa"
+import { HelpMenu } from "@/app/components/help-menu"
 import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 
 export { DocScreen }
 

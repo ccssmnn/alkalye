@@ -1,17 +1,17 @@
 import { useState } from "react"
 import { usePassphraseAuth } from "jazz-tools/react"
 import { Copy, Check, RefreshCw } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { Button } from "@/app/components/ui/button"
 import {
 	Dialog,
 	DialogContent,
 	DialogHeader,
 	DialogTitle,
 	DialogDescription,
-} from "@/components/ui/dialog"
-import { Textarea } from "@/components/ui/textarea"
+} from "@/app/components/ui/dialog"
+import { Textarea } from "@/app/components/ui/textarea"
 import { wordlist } from "../lib/wordlist"
-import { testIds } from "@/lib/test-ids"
+import { testIds } from "@/app/lib/test-ids"
 import { getRandomWriterName } from "@/schema"
 
 export { AuthForm, AuthDialog }

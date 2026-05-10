@@ -24,7 +24,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
 	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+} from "@/app/components/ui/dropdown-menu"
 
 import { useResolvedTheme } from "@/app/components/appearance"
 import { EllipsisIcon, TriangleAlert } from "lucide-react"
