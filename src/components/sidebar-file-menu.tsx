@@ -31,7 +31,7 @@ import {
 	getPath,
 } from "@/editor/frontmatter"
 import { unfoldEffect } from "@codemirror/language"
-import { getPresentationMode } from "@/lib/presentation"
+import { getPresentationMode } from "@/app/features/presentation"
 import { getDocumentTitle, addCopyToTitle } from "@/lib/document-utils"
 import {
 	exportDocument,

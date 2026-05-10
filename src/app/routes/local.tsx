@@ -8,6 +8,7 @@ import {
 	useMarkdownEditorRef,
 	type WikilinkDoc,
 } from "@/editor/editor"
+import { presentationExtensions } from "@/app/features/presentation"
 import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
 import { getDocumentTitle } from "@/lib/document-utils"
@@ -632,7 +633,7 @@ function LocalEditorContent({
 					placeholder="Start writing..."
 					documents={documents}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
-					extensions={[]}
+					extensions={[...presentationExtensions()]}
 				/>
 				<EditorToolbar
 					editor={editor}

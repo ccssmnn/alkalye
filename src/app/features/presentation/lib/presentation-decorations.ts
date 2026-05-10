@@ -7,9 +7,13 @@ import {
 	type ViewUpdate,
 } from "@codemirror/view"
 import type { Extension } from "@codemirror/state"
-import { getPresentationMode, parsePresentation } from "../lib/presentation"
+import { getPresentationMode, parsePresentation } from "./presentation"
 
-export { presentationDecorations }
+export { createPresentationDecorations }
+
+function createPresentationDecorations(): Extension {
+	return presentationDecorations
+}
 
 let slideLine = Decoration.line({ class: "cm-presentation-slide-line" })
 

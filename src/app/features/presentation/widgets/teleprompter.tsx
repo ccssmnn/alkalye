@@ -4,7 +4,7 @@ import {
 	type SlideContent,
 	type PresentationItem,
 	type TextSegment,
-} from "@/lib/presentation"
+} from "../lib/presentation"
 import { type ResolvedDoc } from "@/lib/doc-resolver"
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"

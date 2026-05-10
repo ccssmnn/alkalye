@@ -16,7 +16,7 @@ import {
 	type PresentationSize,
 	type PresentationTheme,
 	type TextSegment,
-} from "@/lib/presentation"
+} from "../lib/presentation"
 import {
 	DropdownMenu,
 	DropdownMenuContent,

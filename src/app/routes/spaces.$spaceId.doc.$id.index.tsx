@@ -72,6 +72,10 @@ import { SidebarProvider, useSidebar } from "@/components/ui/sidebar"
 import { HelpCircle, Search, Settings, Plus } from "lucide-react"
 
 import { SidebarViewLinks } from "@/components/sidebar-view-links"
+import {
+	SidebarPresentationLinks,
+	presentationExtensions,
+} from "@/app/features/presentation"
 import { SidebarFileMenu } from "@/components/sidebar-file-menu"
 import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
 import { SidebarFormatMenu } from "@/components/sidebar-format-menu"
@@ -520,6 +524,7 @@ function SpaceEditorContent({
 							getAssets: () =>
 								assetsRef.current.map(a => ({ id: a.id, name: a.name })),
 						}),
+						...presentationExtensions(),
 					]}
 				/>
 				<EditorToolbar
@@ -582,6 +587,7 @@ function SpaceEditorContent({
 							</SidebarMenuItem>
 							<SidebarSeparator />
 							<SidebarViewLinks doc={doc} />
+							<SidebarPresentationLinks doc={doc} />
 							<SidebarSeparator />
 							<SidebarFileMenu
 								doc={doc}

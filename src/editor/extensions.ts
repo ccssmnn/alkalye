@@ -6,7 +6,6 @@ import {
 	codeHighlightStyle,
 } from "./theme"
 import { lineDecorations } from "./line-decorations"
-import { presentationDecorations } from "./presentation-decorations"
 import { wrappedIndent } from "./wrapped-indent"
 import {
 	keyboardAwareScrollMargins,
@@ -25,5 +24,4 @@ let editorExtensions: Extension = [
 	keyboardAwareScrollMargins,
 	preventBrowserScroll,
 	clickBelowContent,
-	presentationDecorations,
 ]

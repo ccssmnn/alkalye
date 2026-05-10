@@ -69,7 +69,7 @@ import {
 	leavePersonalDocument,
 } from "@/lib/documents"
 import { useFolderStore, FolderRow } from "@/components/folder"
-import { getPresentationMode } from "@/lib/presentation"
+import { getPresentationMode } from "@/app/features/presentation"
 import { exportDocument, type ExportAsset } from "@/app/features/import-export"
 import { ShareDialog } from "@/app/features/sharing"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
