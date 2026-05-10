@@ -1,7 +1,7 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Space, UserAccount } from "@/schema"
 import { permanentlyDeleteSpace as deleteSpaceCoValue } from "@/lib/delete-covalue"
-import { buildSpaceInviteLink } from "@/lib/invite-links"
+import { buildSpaceInviteLink } from "@/app/features/sharing"
 
 export {
 	createSpaceInvite,

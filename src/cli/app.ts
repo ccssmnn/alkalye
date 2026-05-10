@@ -39,7 +39,7 @@ import { moveDocumentToSpace } from "@/lib/document-move"
 import {
 	buildDocumentPublicLink,
 	buildSpacePublicLink,
-} from "@/lib/invite-links"
+} from "@/app/features/sharing"
 import { setDocumentTitle } from "@/cli/document-title"
 import { CliUsageError, PermissionError } from "@/cli/errors"
 import {

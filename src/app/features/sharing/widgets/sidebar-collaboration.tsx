@@ -9,7 +9,7 @@ import {
 	SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { Globe, Lock, Users } from "lucide-react"
-import { ShareDialog } from "@/components/share-dialog"
+import { ShareDialog } from "./share-dialog"
 import { Document, UserAccount } from "@/schema"
 import {
 	listCollaborators,

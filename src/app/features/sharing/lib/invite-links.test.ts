@@ -3,7 +3,7 @@ import {
 	buildDocumentPublicLink,
 	buildSpaceInviteLink,
 	buildSpacePublicLink,
-} from "@/lib/invite-links"
+} from "./invite-links"
 
 describe("invite link helpers", () => {
 	test("buildSpacePublicLink matches the app router", () => {
