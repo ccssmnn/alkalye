@@ -4,9 +4,9 @@ import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
 import { UserAccount, Document, Asset, VideoAsset } from "@/schema"
 import { getPath } from "@/editor/frontmatter"
 import { getDocumentTitle } from "@/lib/document-utils"
-import type { BackupDoc } from "./backup-sync"
-import { readManifest } from "./backup-sync"
-import { hashContent, syncBackup, syncFromBackup } from "./backup-engine"
+import type { BackupDoc } from "./sync"
+import { readManifest } from "./sync"
+import { hashContent, syncBackup, syncFromBackup } from "./engine"
 import {
 	MockDirectoryHandle,
 	createMockBlob,
@@ -14,7 +14,7 @@ import {
 	readFileAtPath as readFile,
 	removeFileAtPath as removeFile,
 	writeFileAtPath,
-} from "./backup-test-helpers"
+} from "./test-helpers"
 
 type LoadedAccount = co.loaded<typeof UserAccount>
 type LoadedDoc = co.loaded<typeof Document>

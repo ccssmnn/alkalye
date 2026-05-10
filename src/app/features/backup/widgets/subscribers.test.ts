@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest"
-import { spaceBackupDocumentResolve } from "./backup-subscribers"
+import { spaceBackupDocumentResolve } from "./subscribers"
 
 describe("space backup subscriber query", () => {
 	it("resolves image and video assets", () => {

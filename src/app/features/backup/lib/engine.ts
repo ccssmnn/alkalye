@@ -14,7 +14,7 @@ import {
 	type BackupDoc,
 	type ManifestEntry,
 	type ScannedFile,
-} from "@/lib/backup-sync"
+} from "./sync"
 
 export {
 	hashContent,

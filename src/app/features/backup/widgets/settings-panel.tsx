@@ -13,7 +13,7 @@ import {
 	clearSpaceBackupHandle,
 	supportsFileSystemWatch,
 	isBackupSupported,
-} from "@/lib/backup-storage"
+} from "../lib/storage"
 
 export { BackupSettings, SpaceBackupSettings }
 

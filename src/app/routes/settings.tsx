@@ -61,7 +61,7 @@ import {
 import { wordlist } from "@/lib/wordlist"
 import { Footer } from "@/components/footer"
 import { usePWA, useIsPWAInstalled, PWAInstallDialog } from "@/lib/pwa"
-import { BackupSettings } from "@/lib/backup-settings-ui"
+import { BackupSettings } from "@/app/features/backup"
 import {
 	Tooltip,
 	TooltipTrigger,

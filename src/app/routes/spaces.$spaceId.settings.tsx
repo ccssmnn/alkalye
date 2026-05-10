@@ -33,7 +33,7 @@ import {
 	SpaceNotFound,
 	SpaceUnauthorized,
 } from "@/components/document-error-states"
-import { SpaceBackupSettings } from "@/lib/backup-settings-ui"
+import { SpaceBackupSettings } from "@/app/features/backup"
 import {
 	getSpaceGroup,
 	leaveSpace,

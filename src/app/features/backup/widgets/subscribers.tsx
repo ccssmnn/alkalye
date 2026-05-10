@@ -7,7 +7,7 @@ import {
 	syncFromBackup,
 	prepareBackupDoc,
 	type LoadedDocument,
-} from "@/lib/backup-engine"
+} from "../lib/engine"
 import {
 	BACKUP_DEBOUNCE_MS,
 	SPACE_BACKUP_DEBOUNCE_MS,
@@ -20,7 +20,7 @@ import {
 	supportsFileSystemWatch,
 	observeDirectoryChanges,
 	toTimestamp,
-} from "@/lib/backup-storage"
+} from "../lib/storage"
 
 export { BackupSubscriber, SpacesBackupSubscriber, spaceBackupDocumentResolve }
 

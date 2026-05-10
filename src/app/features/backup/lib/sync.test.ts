@@ -9,12 +9,12 @@ import {
 	writeManifest,
 	type BackupManifest,
 	type BackupDoc,
-} from "./backup-sync"
+} from "./sync"
 import {
 	MockDirectoryHandle,
 	createMockBlob,
 	createMockFile,
-} from "./backup-test-helpers"
+} from "./test-helpers"
 
 describe("computeDocLocations", () => {
 	function createDoc(input: {
