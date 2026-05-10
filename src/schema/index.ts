@@ -6,14 +6,8 @@ import {
 } from "@/app/features/settings/lib/schema"
 import { getRandomWriterName } from "@/app/features/onboarding/lib/random-writer-name"
 import { fetchWelcomeContent } from "@/app/features/onboarding/lib/welcome-content"
-import {
-	ImageAsset,
-	VideoAsset,
-	Asset,
-	Document,
-	CursorEntry,
-	CursorFeed,
-} from "@/schema/document"
+import { ImageAsset, VideoAsset, Asset } from "@/app/features/assets/lib/schema"
+import { Document, CursorEntry, CursorFeed } from "@/schema/document"
 import { Space } from "@/app/features/spaces/lib/schema"
 
 export {

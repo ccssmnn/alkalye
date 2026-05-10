@@ -1,14 +1,7 @@
 import { co, z } from "jazz-tools"
+import { Asset } from "@/app/features/assets/lib/schema"
 
-export {
-	ImageAsset,
-	VideoAsset,
-	Asset,
-	Document,
-	CursorEntry,
-	CursorFeed,
-	HighlightRange,
-}
+export { Document, CursorEntry, CursorFeed, HighlightRange }
 
 let CursorEntry = z.object({
 	position: z.number(),
@@ -16,24 +9,6 @@ let CursorEntry = z.object({
 })
 
 let CursorFeed = co.feed(CursorEntry)
-
-let ImageAsset = co.map({
-	type: z.literal("image"),
-	name: z.string(),
-	image: co.image(),
-	createdAt: z.date(),
-})
-
-let VideoAsset = co.map({
-	type: z.literal("video"),
-	name: z.string(),
-	video: co.fileStream(),
-	mimeType: z.string(),
-	muteAudio: z.boolean().optional(),
-	createdAt: z.date(),
-})
-
-let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
 
 let HighlightRange = z.object({
 	start: z.number(),

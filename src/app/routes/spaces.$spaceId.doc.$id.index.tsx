@@ -11,6 +11,13 @@ import { co, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import {
+	handleSaveCopy,
+	setupKeyboardShortcuts,
+	resolve,
+	settingsResolve,
+	type LoadedDocument,
+} from "@/lib/editor-utils"
+import {
 	makeUploadImage,
 	makeUploadVideo,
 	makeUploadAssets,
@@ -18,13 +25,11 @@ import {
 	makeIsAssetUsed,
 	makeDeleteAsset,
 	makeDownloadAsset,
-	handleSaveCopy,
-	setupKeyboardShortcuts,
-	resolve,
-	settingsResolve,
 	canEncodeVideo,
-	type LoadedDocument,
-} from "@/lib/editor-utils"
+	imageExtensions,
+	SidebarAssets,
+	type SidebarAsset,
+} from "@/app/features/assets"
 import {
 	MarkdownEditor,
 	useMarkdownEditorRef,
@@ -71,7 +76,6 @@ import { SidebarFileMenu } from "@/components/sidebar-file-menu"
 import { SidebarEditMenu } from "@/components/sidebar-edit-menu"
 import { SidebarFormatMenu } from "@/components/sidebar-format-menu"
 import { SidebarCollaboration } from "@/app/features/sharing"
-import { SidebarAssets, type SidebarAsset } from "@/components/sidebar-assets"
 import { ThemeToggle, useTheme } from "@/app/components/appearance"
 import {
 	Tooltip,
@@ -273,6 +277,10 @@ function SpaceEditorContent({
 			video: a.type === "video" ? a.video : undefined,
 			muteAudio: a.type === "video" ? a.muteAudio : undefined,
 		})) ?? []
+	let assetsRef = useRef(assets)
+	useEffect(() => {
+		assetsRef.current = assets
+	})
 
 	// Get documents from the space for wikilinks
 	let documents: WikilinkDoc[] = []
@@ -500,7 +508,19 @@ function SpaceEditorContent({
 					onUploadImage={makeUploadImage(doc)}
 					onUploadVideo={canUploadVideo ? makeUploadVideo(doc) : undefined}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
-					extensions={[]}
+					extensions={[
+						imageExtensions({
+							resolver: assetId => {
+								let asset = assetsRef.current.find(a => a.id === assetId)
+								if (!asset) return undefined
+								return { url: `asset:${assetId}`, type: asset.type }
+							},
+							onPreview: (url, alt) =>
+								editor.current?.showImagePreview(url, alt),
+							getAssets: () =>
+								assetsRef.current.map(a => ({ id: a.id, name: a.name })),
+						}),
+					]}
 				/>
 				<EditorToolbar
 					editor={editor}

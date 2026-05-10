@@ -60,7 +60,6 @@ import { createBracketsExtension } from "./autocomplete-brackets"
 import { createLinkDecorations } from "./link-decorations"
 import { createWikilinkDecorations } from "./wikilink-decorations"
 import { createBacklinkDecorations } from "./backlink-decorations"
-import { createImageDecorations } from "./image-decorations"
 import { findExtension, selectMatch } from "./find-extension"
 import { FindPanel } from "./find-panel"
 import { fileDropCursor, clearFileDropCursor } from "./file-drop-cursor"
@@ -207,6 +206,8 @@ interface MarkdownEditorRef {
 
 	openFind(initialQuery?: string): void
 	closeFind(): void
+
+	showImagePreview(url: string, alt: string): void
 }
 
 function useMarkdownEditorRef() {
@@ -325,12 +326,6 @@ function MarkdownEditor(
 		if (external) return { title: external.title, exists: external.exists }
 
 		return undefined
-	}
-
-	let imageResolver = (assetId: string) => {
-		let asset = dataRef.current.assets?.find(a => a.id === assetId)
-		if (!asset) return undefined
-		return { url: `asset:${assetId}`, type: asset.type }
 	}
 
 	let handleImagePreview = (url: string, alt: string) => {
@@ -517,7 +512,6 @@ function MarkdownEditor(
 				id => wikilinkResolverRef.current(id),
 				handleWikilinkNavigate,
 			),
-			createImageDecorations(imageResolver, handleImagePreview),
 			findExtension,
 			fileDropCursor,
 			...(initRef.current.externalExtensions ?? []),
@@ -924,6 +918,7 @@ function MarkdownEditor(
 		refreshDecorations,
 		openFind,
 		closeFind,
+		showImagePreview: handleImagePreview,
 	}))
 
 	let internalRef = useRef<MarkdownEditorRef | null>(null)
@@ -976,6 +971,7 @@ function MarkdownEditor(
 			refreshDecorations,
 			openFind,
 			closeFind,
+			showImagePreview: handleImagePreview,
 		}
 	})
 
