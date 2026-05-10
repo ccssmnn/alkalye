@@ -17,7 +17,7 @@ import { MarkdownEditor, useMarkdownEditorRef } from "@/editor/editor"
 import "@/editor/editor.css"
 import { useEditorSettings } from "@/lib/editor-settings"
 import { getDocumentTitle } from "@/lib/document-utils"
-import { getSpaceGroup } from "@/lib/spaces"
+import { getSpaceGroup } from "@/app/features/spaces"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,

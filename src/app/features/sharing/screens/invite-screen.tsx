@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button"
 import { AuthDialog } from "@/app/features/auth"
 import { UserAccount } from "@/schema"
 import { acceptDocumentInvite, type DocInviteData } from "@/lib/documents"
-import { acceptSpaceInvite, type SpaceInviteData } from "@/lib/spaces"
+import { acceptSpaceInvite, type SpaceInviteData } from "@/app/features/spaces"
 import { testIds } from "@/lib/test-ids"
 
 export { InviteScreen }

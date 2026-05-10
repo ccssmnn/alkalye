@@ -25,7 +25,7 @@ import {
 	makeSpacePublic,
 	makeSpacePrivate,
 	getSpaceGroup,
-} from "@/lib/spaces"
+} from "./spaces"
 import {
 	listCollaborators,
 	hasIndividualShares,

@@ -38,7 +38,7 @@ import { EditorToolbar } from "@/components/editor-toolbar"
 import { DocumentSidebar } from "@/components/document-sidebar"
 import { ListSidebar } from "@/components/list-sidebar"
 import { SidebarDocumentList } from "@/components/sidebar-document-list"
-import { SpaceSelector } from "@/components/space-selector"
+import { SpaceSelector } from "@/app/features/spaces"
 import { SidebarSyncStatus } from "@/components/sidebar-sync-status"
 
 import {

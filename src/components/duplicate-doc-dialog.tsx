@@ -23,7 +23,7 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import { Progress } from "@/components/ui/progress"
-import { SpaceInitials } from "@/components/space-selector"
+import { SpaceInitials } from "@/app/features/spaces"
 import {
 	Asset,
 	ImageAsset,
@@ -32,7 +32,7 @@ import {
 	Space,
 	UserAccount,
 } from "@/schema"
-import { getSpaceGroup } from "@/lib/spaces"
+import { getSpaceGroup } from "@/app/features/spaces"
 
 export { DuplicateDocDialog, duplicateDocument }
 export type { DuplicateDocDialogProps, DuplicateProgress }

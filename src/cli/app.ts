@@ -33,7 +33,7 @@ import {
 	parseSpaceInviteLink,
 	permanentlyDeleteSpace,
 	revokeSpaceInvite,
-} from "@/lib/spaces"
+} from "@/app/features/spaces"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { moveDocumentToSpace } from "@/lib/document-move"
 import {

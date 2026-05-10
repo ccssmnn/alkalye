@@ -41,7 +41,7 @@ import {
 	makeSpacePublic,
 	makeSpacePrivate,
 	getSpaceGroup,
-} from "@/lib/spaces"
+} from "@/app/features/spaces/lib/spaces"
 import { testIds } from "@/lib/test-ids"
 
 export { SpaceShareDialog }

@@ -21,7 +21,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select"
-import { SpaceInitials } from "@/components/space-selector"
+import { SpaceInitials } from "./space-selector"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import {
@@ -30,7 +30,7 @@ import {
 	createSpace,
 	createSpaceDocument,
 } from "@/schema"
-import { getSpaceGroup } from "@/lib/spaces"
+import { getSpaceGroup } from "../lib/spaces"
 
 export { CopyToSyncedDialog }
 export type { CopyToSyncedDialogProps }

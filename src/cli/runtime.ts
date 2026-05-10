@@ -7,7 +7,7 @@ import { co } from "jazz-tools"
 import { createPersonalDocument, parseInviteLink } from "@/lib/documents"
 import { getDocumentTitle } from "@/lib/document-utils"
 import { moveDocumentToSpace } from "@/lib/document-move"
-import { parseSpaceInviteLink } from "@/lib/spaces"
+import { parseSpaceInviteLink } from "@/app/features/spaces"
 import { resolveCliConfig } from "@/cli/config"
 import type { CliConfig } from "@/cli/config"
 import {

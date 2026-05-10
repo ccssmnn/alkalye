@@ -73,7 +73,7 @@ import { getPresentationMode } from "@/lib/presentation"
 import { exportDocument, type ExportAsset } from "@/app/features/import-export"
 import { ShareDialog } from "@/app/features/sharing"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
-import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
+import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { testIds } from "@/lib/test-ids"
 

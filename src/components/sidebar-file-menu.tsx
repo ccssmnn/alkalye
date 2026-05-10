@@ -18,7 +18,7 @@ import {
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { testIds } from "@/lib/test-ids"
 import { MoveToFolderDialog } from "@/components/move-to-folder-dialog"
-import { MoveToSpaceDialog } from "@/components/move-to-space-dialog"
+import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { FileText } from "lucide-react"
 import { modKey } from "@/lib/platform"
 import { Document, UserAccount } from "@/schema"

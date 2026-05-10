@@ -19,11 +19,11 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select"
-import { SpaceInitials } from "@/components/space-selector"
+import { SpaceInitials } from "./space-selector"
 import { Field, FieldLabel } from "@/components/ui/field"
 import { Input } from "@/components/ui/input"
 import { Document, UserAccount, createSpace } from "@/schema"
-import { getSpaceGroup } from "@/lib/spaces"
+import { getSpaceGroup } from "../lib/spaces"
 import { moveDocumentToSpace } from "@/lib/document-move"
 
 export { MoveToSpaceDialog }

@@ -5,10 +5,16 @@ import {
 	DEFAULT_EDITOR_SETTINGS,
 } from "@/app/features/settings/lib/schema"
 import { getRandomWriterName } from "@/app/features/onboarding/lib/random-writer-name"
+import { fetchWelcomeContent } from "@/app/features/onboarding/lib/welcome-content"
 import {
-	fetchWelcomeContent,
-	getSpaceWelcomeContent,
-} from "@/app/features/onboarding/lib/welcome-content"
+	ImageAsset,
+	VideoAsset,
+	Asset,
+	Document,
+	CursorEntry,
+	CursorFeed,
+} from "@/schema/document"
+import { Space } from "@/app/features/spaces/lib/schema"
 
 export {
 	ImageAsset,
@@ -21,9 +27,10 @@ export {
 	UserAccount,
 	CursorEntry,
 	CursorFeed,
-	createSpace,
 	createSpaceDocument,
 }
+
+export { createSpace } from "@/app/features/spaces/lib/create-space"
 
 export { migrateAnonymousData } from "@/app/features/auth/lib/migrate-anonymous-data"
 
@@ -41,58 +48,6 @@ export {
 	ThemePreset,
 	ThemeType,
 } from "@/app/features/themes/lib/schema"
-
-let CursorEntry = z.object({
-	position: z.number(),
-	selectionEnd: z.number().optional(),
-})
-
-let CursorFeed = co.feed(CursorEntry)
-
-let ImageAsset = co.map({
-	type: z.literal("image"),
-	name: z.string(),
-	image: co.image(),
-	createdAt: z.date(),
-})
-
-let VideoAsset = co.map({
-	type: z.literal("video"),
-	name: z.string(),
-	video: co.fileStream(),
-	mimeType: z.string(),
-	muteAudio: z.boolean().optional(),
-	createdAt: z.date(),
-})
-
-let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
-
-let HighlightRange = z.object({
-	// 0-indexed character offset in the full document content
-	start: z.number(),
-	end: z.number(),
-})
-
-let Document = co.map({
-	version: z.literal(1),
-	content: co.plainText(),
-	assets: co.optional(co.list(Asset)),
-	cursors: co.optional(CursorFeed),
-	deletedAt: z.date().optional(),
-	presentationLine: z.number().optional(),
-	highlightRange: HighlightRange.optional(),
-	spaceId: z.string().optional(),
-	createdAt: z.date(),
-	updatedAt: z.date(),
-})
-
-let Space = co.map({
-	name: z.string(),
-	avatar: co.optional(co.image()),
-	documents: co.list(Document),
-	createdAt: z.date(),
-	updatedAt: z.date(),
-})
 
 let UserProfile = co.profile({
 	name: z.string(),
@@ -195,41 +150,6 @@ let UserAccount = co
 			)
 		}
 	})
-
-function createSpace(
-	name: string,
-	userRoot: co.loaded<typeof UserRoot, { spaces: true }>,
-): co.loaded<typeof Space> {
-	let group = Group.create()
-	let now = new Date()
-
-	// Welcome doc is created without spaceId (space.$jazz.id isn't known yet);
-	// it's set right after space creation below.
-	let welcomeContent = getSpaceWelcomeContent(name)
-	let welcomeDoc = createSpaceDocument(group, undefined, welcomeContent)
-
-	let space = Space.create(
-		{
-			name,
-			documents: co.list(Document).create([welcomeDoc], group),
-			createdAt: now,
-			updatedAt: now,
-		},
-		group,
-	)
-
-	welcomeDoc.$jazz.set("spaceId", space.$jazz.id)
-
-	if (!userRoot.spaces) {
-		userRoot.$jazz.set(
-			"spaces",
-			co.list(Space).create([], userRoot.$jazz.owner),
-		)
-	}
-	userRoot.spaces!.$jazz.push(space)
-
-	return space
-}
 
 function createSpaceDocument(
 	spaceGroup: Group,

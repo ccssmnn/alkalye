@@ -81,7 +81,7 @@ import {
 	type LocalFileEntry,
 	getHandleFromDB,
 } from "@/lib/local-file"
-import { CopyToSyncedDialog } from "@/components/copy-to-synced-dialog"
+import { CopyToSyncedDialog } from "@/app/features/spaces"
 import {
 	DropdownMenu,
 	DropdownMenuContent,

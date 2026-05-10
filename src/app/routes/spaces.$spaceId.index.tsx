@@ -1,79 +1,14 @@
-import { createFileRoute, redirect } from "@tanstack/react-router"
-import { co, Group, type ResolveQuery } from "jazz-tools"
-import { Document, Space, createSpaceDocument } from "@/schema"
-import {
-	SpaceNotFound,
-	SpaceUnauthorized,
-} from "@/components/document-error-states"
+import { createFileRoute } from "@tanstack/react-router"
+import { SpaceListScreen, spaceListLoader } from "@/app/features/spaces"
 
 export { Route }
 
-let spaceQuery = {
-	documents: { $each: true, $onError: "catch" },
-} as const satisfies ResolveQuery<typeof Space>
-
 let Route = createFileRoute("/spaces/$spaceId/")({
-	loader: async ({ params }) => {
-		let space = await Space.load(params.spaceId, { resolve: spaceQuery })
-
-		if (!space.$isLoaded) {
-			return { loadingState: space.$jazz.loadingState }
-		}
-
-		if (!space.documents?.$isLoaded) {
-			return { loadingState: "error" as const }
-		}
-
-		// Find most recent non-deleted doc
-		let docs: co.loaded<typeof Document>[] = []
-		for (let doc of space.documents.values()) {
-			if (!doc?.$isLoaded || doc.deletedAt) continue
-			docs.push(doc)
-		}
-		let mostRecentDoc = docs
-			.sort(
-				(a, b) =>
-					new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-			)
-			.at(0)
-
-		if (mostRecentDoc) {
-			throw redirect({
-				to: "/spaces/$spaceId/doc/$id",
-				params: { spaceId: params.spaceId, id: mostRecentDoc.$jazz.id },
-			})
-		}
-
-		// No docs exist - check if user can create (has write access)
-		let spaceGroup =
-			space.$jazz.owner instanceof Group ? space.$jazz.owner : null
-		let canWrite =
-			spaceGroup?.myRole() === "admin" || spaceGroup?.myRole() === "writer"
-
-		if (!canWrite) {
-			// Public space with no docs, can't create - redirect to home
-			throw redirect({ to: "/" })
-		}
-
-		// User can write - create new doc with its own group
-		let newDoc = createSpaceDocument(space.$jazz.owner, params.spaceId, "")
-		space.documents.$jazz.push(newDoc)
-
-		throw redirect({
-			to: "/spaces/$spaceId/doc/$id",
-			params: { spaceId: params.spaceId, id: newDoc.$jazz.id },
-		})
-	},
+	loader: ({ params }) => spaceListLoader(params.spaceId),
 	component: SpaceIndexPage,
 })
 
 function SpaceIndexPage() {
 	let data = Route.useLoaderData()
-
-	if (data.loadingState === "unauthorized") {
-		return <SpaceUnauthorized />
-	}
-
-	// Treat all other loading states as not found
-	return <SpaceNotFound />
+	return <SpaceListScreen loaderData={data} />
 }
