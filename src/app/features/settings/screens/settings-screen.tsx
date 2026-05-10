@@ -56,13 +56,12 @@ import {
 	SelectValue,
 } from "@/components/ui/select"
 import { useTheme, ThemeToggle } from "@/app/components/appearance"
-import { AuthDialog } from "@/components/auth-form"
+import { AuthDialog, wordlist } from "@/app/features/auth"
 import {
 	useEditorSettings,
 	DEFAULT_EDITOR_SETTINGS,
 	type EditorSettingsData,
 } from "@/lib/editor-settings"
-import { wordlist } from "@/lib/wordlist"
 import { Footer } from "@/components/footer"
 import { usePWA, useIsPWAInstalled, PWAInstallDialog } from "@/lib/pwa"
 import { BackupSettings } from "@/app/features/backup"

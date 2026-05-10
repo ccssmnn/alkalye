@@ -14,13 +14,14 @@ export {
 	UserProfile,
 	UserRoot,
 	UserAccount,
-	migrateAnonymousData,
 	CursorEntry,
 	CursorFeed,
 	getRandomWriterName,
 	createSpace,
 	createSpaceDocument,
 }
+
+export { migrateAnonymousData } from "@/app/features/auth/lib/migrate-anonymous-data"
 
 export {
 	Settings,
@@ -256,60 +257,6 @@ function createSpaceDocument(
 	return doc as co.loaded<typeof Document, { content: true }>
 }
 
-async function migrateAnonymousData(
-	anonymousAccount: co.loaded<typeof UserAccount>,
-) {
-	let { root: anonRoot } = await anonymousAccount.$jazz.ensureLoaded({
-		resolve: {
-			root: {
-				documents: { $each: { content: true } },
-				inactiveDocuments: { $each: { content: true } },
-			},
-		},
-	})
-
-	if (!anonRoot) return
-
-	let me = await UserAccount.getMe().$jazz.ensureLoaded({
-		resolve: {
-			root: {
-				documents: true,
-				inactiveDocuments: true,
-			},
-		},
-	})
-
-	if (!me.root) return
-
-	for (let doc of Array.from(anonRoot.documents ?? [])) {
-		if (!doc?.$isLoaded) continue
-		// Skip unaltered welcome docs - new account already has one
-		if (isWelcomeDoc(doc.content?.toString() ?? "")) continue
-		let docGroup = doc.$jazz.owner
-		if (docGroup instanceof Group) {
-			docGroup.addMember(me, "admin")
-		}
-		me.root.documents.$jazz.push(doc)
-	}
-
-	for (let doc of Array.from(anonRoot.inactiveDocuments ?? [])) {
-		if (!doc?.$isLoaded) continue
-		// Skip unaltered welcome docs
-		if (isWelcomeDoc(doc.content?.toString() ?? "")) continue
-		let docGroup = doc.$jazz.owner
-		if (docGroup instanceof Group) {
-			docGroup.addMember(me, "admin")
-		}
-		if (!me.root.inactiveDocuments) {
-			me.root.$jazz.set(
-				"inactiveDocuments",
-				co.list(Document).create([], me.root.$jazz.owner),
-			)
-		}
-		me.root.inactiveDocuments!.$jazz.push(doc)
-	}
-}
-
 let adjectives = [
 	"Wandering",
 	"Dreaming",
@@ -392,8 +339,4 @@ async function fetchWelcomeContent(): Promise<string> {
 	} catch {
 		return FALLBACK_WELCOME_CONTENT
 	}
-}
-
-function isWelcomeDoc(content: string): boolean {
-	return content.startsWith("# Welcome to Alkalye")
 }

@@ -9,7 +9,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { AuthDialog } from "@/components/auth-form"
+import { AuthDialog } from "@/app/features/auth"
 import { ThemeSubmenu, useTheme } from "@/app/components/appearance"
 import { usePWA } from "@/lib/pwa"
 import { useIsOnline } from "@/lib/use-online"

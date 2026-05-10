@@ -12,7 +12,7 @@ import {
 	type Loaded,
 	type Peer,
 } from "jazz-tools"
-import { wordlist } from "@/lib/wordlist"
+import { wordlist } from "@/app/features/auth"
 import { UserAccount } from "@/schema"
 import { AuthError } from "@/cli/errors"
 import { ensureCliKvStore } from "@/cli/kv-store"

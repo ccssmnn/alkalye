@@ -3,7 +3,7 @@ import { Link, useRouter } from "@tanstack/react-router"
 import { FileX, FolderLock, FolderSearch, ShieldOff } from "lucide-react"
 import { useIsAuthenticated } from "jazz-tools/react"
 import { Button } from "@/components/ui/button"
-import { AuthDialog } from "@/components/auth-form"
+import { AuthDialog } from "@/app/features/auth"
 import {
 	Empty,
 	EmptyHeader,

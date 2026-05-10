@@ -10,7 +10,7 @@ import {
 	DialogDescription,
 } from "@/components/ui/dialog"
 import { Textarea } from "@/components/ui/textarea"
-import { wordlist } from "@/lib/wordlist"
+import { wordlist } from "../lib/wordlist"
 import { testIds } from "@/lib/test-ids"
 import { getRandomWriterName } from "@/schema"
 
