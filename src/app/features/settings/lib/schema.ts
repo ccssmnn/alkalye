@@ -1,0 +1,37 @@
+import { co, z } from "jazz-tools"
+
+export { Settings, EditorSettings, DEFAULT_EDITOR_SETTINGS }
+
+let StatsBadgeUnit = z.enum(["words", "sentences", "tasks"])
+
+let EditorSettings = z.object({
+	lineWidth: z.number(),
+	lineHeight: z.number(),
+	letterSpacing: z.number(),
+	fontSize: z.number(),
+	strikethroughDoneTasks: z.boolean(),
+	fadeDoneTasks: z.boolean(),
+	highlightCurrentLine: z.boolean(),
+	autoSortTasks: z.boolean(),
+	showStatsBadge: z.boolean(),
+	statsBadgeUnit: StatsBadgeUnit,
+})
+
+let DEFAULT_EDITOR_SETTINGS: z.infer<typeof EditorSettings> = {
+	lineWidth: 65,
+	lineHeight: 1.8,
+	letterSpacing: 0,
+	fontSize: 18,
+	strikethroughDoneTasks: false,
+	fadeDoneTasks: false,
+	highlightCurrentLine: true,
+	autoSortTasks: false,
+	showStatsBadge: true,
+	statsBadgeUnit: "words",
+}
+
+let Settings = co.map({
+	editor: EditorSettings,
+	defaultPreviewTheme: z.string().optional(),
+	defaultSlideshowTheme: z.string().optional(),
+})
