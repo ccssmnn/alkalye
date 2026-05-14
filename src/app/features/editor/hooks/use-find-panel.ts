@@ -1,5 +1,5 @@
 import { useCallback } from "react"
-import { useNavigate } from "@tanstack/react-router"
+import { useNavigate, useSearch } from "@tanstack/react-router"
 
 export { useFindPanel }
 
@@ -10,8 +10,7 @@ function useFindPanel(): {
 	findFuzzy?: boolean
 	setFind: (updates: FindPanelState) => void
 } {
-	// Use search from URL directly to ensure reactivity
-	let search = getSearchFromUrl()
+	let search = useSearch({ strict: false }) as FindSearchSchema
 	let navigate = useNavigate()
 
 	let findOpen = search.find === true
@@ -21,53 +20,50 @@ function useFindPanel(): {
 
 	let setFind = useCallback(
 		(updates: FindPanelState) => {
-			// Always read current URL state to avoid stale closure issues
-			let currentSearch = getSearchFromUrl()
-			let nextSearch: FindSearchSchema = { ...currentSearch }
+			let next = { ...(search as FindSearchSchema) }
 
 			if (updates.open !== undefined) {
 				if (updates.open) {
-					nextSearch.find = true
+					next.find = true
 				} else {
-					// Clear all find-related params when closing
-					delete nextSearch.find
-					delete nextSearch.q
-					delete nextSearch.case
-					delete nextSearch.fuzzy
+					delete next.find
+					delete next.q
+					delete next.case
+					delete next.fuzzy
 				}
 			}
 
 			if (updates.q !== undefined) {
 				if (updates.q) {
-					nextSearch.q = updates.q
+					next.q = updates.q
 				} else {
-					delete nextSearch.q
+					delete next.q
 				}
 			}
 
 			if (updates.case !== undefined) {
 				if (updates.case) {
-					nextSearch.case = true
+					next.case = true
 				} else {
-					delete nextSearch.case
+					delete next.case
 				}
 			}
 
 			if (updates.fuzzy !== undefined) {
 				if (updates.fuzzy) {
-					nextSearch.fuzzy = true
+					next.fuzzy = true
 				} else {
-					delete nextSearch.fuzzy
+					delete next.fuzzy
 				}
 			}
 
 			void navigate({
 				// eslint-disable-next-line @typescript-eslint/no-explicit-any
-				search: nextSearch as any,
+				search: next as any,
 				replace: true,
 			})
 		},
-		[navigate],
+		[navigate, search],
 	)
 
 	return { findOpen, findQuery, findCase, findFuzzy, setFind }
@@ -80,21 +76,10 @@ interface FindPanelState {
 	fuzzy?: boolean
 }
 
-// Generic search schema that works with any doc route
 interface FindSearchSchema {
 	find?: boolean
 	q?: string
 	case?: boolean
 	fuzzy?: boolean
 	[key: string]: unknown
-}
-
-function getSearchFromUrl(): FindSearchSchema {
-	let params = new URLSearchParams(window.location.search)
-	return {
-		find: params.get("find") === "true" || undefined,
-		q: params.get("q") ?? undefined,
-		case: params.get("case") === "true" || undefined,
-		fuzzy: params.get("fuzzy") === "true" || undefined,
-	}
 }
