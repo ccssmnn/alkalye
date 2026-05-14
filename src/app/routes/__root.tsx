@@ -45,7 +45,7 @@ let Route = createRootRouteWithContext<RouterContext>()({
 function RootComponent() {
 	return (
 		<TooltipProvider>
-			<main className="flex min-h-dvh flex-col">
+			<main className="flex h-full flex-col">
 				<Outlet />
 			</main>
 		</TooltipProvider>
@@ -78,7 +78,7 @@ function ErrorComponent({ error }: { error?: Error }) {
 
 function NotFoundComponent() {
 	return (
-		<div className="bg-background flex min-h-dvh items-center justify-center">
+		<div className="bg-background flex h-full items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>

@@ -27,25 +27,29 @@ function updateKeyboardHeight(height: number) {
 	}
 }
 
-if ("virtualKeyboard" in navigator) {
-	// Chrome/Edge: use VirtualKeyboard API
-	let vk = navigator.virtualKeyboard as VirtualKeyboard
-	vk.overlaysContent = true
-	vk.addEventListener("geometrychange", () => {
-		updateKeyboardHeight(vk.boundingRect.height)
-	})
-} else if (window.visualViewport) {
-	// Safari/iOS: infer keyboard height from viewport resize
-	// Track max viewport height (before keyboard) since innerHeight shrinks with keyboard on iOS
-	let vv = window.visualViewport
-	let maxViewportHeight = vv.height
-	vv.addEventListener("resize", () => {
-		if (vv.height > maxViewportHeight) {
-			maxViewportHeight = vv.height
-		}
-		let keyboardH = maxViewportHeight - vv.height
-		updateKeyboardHeight(keyboardH > 50 ? keyboardH : 0)
-	})
+// Listener setup runs only in real browsers — guards keep this module
+// safe to import from CLI/test/Node contexts.
+if (typeof window !== "undefined" && typeof navigator !== "undefined") {
+	if ("virtualKeyboard" in navigator) {
+		// Chrome/Edge: use VirtualKeyboard API
+		let vk = navigator.virtualKeyboard as VirtualKeyboard
+		vk.overlaysContent = true
+		vk.addEventListener("geometrychange", () => {
+			updateKeyboardHeight(vk.boundingRect.height)
+		})
+	} else if (window.visualViewport) {
+		// Safari/iOS: infer keyboard height from viewport resize
+		// Track max viewport height (before keyboard) since innerHeight shrinks with keyboard on iOS
+		let vv = window.visualViewport
+		let maxViewportHeight = vv.height
+		vv.addEventListener("resize", () => {
+			if (vv.height > maxViewportHeight) {
+				maxViewportHeight = vv.height
+			}
+			let keyboardH = maxViewportHeight - vv.height
+			updateKeyboardHeight(keyboardH > 50 ? keyboardH : 0)
+		})
+	}
 }
 
 let keyboardAwareScrollMargins = ViewPlugin.fromClass(

@@ -1,7 +1,7 @@
 import {
 	getExtensionFromBlob,
 	sanitizeFilename,
-} from "@/app/features/import-export"
+} from "@/app/features/import-export/lib/export"
 import { z } from "zod"
 
 export {

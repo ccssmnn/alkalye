@@ -15,7 +15,7 @@ import {
 	listCollaborators,
 	isDocumentPublic,
 	type Collaborator,
-} from "@/app/features/documents/lib/documents"
+} from "@/app/features/documents"
 import { testIds } from "@/app/lib/test-ids"
 
 export { SidebarCollaboration }

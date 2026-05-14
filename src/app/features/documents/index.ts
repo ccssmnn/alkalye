@@ -63,6 +63,8 @@ export {
 } from "./lib/wikilink-titles"
 export type { ResolvedDoc } from "./lib/wikilink-titles"
 
+export { useWikilinkResolver } from "./lib/use-wikilink-resolver"
+
 export {
 	getDocumentTitle,
 	addCopyToTitle,
@@ -70,8 +72,6 @@ export {
 	formatRelativeDate,
 	countContentMatches,
 } from "./lib/title"
-
-export { sortTaskLists } from "./lib/sort-tasks"
 
 export { handleSaveCopy } from "./lib/save-copy"
 
@@ -112,6 +112,7 @@ export { DocumentSidebar } from "./widgets/document-sidebar"
 export { ListSidebar } from "./widgets/list-sidebar"
 export { Preview } from "./widgets/preview"
 export { SidebarDocumentList } from "./widgets/sidebar-document-list"
+export type { DocWithContent } from "./widgets/sidebar-document-list"
 export { SidebarFileMenu } from "./widgets/sidebar-file-menu"
 export { SidebarViewLinks } from "./widgets/sidebar-view-links"
 export { MoveToFolderDialog } from "./widgets/move-to-folder-dialog"

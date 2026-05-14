@@ -1,5 +1,4 @@
-import { createContext, useContext, useState, useEffect } from "react"
-import { useRegisterSW } from "virtual:pwa-register/react"
+import { createContext, useContext, useState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { Share, Upload } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
@@ -45,43 +44,66 @@ function usePWA(): PWAContextValue {
 }
 
 function usePWAProvider(): PWAContextValue {
-	let {
-		needRefresh: [needRefresh, setNeedRefresh],
-		offlineReady: [offlineReady, setOfflineReady],
-		updateServiceWorker,
-	} = useRegisterSW({
-		onRegisteredSW(swUrl, registration) {
-			console.log("[PWA] Service worker registered:", swUrl)
-			if (registration) {
-				;(
-					window as Window & { __swRegistration?: ServiceWorkerRegistration }
-				).__swRegistration = registration
-			}
-		},
-		onRegisterError(error) {
-			console.error("[PWA] Service worker registration error:", error)
-		},
-		onNeedRefresh() {
-			toast("Update available", {
-				description: "Reload to update to the latest version",
-				duration: Infinity,
-				action: {
-					label: "Reload",
-					onClick: () => updateServiceWorker(true),
-				},
-				onDismiss: () => setNeedRefresh(false),
-			})
-		},
-		onOfflineReady() {
-			if (isMobileDevice() && getPWAInstalledSnapshot()) {
-				toast("Ready to work offline", {
-					description: "App has been cached for offline use",
-					duration: 4000,
+	let [needRefresh, setNeedRefresh] = useState(false)
+	let [offlineReady, setOfflineReady] = useState(false)
+	let updateRef = useRef<(reload?: boolean) => Promise<void>>(() =>
+		Promise.resolve(),
+	)
+
+	// virtual:pwa-register is a Vite virtual module. Dynamic-importing it
+	// inside useEffect keeps this file safe to load in non-Vite contexts
+	// (CLI, Node tests). Outside a browser the effect never runs.
+	useEffect(() => {
+		let cancelled = false
+		import("virtual:pwa-register")
+			.then(({ registerSW }) => {
+				if (cancelled) return
+				let updateSW = registerSW({
+					onRegisteredSW(swUrl, registration) {
+						console.log("[PWA] Service worker registered:", swUrl)
+						if (registration) {
+							;(
+								window as Window & {
+									__swRegistration?: ServiceWorkerRegistration
+								}
+							).__swRegistration = registration
+						}
+					},
+					onRegisterError(error) {
+						console.error("[PWA] Service worker registration error:", error)
+					},
+					onNeedRefresh() {
+						setNeedRefresh(true)
+						toast("Update available", {
+							description: "Reload to update to the latest version",
+							duration: Infinity,
+							action: {
+								label: "Reload",
+								onClick: () => updateSW(true),
+							},
+							onDismiss: () => setNeedRefresh(false),
+						})
+					},
+					onOfflineReady() {
+						setOfflineReady(true)
+						if (isMobileDevice() && getPWAInstalledSnapshot()) {
+							toast("Ready to work offline", {
+								description: "App has been cached for offline use",
+								duration: 4000,
+							})
+						}
+						setTimeout(() => setOfflineReady(false), 4000)
+					},
 				})
-			}
-			setTimeout(() => setOfflineReady(false), 4000)
-		},
-	})
+				updateRef.current = updateSW
+			})
+			.catch(err => {
+				console.warn("[PWA] registration unavailable in this environment", err)
+			})
+		return () => {
+			cancelled = true
+		}
+	}, [])
 
 	async function checkForUpdates() {
 		let registration = (
@@ -95,7 +117,7 @@ function usePWAProvider(): PWAContextValue {
 	return {
 		needRefresh,
 		offlineReady,
-		updateServiceWorker: () => updateServiceWorker(true),
+		updateServiceWorker: () => updateRef.current(true),
 		checkForUpdates,
 	}
 }

@@ -1,6 +1,6 @@
 import { insertNewlineContinueMarkup } from "@codemirror/lang-markdown"
 import { EditorView } from "@codemirror/view"
-import { sortTaskLists } from "@/app/features/documents/lib/sort-tasks"
+import { sortTaskLists } from "./sort-tasks"
 
 export {
 	insertCodeBlock,

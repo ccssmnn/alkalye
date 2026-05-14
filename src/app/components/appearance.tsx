@@ -22,8 +22,10 @@ export type { Theme }
 
 type Theme = "light" | "dark" | "system"
 
-// Apply theme immediately on load to prevent flash
-applyTheme(getStoredTheme())
+// Apply theme immediately on load to prevent flash (browser only).
+if (typeof window !== "undefined" && typeof window.matchMedia === "function") {
+	applyTheme(getStoredTheme())
+}
 
 function useTheme() {
 	let [theme, setThemeState] = useState<Theme>(getStoredTheme)

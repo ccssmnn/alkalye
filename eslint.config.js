@@ -47,6 +47,74 @@ export default [
 		},
 		settings: { react: { version: "detect" } },
 	},
+	{
+		// Features expose a public surface via their barrel (index.ts).
+		// App-level code (widgets, screens, parts, hooks, routes,
+		// top-level components) must go through it.
+		//
+		// Exceptions — these layers legitimately reach past barrels:
+		// - src/app/features/<self>/**: a feature reaches its own internals.
+		// - src/app/features/*/lib/**: internal cross-feature plumbing.
+		//   Lib code often touches schemas + leaf operations, where
+		//   barrels would create load cycles or pull in browser-only code.
+		// - src/schema/**: composes per-feature schemas; barrels cycle.
+		// - src/cli/**: Node runtime; needs surgical imports.
+		files: ["src/**/*.{ts,tsx}"],
+		ignores: ["src/app/features/*/**", "src/schema/**", "src/cli/**"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: [
+								"@/app/features/*/lib/*",
+								"@/app/features/*/widgets/*",
+								"@/app/features/*/screens/*",
+								"@/app/features/*/parts/*",
+								"@/app/features/*/hooks/*",
+							],
+							message:
+								"Import from the feature barrel (@/app/features/<feature>). Deep paths bypass the public interface.",
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		// Same rule applied within feature folders, but only for
+		// cross-feature reaches (a feature can deep-import its own
+		// internals via relative paths, never via the alias).
+		// app-level files (widgets, screens, parts, hooks) inside a
+		// feature must go through the OTHER feature's barrel.
+		files: [
+			"src/app/features/*/widgets/**/*.{ts,tsx}",
+			"src/app/features/*/screens/**/*.{ts,tsx}",
+			"src/app/features/*/parts/**/*.{ts,tsx}",
+			"src/app/features/*/hooks/**/*.{ts,tsx}",
+		],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: [
+								"@/app/features/*/lib/*",
+								"@/app/features/*/widgets/*",
+								"@/app/features/*/screens/*",
+								"@/app/features/*/parts/*",
+								"@/app/features/*/hooks/*",
+							],
+							message:
+								"Import from the feature barrel (@/app/features/<feature>). Deep paths bypass the public interface.",
+						},
+					],
+				},
+			],
+		},
+	},
 	...astro.configs.recommended,
 	{
 		files: ["src/**/*.astro"],

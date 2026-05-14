@@ -4,11 +4,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
 import { UserAccount, Document } from "@/schema"
-import {
-	togglePinned,
-	getTags,
-	getPath,
-} from "@/app/features/editor/lib/frontmatter"
+import { togglePinned, getTags, getPath } from "@/app/features/editor"
 import {
 	getDocumentTitle,
 	isDocumentPinned,
@@ -85,25 +81,25 @@ import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { testIds } from "@/app/lib/test-ids"
 
 export { SidebarDocumentList }
-export type { LoadedDocument }
+export type { DocWithContent }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type DocWithContent = co.loaded<typeof Document, { content: true }>
 type SortMode = "latest" | "alphabetical"
 type TypeFilter = "all" | "document" | "presentation" | "deleted"
 
 interface SidebarDocumentListProps {
-	docs: LoadedDocument[]
+	docs: DocWithContent[]
 	currentDocId: string | undefined
 	isLoading: boolean
 	onDocClick: () => void
-	onDuplicate: (doc: LoadedDocument) => void
-	onDelete: (doc: LoadedDocument) => void
+	onDuplicate: (doc: DocWithContent) => void
+	onDelete: (doc: DocWithContent) => void
 	spaceId?: string
 	spaceGroupId?: string
 }
 
 type ListItem =
-	| { type: "doc"; doc: LoadedDocument; depth: number }
+	| { type: "doc"; doc: DocWithContent; depth: number }
 	| { type: "folder"; path: string; depth: number; docCount: number }
 
 function SidebarDocumentList({
@@ -340,14 +336,14 @@ function DocumentListContent({
 	spaceId,
 	spaceGroupId,
 }: {
-	docs: LoadedDocument[]
+	docs: DocWithContent[]
 	currentDocId: string | undefined
 	searchQuery: string
 	typeFilter: TypeFilter
 	isLoading: boolean
 	onDocClick: () => void
-	onDuplicate: (doc: LoadedDocument) => void
-	onDelete: (doc: LoadedDocument) => void
+	onDuplicate: (doc: DocWithContent) => void
+	onDelete: (doc: DocWithContent) => void
 	spaceId?: string
 	spaceGroupId?: string
 }) {
@@ -458,12 +454,12 @@ function DocumentItem({
 	spaceId,
 	spaceGroupId,
 }: {
-	doc: LoadedDocument
+	doc: DocWithContent
 	isActive: boolean
 	onClick: () => void
 	searchQuery: string
-	onDuplicate: (doc: LoadedDocument) => void
-	onDelete: (doc: LoadedDocument) => void
+	onDuplicate: (doc: DocWithContent) => void
+	onDelete: (doc: DocWithContent) => void
 	showPath?: boolean
 	existingFolders: string[]
 	depth?: number
@@ -728,7 +724,7 @@ function DeletedDocumentItem({
 	doc,
 	searchQuery,
 }: {
-	doc: LoadedDocument
+	doc: DocWithContent
 	searchQuery: string
 }) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
@@ -882,7 +878,7 @@ function TagsRow({
 	)
 }
 
-function makeTogglePin(doc: LoadedDocument) {
+function makeTogglePin(doc: DocWithContent) {
 	return function handleTogglePin() {
 		if (!doc.content) return
 		let content = doc.content.toString()
@@ -892,7 +888,7 @@ function makeTogglePin(doc: LoadedDocument) {
 	}
 }
 
-function makeDownloadDocument(doc: LoadedDocument, title: string) {
+function makeDownloadDocument(doc: DocWithContent, title: string) {
 	return async function handleDownloadDocument() {
 		let docAssets = await loadDocumentAssets(doc)
 		await exportDocument(
@@ -904,7 +900,7 @@ function makeDownloadDocument(doc: LoadedDocument, title: string) {
 }
 
 function makeLeaveDocument(
-	doc: LoadedDocument,
+	doc: DocWithContent,
 	me: ReturnType<
 		typeof useAccount<typeof UserAccount, { root: { documents: true } }>
 	>,
@@ -944,7 +940,7 @@ async function loadDocumentAssets(
 }
 
 function buildListItems(
-	docs: LoadedDocument[],
+	docs: DocWithContent[],
 	viewMode: "folders" | "flat",
 	isCollapsed: (path: string) => boolean,
 ): ListItem[] {
@@ -952,8 +948,8 @@ function buildListItems(
 		return docs.map(doc => ({ type: "doc" as const, doc, depth: 0 }))
 	}
 
-	let rootDocs: LoadedDocument[] = []
-	let folderDocs = new Map<string, LoadedDocument[]>()
+	let rootDocs: DocWithContent[] = []
+	let folderDocs = new Map<string, DocWithContent[]>()
 
 	for (let doc of docs) {
 		let path = getPath(doc.content?.toString() ?? "")
@@ -986,7 +982,7 @@ function buildListItems(
 	}
 
 	type SortableItem =
-		| { type: "rootDoc"; doc: LoadedDocument; sortDate: Date }
+		| { type: "rootDoc"; doc: DocWithContent; sortDate: Date }
 		| { type: "topFolder"; node: FolderNode; sortDate: Date }
 
 	let sortableItems: SortableItem[] = []
@@ -1087,7 +1083,7 @@ function buildFolderTree(paths: string[]): FolderNode[] {
 function countDocsInTree(
 	node: FolderNode,
 	fullPath: string,
-	folderDocs: Map<string, LoadedDocument[]>,
+	folderDocs: Map<string, DocWithContent[]>,
 ): number {
 	let count = folderDocs.get(fullPath)?.length ?? 0
 
@@ -1099,7 +1095,7 @@ function countDocsInTree(
 	return count
 }
 
-function getExistingFolders(docs: LoadedDocument[]): string[] {
+function getExistingFolders(docs: DocWithContent[]): string[] {
 	let folders = new Set<string>()
 
 	for (let doc of docs) {
@@ -1117,9 +1113,9 @@ function getExistingFolders(docs: LoadedDocument[]): string[] {
 }
 
 function getDocsInFolder(
-	docs: LoadedDocument[],
+	docs: DocWithContent[],
 	folderPath: string,
-): LoadedDocument[] {
+): DocWithContent[] {
 	return docs.filter(doc => {
 		let path = getPath(doc.content?.toString() ?? "")
 		if (!path) return false

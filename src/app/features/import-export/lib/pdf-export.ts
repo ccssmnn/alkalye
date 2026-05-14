@@ -12,7 +12,7 @@ import {
 	type LoadedThemes,
 	type ThemesQuery,
 	type ThemePresetType,
-} from "@/app/features/themes"
+} from "@/app/features/themes/lib/document-theme"
 import { getDocumentTitle } from "@/app/features/documents/lib/title"
 
 export { printToPdf }

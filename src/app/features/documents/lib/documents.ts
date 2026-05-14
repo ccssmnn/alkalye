@@ -5,7 +5,7 @@ import { permanentlyDeleteDocument } from "./delete-covalue"
 import {
 	buildDocumentInviteLink,
 	buildDocumentPublicLink,
-} from "@/app/features/sharing"
+} from "@/app/features/sharing/lib/invite-links"
 
 export {
 	createPersonalDocument,

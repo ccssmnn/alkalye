@@ -22,7 +22,7 @@ export {
 
 function DocumentNotFound() {
 	return (
-		<div className="bg-background flex min-h-dvh items-center justify-center">
+		<div className="bg-background flex h-full items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>
@@ -49,7 +49,7 @@ function DocumentUnauthorized() {
 	let [authOpen, setAuthOpen] = useState(false)
 
 	return (
-		<div className="bg-background flex min-h-dvh items-center justify-center">
+		<div className="bg-background flex h-full items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>
@@ -88,7 +88,7 @@ function DocumentUnauthorized() {
 
 function SpaceNotFound() {
 	return (
-		<div className="bg-background flex min-h-dvh items-center justify-center">
+		<div className="bg-background flex h-full items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>
@@ -115,7 +115,7 @@ function SpaceUnauthorized() {
 	let [authOpen, setAuthOpen] = useState(false)
 
 	return (
-		<div className="bg-background flex min-h-dvh items-center justify-center">
+		<div className="bg-background flex h-full items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>

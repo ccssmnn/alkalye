@@ -5,12 +5,20 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			"@": resolve(import.meta.dirname, "src"),
+			// vite-plugin-pwa isn't wired into vitest. Point its virtual
+			// module at a stub so dynamic imports in src/app/lib/pwa.tsx
+			// resolve cleanly in tests.
+			"virtual:pwa-register": resolve(
+				import.meta.dirname,
+				"src/test-stubs/pwa-register.ts",
+			),
 		},
 	},
 	test: {
 		exclude: ["node_modules", ".reference", "e2e"],
 		include: ["src/**/*.test.ts"],
 		environment: "jsdom",
+		setupFiles: ["./src/test-setup.ts"],
 		sequence: {
 			shuffle: false,
 		},

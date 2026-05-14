@@ -1,35 +1,26 @@
-import type { useNavigate } from "@tanstack/react-router"
 import { toast } from "sonner"
-import { getDocumentTitle } from "@/app/features/documents/lib/title"
-import { saveDocumentAs } from "@/app/features/import-export"
-import type { MaybeDocWithContent } from "@/app/features/documents/lib/queries"
 
 export { setupKeyboardShortcuts }
 
 function setupKeyboardShortcuts(opts: {
-	navigate: ReturnType<typeof useNavigate>
-	docId: string
 	toggleLeft: () => void
 	toggleRight: () => void
 	toggleFocusMode: () => void
 	openFind?: () => void
 	onPrintPdf?: () => void
-	docWithContent: MaybeDocWithContent
+	onPreview?: () => void
+	onDownload?: () => void
 }) {
-	function downloadCurrentDocument() {
-		if (!opts.docWithContent?.$isLoaded) return
-		let title = getDocumentTitle(opts.docWithContent)
-		saveDocumentAs(opts.docWithContent.content?.toString() ?? "", title)
-	}
-
 	function showAutosaveToast() {
 		toast("Alkalye saves automatically", {
 			description:
 				"Changes are saved locally and synced to the cloud while you type.",
-			action: {
-				label: "Download",
-				onClick: downloadCurrentDocument,
-			},
+			action: opts.onDownload
+				? {
+						label: "Download",
+						onClick: opts.onDownload,
+					}
+				: undefined,
 			id: "editor-save-shortcut",
 		})
 	}
@@ -41,11 +32,7 @@ function setupKeyboardShortcuts(opts: {
 			(e.key.toLowerCase() === "r" || e.code === "KeyR")
 		) {
 			e.preventDefault()
-			opts.navigate({
-				to: "/doc/$id/preview",
-				params: { id: opts.docId },
-				search: { from: undefined },
-			})
+			opts.onPreview?.()
 			return
 		}
 		if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key.toLowerCase() === "e") {

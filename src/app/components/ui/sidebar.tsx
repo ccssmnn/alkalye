@@ -157,7 +157,7 @@ function SidebarProvider({
 						...style,
 					} as React.CSSProperties
 				}
-				className={cn("group/sidebar-wrapper flex min-h-svh w-full", className)}
+				className={cn("group/sidebar-wrapper flex h-full w-full", className)}
 				{...props}
 			>
 				{children}
@@ -247,7 +247,7 @@ function Sidebar({
 		>
 			<div
 				className={cn(
-					"bg-background fixed inset-y-0 z-10 hidden h-svh w-(--sidebar-width) transition-[left,right,width] duration-200 ease-in lg:flex",
+					"bg-background fixed inset-y-0 z-10 hidden h-full w-(--sidebar-width) transition-[left,right,width] duration-200 ease-in lg:flex",
 					side === "left"
 						? "left-0 group-data-[state=collapsed]:left-[calc(var(--sidebar-width)*-1)]"
 						: "right-0 group-data-[state=collapsed]:right-[calc(var(--sidebar-width)*-1)]",
@@ -318,7 +318,7 @@ function SidebarInset({ className, ...props }: React.ComponentProps<"main">) {
 		<main
 			data-slot="sidebar-inset"
 			className={cn(
-				"bg-background relative flex min-h-svh flex-1 flex-col",
+				"bg-background relative flex h-full flex-1 flex-col",
 				className,
 			)}
 			{...props}

@@ -5,7 +5,7 @@ import {
 	type PresentationItem,
 	type TextSegment,
 } from "../lib/presentation"
-import { type ResolvedDoc } from "@/app/features/documents/lib/wikilink-titles"
+import { type ResolvedDoc } from "@/app/features/documents"
 import { ArrowUp, ArrowDown, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 import {

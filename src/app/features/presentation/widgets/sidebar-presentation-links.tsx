@@ -3,7 +3,7 @@ import { co } from "jazz-tools"
 import { SidebarMenuButton, SidebarMenuItem } from "@/app/components/ui/sidebar"
 import { Presentation, ScrollText } from "lucide-react"
 import { Document } from "@/schema"
-import { canEdit } from "@/app/features/documents/lib/documents"
+import { canEdit } from "@/app/features/documents"
 import { getPresentationMode } from "../lib/presentation"
 
 export { SidebarPresentationLinks }

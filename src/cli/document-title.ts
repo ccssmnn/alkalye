@@ -1,4 +1,4 @@
-import { parseFrontmatter } from "@/app/features/editor/lib/frontmatter"
+import { parseFrontmatter } from "@/app/features/editor"
 
 export { setDocumentTitle }
 

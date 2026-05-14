@@ -2,7 +2,7 @@ import JSZip from "jszip"
 import { type co, FileStream } from "jazz-tools"
 import { z } from "zod"
 import { Theme, ThemeAsset, ThemePreset, ThemeType } from "./schema"
-import { sanitizeFilename } from "@/app/features/import-export"
+import { sanitizeFilename } from "@/app/features/import-export/lib/export"
 
 export { exportTheme, type ThemeExportQuery }
 

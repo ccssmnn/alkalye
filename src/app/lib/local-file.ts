@@ -591,8 +591,11 @@ function createIdbStorage<T>(
 	initialState: T,
 	version: number = 1,
 ): PersistStorage<T> {
+	let hasIdb = typeof indexedDB !== "undefined"
+
 	return {
 		getItem: async function (name): Promise<StorageValue<T> | null> {
+			if (!hasIdb) return null
 			try {
 				let item = await get(name)
 				if (!item) return null
@@ -616,6 +619,7 @@ function createIdbStorage<T>(
 			}
 		},
 		setItem: async function (name, value) {
+			if (!hasIdb) return
 			try {
 				await set(name, value)
 			} catch (error) {
@@ -623,6 +627,7 @@ function createIdbStorage<T>(
 			}
 		},
 		removeItem: async function (name) {
+			if (!hasIdb) return
 			try {
 				await del(name)
 			} catch (error) {

@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react"
 import { ArrowLeft, Loader2, Trash2, Upload, UserRoundPlus } from "lucide-react"
 import Cropper from "react-easy-crop"
 import { Space, UserAccount } from "@/schema"
-import { SpaceShareDialog } from "@/app/features/sharing/widgets/space-share-dialog"
+import { SpaceShareDialog } from "@/app/features/sharing"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Badge } from "@/app/components/ui/badge"
@@ -30,10 +30,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/app/components/ui/select"
-import {
-	SpaceNotFound,
-	SpaceUnauthorized,
-} from "@/app/features/documents/widgets/document-error-states"
+import { SpaceNotFound, SpaceUnauthorized } from "@/app/features/documents"
 import { SpaceBackupSettings } from "@/app/features/backup"
 import {
 	getSpaceGroup,

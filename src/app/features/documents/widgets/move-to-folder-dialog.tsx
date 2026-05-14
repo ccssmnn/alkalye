@@ -11,10 +11,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Document } from "@/schema"
-import {
-	parseFrontmatter,
-	getPath,
-} from "@/app/features/editor/lib/frontmatter"
+import { parseFrontmatter, getPath } from "@/app/features/editor"
 import { cn } from "@/app/lib/cn"
 
 export { MoveToFolderDialog }

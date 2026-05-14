@@ -31,7 +31,12 @@ function applyEditorSettings(settings: EditorSettingsData) {
 	root.dataset.highlightCurrentLine = String(settings.highlightCurrentLine)
 }
 
-applyEditorSettings(DEFAULTS)
+// Apply defaults eagerly to prevent flash. Browser only, and only when
+// DEFAULTS is resolved (in tests, circular imports may leave it undefined
+// at module-eval time — useEditorSettings will apply them later anyway).
+if (typeof document !== "undefined" && DEFAULTS) {
+	applyEditorSettings(DEFAULTS)
+}
 
 function useEditorSettings(settings: SettingsCoMap | null | undefined) {
 	let editorSettings = { ...DEFAULTS, ...settings?.editor }
