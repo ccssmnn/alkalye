@@ -30,7 +30,6 @@ import {
 	useMarkdownEditorRef,
 	type WikilinkDoc,
 } from "@/app/features/editor"
-import "@/app/features/editor/widgets/editor.css"
 import { useEditorSettings } from "@/app/features/editor"
 import { getDocumentTitle, addCopyToTitle } from "../lib/title"
 import { getPath, getTags } from "@/app/features/editor"
@@ -44,6 +43,7 @@ import { SidebarSyncStatus } from "@/app/components/sidebar-sync-status"
 import {
 	SidebarImportExport,
 	handleImportFiles,
+	saveDocumentAs,
 } from "@/app/features/import-export"
 import {
 	DocumentNotFound,
@@ -61,7 +61,8 @@ import {
 import { canEdit, isDocumentPublic, getDocumentGroup } from "../lib/documents"
 import { deletePersonalDocument } from "../lib/documents"
 import { useBacklinkSync } from "../lib/backlink-sync"
-import { usePresence } from "@/app/features/editor"
+import { useWikilinkResolver } from "../lib/use-wikilink-resolver"
+import { usePresence } from "@/app/features/sharing"
 import { SidebarProvider, useSidebar } from "@/app/components/ui/sidebar"
 import { HelpCircle, Loader2, Search, Settings, Plus } from "lucide-react"
 
@@ -238,7 +239,10 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		canEncodeVideo().then(setCanUploadVideo)
 	}, [])
 
-	let { updateCursor, remoteCursors } = usePresence({ doc })
+	let { updateCursor, extension: presenceExtension } = usePresence({
+		doc,
+		editorRef: editor,
+	})
 	let assets =
 		doc.assets?.map(a => ({
 			id: a.$jazz.id,
@@ -276,6 +280,14 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	useTrackLastOpened(me, doc)
 
 	let content = doc.content.toString()
+	let resolveWikilink = useWikilinkResolver(content, documents)
+	let handleWikilinkClick = (id: string, newTab: boolean) => {
+		if (newTab) {
+			window.open(`/app/doc/${id}`, "_blank")
+		} else {
+			navigate({ to: "/doc/$id", params: { id } })
+		}
+	}
 	let docTitle = getDocumentTitle(content)
 
 	// Flush pending save when content changes (remote update arrived)
@@ -337,8 +349,6 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 
 	useEffect(() => {
 		return setupKeyboardShortcuts({
-			navigate,
-			docId,
 			toggleLeft,
 			toggleRight,
 			toggleFocusMode: () => {
@@ -355,7 +365,18 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 						: null,
 				})
 			},
-			docWithContent,
+			onPreview: () => {
+				navigate({
+					to: "/doc/$id/preview",
+					params: { id: docId },
+					search: { from: undefined },
+				})
+			},
+			onDownload: () => {
+				if (!docWithContent?.$isLoaded) return
+				let title = getDocumentTitle(docWithContent)
+				saveDocumentAs(docWithContent.content?.toString() ?? "", title)
+			},
 		})
 	}, [
 		navigate,
@@ -477,7 +498,8 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					readOnly={readOnly}
 					assets={assets}
 					documents={documents}
-					remoteCursors={remoteCursors}
+					resolveWikilink={resolveWikilink}
+					onWikilinkClick={handleWikilinkClick}
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
 					onUploadVideo={canUploadVideo ? makeUploadVideo(doc) : undefined}
@@ -495,6 +517,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 								assetsRef.current.map(a => ({ id: a.id, name: a.name })),
 						}),
 						...presentationExtensions(),
+						presenceExtension,
 					]}
 				/>
 				<EditorToolbar

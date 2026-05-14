@@ -2,8 +2,6 @@ import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
 import { ImageOff } from "lucide-react"
 import { toast } from "sonner"
-import { useDocTitles } from "@/app/features/documents/lib/wikilink-titles"
-import { parseWikiLinks } from "../lib/wikilink-parser"
 import {
 	EditorState,
 	Compartment,
@@ -32,10 +30,8 @@ import {
 	undo,
 } from "@codemirror/commands"
 import { syntaxTree } from "@codemirror/language"
-import { useNavigate } from "@tanstack/react-router"
 import { Image as JazzImage } from "jazz-tools/react"
 import { editorExtensions } from "../lib/extensions"
-import { createPresenceExtension, dispatchRemoteCursors } from "../lib/presence"
 import {
 	insertCodeBlock,
 	insertImage,
@@ -87,22 +83,20 @@ import {
 
 export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "../lib/frontmatter"
-export type { MarkdownEditorProps, MarkdownEditorRef, WikilinkDoc }
+export type {
+	MarkdownEditorProps,
+	MarkdownEditorRef,
+	WikilinkDoc,
+	WikilinkResolution,
+}
+
+type WikilinkResolution = { title: string; exists: boolean }
 
 type WikilinkDoc = {
 	id: string
 	title: string
 	path?: string | null
 	tags?: string[]
-}
-
-type RemoteCursor = {
-	id: string
-	sessionId: string
-	name: string
-	color: string
-	position: number
-	selectionEnd?: number
 }
 
 type DropTarget = { pos: number }
@@ -129,7 +123,11 @@ interface MarkdownEditorProps {
 	// Data for decorations (optional = feature detection)
 	assets?: Asset[]
 	documents?: WikilinkDoc[]
-	remoteCursors?: RemoteCursor[]
+
+	// Wikilink integration: caller resolves ids and handles clicks.
+	// Editor owns the [[id]] syntax; documents owns the meaning.
+	resolveWikilink?: (id: string) => WikilinkResolution | undefined
+	onWikilinkClick?: (id: string, newTab: boolean) => void
 
 	// Callbacks (optional = feature detection)
 	onCreateDocument?: (title: string) => Promise<string>
@@ -225,7 +223,8 @@ function MarkdownEditor(
 		onBlur,
 		assets,
 		documents,
-		remoteCursors,
+		resolveWikilink,
+		onWikilinkClick,
 		onCreateDocument,
 		onUploadImage,
 		onUploadVideo,
@@ -237,7 +236,6 @@ function MarkdownEditor(
 		ref,
 	} = props
 
-	let navigate = useNavigate()
 	let isMobile = useIsMobile()
 
 	// Find panel state is URL-driven via hook
@@ -300,34 +298,6 @@ function MarkdownEditor(
 		}
 	}, [findPanelOpen, findPanelHeight])
 
-	let titleCache = new Map<string, { title: string; exists: boolean }>()
-	if (documents) {
-		for (let doc of documents) {
-			titleCache.set(doc.id, { title: doc.title, exists: true })
-		}
-	}
-	let titleCacheRef = useRef(titleCache)
-	useEffect(() => {
-		titleCacheRef.current = titleCache
-	})
-
-	let links = parseWikiLinks(value)
-	let externalWikilinkIds = [
-		...new Set(links.map(l => l.id).filter(id => !titleCache.has(id))),
-	]
-
-	let externalDocs = useDocTitles(externalWikilinkIds)
-
-	let wikilinkResolver = (id: string) => {
-		let local = titleCacheRef.current.get(id)
-		if (local) return local
-
-		let external = externalDocs.get(id)
-		if (external) return { title: external.title, exists: external.exists }
-
-		return undefined
-	}
-
 	let handleImagePreview = (url: string, alt: string) => {
 		let assetId: string | null = null
 		if (url.startsWith("asset:")) {
@@ -337,12 +307,9 @@ function MarkdownEditor(
 		setMediaPreviewOpen(true)
 	}
 
+	let wikilinkResolver = (id: string) => resolveWikilink?.(id)
 	let handleWikilinkNavigate = (id: string, newTab: boolean) => {
-		if (newTab) {
-			window.open(`/app/doc/${id}`, "_blank")
-		} else {
-			navigate({ to: "/doc/$id", params: { id } })
-		}
+		onWikilinkClick?.(id, newTab)
 	}
 
 	let wikilinkResolverRef = useRef(wikilinkResolver)
@@ -501,7 +468,6 @@ function MarkdownEditor(
 				}
 			}),
 			// Feature extensions
-			createPresenceExtension(),
 			createBracketsExtension(),
 			createLinkDecorations(),
 			createWikilinkDecorations(
@@ -544,12 +510,6 @@ function MarkdownEditor(
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally run once
 	}, [])
-
-	useEffect(() => {
-		if (view && remoteCursors) {
-			dispatchRemoteCursors(view, remoteCursors)
-		}
-	}, [view, remoteCursors])
 
 	useEffect(() => {
 		let dom = containerRef.current
@@ -698,7 +658,7 @@ function MarkdownEditor(
 		if (view) {
 			view.dispatch({ selection: view.state.selection })
 		}
-	}, [view, documents, externalDocs])
+	}, [view, documents, resolveWikilink])
 
 	useEffect(() => {
 		if (!view) return

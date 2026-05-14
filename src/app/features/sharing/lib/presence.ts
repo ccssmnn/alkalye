@@ -17,9 +17,9 @@ import {
 	StateEffect,
 } from "@codemirror/state"
 import { CursorFeed, Document, UserAccount } from "@/schema"
+import type { MarkdownEditorRef } from "@/app/features/editor"
 
-export { usePresence, createPresenceExtension, dispatchRemoteCursors }
-export type { RemoteCursor }
+export { usePresence }
 
 type RemoteCursor = {
 	id: string
@@ -64,10 +64,11 @@ type CursorDoc = {
 
 type UsePresenceOptions = {
 	doc: co.loaded<typeof Document, { content: true; cursors: true }> | null
+	editorRef: React.RefObject<MarkdownEditorRef | null>
 	enabled?: boolean
 }
 
-function usePresence({ doc, enabled = true }: UsePresenceOptions) {
+function usePresence({ doc, editorRef, enabled = true }: UsePresenceOptions) {
 	let me = useAccount(UserAccount, { resolve: { profile: true } })
 	let updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastPositionRef = useRef<{ pos: number; selEnd?: number } | null>(null)
@@ -120,6 +121,12 @@ function usePresence({ doc, enabled = true }: UsePresenceOptions) {
 	)
 
 	useEffect(() => {
+		let view = editorRef.current?.getEditor()
+		if (!view) return
+		view.dispatch({ effects: setRemoteCursorsEffect.of(remoteCursors) })
+	}, [editorRef, remoteCursors])
+
+	useEffect(() => {
 		return () => {
 			if (updateTimeoutRef.current) {
 				clearTimeout(updateTimeoutRef.current)
@@ -129,19 +136,8 @@ function usePresence({ doc, enabled = true }: UsePresenceOptions) {
 
 	return {
 		updateCursor,
-		remoteCursors,
-		mySessionId,
+		extension: presenceExtension,
 	}
-}
-
-function createPresenceExtension(): Extension {
-	return [remoteCursorsField, cursorDecorationPlugin, cursorStyles]
-}
-
-function dispatchRemoteCursors(view: EditorView, cursors: RemoteCursor[]) {
-	view.dispatch({
-		effects: setRemoteCursorsEffect.of(cursors),
-	})
 }
 
 type CursorPosition = { position: number; selectionEnd?: number }
@@ -295,6 +291,12 @@ let cursorStyles = EditorView.baseTheme({
 		mixBlendMode: "multiply",
 	},
 })
+
+let presenceExtension: Extension = [
+	remoteCursorsField,
+	cursorDecorationPlugin,
+	cursorStyles,
+]
 
 function getColorForId(id: string): string {
 	let hash = 0

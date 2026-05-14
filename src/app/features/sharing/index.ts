@@ -1,3 +1,4 @@
+export { usePresence } from "./lib/presence"
 export { ShareDialog } from "./widgets/share-dialog"
 export { SpaceShareDialog } from "./widgets/space-share-dialog"
 export { SidebarCollaboration } from "./widgets/sidebar-collaboration"

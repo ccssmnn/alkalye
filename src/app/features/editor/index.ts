@@ -1,9 +1,12 @@
+import "./widgets/editor.css"
+
 export {
 	MarkdownEditor,
 	useMarkdownEditorRef,
 	type MarkdownEditorProps,
 	type MarkdownEditorRef,
 	type WikilinkDoc,
+	type WikilinkResolution,
 } from "./widgets/editor"
 export { EditorToolbar } from "./widgets/editor-toolbar"
 export { EditorStatsBadge } from "./widgets/editor-stats-badge"
@@ -52,12 +55,5 @@ export {
 	WIKILINK_REGEX,
 	type WikiLink,
 } from "./lib/wikilink-parser"
-
-export {
-	usePresence,
-	createPresenceExtension,
-	dispatchRemoteCursors,
-	type RemoteCursor,
-} from "./lib/presence"
 
 export { setupKeyboardShortcuts } from "./lib/keyboard-shortcuts"

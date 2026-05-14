@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react"
 import React from "react"
-import { Link, useBlocker } from "@tanstack/react-router"
+import { Link, useBlocker, useNavigate } from "@tanstack/react-router"
 import { useAccount } from "jazz-tools/react"
 import { UserAccount } from "@/schema"
 import {
@@ -9,7 +9,6 @@ import {
 	type WikilinkDoc,
 } from "@/app/features/editor"
 import { presentationExtensions } from "@/app/features/presentation"
-import "@/app/features/editor/widgets/editor.css"
 import { useEditorSettings } from "@/app/features/editor"
 import { getDocumentTitle } from "../lib/title"
 import { EditorToolbar } from "@/app/features/editor"
@@ -95,6 +94,7 @@ import { modKey, altModKey } from "@/app/lib/platform"
 import { Preview } from "../widgets/preview"
 import { parseWikiLinks } from "@/app/features/editor"
 import { useDocTitles, type ResolvedDoc } from "../lib/wikilink-titles"
+import { useWikilinkResolver } from "../lib/use-wikilink-resolver"
 import { toast } from "sonner"
 import { tryCatch } from "@/app/lib/try-catch"
 
@@ -333,6 +333,7 @@ function LocalEditorContent({
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
 	let saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+	let navigate = useNavigate()
 
 	let store = useLocalFileStore()
 	let { theme, setTheme } = useTheme()
@@ -367,6 +368,15 @@ function LocalEditorContent({
 				},
 			]
 		})
+	}
+
+	let resolveWikilink = useWikilinkResolver(content, documents)
+	let handleWikilinkClick = (id: string, newTab: boolean) => {
+		if (newTab) {
+			window.open(`/app/doc/${id}`, "_blank")
+		} else {
+			navigate({ to: "/doc/$id", params: { id } })
+		}
 	}
 
 	useBlocker({
@@ -628,6 +638,8 @@ function LocalEditorContent({
 					onChange={handleChange}
 					placeholder="Start writing..."
 					documents={documents}
+					resolveWikilink={resolveWikilink}
+					onWikilinkClick={handleWikilinkClick}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 					extensions={[...presentationExtensions()]}
 				/>
