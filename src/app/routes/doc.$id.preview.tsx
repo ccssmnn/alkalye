@@ -1,55 +1,19 @@
-import { useEffect } from "react"
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router"
-import { useCoState, useAccount } from "jazz-tools/react"
-import { type ResolveQuery } from "jazz-tools"
-import { Document, UserAccount } from "@/schema"
-import { getDocumentTitle } from "@/lib/document-utils"
-import { altModKey } from "@/lib/platform"
-import { EllipsisIcon, Pencil } from "lucide-react"
+import { createFileRoute } from "@tanstack/react-router"
+import { Document } from "@/schema"
 import {
-	DocumentNotFound,
-	DocumentUnauthorized,
-} from "@/components/document-error-states"
-
-import { Button } from "@/components/ui/button"
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuSeparator,
-	DropdownMenuShortcut,
-	DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { useTheme, ThemeSubmenu } from "@/lib/theme"
-import { Preview } from "@/components/preview"
-import { parseWikiLinks } from "@/editor/wikilink-parser"
-import {
+	DocPreviewScreen,
+	previewResolve,
 	resolveDocTitles,
-	useDocTitles,
 	type ResolvedDoc,
-} from "@/lib/doc-resolver"
-import { printToPdf } from "@/lib/print-to-pdf"
+} from "@/app/features/documents"
+import { parseWikiLinks } from "@/app/features/editor"
 
 export { Route }
-
-let resolve = {
-	content: true,
-	assets: { $each: { image: true } },
-} as const satisfies ResolveQuery<typeof Document>
-
-let themesResolve = {
-	root: {
-		settings: true,
-		themes: {
-			$each: { css: true, template: true, assets: { $each: { data: true } } },
-		},
-	},
-} as const
 
 let Route = createFileRoute("/doc/$id/preview")({
 	loader: async ({ params }) => {
 		let doc = await Document.load(params.id, {
-			resolve,
+			resolve: previewResolve,
 		})
 		if (!doc.$isLoaded) {
 			return {
@@ -66,121 +30,14 @@ let Route = createFileRoute("/doc/$id/preview")({
 
 		return { doc, loadingState: null, wikilinkCache }
 	},
-	component: PreviewPage,
+	component: RouteComponent,
 	validateSearch: (search: Record<string, unknown>) => ({
 		from: search.from as "list" | undefined,
 	}),
 })
 
-function PreviewPage() {
+function RouteComponent() {
 	let { id } = Route.useParams()
-	Route.useSearch()
-	let data = Route.useLoaderData()
-	let navigate = useNavigate()
-
-	let subscribedDoc = useCoState(Document, id, { resolve })
-	let meWithThemes = useAccount(UserAccount, { resolve: themesResolve })
-
-	// Extract content for wikilinks (use loader data as fallback, empty if neither)
-	let content =
-		(subscribedDoc.$isLoaded ? subscribedDoc : data.doc)?.content?.toString() ??
-		""
-	let wikilinkIds = parseWikiLinks(content).map(w => w.id)
-	let wikilinkCache = useDocTitles(wikilinkIds, data.wikilinkCache)
-
-	useEffect(() => {
-		function handleKeyDown(e: KeyboardEvent) {
-			if (!(e.metaKey || e.ctrlKey) || e.shiftKey || e.altKey) return
-			if (e.key.toLowerCase() !== "p") return
-			e.preventDefault()
-			void printToPdf({
-				content,
-				themes: meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
-				defaultPreviewTheme: meWithThemes.$isLoaded
-					? (meWithThemes.root?.settings?.defaultPreviewTheme ?? null)
-					: null,
-			})
-		}
-
-		document.addEventListener("keydown", handleKeyDown)
-		return () => document.removeEventListener("keydown", handleKeyDown)
-	}, [content, meWithThemes])
-
-	// Error states from loader
-	if (!data.doc) {
-		if (data.loadingState === "unauthorized") return <DocumentUnauthorized />
-		return <DocumentNotFound />
-	}
-
-	// Handle live access revocation
-	if (
-		!subscribedDoc.$isLoaded &&
-		subscribedDoc.$jazz.loadingState !== "loading"
-	) {
-		if (subscribedDoc.$jazz.loadingState === "unauthorized")
-			return <DocumentUnauthorized />
-		return <DocumentNotFound />
-	}
-
-	// Fall back to preloaded data while subscription is loading
-	let doc = subscribedDoc.$isLoaded ? subscribedDoc : data.doc
-	let assets = doc.assets?.filter(a => a?.$isLoaded) ?? []
-	let docTitle = getDocumentTitle(content)
-
-	return (
-		<div className="bg-background fixed inset-0 flex flex-col">
-			<TopBar id={id} docTitle={docTitle} />
-			<Preview
-				content={content}
-				assets={assets}
-				wikilinks={wikilinkCache}
-				onExit={() => navigate({ to: "/doc/$id", params: { id } })}
-			/>
-		</div>
-	)
-}
-
-function TopBar({ id, docTitle }: { id: string; docTitle: string }) {
-	let { theme, setTheme } = useTheme()
-
-	return (
-		<div
-			className="border-border relative flex shrink-0 items-center justify-between border-b px-4 py-2"
-			style={{
-				paddingTop: "max(0.5rem, env(safe-area-inset-top))",
-				paddingLeft: "max(1rem, env(safe-area-inset-left))",
-				paddingRight: "max(1rem, env(safe-area-inset-right))",
-			}}
-		>
-			<Button
-				variant="ghost"
-				size="sm"
-				nativeButton={false}
-				render={<Link to="/" />}
-			>
-				Alkalye
-			</Button>
-			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 truncate text-sm font-medium">
-				{docTitle}
-			</span>
-			<DropdownMenu>
-				<DropdownMenuTrigger
-					render={
-						<Button variant="ghost" size="icon" nativeButton={false}>
-							<EllipsisIcon className="size-4" />
-						</Button>
-					}
-				/>
-				<DropdownMenuContent align="end">
-					<DropdownMenuItem render={<Link to="/doc/$id" params={{ id }} />}>
-						<Pencil className="size-4" />
-						Editor
-						<DropdownMenuShortcut>{altModKey}R</DropdownMenuShortcut>
-					</DropdownMenuItem>
-					<DropdownMenuSeparator />
-					<ThemeSubmenu theme={theme} setTheme={setTheme} />
-				</DropdownMenuContent>
-			</DropdownMenu>
-		</div>
-	)
+	let loaderData = Route.useLoaderData()
+	return <DocPreviewScreen id={id} loaderData={loaderData} />
 }

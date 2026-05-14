@@ -10,3 +10,4 @@ example
 .claude
 .vercel
 agents
+tsconfig.tsbuildinfo

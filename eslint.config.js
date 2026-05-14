@@ -47,6 +47,96 @@ export default [
 		},
 		settings: { react: { version: "detect" } },
 	},
+	{
+		// Features expose a public surface via their barrel (index.ts).
+		// App-level code (widgets, screens, parts, hooks, routes,
+		// top-level components) must go through it.
+		//
+		// Exceptions — these layers legitimately reach past barrels:
+		// - src/app/features/<self>/**: a feature reaches its own internals.
+		// - src/app/features/*/lib/**: internal cross-feature plumbing.
+		//   Lib code often touches schemas + leaf operations, where
+		//   barrels would create load cycles or pull in browser-only code.
+		// - src/schema/**: composes per-feature schemas; barrels cycle.
+		// - src/cli/**: Node runtime; needs surgical imports.
+		files: ["src/**/*.{ts,tsx}"],
+		ignores: ["src/app/features/*/**", "src/schema/**", "src/cli/**"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: [
+								"@/app/features/*/lib/*",
+								"@/app/features/*/widgets/*",
+								"@/app/features/*/screens/*",
+								"@/app/features/*/parts/*",
+								"@/app/features/*/hooks/*",
+							],
+							message:
+								"Import from the feature barrel (@/app/features/<feature>). Deep paths bypass the public interface.",
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		// Cross-feature discipline for app-level layers inside a feature.
+		// widgets, screens, parts, hooks may only reach other features
+		// through their barrel (index.ts).
+		files: [
+			"src/app/features/*/widgets/**/*.{ts,tsx}",
+			"src/app/features/*/screens/**/*.{ts,tsx}",
+			"src/app/features/*/parts/**/*.{ts,tsx}",
+			"src/app/features/*/hooks/**/*.{ts,tsx}",
+		],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: [
+								"@/app/features/*/lib/*",
+								"@/app/features/*/widgets/*",
+								"@/app/features/*/screens/*",
+								"@/app/features/*/parts/*",
+								"@/app/features/*/hooks/*",
+							],
+							message:
+								"Import from the feature barrel (@/app/features/<feature>). Deep paths bypass the public interface.",
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		// Lib-to-lib cross-feature: may reach into other features' lib/
+		// (for schemas, leaf ops) but NOT into widgets/screens/parts/hooks.
+		files: ["src/app/features/*/lib/**/*.{ts,tsx}"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: [
+								"@/app/features/*/widgets/*",
+								"@/app/features/*/screens/*",
+								"@/app/features/*/parts/*",
+								"@/app/features/*/hooks/*",
+							],
+							message:
+								"Lib code may cross-feature into lib/, but not into widgets/screens/parts/hooks. Use the barrel or move the dependency to lib/.",
+						},
+					],
+				},
+			],
+		},
+	},
 	...astro.configs.recommended,
 	{
 		files: ["src/**/*.astro"],

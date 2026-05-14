@@ -1,0 +1,30 @@
+import { Group, co } from "jazz-tools"
+import { Document } from "./schema"
+
+export { createSpaceDocument }
+
+function createSpaceDocument(
+	spaceGroup: Group,
+	spaceId: string | undefined,
+	content: string = "",
+): co.loaded<typeof Document, { content: true }> {
+	// Create a document-specific group with space group as parent (no role = inherit)
+	// Space members inherit their space role: reader→reader, writer→writer, admin→admin
+	// Doc-level invites go to docGroup, not spaceGroup (so they don't grant space access)
+	let docGroup = Group.create()
+	docGroup.addMember(spaceGroup)
+
+	let now = new Date()
+	let doc = Document.create(
+		{
+			version: 1,
+			content: co.plainText().create(content, docGroup),
+			spaceId,
+			createdAt: now,
+			updatedAt: now,
+		},
+		docGroup,
+	)
+
+	return doc as co.loaded<typeof Document, { content: true }>
+}

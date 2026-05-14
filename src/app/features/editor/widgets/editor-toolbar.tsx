@@ -1,0 +1,451 @@
+import { useEffect, useState } from "react"
+import { Link } from "@tanstack/react-router"
+import type { MarkdownEditorRef } from "./editor"
+import { Button } from "@/app/components/ui/button"
+import {
+	Tooltip,
+	TooltipContent,
+	TooltipTrigger,
+} from "@/app/components/ui/tooltip"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "@/app/components/ui/dropdown-menu"
+import { Separator } from "@/app/components/ui/separator"
+import {
+	Bold,
+	Italic,
+	Code,
+	Heading,
+	List,
+	ListTodo,
+	Link2,
+	Command,
+	EyeOff,
+	Eye,
+	Copy,
+	Check,
+	ListIcon,
+	Wrench,
+	ArrowUpToLine,
+	ArrowDownToLine,
+} from "lucide-react"
+import { Kbd } from "@/app/components/ui/kbd"
+import { isMac, altModKey } from "@/app/lib/platform"
+import { ThemePicker, PresetPicker } from "@/app/features/themes"
+import { cn } from "@/app/lib/cn"
+
+export { EditorToolbar }
+
+interface EditorToolbarProps {
+	editor: React.RefObject<MarkdownEditorRef | null>
+	readOnly?: boolean
+	containerRef?: React.RefObject<HTMLDivElement | null>
+	onToggleLeftSidebar: () => void
+	onToggleRightSidebar: () => void
+	docId?: string
+
+	onSaveCopy?: () => Promise<void>
+	saveCopyState?: "idle" | "saving" | "saved"
+	content?: string
+	onThemeChange?: (newContent: string) => void
+}
+
+function EditorToolbar({
+	editor,
+	readOnly,
+	containerRef,
+	onToggleLeftSidebar,
+	onToggleRightSidebar,
+	docId,
+
+	onSaveCopy,
+	saveCopyState = "idle",
+	content,
+	onThemeChange,
+}: EditorToolbarProps) {
+	let [isAtTop, setIsAtTop] = useState(true)
+
+	useEffect(() => {
+		let viewport = window.visualViewport
+		if (!viewport) return
+
+		function onResize() {
+			if (!viewport) return
+			containerRef?.current?.style.setProperty(
+				"--viewport-height",
+				`${viewport.height}px`,
+			)
+		}
+
+		onResize()
+		viewport.addEventListener("resize", onResize)
+		viewport.addEventListener("scroll", onResize)
+		return () => {
+			viewport.removeEventListener("resize", onResize)
+			viewport.removeEventListener("scroll", onResize)
+		}
+	}, [containerRef])
+
+	useEffect(() => {
+		let canceled = false
+		let cleanup = () => {}
+
+		function attachScrollObserver() {
+			if (canceled) return
+			let view = editor.current?.getEditor()
+			if (!view) {
+				requestAnimationFrame(attachScrollObserver)
+				return
+			}
+
+			let scrollEl = view.scrollDOM
+			function updateScrollState() {
+				let top = scrollEl.scrollTop
+				setIsAtTop(top <= 1)
+			}
+
+			updateScrollState()
+			scrollEl.addEventListener("scroll", updateScrollState, { passive: true })
+			window.addEventListener("resize", updateScrollState)
+			let observer = new ResizeObserver(updateScrollState)
+			observer.observe(scrollEl)
+
+			cleanup = () => {
+				scrollEl.removeEventListener("scroll", updateScrollState)
+				window.removeEventListener("resize", updateScrollState)
+				observer.disconnect()
+			}
+		}
+
+		attachScrollObserver()
+		return () => {
+			canceled = true
+			cleanup()
+		}
+	}, [editor])
+
+	function scrollToTop() {
+		let view = editor.current?.getEditor()
+		if (!view) return
+		view.scrollDOM.scrollTop = 0
+	}
+
+	function scrollToBottom() {
+		let view = editor.current?.getEditor()
+		if (!view) return
+		let maxTop = Math.max(
+			0,
+			view.scrollDOM.scrollHeight - view.scrollDOM.clientHeight,
+		)
+		view.scrollDOM.scrollTop = maxTop
+	}
+
+	return (
+		<div
+			className="editor-toolbar bg-background border-border fixed top-0 right-0 left-0 z-10 flex items-center border-b transition-[right] duration-200 ease-linear"
+			style={{
+				paddingTop: "env(safe-area-inset-top)",
+				paddingLeft: "env(safe-area-inset-left)",
+				paddingRight: "env(safe-area-inset-right)",
+			}}
+		>
+			<div className="border-border flex shrink-0 items-center gap-1 border-r p-2 md:border-r-0">
+				<ToolbarButton
+					icon={<ListIcon />}
+					label="Documents"
+					shortcutShift="E"
+					onClick={onToggleLeftSidebar}
+				/>
+			</div>
+
+			<div className="flex flex-1 items-center justify-center gap-1 overflow-x-auto p-2">
+				{readOnly ? (
+					<>
+						<div className="text-muted-foreground flex shrink-0 items-center gap-1.5 px-2 text-sm">
+							<EyeOff className="size-4" />
+							Read only
+						</div>
+						{onSaveCopy && (
+							<>
+								<Separator
+									orientation="vertical"
+									className="mx-1 h-6 shrink-0"
+								/>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={onSaveCopy}
+									disabled={saveCopyState !== "idle"}
+									className="shrink-0"
+									nativeButton
+								>
+									{saveCopyState === "saved" ? (
+										<>
+											<Check className="mr-1 size-4" />
+											Cloned
+										</>
+									) : (
+										<>
+											<Copy className="mr-1 size-4" />
+											{saveCopyState === "saving" ? "Cloning..." : "Clone"}
+										</>
+									)}
+								</Button>
+							</>
+						)}
+					</>
+				) : (
+					<>
+						<ToolbarButton
+							icon={<Bold />}
+							label="Bold"
+							shortcut="B"
+							onClick={() => editor.current?.toggleBold()}
+						/>
+						<ToolbarButton
+							icon={<Italic />}
+							label="Italic"
+							shortcut="I"
+							onClick={() => editor.current?.toggleItalic()}
+						/>
+						<span className="hidden md:contents">
+							<ToolbarButton
+								icon={<Code />}
+								label="Code"
+								shortcut="E"
+								onClick={() => editor.current?.toggleInlineCode()}
+							/>
+							<DropdownMenu>
+								<Tooltip>
+									<DropdownMenuTrigger
+										render={
+											<TooltipTrigger
+												render={
+													<Button
+														variant="ghost"
+														size="icon"
+														aria-label="Heading"
+														className="shrink-0"
+														nativeButton
+													>
+														<Heading />
+													</Button>
+												}
+											/>
+										}
+									/>
+									<TooltipContent className="flex items-center gap-2">
+										Heading
+										<Kbd>
+											{isMac ? (
+												<>
+													⌥
+													<Command className="size-3" />
+												</>
+											) : (
+												"Ctrl+Alt+"
+											)}
+											1/2/3
+										</Kbd>
+									</TooltipContent>
+								</Tooltip>
+								<DropdownMenuContent align="center">
+									{([1, 2, 3] as const).map(level => (
+										<DropdownMenuItem
+											key={level}
+											onClick={() => editor.current?.setHeading(level)}
+										>
+											H{level}
+											<span className="text-muted-foreground ml-auto text-xs">
+												{altModKey}
+												{level}
+											</span>
+										</DropdownMenuItem>
+									))}
+								</DropdownMenuContent>
+							</DropdownMenu>
+						</span>
+
+						<ToolbarButton
+							icon={<List />}
+							label="Bullet List"
+							shortcutAlt="L"
+							onClick={() => editor.current?.toggleBulletList()}
+						/>
+						<span className="hidden md:contents">
+							<ToolbarButton
+								icon={<ListTodo />}
+								label="Task List"
+								shortcutAlt="⇧L"
+								onClick={() => editor.current?.toggleTaskList()}
+							/>
+							<ToolbarButton
+								icon={<Link2 />}
+								label="Link"
+								shortcut="K"
+								onClick={() => editor.current?.insertLink()}
+							/>
+							{content !== undefined && onThemeChange && (
+								<>
+									<ThemePicker
+										content={content}
+										onThemeChange={onThemeChange}
+										disabled={readOnly}
+									/>
+									<PresetPicker
+										content={content}
+										onPresetChange={onThemeChange}
+										disabled={readOnly}
+									/>
+								</>
+							)}
+						</span>
+					</>
+				)}
+				<ToolbarButton
+					icon={<ArrowUpToLine />}
+					label="Scroll to top"
+					onClick={scrollToTop}
+					className={isAtTop ? "hidden" : "hidden pointer-coarse:inline-flex"}
+				/>
+				<ToolbarButton
+					icon={<ArrowDownToLine />}
+					label="Scroll to bottom"
+					onClick={scrollToBottom}
+					className={isAtTop ? "hidden pointer-coarse:inline-flex" : "hidden"}
+				/>
+				{docId && (
+					<Tooltip>
+						<TooltipTrigger
+							render={
+								<Button
+									variant="ghost"
+									size="icon"
+									aria-label="Preview"
+									className="shrink-0"
+									nativeButton={false}
+									render={
+										<Link
+											to="/doc/$id/preview"
+											params={{ id: docId }}
+											search={{ from: "list" }}
+										/>
+									}
+								>
+									<Eye />
+								</Button>
+							}
+						/>
+						<TooltipContent className="flex items-center gap-2">
+							Preview
+							<Kbd>
+								{isMac ? (
+									<>
+										⇧
+										<Command className="size-3" />
+									</>
+								) : (
+									"Ctrl+Shift+"
+								)}
+								P
+							</Kbd>
+						</TooltipContent>
+					</Tooltip>
+				)}
+			</div>
+
+			<div className="border-border flex shrink-0 items-center gap-1 border-l p-2 md:border-l-0">
+				<ToolbarButton
+					icon={<Wrench />}
+					label="Document tools"
+					shortcutKey="."
+					onClick={onToggleRightSidebar}
+				/>
+			</div>
+		</div>
+	)
+}
+
+interface ToolbarButtonProps {
+	icon: React.ReactNode
+	label: string
+	shortcut?: string
+	shortcutAlt?: string
+	shortcutShift?: string
+	shortcutKey?: string
+	onClick: () => void
+	className?: string
+}
+
+function ToolbarButton({
+	icon,
+	label,
+	shortcut,
+	shortcutAlt,
+	shortcutShift,
+	shortcutKey,
+	onClick,
+	className,
+}: ToolbarButtonProps) {
+	return (
+		<Tooltip>
+			<TooltipTrigger
+				render={
+					<Button
+						variant="ghost"
+						size="icon"
+						onClick={onClick}
+						aria-label={label}
+						className={cn("shrink-0", className)}
+					>
+						{icon}
+					</Button>
+				}
+			/>
+			<TooltipContent className="flex items-center gap-2">
+				{label}
+				{shortcut && (
+					<Kbd>
+						{isMac ? <Command className="size-3" /> : "Ctrl+"}
+						{shortcut}
+					</Kbd>
+				)}
+				{shortcutAlt && (
+					<Kbd>
+						{isMac ? (
+							<>
+								⌥
+								<Command className="size-3" />
+							</>
+						) : (
+							"Ctrl+Alt+"
+						)}
+						{shortcutAlt}
+					</Kbd>
+				)}
+				{shortcutShift && (
+					<Kbd>
+						{isMac ? (
+							<>
+								⇧
+								<Command className="size-3" />
+							</>
+						) : (
+							"Ctrl+Shift+"
+						)}
+						{shortcutShift}
+					</Kbd>
+				)}
+				{shortcutKey && (
+					<Kbd>
+						{isMac ? <Command className="size-3" /> : "Ctrl+"}
+						{shortcutKey}
+					</Kbd>
+				)}
+			</TooltipContent>
+		</Tooltip>
+	)
+}

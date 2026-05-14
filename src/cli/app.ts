@@ -2,21 +2,23 @@ import { Command, Options } from "@effect/cli"
 import { version as packageVersion } from "@/cli/version"
 import { descriptions } from "@/cli/help"
 import {
+	createPersonalDocument,
+	deletePersonalDocument,
+	permanentlyDeletePersonalDocument,
+	restorePersonalDocument,
+} from "@/app/features/documents"
+import {
 	acceptDocumentInvite,
 	changeCollaboratorRole,
 	createDocumentInvite,
-	createPersonalDocument,
-	deletePersonalDocument,
 	getDocumentOwner,
 	leavePersonalDocument,
 	listCollaborators,
 	makeDocumentPrivate,
 	makeDocumentPublic,
 	parseInviteLink,
-	permanentlyDeletePersonalDocument,
-	restorePersonalDocument,
 	revokeDocumentInvite,
-} from "@/lib/documents"
+} from "@/app/features/sharing"
 import {
 	acceptSpaceInvite,
 	changeSpaceCollaboratorRole,
@@ -33,13 +35,13 @@ import {
 	parseSpaceInviteLink,
 	permanentlyDeleteSpace,
 	revokeSpaceInvite,
-} from "@/lib/spaces"
-import { getDocumentTitle } from "@/lib/document-utils"
-import { moveDocumentToSpace } from "@/lib/document-move"
+} from "@/app/features/spaces"
+import { getDocumentTitle } from "@/app/features/documents"
+import { moveDocumentToSpace } from "@/app/features/documents"
 import {
 	buildDocumentPublicLink,
 	buildSpacePublicLink,
-} from "@/lib/invite-links"
+} from "@/app/features/sharing"
 import { setDocumentTitle } from "@/cli/document-title"
 import { CliUsageError, PermissionError } from "@/cli/errors"
 import {
@@ -520,7 +522,7 @@ let docPurge = Command.make(
 					doc => doc?.$jazz.id === located.doc.$jazz.id,
 				)
 				if (index !== -1) located.space.documents.$jazz.splice(index, 1)
-				let deleteModule = await import("@/lib/delete-covalue")
+				let deleteModule = await import("@/app/features/documents")
 				await deleteModule.permanentlyDeleteDocument(located.doc)
 			} else {
 				let result = await permanentlyDeletePersonalDocument(

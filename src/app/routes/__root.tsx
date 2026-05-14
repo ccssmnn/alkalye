@@ -4,9 +4,9 @@ import {
 	redirect,
 	Link,
 } from "@tanstack/react-router"
-import { TooltipProvider } from "@/components/ui/tooltip"
-import { ErrorUI } from "@/components/ui/error-ui"
-import { Button } from "@/components/ui/button"
+import { TooltipProvider } from "@/app/components/ui/tooltip"
+import { ErrorUI } from "@/app/components/ui/error-ui"
+import { Button } from "@/app/components/ui/button"
 import {
 	Empty,
 	EmptyHeader,
@@ -14,7 +14,7 @@ import {
 	EmptyTitle,
 	EmptyDescription,
 	EmptyContent,
-} from "@/components/ui/empty"
+} from "@/app/components/ui/empty"
 import { FileQuestion } from "lucide-react"
 import type { UserAccount } from "@/schema"
 import type { co } from "jazz-tools"
@@ -45,7 +45,7 @@ let Route = createRootRouteWithContext<RouterContext>()({
 function RootComponent() {
 	return (
 		<TooltipProvider>
-			<main className="flex min-h-dvh flex-col">
+			<main className="flex h-full flex-col">
 				<Outlet />
 			</main>
 		</TooltipProvider>
@@ -78,7 +78,7 @@ function ErrorComponent({ error }: { error?: Error }) {
 
 function NotFoundComponent() {
 	return (
-		<div className="bg-background flex min-h-dvh items-center justify-center">
+		<div className="bg-background flex h-full items-center justify-center">
 			<Empty>
 				<EmptyHeader>
 					<EmptyMedia>

@@ -1,7 +1,6 @@
 import { defineConfig, devices } from "@playwright/test"
 
-let appUrl = "https://alkalye-e2e.localhost"
-let syncUrl = "https://alkalye-sync-e2e.localhost"
+let appUrl = "https://alkalye.localhost"
 
 export default defineConfig({
 	testDir: "./e2e",
@@ -22,23 +21,6 @@ export default defineConfig({
 		{
 			name: "chromium",
 			use: { ...devices["Desktop Chrome"] },
-		},
-	],
-	webServer: [
-		{
-			command: `portless alkalye-sync-e2e sh -c 'bunx jazz-run sync --in-memory --port "$PORT" --host "$HOST"'`,
-			url: syncUrl,
-			reuseExistingServer: !process.env.CI,
-			ignoreHTTPSErrors: true,
-			timeout: 60_000,
-		},
-		{
-			command: `portless alkalye-e2e astro dev`,
-			url: `${appUrl}/app`,
-			env: { PUBLIC_JAZZ_SYNC_SERVER: syncUrl.replace(/^https/, "wss") },
-			reuseExistingServer: !process.env.CI,
-			ignoreHTTPSErrors: true,
-			timeout: 120_000,
 		},
 	],
 })
