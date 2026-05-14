@@ -1,8 +1,5 @@
 import { parseWikiLinks } from "@/app/features/editor/lib/wikilink-parser"
-import type {
-	WikilinkDoc,
-	WikilinkResolution,
-} from "@/app/features/editor/widgets/editor"
+import type { WikilinkDoc, WikilinkResolution } from "@/app/features/editor"
 import { useDocTitles } from "./wikilink-titles"
 
 export { useWikilinkResolver }

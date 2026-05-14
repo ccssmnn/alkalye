@@ -22,8 +22,11 @@ import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { FileText } from "lucide-react"
 import { modKey } from "@/app/lib/platform"
 import { Document, UserAccount } from "@/schema"
-import { canEdit, getDocumentGroup } from "../lib/documents"
-import { leavePersonalDocument } from "../lib/documents"
+import {
+	canEdit,
+	getDocumentGroup,
+	leavePersonalDocument,
+} from "@/app/features/sharing"
 import {
 	parseFrontmatter,
 	togglePinned,

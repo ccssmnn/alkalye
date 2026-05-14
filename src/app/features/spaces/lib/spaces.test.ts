@@ -32,7 +32,7 @@ import {
 	createDocumentInvite,
 	acceptDocumentInvite,
 	parseInviteLink,
-} from "@/app/features/documents/lib/documents"
+} from "@/app/features/sharing/lib/document-sharing"
 import { moveDocumentToSpace } from "@/app/features/documents/lib/document-move"
 
 describe("Space Collaboration", () => {

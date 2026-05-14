@@ -2,41 +2,15 @@
 export { Document, CursorEntry, CursorFeed, HighlightRange } from "./lib/schema"
 export { createSpaceDocument } from "./lib/create-space-document"
 
-// lib
+// lib — document CRUD
 export {
 	createPersonalDocument,
 	deletePersonalDocument,
 	restorePersonalDocument,
 	permanentlyDeletePersonalDocument,
-	createDocumentInvite,
-	revokeDocumentInvite,
-	listCollaborators,
-	acceptDocumentInvite,
-	leavePersonalDocument,
-	parseInviteLink,
-	changeCollaboratorRole,
-	getDocumentGroup,
-	canEdit,
-	getMyRole,
-	isDocumentPublic,
-	makeDocumentPublic,
-	makeDocumentPrivate,
-	getPublicLink,
-	getDocumentOwner,
-	migrateDocumentToGroup,
 	copyDocumentToMyList,
-	getSharingStatus,
-	hasIndividualShares,
 } from "./lib/documents"
-export type {
-	PersonalDocumentOperation,
-	Collaborator,
-	DocInviteData,
-	CollaboratorsResult,
-	DocumentInviteResult,
-	SharingStatus,
-	InviteRole,
-} from "./lib/documents"
+export type { PersonalDocumentOperation } from "./lib/documents"
 
 export { moveDocumentToSpace } from "./lib/document-move"
 export type {
@@ -53,6 +27,7 @@ export {
 } from "./lib/delete-covalue"
 export type { Deletable } from "./lib/delete-covalue"
 
+// lib — wikilinks
 export { useBacklinkSync } from "./lib/backlink-sync"
 
 export {
@@ -65,6 +40,7 @@ export type { ResolvedDoc } from "./lib/wikilink-titles"
 
 export { useWikilinkResolver } from "./lib/use-wikilink-resolver"
 
+// lib — metadata
 export {
 	getDocumentTitle,
 	addCopyToTitle,
@@ -75,6 +51,7 @@ export {
 
 export { handleSaveCopy } from "./lib/save-copy"
 
+// lib — queries
 export {
 	loaderResolve,
 	resolve,
@@ -102,12 +79,6 @@ export type {
 	DuplicateDocDialogProps,
 	DuplicateProgress,
 } from "./widgets/duplicate-doc-dialog"
-export {
-	DocumentNotFound,
-	DocumentUnauthorized,
-	SpaceNotFound,
-	SpaceUnauthorized,
-} from "./widgets/document-error-states"
 export { DocumentSidebar } from "./widgets/document-sidebar"
 export { ListSidebar } from "./widgets/list-sidebar"
 export { Preview } from "./widgets/preview"

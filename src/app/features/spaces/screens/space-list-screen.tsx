@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/react-router"
 import { co, Group, type ResolveQuery } from "jazz-tools"
 import { Document, Space, createSpaceDocument } from "@/schema"
-import { SpaceNotFound, SpaceUnauthorized } from "@/app/features/documents"
+import { SpaceNotFound, SpaceUnauthorized } from "@/app/components/error-states"
 
 export { SpaceListScreen, spaceListLoader, spaceListResolve }
 

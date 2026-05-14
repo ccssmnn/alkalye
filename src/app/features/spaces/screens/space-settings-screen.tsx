@@ -30,7 +30,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/app/components/ui/select"
-import { SpaceNotFound, SpaceUnauthorized } from "@/app/features/documents"
+import { SpaceNotFound, SpaceUnauthorized } from "@/app/components/error-states"
 import { SpaceBackupSettings } from "@/app/features/backup"
 import {
 	getSpaceGroup,

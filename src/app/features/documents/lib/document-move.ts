@@ -1,7 +1,7 @@
 import { Group, co } from "jazz-tools"
 import { Document } from "./schema"
 import { UserAccount } from "@/schema"
-import { getDocumentGroup } from "./documents"
+import { getDocumentGroup } from "@/app/features/sharing/lib/document-sharing"
 import { getSpaceGroup } from "@/app/features/spaces/lib/spaces"
 
 export { moveDocumentToSpace }

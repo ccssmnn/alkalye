@@ -2,21 +2,23 @@ import { Command, Options } from "@effect/cli"
 import { version as packageVersion } from "@/cli/version"
 import { descriptions } from "@/cli/help"
 import {
+	createPersonalDocument,
+	deletePersonalDocument,
+	permanentlyDeletePersonalDocument,
+	restorePersonalDocument,
+} from "@/app/features/documents"
+import {
 	acceptDocumentInvite,
 	changeCollaboratorRole,
 	createDocumentInvite,
-	createPersonalDocument,
-	deletePersonalDocument,
 	getDocumentOwner,
 	leavePersonalDocument,
 	listCollaborators,
 	makeDocumentPrivate,
 	makeDocumentPublic,
 	parseInviteLink,
-	permanentlyDeletePersonalDocument,
-	restorePersonalDocument,
 	revokeDocumentInvite,
-} from "@/app/features/documents"
+} from "@/app/features/sharing"
 import {
 	acceptSpaceInvite,
 	changeSpaceCollaboratorRole,

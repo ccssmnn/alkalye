@@ -8,7 +8,7 @@ import { UserAccount } from "@/schema"
 import {
 	acceptDocumentInvite,
 	type DocInviteData,
-} from "@/app/features/documents"
+} from "../lib/document-sharing"
 import { acceptSpaceInvite, type SpaceInviteData } from "@/app/features/spaces"
 import { testIds } from "@/app/lib/test-ids"
 

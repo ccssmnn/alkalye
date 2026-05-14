@@ -9,7 +9,7 @@ import { EllipsisIcon, Pencil } from "lucide-react"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "../widgets/document-error-states"
+} from "@/app/components/error-states"
 
 import { Button } from "@/app/components/ui/button"
 import {

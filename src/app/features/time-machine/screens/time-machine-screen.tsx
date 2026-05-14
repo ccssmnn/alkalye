@@ -20,7 +20,7 @@ import { getSpaceGroup } from "@/app/features/spaces"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "@/app/features/documents"
+} from "@/app/components/error-states"
 
 import { Button } from "@/app/components/ui/button"
 import {

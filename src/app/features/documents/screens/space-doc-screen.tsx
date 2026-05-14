@@ -50,7 +50,7 @@ import {
 	DocumentUnauthorized,
 	SpaceNotFound,
 	SpaceUnauthorized,
-} from "../widgets/document-error-states"
+} from "@/app/components/error-states"
 
 import {
 	SidebarGroup,
@@ -60,7 +60,11 @@ import {
 	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/app/components/ui/sidebar"
-import { canEdit, isDocumentPublic, getDocumentGroup } from "../lib/documents"
+import {
+	canEdit,
+	isDocumentPublic,
+	getDocumentGroup,
+} from "@/app/features/sharing"
 import { useBacklinkSync } from "../lib/backlink-sync"
 import { useWikilinkResolver } from "../lib/use-wikilink-resolver"
 import { usePresence } from "@/app/features/sharing"

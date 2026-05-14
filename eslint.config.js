@@ -83,11 +83,9 @@ export default [
 		},
 	},
 	{
-		// Same rule applied within feature folders, but only for
-		// cross-feature reaches (a feature can deep-import its own
-		// internals via relative paths, never via the alias).
-		// app-level files (widgets, screens, parts, hooks) inside a
-		// feature must go through the OTHER feature's barrel.
+		// Cross-feature discipline for app-level layers inside a feature.
+		// widgets, screens, parts, hooks may only reach other features
+		// through their barrel (index.ts).
 		files: [
 			"src/app/features/*/widgets/**/*.{ts,tsx}",
 			"src/app/features/*/screens/**/*.{ts,tsx}",
@@ -109,6 +107,30 @@ export default [
 							],
 							message:
 								"Import from the feature barrel (@/app/features/<feature>). Deep paths bypass the public interface.",
+						},
+					],
+				},
+			],
+		},
+	},
+	{
+		// Lib-to-lib cross-feature: may reach into other features' lib/
+		// (for schemas, leaf ops) but NOT into widgets/screens/parts/hooks.
+		files: ["src/app/features/*/lib/**/*.{ts,tsx}"],
+		rules: {
+			"no-restricted-imports": [
+				"error",
+				{
+					patterns: [
+						{
+							group: [
+								"@/app/features/*/widgets/*",
+								"@/app/features/*/screens/*",
+								"@/app/features/*/parts/*",
+								"@/app/features/*/hooks/*",
+							],
+							message:
+								"Lib code may cross-feature into lib/, but not into widgets/screens/parts/hooks. Use the barrel or move the dependency to lib/.",
 						},
 					],
 				},

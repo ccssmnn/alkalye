@@ -70,7 +70,7 @@ import {
 	hasIndividualShares,
 	getDocumentGroup,
 	leavePersonalDocument,
-} from "../lib/documents"
+} from "@/app/features/sharing"
 import { useFolderStore, FolderRow } from "./folder"
 import { getPresentationMode } from "@/app/features/presentation"
 import { exportDocument, type ExportAsset } from "@/app/features/import-export"

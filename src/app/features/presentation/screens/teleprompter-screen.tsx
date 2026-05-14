@@ -6,7 +6,7 @@ import { Document } from "@/schema"
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "@/app/features/documents"
+} from "@/app/components/error-states"
 import {
 	Empty,
 	EmptyHeader,

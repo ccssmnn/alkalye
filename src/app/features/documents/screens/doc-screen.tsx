@@ -48,7 +48,7 @@ import {
 import {
 	DocumentNotFound,
 	DocumentUnauthorized,
-} from "../widgets/document-error-states"
+} from "@/app/components/error-states"
 import { Empty, EmptyHeader, EmptyTitle } from "@/app/components/ui/empty"
 import {
 	SidebarGroup,
@@ -58,8 +58,12 @@ import {
 	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/app/components/ui/sidebar"
-import { canEdit, isDocumentPublic, getDocumentGroup } from "../lib/documents"
 import { deletePersonalDocument } from "../lib/documents"
+import {
+	canEdit,
+	isDocumentPublic,
+	getDocumentGroup,
+} from "@/app/features/sharing"
 import { useBacklinkSync } from "../lib/backlink-sync"
 import { useWikilinkResolver } from "../lib/use-wikilink-resolver"
 import { usePresence } from "@/app/features/sharing"

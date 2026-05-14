@@ -9,6 +9,8 @@ import {
 	createPersonalDocument,
 	deletePersonalDocument,
 	permanentlyDeletePersonalDocument,
+} from "./documents"
+import {
 	createDocumentInvite,
 	acceptDocumentInvite,
 	revokeDocumentInvite,
@@ -25,7 +27,7 @@ import {
 	getSharingStatus,
 	hasIndividualShares,
 	getDocumentOwner,
-} from "./documents"
+} from "@/app/features/sharing/lib/document-sharing"
 import type { co } from "jazz-tools"
 
 describe("Document Collaboration", () => {
