@@ -149,7 +149,8 @@ input[type="search"]::-webkit-search-cancel-button {
 	}
 
 	html {
-		height: 100%;
+		height: var(--app-height, 100dvh);
+		overflow: hidden;
 	}
 	body {
 		@apply bg-background text-foreground font-sans;

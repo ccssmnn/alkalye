@@ -41,8 +41,9 @@ function EditorStatsBadge({ content, settings }: EditorStatsBadgeProps) {
 
 	return (
 		<div
-			className="absolute bottom-3 z-10 transition-[left] duration-200 ease-in"
+			className="absolute z-10 transition-[left] duration-200 ease-in"
 			style={{
+				bottom: "calc(0.75rem + env(safe-area-inset-bottom))",
 				left:
 					leftOpen && !isMobile
 						? "calc(var(--sidebar-width) + 0.75rem)"

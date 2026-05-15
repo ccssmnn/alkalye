@@ -88,6 +88,17 @@ let metaDescription =
 				}
 				if (isStandalone) {
 					sessionStorage.setItem("pwa-session", "1")
+					let setAppHeight = () => {
+						document.documentElement.style.setProperty(
+							"--app-height",
+							window.innerHeight + "px",
+						)
+					}
+					setAppHeight()
+					window.visualViewport?.addEventListener("resize", setAppHeight)
+					window.addEventListener("orientationchange", () =>
+						requestAnimationFrame(setAppHeight),
+					)
 				}
 			})()
 
