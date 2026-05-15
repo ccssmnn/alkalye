@@ -11,13 +11,13 @@ interface VirtualKeyboard extends EventTarget {
 // Track virtual keyboard height for scroll margins
 let keyboardHeight = 0
 let keyboardViews = new Set<EditorView>()
+let editorResizesForKeyboard = false
 
 function updateKeyboardHeight(height: number) {
 	let prevHeight = keyboardHeight
 	keyboardHeight = height
 	for (let view of keyboardViews) {
 		view.requestMeasure()
-		// Re-scroll cursor into view when keyboard appears
 		if (height > 0 && prevHeight === 0) {
 			let { head } = view.state.selection.main
 			view.dispatch({
@@ -38,8 +38,10 @@ if (typeof window !== "undefined" && typeof navigator !== "undefined") {
 			updateKeyboardHeight(vk.boundingRect.height)
 		})
 	} else if (window.visualViewport) {
-		// Safari/iOS: infer keyboard height from viewport resize
-		// Track max viewport height (before keyboard) since innerHeight shrinks with keyboard on iOS
+		// Safari/iOS: infer keyboard height from viewport resize.
+		// Resize the editor container above the keyboard so short
+		// documents remain scrollable.
+		editorResizesForKeyboard = true
 		let vv = window.visualViewport
 		let maxViewportHeight = vv.height
 		vv.addEventListener("resize", () => {
@@ -47,7 +49,12 @@ if (typeof window !== "undefined" && typeof navigator !== "undefined") {
 				maxViewportHeight = vv.height
 			}
 			let keyboardH = maxViewportHeight - vv.height
-			updateKeyboardHeight(keyboardH > 50 ? keyboardH : 0)
+			let height = keyboardH > 50 ? keyboardH : 0
+			document.documentElement.style.setProperty(
+				"--keyboard-height",
+				`${height}px`,
+			)
+			updateKeyboardHeight(height)
 		})
 	}
 }
@@ -69,7 +76,9 @@ let keyboardAwareScrollMargins = ViewPlugin.fromClass(
 				top: 100,
 				bottom: isTouchDevice()
 					? keyboardHeight > 0
-						? keyboardHeight + 50
+						? editorResizesForKeyboard
+							? 50
+							: keyboardHeight + 50
 						: window.innerHeight * 0.5
 					: 100,
 			})),

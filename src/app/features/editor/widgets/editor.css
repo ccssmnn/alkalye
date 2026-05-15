@@ -47,7 +47,7 @@
 	top: calc(var(--toolbar-height) + env(safe-area-inset-top));
 	left: 0;
 	right: 0;
-	bottom: 0;
+	bottom: var(--keyboard-height, 0px);
 	padding-left: env(safe-area-inset-left);
 	padding-right: env(safe-area-inset-right);
 	display: flex;
@@ -102,6 +102,7 @@
 
 .markdown-editor .cm-scroller {
 	overflow: auto !important;
+	overscroll-behavior: contain;
 	padding-bottom: calc(50vh + env(safe-area-inset-bottom));
 	padding-top: var(--find-panel-height, 0px);
 	transition: padding-top 200ms ease-in;
