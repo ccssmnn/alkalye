@@ -443,8 +443,12 @@ function ScaledSlideContainer({
 				let availableW = Math.max(0, container.clientWidth - paddingX)
 				let availableH = Math.max(0, container.clientHeight - paddingY)
 
-				let maxW = availableW * 0.9
-				let maxH = availableH * 0.9
+				let isImageOnly = blocks.every(b =>
+					b.content.every(c => c.type === "image"),
+				)
+				let margin = isImageOnly ? 1 : 0.9
+				let maxW = availableW * margin
+				let maxH = availableH * margin
 
 				let previousWidth = content.style.width
 				let previousHeight = content.style.height
@@ -628,7 +632,7 @@ function ScaledSlideContainer({
 	return (
 		<div
 			ref={containerRef}
-			className="flex flex-1 cursor-pointer items-center justify-center p-8"
+			className="flex flex-1 cursor-pointer items-center justify-center"
 			onClick={onClick}
 		>
 			<div
@@ -1315,10 +1319,8 @@ function getSlideshowBaseCss(): string {
 }
 
 :where([data-mode="slideshow"] .slideshow-image) {
-	max-width: 100%;
-	max-height: 100%;
-	width: auto;
-	height: auto;
+	width: 100%;
+	height: 100%;
 	object-fit: contain;
 }
 
