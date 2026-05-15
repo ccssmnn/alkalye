@@ -56,9 +56,8 @@ function SidebarSyncStatus() {
 				render={
 					<Button
 						variant="ghost"
-						size="sm"
 						nativeButton
-						className="relative h-auto w-full flex-1 justify-start gap-2 px-2 py-2"
+						className="relative h-auto w-full flex-1 justify-start gap-2 px-2 py-2 pointer-fine:h-auto"
 					>
 						<StatusIcon className={statusIconClassName} />
 						<div className="flex min-w-0 flex-1 flex-col items-start gap-0.5">
