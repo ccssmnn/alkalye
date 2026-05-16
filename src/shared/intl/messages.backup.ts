@@ -42,6 +42,7 @@ let baseBackupMessages = messages({
 	"backup.space.adminOnlySet": "Only space admins can set a backup folder.",
 	"backup.error": "Failed to choose folder. Try again.",
 	"backup.clearError": "Failed to clear folder. Try again.",
+	"backup.failed": "Backup failed",
 })
 
 let deBackupMessages = translate(baseBackupMessages, {
@@ -86,4 +87,5 @@ let deBackupMessages = translate(baseBackupMessages, {
 		"Nur Space-Admins können einen Backup-Ordner festlegen.",
 	"backup.error": "Ordnerauswahl fehlgeschlagen. Versuche es erneut.",
 	"backup.clearError": "Fehler beim Löschen des Ordners. Versuche es erneut.",
+	"backup.failed": "Backup fehlgeschlagen",
 })

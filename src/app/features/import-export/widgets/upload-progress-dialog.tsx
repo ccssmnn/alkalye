@@ -30,7 +30,10 @@ function UploadProgressDialog({
 	onCancel,
 }: UploadProgressDialogProps) {
 	let t = useIntl()
-	let phaseLabel = phase === "compressing" ? "Compressing" : "Uploading"
+	let phaseLabel =
+		phase === "compressing"
+			? t("importExport.upload.compressing")
+			: t("importExport.upload.uploading")
 	let percent = Math.round(progress * 100)
 
 	return (

@@ -39,6 +39,7 @@ let baseSpacesMessages = messages({
 	"spaces.copy.submitting": "Copying...",
 	"spaces.copy.errorMissingData":
 		"Failed to copy document: missing data or permission",
+	"spaces.copy.errorGeneric": "Failed to copy document: {$error}",
 	"spaces.loading": "Loading space...",
 	"spaces.settings.title": "Space Settings",
 	"spaces.settings.backButton": "Back",
@@ -101,6 +102,7 @@ let baseSpacesMessages = messages({
 	"spaces.dangerZone.deleteConfirmPhrasePrompt": "Type {$phrase} to confirm:",
 	"spaces.dangerZone.deleteConfirmCancel": "Cancel",
 	"spaces.dangerZone.deleteConfirmSubmit": "Delete permanently",
+	"spaces.dangerZone.deleteConfirmPhrase": "yes, delete permanently",
 })
 
 let deSpacesMessages = translate(baseSpacesMessages, {
@@ -141,6 +143,7 @@ let deSpacesMessages = translate(baseSpacesMessages, {
 	"spaces.copy.submitting": "Wird kopiert...",
 	"spaces.copy.errorMissingData":
 		"Fehler beim Kopieren des Dokuments: Fehlende Daten oder keine Berechtigung",
+	"spaces.copy.errorGeneric": "Fehler beim Kopieren des Dokuments: {$error}",
 	"spaces.loading": "Bereich wird geladen...",
 	"spaces.settings.title": "Raumeinstellungen",
 	"spaces.settings.backButton": "Zurück",
@@ -205,4 +208,5 @@ let deSpacesMessages = translate(baseSpacesMessages, {
 		"Gib {$phrase} ein, um zu bestätigen:",
 	"spaces.dangerZone.deleteConfirmCancel": "Abbrechen",
 	"spaces.dangerZone.deleteConfirmSubmit": "Dauerhaft löschen",
+	"spaces.dangerZone.deleteConfirmPhrase": "ja, dauerhaft löschen",
 })

@@ -80,7 +80,10 @@ function ImportProgressDialog({
 					</p>
 					{phase === "compressing" && (
 						<p className="text-muted-foreground text-center text-xs">
-							{`Processing asset ${assetIndex + 1} of ${totalAssets}`}
+							{t("importExport.progress.processingAsset", {
+								index: String(assetIndex + 1),
+								total: String(totalAssets),
+							})}
 						</p>
 					)}
 				</div>

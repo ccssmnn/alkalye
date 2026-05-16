@@ -15,7 +15,6 @@ import {
 	deImportExportMessages,
 } from "./messages.import-export"
 import { baseSettingsMessages, deSettingsMessages } from "./messages.settings"
-import { baseThemesMessages, deThemesMessages } from "./messages.themes"
 import {
 	basePresentationMessages,
 	dePresentationMessages,
@@ -27,20 +26,23 @@ import {
 
 export { messagesEn, messagesDe }
 
-let messagesEn = merge(
+let enHalf1 = merge(
 	baseCommonMessages,
 	baseAuthMessages,
 	baseDocumentsMessages,
 	baseEditorMessages,
 	baseSharingMessages,
+)
+let enHalf2 = merge(
 	baseSpacesMessages,
 	baseBackupMessages,
 	baseImportExportMessages,
 	baseSettingsMessages,
-	baseThemesMessages,
 	basePresentationMessages,
 	baseOnboardingMessages,
 )
+// @ts-expect-error PairwiseDisjoint exceeds TS inference limits at this key count
+let messagesEn = merge(enHalf1, enHalf2)
 
 let messagesDe = check(
 	messagesEn,
@@ -53,7 +55,6 @@ let messagesDe = check(
 	deBackupMessages,
 	deImportExportMessages,
 	deSettingsMessages,
-	deThemesMessages,
 	dePresentationMessages,
 	deOnboardingMessages,
 )

@@ -236,7 +236,7 @@ function SpaceBackupSettings({ spaceId, isAdmin }: SpaceBackupSettingsProps) {
 			setDirectoryName(handle.name)
 		} catch (e) {
 			if (!(e instanceof Error && e.name === "AbortError")) {
-				setError("Failed to choose folder. Try again.")
+				setError(t("backup.error"))
 				console.error("Failed to select folder:", e)
 			}
 		} finally {

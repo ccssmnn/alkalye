@@ -57,6 +57,7 @@ import {
 } from "@/app/components/ui/tooltip"
 import { Kbd } from "@/app/components/ui/kbd"
 import { cn } from "@/app/lib/cn"
+import { useIntl } from "@/shared/intl/setup"
 
 export { TimeMachineScreen, resolve, settingsResolve }
 export type { ViewMode }
@@ -146,6 +147,7 @@ function TimeMachineContent({
 	initialMode,
 	loaderMe,
 }: TimeMachineContentProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let editor = useMarkdownEditorRef()
 	let restoreDialog = useConfirmDialog()
@@ -353,10 +355,12 @@ function TimeMachineContent({
 				<ConfirmDialog
 					open={restoreDialog.open}
 					onOpenChange={restoreDialog.onOpenChange}
-					title="Restore this version?"
-					description={`Restore document to ${formatEditDate(currentEdit?.madeAt ?? doc.createdAt)} version? This will overwrite the current content.`}
-					confirmLabel="Restore"
-					cancelLabel="Cancel"
+					title={t("timeMachine.restoreTitle")}
+					description={t("timeMachine.restoreDescription", {
+						date: formatEditDate(currentEdit?.madeAt ?? doc.createdAt),
+					})}
+					confirmLabel={t("timeMachine.restoreConfirm")}
+					cancelLabel={t("timeMachine.cancel")}
 					onConfirm={makeTimeMachineRestore({
 						doc,
 						historicalContent: timeMachineContent,
@@ -538,6 +542,8 @@ function TimeMachineToolbar({
 	onCreateCopy,
 	onRestore,
 }: TimeMachineToolbarProps) {
+	let t = useIntl()
+
 	return (
 		<div
 			className="border-border bg-background fixed top-0 right-0 left-0 z-20 flex items-center justify-between border-b px-4 py-2"
@@ -549,15 +555,18 @@ function TimeMachineToolbar({
 		>
 			<Button variant="ghost" size="sm" onClick={onExit} className="gap-1.5">
 				<X className="size-4" />
-				<span className="hidden sm:inline">Exit</span>
+				<span className="hidden sm:inline">{t("timeMachine.exit")}</span>
 			</Button>
 
 			<div className="absolute left-1/2 flex -translate-x-1/2 flex-col items-center">
 				<span className="text-foreground text-sm font-medium">
-					Time Machine
+					{t("timeMachine.title")}
 				</span>
 				<span className="text-muted-foreground text-xs">
-					{formatEditDate(editDate)} by {authorName}
+					{t("timeMachine.dateByAuthor", {
+						date: formatEditDate(editDate),
+						author: authorName,
+					})}
 				</span>
 			</div>
 
@@ -571,10 +580,10 @@ function TimeMachineToolbar({
 				/>
 				<DropdownMenuContent align="end">
 					<DropdownMenuItem onClick={onCreateCopy}>
-						Create Copy
+						{t("timeMachine.createCopy")}
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={onRestore}>
-						Restore This Version
+						{t("timeMachine.restoreThisVersion")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -597,6 +606,7 @@ function TimeMachineBottomBar({
 	editParam,
 	mode,
 }: TimeMachineBottomBarProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 
 	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -797,7 +807,7 @@ function TimeMachineBottomBar({
 
 	let statusText: string
 	if (!hasHistory) {
-		statusText = "No previous versions"
+		statusText = t("timeMachine.noPreviousVersions")
 	} else if (isViewingDay && selectedDay) {
 		let editIndexInDay =
 			selectedDay.edits.findIndex(e => e.index === currentEditIndex) + 1
@@ -808,7 +818,7 @@ function TimeMachineBottomBar({
 
 	let dropdownLabel = isViewingDay
 		? formatDayLabel(selectedDay!.date)
-		: "All history"
+		: t("timeMachine.allHistory")
 
 	return (
 		<div
@@ -879,7 +889,7 @@ function TimeMachineBottomBar({
 							}
 						/>
 						<TooltipContent side="top">
-							Previous edit <Kbd>[</Kbd>
+							{t("timeMachine.previousEdit")} <Kbd>[</Kbd>
 						</TooltipContent>
 					</Tooltip>
 					<Tooltip>
@@ -897,7 +907,7 @@ function TimeMachineBottomBar({
 							}
 						/>
 						<TooltipContent side="top">
-							Next edit <Kbd>]</Kbd>
+							{t("timeMachine.nextEdit")} <Kbd>]</Kbd>
 						</TooltipContent>
 					</Tooltip>
 				</div>
@@ -952,9 +962,15 @@ function HoldButton({
 	showLabel,
 	nativeButton,
 }: HoldButtonProps) {
+	let t = useIntl()
 	let isHolding = holdingDirection === direction
 	let Icon = direction === "prev" ? ChevronLeft : ChevronRight
-	let label = direction === "prev" ? "Previous" : "Next"
+	let label =
+		direction === "prev" ? t("timeMachine.previous") : t("timeMachine.next")
+	let ariaLabel =
+		direction === "prev"
+			? t("timeMachine.previousEdit")
+			: t("timeMachine.nextEdit")
 
 	return (
 		<Button
@@ -966,7 +982,7 @@ function HoldButton({
 			onTouchStart={() => onStartHold(direction)}
 			onTouchEnd={onStopHold}
 			disabled={disabled}
-			aria-label={`${label} edit`}
+			aria-label={ariaLabel}
 			nativeButton={nativeButton}
 			className="relative gap-1 overflow-hidden"
 		>
@@ -1071,6 +1087,7 @@ function DateDropdown({
 	onViewModeChange,
 	className = "",
 }: DateDropdownProps) {
+	let t = useIntl()
 	let totalEdits = dayGroups.reduce((sum, day) => sum + day.edits.length, 0)
 	let { recentDays, olderMonths } = groupDaysByMonth(dayGroups)
 
@@ -1099,7 +1116,7 @@ function DateDropdown({
 					}}
 				>
 					<DropdownMenuRadioItem value="all">
-						All history ({totalEdits})
+						{t("timeMachine.allHistoryCount", { count: String(totalEdits) })}
 					</DropdownMenuRadioItem>
 
 					{recentDays.length > 0 && (

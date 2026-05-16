@@ -116,6 +116,26 @@ let baseCommonMessages = messages({
 	"pwa.updateAction": "Reload",
 	"pwa.offlineReady": "Ready to work offline",
 	"pwa.offlineDescription": "App has been cached for offline use",
+
+	"common.confirm": "Confirm",
+	"common.cancel": "Cancel",
+	"common.copy": "Copy",
+	"common.copied": "Copied!",
+
+	"error.reportIssue": "Report this issue →",
+	"error.showDetails": "Show error details",
+	"error.errorDetails": "Error Details",
+	"error.errorMessage": "Error Message:",
+	"error.stackTrace": "Stack Trace",
+	"error.componentStack": "Component Stack",
+
+	"appearance.theme": "Theme",
+	"appearance.light": "Light",
+	"appearance.dark": "Dark",
+	"appearance.system": "System",
+
+	"common.anonymous": "Anonymous",
+	"common.anonymousUser": "Anonymous user",
 })
 
 let deCommonMessages = translate(baseCommonMessages, {
@@ -240,4 +260,24 @@ let deCommonMessages = translate(baseCommonMessages, {
 	"pwa.updateAction": "Neu laden",
 	"pwa.offlineReady": "Bereit für Offline-Arbeit",
 	"pwa.offlineDescription": "App wurde für Offline-Nutzung gecacht",
+
+	"common.confirm": "Bestätigen",
+	"common.cancel": "Abbrechen",
+	"common.copy": "Kopieren",
+	"common.copied": "Kopiert!",
+
+	"error.reportIssue": "Problem melden →",
+	"error.showDetails": "Fehlerdetails anzeigen",
+	"error.errorDetails": "Fehlerdetails",
+	"error.errorMessage": "Fehlermeldung:",
+	"error.stackTrace": "Stack Trace",
+	"error.componentStack": "Komponentenstapel",
+
+	"appearance.theme": "Design",
+	"appearance.light": "Hell",
+	"appearance.dark": "Dunkel",
+	"appearance.system": "System",
+
+	"common.anonymous": "Anonym",
+	"common.anonymousUser": "Anonymer Nutzer",
 })

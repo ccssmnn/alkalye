@@ -32,7 +32,7 @@ function InviteScreen() {
 		"loading" | "needs-auth" | "accepting" | "success" | "error" | "revoked"
 	>(inviteData ? "loading" : "error")
 	let [error, setError] = useState<string | null>(
-		inviteData ? null : "Invalid invite link",
+		inviteData ? null : t("sharing.invite.invalidLink"),
 	)
 
 	let isSpaceInvite = inviteData?.type === "space"
@@ -67,7 +67,9 @@ function InviteScreen() {
 				setStatus("revoked")
 			} else {
 				setStatus("error")
-				setError(e instanceof Error ? e.message : "Failed to accept invite")
+				setError(
+					e instanceof Error ? e.message : t("sharing.invite.failedToAccept"),
+				)
 			}
 		}
 	}

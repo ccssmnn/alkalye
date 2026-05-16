@@ -14,6 +14,7 @@ let baseOnboardingMessages = messages({
 	"timeMachine.allHistory": "All history",
 	"timeMachine.prevLabel": "Previous",
 	"timeMachine.nextLabel": "Next",
+	"timeMachine.failedToCopyAsset": "Failed to copy asset: {$name}",
 })
 
 let deOnboardingMessages = translate(baseOnboardingMessages, {
@@ -28,4 +29,5 @@ let deOnboardingMessages = translate(baseOnboardingMessages, {
 	"timeMachine.allHistory": "Gesamte Historie",
 	"timeMachine.prevLabel": "Vorherige",
 	"timeMachine.nextLabel": "Nächste",
+	"timeMachine.failedToCopyAsset": "Fehler beim Kopieren des Assets: {$name}",
 })

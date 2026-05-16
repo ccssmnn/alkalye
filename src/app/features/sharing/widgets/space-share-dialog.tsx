@@ -120,7 +120,7 @@ function SpaceShareDialog({
 			await refreshCollaborators()
 		} catch (e) {
 			console.error("Failed to create invite link:", e)
-			toast.error("Failed to create invite link")
+			toast.error(t("sharing.space.link.createFailed"))
 		} finally {
 			setLoading(false)
 		}
@@ -151,7 +151,7 @@ function SpaceShareDialog({
 			navigate({ to: "/" })
 		} catch (e) {
 			console.error("Failed to leave space:", e)
-			toast.error("Failed to leave space")
+			toast.error(t("sharing.space.leaveFailed"))
 		} finally {
 			setLoading(false)
 		}
@@ -171,7 +171,7 @@ function SpaceShareDialog({
 			setSpaceIsPublic(true)
 		} catch (e) {
 			console.error("Failed to make space public:", e)
-			toast.error("Failed to make space public")
+			toast.error(t("sharing.space.publicLink.makeFailed"))
 		} finally {
 			setLoading(false)
 		}
@@ -184,7 +184,7 @@ function SpaceShareDialog({
 			setSpaceIsPublic(false)
 		} catch (e) {
 			console.error("Failed to make space private:", e)
-			toast.error("Failed to make space private")
+			toast.error(t("sharing.space.publicLink.makePrivateFailed"))
 		} finally {
 			setLoading(false)
 		}
@@ -196,7 +196,7 @@ function SpaceShareDialog({
 			await refreshCollaborators()
 		} catch (e) {
 			console.error("Failed to change role:", e)
-			toast.error("Failed to change role")
+			toast.error(t("sharing.space.changeRoleFailed"))
 		}
 	}
 

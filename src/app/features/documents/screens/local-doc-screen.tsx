@@ -111,7 +111,9 @@ function LocalDocScreen() {
 		async function init() {
 			let result = await tryCatch(consumeLaunchQueue())
 			if (!result.ok) {
-				toast.error("Failed to open launched file: " + result.error.message)
+				toast.error(
+					t("doc.localFile.failedToOpen") + " " + result.error.message,
+				)
 				setInitialized(true)
 				return
 			}
@@ -535,13 +537,13 @@ function LocalEditorContent({
 
 		let handle = await getHandleFromDB(fileId)
 		if (!handle) {
-			toast.error("File handle not found")
+			toast.error(t("doc.localFile.fileHandleNotFound"))
 			return
 		}
 
 		let result = await readFileFromHandle(handle)
 		if (!result) {
-			toast.error("Failed to read file")
+			toast.error(t("doc.localFile.failedToRead"))
 			return
 		}
 
@@ -589,7 +591,7 @@ function LocalEditorContent({
 						onClick={handleOpenFile}
 					>
 						<Plus className="size-4" />
-						New Local File
+						{t("doc.sidebar.newLocalFile")}
 					</Button>
 				}
 				footer={<SidebarSyncStatus />}
@@ -660,7 +662,7 @@ function LocalEditorContent({
 						trigger={
 							<Button variant="ghost" size="sm" className="w-full" nativeButton>
 								<HelpCircle />
-								<span>Help</span>
+								<span>{t("help.label")}</span>
 							</Button>
 						}
 						align={isMobile ? "center" : "end"}
@@ -680,7 +682,7 @@ function LocalEditorContent({
 									nativeButton
 								>
 									<Search className="size-4" />
-									Find
+									{t("doc.find")}
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarSeparator />

@@ -79,6 +79,18 @@ let baseSettingsMessages = messages({
 	"settings.language": "Language",
 	"settings.language.en": "English",
 	"settings.language.de": "Deutsch",
+	"settings.numericDefault": "default: {$value}",
+
+	"themes.picker.ariaLabel": "Theme",
+	"themes.picker.tooltip": "Select theme",
+	"themes.label.preview": "Preview Themes",
+	"themes.label.slideshow": "Slideshow Themes",
+	"themes.action.remove": "Remove theme",
+	"themes.preset.ariaLabel": "Preset",
+	"themes.preset.tooltip": "Select preset",
+	"themes.preset.appearance.light": "Light",
+	"themes.preset.appearance.dark": "Dark",
+	"themes.preset.action.remove": "Remove preset (use auto)",
 })
 
 let deSettingsMessages = translate(baseSettingsMessages, {
@@ -159,4 +171,16 @@ let deSettingsMessages = translate(baseSettingsMessages, {
 	"settings.language": "Sprache",
 	"settings.language.en": "English",
 	"settings.language.de": "Deutsch",
+	"settings.numericDefault": "Standard: {$value}",
+
+	"themes.picker.ariaLabel": "Design",
+	"themes.picker.tooltip": "Design wählen",
+	"themes.label.preview": "Vorschau Designs",
+	"themes.label.slideshow": "Präsentation Designs",
+	"themes.action.remove": "Design entfernen",
+	"themes.preset.ariaLabel": "Vorgabe",
+	"themes.preset.tooltip": "Vorgabe wählen",
+	"themes.preset.appearance.light": "Hell",
+	"themes.preset.appearance.dark": "Dunkel",
+	"themes.preset.action.remove": "Vorgabe entfernen (automatisch)",
 })

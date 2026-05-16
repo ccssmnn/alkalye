@@ -195,7 +195,7 @@ function ProfileSection({ me }: ProfileSectionProps) {
 
 	if (!me) return null
 
-	let name = me.profile?.name ?? "Anonymous"
+	let name = me.profile?.name ?? t("common.anonymous")
 
 	return (
 		<section>
@@ -342,7 +342,11 @@ function LanguageSection({ me }: LanguageSectionProps) {
 			</h2>
 			<Select value={currentLanguage} onValueChange={handleLanguageChange}>
 				<SelectTrigger aria-label={t("settings.language")}>
-					<SelectValue />
+					<SelectValue>
+						{currentLanguage === "de"
+							? t("settings.language.de")
+							: t("settings.language.en")}
+					</SelectValue>
 				</SelectTrigger>
 				<SelectContent>
 					<SelectItem value="en">
@@ -943,6 +947,7 @@ function NumericSetting({
 	unit = "",
 	decimals = 0,
 }: NumericSettingProps) {
+	let t = useIntl()
 	let isDefault = Math.abs(value - defaultValue) < 0.001
 
 	function clamp(v: number) {
@@ -970,7 +975,9 @@ function NumericSetting({
 			<div className="flex items-center gap-2">
 				{!isDefault && (
 					<span className="text-muted-foreground text-xs">
-						default: {defaultValue.toFixed(decimals)}
+						{t("settings.numericDefault", {
+							value: defaultValue.toFixed(decimals),
+						})}
 					</span>
 				)}
 				{unit && <span className="text-muted-foreground text-xs">{unit}</span>}

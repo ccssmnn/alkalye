@@ -9,6 +9,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/app/components/ui/card"
+import { useIntl } from "@/shared/intl/setup"
 
 export { ErrorUI }
 
@@ -27,6 +28,7 @@ function ErrorUI({
 	description,
 	actions,
 }: ErrorUIProps) {
+	let t = useIntl()
 	let [copied, setCopied] = useState(false)
 
 	function handleCopyError() {
@@ -62,32 +64,36 @@ function ErrorUI({
 						href="mailto:assmann@hey.com"
 						className="text-primary block text-sm pointer-fine:hover:underline"
 					>
-						Report this issue →
+						{t("error.reportIssue")}
 					</a>
 					{error && (
 						<details className="group">
 							<summary className="text-muted-foreground pointer-fine:hover:text-foreground cursor-pointer text-sm font-medium">
-								Show error details
+								{t("error.showDetails")}
 							</summary>
 							<div className="mt-3 space-y-3">
 								<div className="flex items-center justify-between">
-									<p className="text-xs font-medium">Error Details</p>
+									<p className="text-xs font-medium">
+										{t("error.errorDetails")}
+									</p>
 									<Button variant="ghost" size="xs" onClick={handleCopyError}>
 										{copied ? (
 											<>
 												<Check className="size-3" />
-												Copied!
+												{t("common.copied")}
 											</>
 										) : (
 											<>
 												<Copy className="size-3" />
-												Copy
+												{t("common.copy")}
 											</>
 										)}
 									</Button>
 								</div>
 								<div>
-									<p className="mb-1 text-xs font-medium">Error Message:</p>
+									<p className="mb-1 text-xs font-medium">
+										{t("error.errorMessage")}
+									</p>
 									<pre className="bg-muted overflow-auto rounded p-3 text-xs select-text">
 										{error.message}
 									</pre>
@@ -95,7 +101,7 @@ function ErrorUI({
 								{error.stack && (
 									<details>
 										<summary className="text-muted-foreground pointer-fine:hover:text-foreground cursor-pointer text-xs font-medium">
-											Stack Trace
+											{t("error.stackTrace")}
 										</summary>
 										<pre className="bg-muted mt-2 max-h-40 overflow-auto rounded p-3 text-xs select-text">
 											{error.stack}
@@ -105,7 +111,7 @@ function ErrorUI({
 								{componentStack && (
 									<details>
 										<summary className="text-muted-foreground pointer-fine:hover:text-foreground cursor-pointer text-xs font-medium">
-											Component Stack
+											{t("error.componentStack")}
 										</summary>
 										<pre className="bg-muted mt-2 max-h-40 overflow-auto rounded p-3 text-xs select-text">
 											{componentStack}

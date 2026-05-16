@@ -35,7 +35,7 @@ import {
 } from "./import-progress-dialog"
 import type { DocWithContent } from "@/app/features/documents"
 import { Link } from "@tanstack/react-router"
-import { T } from "@/shared/intl/setup"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { SidebarImportExport, handleImportFiles }
 export type { ImportOptions }
@@ -54,6 +54,7 @@ function SidebarImportExport({
 	docs: DocWithContent[]
 	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 }) {
+	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [importProgress, setImportProgress] = useState<ImportProgress | null>(
 		null,
@@ -68,7 +69,7 @@ function SidebarImportExport({
 			setAbortController(controller)
 			setImportProgress({
 				phase: "reading",
-				currentFile: "Reading files...",
+				currentFile: t("importExport.progress.readingFilesInitial"),
 				fileIndex: 0,
 				totalFiles: 1,
 				assetIndex: 0,

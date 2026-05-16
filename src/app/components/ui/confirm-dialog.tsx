@@ -8,6 +8,7 @@ import {
 	DialogTitle,
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
+import { useIntl } from "@/shared/intl/setup"
 
 export { ConfirmDialog, useConfirmDialog }
 export type { ConfirmDialogProps }
@@ -31,14 +32,18 @@ function ConfirmDialog({
 	onOpenChange,
 	title,
 	description,
-	confirmLabel = "Confirm",
-	cancelLabel = "Cancel",
+	confirmLabel,
+	cancelLabel,
 	variant = "default",
 	onConfirm,
 	children,
 	confirmTestId,
 	cancelTestId,
 }: ConfirmDialogProps) {
+	let t = useIntl()
+	let resolvedConfirmLabel = confirmLabel ?? t("common.confirm")
+	let resolvedCancelLabel = cancelLabel ?? t("common.cancel")
+
 	function handleConfirm() {
 		onConfirm()
 		onOpenChange(false)
@@ -58,14 +63,14 @@ function ConfirmDialog({
 						onClick={() => onOpenChange(false)}
 						data-testid={cancelTestId}
 					>
-						{cancelLabel}
+						{resolvedCancelLabel}
 					</Button>
 					<Button
 						variant={variant === "destructive" ? "destructive" : "default"}
 						onClick={handleConfirm}
 						data-testid={confirmTestId}
 					>
-						{confirmLabel}
+						{resolvedConfirmLabel}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

@@ -102,15 +102,13 @@ function RouterWithJazz() {
 		</>
 	)
 
-	return (
-		<ContextPWAProvider>
-			{locale === "de" ? (
-				<IntlProvider messages={messagesDe} locale="de">
-					{content}
-				</IntlProvider>
-			) : (
-				<IntlProvider>{content}</IntlProvider>
-			)}
-		</ContextPWAProvider>
+	let intlWrapped = <ContextPWAProvider>{content}</ContextPWAProvider>
+
+	return locale === "de" ? (
+		<IntlProvider messages={messagesDe} locale="de">
+			{intlWrapped}
+		</IntlProvider>
+	) : (
+		<IntlProvider>{intlWrapped}</IntlProvider>
 	)
 }

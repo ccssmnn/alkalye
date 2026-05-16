@@ -137,7 +137,7 @@ function MoveToSpaceDialog({
 
 	let currentLocation = currentSpaceId
 		? (spaces.find(s => s.$jazz.id === currentSpaceId)?.name ?? "Space")
-		: "Personal"
+		: t("spaces.move.personal")
 
 	let isDisabled =
 		isSubmitting ||

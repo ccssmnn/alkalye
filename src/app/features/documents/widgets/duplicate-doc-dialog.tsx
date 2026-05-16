@@ -123,6 +123,7 @@ function DuplicateDocDialog({
 				destination: selectedSpace,
 				me,
 				onProgress: setProgress,
+				t,
 			})
 			onDuplicate?.(newDocId, selectedSpace)
 			onOpenChange(false)
@@ -233,12 +234,13 @@ type DuplicateOptions = {
 	destination: SpaceOption | null
 	me: co.loaded<typeof UserAccount, { root: { documents: true; spaces: true } }>
 	onProgress?: (progress: DuplicateProgress) => void
+	t: ReturnType<typeof useIntl>
 }
 
 type LoadedSpace = co.loaded<typeof Space, { documents: true }>
 
 async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
-	let { doc, newName, destination, me, onProgress } = opts
+	let { doc, newName, destination, me, onProgress, t } = opts
 	let content = doc.content?.toString() ?? ""
 	let assets = doc.assets ?? []
 	let totalAssets = assets.filter(
@@ -343,7 +345,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			onProgress?.(progress)
 		} catch (err) {
 			console.error("Failed to copy asset:", err)
-			toast.error(`Failed to copy asset: ${asset.name}`)
+			toast.error(t("timeMachine.failedToCopyAsset", { name: asset.name }))
 		}
 	}
 

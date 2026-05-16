@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react"
 import { AnimatePresence, motion } from "motion/react"
-import { useIntl } from "@/shared/intl/setup"
 
 export { SplashScreen, SplashScreenStatic, useSplashDelay }
 
@@ -69,11 +68,9 @@ function SplashScreen({ show }: { show: boolean }) {
 }
 
 function SplashIcon() {
-	let t = useIntl()
-
 	return (
 		<div className="text-foreground bg-background flex aspect-square size-48 flex-col items-center justify-center rounded-3xl font-mono text-[36px] leading-none font-bold tracking-tighter">
-			{t("app.name")}
+			Alkalye
 		</div>
 	)
 }

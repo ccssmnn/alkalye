@@ -113,7 +113,7 @@ function BackupSubscriber() {
 				setLastBackupAt(new Date().toISOString())
 				setLastError(null)
 			} catch (e) {
-				setLastError(e instanceof Error ? e.message : "Backup failed")
+				setLastError(e instanceof Error ? e.message : t("backup.failed"))
 			} finally {
 				isPushingRef.current = false
 			}

@@ -8,6 +8,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
+	DropdownMenuSub,
+	DropdownMenuSubTrigger,
+	DropdownMenuSubContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 } from "@/app/components/ui/dropdown-menu"
 import { AuthDialog } from "@/app/features/auth"
 import { ThemeSubmenu, useTheme } from "@/app/components/appearance"
@@ -18,6 +23,7 @@ import {
 	ChevronUp,
 	Cloud,
 	CloudOff,
+	Globe,
 	LogOut,
 	Settings,
 	WifiOff,
@@ -31,14 +37,15 @@ function SidebarSyncStatus() {
 	let location = useLocation()
 	let logOut = useLogOut()
 	let isAuthenticated = useIsAuthenticated()
-	let me = useAccount(UserAccount, { resolve: { profile: true } })
+	let me = useAccount(UserAccount, { resolve: { profile: true, root: true } })
 	let [authOpen, setAuthOpen] = useState(false)
 	let isOnline = useIsOnline()
 	let { theme, setTheme } = useTheme()
 	let { needRefresh } = usePWA()
 	let t = useIntl()
 
-	let name = me?.$isLoaded ? me.profile.name.trim() || null : null
+	let rawName = me?.$isLoaded ? me.profile.name.trim() || null : null
+	let name = rawName === "Anonymous user" ? t("common.anonymousUser") : rawName
 	let statusLabel = isAuthenticated
 		? isOnline
 			? t("sync.syncing")
@@ -97,6 +104,14 @@ function SidebarSyncStatus() {
 					</DropdownMenuItem>
 				)}
 				<ThemeSubmenu theme={theme} setTheme={setTheme} />
+				<LanguageSubmenu
+					language={me?.$isLoaded ? (me.root?.language ?? "en") : "en"}
+					setLanguage={lang => {
+						if (me?.$isLoaded && me.root && (lang === "en" || lang === "de")) {
+							me.root.$jazz.set("language", lang)
+						}
+					}}
+				/>
 				{isAuthenticated && (
 					<>
 						<DropdownMenuSeparator />
@@ -113,5 +128,34 @@ function SidebarSyncStatus() {
 				onSuccess={() => navigate({ to: "/" })}
 			/>
 		</DropdownMenu>
+	)
+}
+
+function LanguageSubmenu({
+	language,
+	setLanguage,
+}: {
+	language: string
+	setLanguage: (lang: string) => void
+}) {
+	let t = useIntl()
+
+	return (
+		<DropdownMenuSub>
+			<DropdownMenuSubTrigger>
+				<Globe />
+				{t("settings.language")}
+			</DropdownMenuSubTrigger>
+			<DropdownMenuSubContent>
+				<DropdownMenuRadioGroup value={language} onValueChange={setLanguage}>
+					<DropdownMenuRadioItem value="en">
+						{t("settings.language.en")}
+					</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem value="de">
+						{t("settings.language.de")}
+					</DropdownMenuRadioItem>
+				</DropdownMenuRadioGroup>
+			</DropdownMenuSubContent>
+		</DropdownMenuSub>
 	)
 }

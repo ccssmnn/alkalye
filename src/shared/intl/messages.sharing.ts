@@ -107,6 +107,12 @@ let baseSharingMessages = messages({
 	"sharing.invite.errorReason": "Reason: {$error}",
 	"sharing.invite.errorFallback": "We couldn't process this invite.",
 	"sharing.invite.goToApp": "Go to App",
+
+	"sharing.invite.invalidLink": "Invalid invite link",
+	"sharing.invite.failedToAccept": "Failed to accept invite",
+
+	"sharing.space.leaveFailed": "Failed to leave space",
+	"sharing.space.changeRoleFailed": "Failed to change role",
 })
 
 let deSharingMessages = translate(baseSharingMessages, {
@@ -224,4 +230,10 @@ let deSharingMessages = translate(baseSharingMessages, {
 	"sharing.invite.errorFallback":
 		"Wir konnten diese Einladung nicht verarbeiten.",
 	"sharing.invite.goToApp": "Zur App",
+
+	"sharing.invite.invalidLink": "Ungültiger Einladungslink",
+	"sharing.invite.failedToAccept": "Fehler beim Annehmen der Einladung",
+
+	"sharing.space.leaveFailed": "Fehler beim Verlassen des Spaces",
+	"sharing.space.changeRoleFailed": "Fehler beim Ändern der Rolle",
 })

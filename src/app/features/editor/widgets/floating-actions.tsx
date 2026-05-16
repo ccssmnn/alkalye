@@ -767,6 +767,7 @@ function WikiLinkDialog({
 	onSelectDoc,
 	onCreateAndLink,
 }: WikiLinkDialogProps) {
+	let t = useIntl()
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-sm">
@@ -785,7 +786,7 @@ function WikiLinkDialog({
 				>
 					<div className="relative">
 						<Combobox.Input
-							placeholder="Search documents..."
+							placeholder={t("editor.dialog.searchDocumentsPlaceholder")}
 							className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
 						/>
 					</div>
@@ -818,8 +819,7 @@ function WikiLinkDialog({
 									>
 										<Plus className="text-muted-foreground size-4" />
 										<span>
-											Create &ldquo;
-											<span className="font-medium">{inputValue}</span>&rdquo;
+											{t("editor.dialog.createDocument", { name: inputValue })}
 										</span>
 									</button>
 								)}
@@ -858,6 +858,7 @@ function ImageAction({
 	assets,
 	onUploadAndInsert,
 }: ImageActionProps) {
+	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [inputValue, setInputValue] = useState("")
 
@@ -951,7 +952,7 @@ function ImageAction({
 					>
 						<div className="relative">
 							<Combobox.Input
-								placeholder="Search media..."
+								placeholder={t("editor.dialog.searchMediaPlaceholder")}
 								className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
 							/>
 						</div>

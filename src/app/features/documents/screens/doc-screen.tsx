@@ -383,6 +383,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				let title = getDocumentTitle(docWithContent)
 				saveDocumentAs(docWithContent.content?.toString() ?? "", title)
 			},
+			labels: {
+				autosaveTitle: t("editor.autosave.title"),
+				autosaveDescription: t("editor.autosave.description"),
+				download: t("editor.autosave.download"),
+			},
 		})
 	}, [
 		navigate,
@@ -457,7 +462,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 							}
 						>
 							<Plus />
-							New
+							{t("doc.new")}
 						</Button>
 					</>
 				}
@@ -556,7 +561,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 						trigger={
 							<Button variant="ghost" size="sm" className="w-full" nativeButton>
 								<HelpCircle />
-								<span>Help</span>
+								<span>{t("help.label")}</span>
 							</Button>
 						}
 						align={isMobile ? "center" : "end"}
@@ -576,7 +581,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 									nativeButton
 								>
 									<Search className="size-4" />
-									Find
+									{t("doc.find")}
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarSeparator />

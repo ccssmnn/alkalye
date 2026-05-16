@@ -15,7 +15,7 @@ let baseImportExportMessages = messages({
 	"importExport.progress.creatingDocuments": "Creating documents",
 	"importExport.progress.importing": "Importing documents",
 	"importExport.progress.processingAsset":
-		"Processing asset {index} of {total}",
+		"Processing asset {$index} of {$total}",
 	"importExport.progress.readingFilesInitial": "Reading files...",
 
 	"importExport.upload.compressing": "Compressing",
@@ -39,7 +39,7 @@ let deImportExportMessages = translate(baseImportExportMessages, {
 	"importExport.progress.creatingDocuments": "Erstelle Dokumente",
 	"importExport.progress.importing": "Importiere Dokumente",
 	"importExport.progress.processingAsset":
-		"Verarbeite Asset {index} von {total}",
+		"Verarbeite Asset {$index} von {$total}",
 	"importExport.progress.readingFilesInitial": "Lese Dateien...",
 
 	"importExport.upload.compressing": "Komprimierung",

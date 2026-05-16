@@ -93,6 +93,16 @@ let baseEditorMessages = messages({
 
 	"editor.media.notAvailable": "Media not available",
 	"editor.media.loadingVideo": "Loading video...",
+
+	"editor.dialog.searchDocumentsPlaceholder": "Search documents...",
+	"editor.dialog.searchMediaPlaceholder": "Search media...",
+	"editor.dialog.createDocument": 'Create "{$name}"',
+	"editor.upload.failed": "Failed to upload {$name}",
+
+	"editor.autosave.title": "Alkalye saves automatically",
+	"editor.autosave.description":
+		"Changes are saved locally and synced to the cloud while you type.",
+	"editor.autosave.download": "Download",
 })
 
 let deEditorMessages = translate(baseEditorMessages, {
@@ -186,4 +196,14 @@ let deEditorMessages = translate(baseEditorMessages, {
 
 	"editor.media.notAvailable": "Media nicht verfügbar",
 	"editor.media.loadingVideo": "Lade Video...",
+
+	"editor.dialog.searchDocumentsPlaceholder": "Dokumente suchen...",
+	"editor.dialog.searchMediaPlaceholder": "Medien suchen...",
+	"editor.dialog.createDocument": '"{$name}" erstellen',
+	"editor.upload.failed": "Fehler beim Hochladen von {$name}",
+
+	"editor.autosave.title": "Alkalye speichert automatisch",
+	"editor.autosave.description":
+		"Änderungen werden lokal gespeichert und beim Tippen mit der Cloud synchronisiert.",
+	"editor.autosave.download": "Herunterladen",
 })

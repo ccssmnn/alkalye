@@ -110,7 +110,7 @@ function CopyToSyncedDialog({
 		}
 		docs.$jazz.push(newDoc)
 
-		onCopy?.({ id: "personal", name: "Personal" })
+		onCopy?.({ id: "personal", name: t("spaces.copy.personal") })
 		handleOpenChange(false)
 		void navigate({
 			to: "/doc/$id",
@@ -164,7 +164,9 @@ function CopyToSyncedDialog({
 				}
 			} catch (err) {
 				toast.error(
-					`Failed to copy document: ${err instanceof Error ? err.message : "Unknown error"}`,
+					t("spaces.copy.errorGeneric", {
+						error: err instanceof Error ? err.message : "Unknown error",
+					}),
 				)
 				setIsSubmitting(false)
 			}

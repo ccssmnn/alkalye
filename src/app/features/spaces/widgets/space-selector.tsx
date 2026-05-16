@@ -49,6 +49,7 @@ let currentSpaceQuery = { avatar: true } as const satisfies ResolveQuery<
 >
 
 function SpaceSelector() {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let isAuthenticated = useIsAuthenticated()
 	let navigate = useNavigate()
@@ -68,7 +69,9 @@ function SpaceSelector() {
 
 	// Use current space from list if available, otherwise from URL (for public spaces)
 	let currentSpace = currentSpaceInList ?? currentSpaceFromUrl
-	let displayName = currentSpace?.$isLoaded ? currentSpace.name : "Personal"
+	let displayName = currentSpace?.$isLoaded
+		? currentSpace.name
+		: t("spaces.selector.personal")
 	let isInSpace = currentSpace?.$isLoaded
 
 	// Check if current space is not in user's list (public space they're viewing)
