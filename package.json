@@ -26,6 +26,7 @@
 	},
 	"dependencies": {
 		"@base-ui/react": "^1.1.0",
+		"@ccssmnn/intl": "^0.1.1",
 		"@codemirror/autocomplete": "^6.20.0",
 		"@codemirror/commands": "^6.10.1",
 		"@codemirror/lang-markdown": "^6.5.0",
