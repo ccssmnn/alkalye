@@ -13,6 +13,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { wordlist } from "../lib/wordlist"
 import { testIds } from "@/app/lib/test-ids"
 import { getRandomWriterName } from "@/schema"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { AuthForm, AuthDialog }
 
@@ -32,9 +33,12 @@ function AuthDialog({
 	open,
 	onOpenChange,
 	onSuccess,
-	title = "Sign in",
+	title,
 	description,
 }: AuthDialogProps) {
+	let t = useIntl()
+	let resolvedTitle = title ?? t("auth.dialog.defaultTitle")
+
 	function handleSuccess() {
 		onOpenChange(false)
 		onSuccess?.()
@@ -44,7 +48,7 @@ function AuthDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent data-testid={testIds.auth.dialog}>
 				<DialogHeader>
-					<DialogTitle>{title}</DialogTitle>
+					<DialogTitle>{resolvedTitle}</DialogTitle>
 					{description && <DialogDescription>{description}</DialogDescription>}
 				</DialogHeader>
 				<AuthForm onSuccess={handleSuccess} />
@@ -54,6 +58,7 @@ function AuthDialog({
 }
 
 function AuthForm({ onSuccess }: AuthFormProps) {
+	let t = useIntl()
 	let auth = usePassphraseAuth({ wordlist })
 	let [step, setStep] = useState<"initial" | "create" | "login">("initial")
 	let [loginPassphrase, setLoginPassphrase] = useState("")
@@ -75,11 +80,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 			setIsCopied(true)
 		} catch (e) {
 			setIsCopied(false)
-			setError(
-				e instanceof Error
-					? e.message
-					: "Could not copy recovery phrase. Please copy it manually.",
-			)
+			setError(e instanceof Error ? e.message : t("auth.create.copyError"))
 		}
 	}
 
@@ -88,7 +89,9 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 			await auth.registerNewAccount(currentPassphrase, getRandomWriterName())
 			onSuccess?.()
 		} catch (e) {
-			setError(e instanceof Error ? e.message : "Failed to register")
+			setError(
+				e instanceof Error ? e.message : t("auth.create.error.registerFailed"),
+			)
 		}
 	}
 
@@ -98,7 +101,11 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 			await auth.logIn(loginPassphrase)
 			onSuccess?.()
 		} catch (e) {
-			setError(e instanceof Error ? e.message : "Invalid passphrase")
+			setError(
+				e instanceof Error
+					? e.message
+					: t("auth.login.error.invalidPassphrase"),
+			)
 		}
 	}
 
@@ -107,9 +114,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 			{step === "initial" && (
 				<>
 					<p className="text-muted-foreground mb-4 text-sm">
-						Sign in with your{" "}
-						<span className="text-foreground font-bold">recovery phrase</span>{" "}
-						to sync your notes across devices and collaborate with others.
+						<T k="auth.initial.description" />
 					</p>
 					<div className="flex flex-col justify-end gap-2">
 						<Button
@@ -117,7 +122,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							size="sm"
 							data-testid={testIds.auth.initialCreateAccount}
 						>
-							Create new account
+							<T k="auth.initial.createAccount" />
 						</Button>
 						<Button
 							onClick={() => setStep("login")}
@@ -125,7 +130,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							size="sm"
 							data-testid={testIds.auth.initialSignIn}
 						>
-							Sign in
+							<T k="auth.initial.signIn" />
 						</Button>
 					</div>
 				</>
@@ -133,11 +138,11 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 
 			{step === "create" && (
 				<>
-					<h3 className="mb-2 font-medium">Your recovery phrase</h3>
+					<h3 className="mb-2 font-medium">
+						<T k="auth.create.title" />
+					</h3>
 					<p className="text-muted-foreground mb-12 text-sm">
-						Alkalye uses recovery phrases instead of passwords.{" "}
-						<span className="text-foreground font-bold">No email required</span>{" "}
-						- just save this phrase to access your notes anywhere.
+						<T k="auth.create.description" />
 					</p>
 					<Textarea
 						readOnly
@@ -157,12 +162,12 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							{isCopied ? (
 								<>
 									<Check className="mr-1 size-3.5" />
-									Copied
+									<T k="auth.create.copied" />
 								</>
 							) : (
 								<>
 									<Copy className="mr-1 size-3.5" />
-									Copy
+									<T k="auth.create.copy" />
 								</>
 							)}
 						</Button>
@@ -191,7 +196,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							className="flex-1"
 							data-testid={testIds.auth.createBack}
 						>
-							Back
+							<T k="auth.create.back" />
 						</Button>
 						<Button
 							onClick={handleRegister}
@@ -200,7 +205,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							className="flex-1"
 							data-testid={testIds.auth.createSubmit}
 						>
-							Create account
+							<T k="auth.create.submit" />
 						</Button>
 					</div>
 				</>
@@ -208,14 +213,16 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 
 			{step === "login" && (
 				<>
-					<h3 className="mb-2 font-medium">Enter your recovery phrase</h3>
+					<h3 className="mb-2 font-medium">
+						<T k="auth.login.title" />
+					</h3>
 					<p className="text-muted-foreground mb-4 text-sm">
-						Enter the recovery phrase from when you created your account.
+						<T k="auth.login.description" />
 					</p>
 					<Textarea
 						value={loginPassphrase}
 						onChange={e => setLoginPassphrase(e.target.value)}
-						placeholder="word1 word2 word3 ..."
+						placeholder={t("auth.login.placeholder")}
 						data-testid={testIds.auth.loginPassphrase}
 						className="bg-background border-border mb-3 w-full resize-none rounded-md border p-3 font-mono text-sm"
 						minRows={3}
@@ -239,7 +246,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							className="flex-1"
 							data-testid={testIds.auth.loginBack}
 						>
-							Back
+							<T k="auth.login.back" />
 						</Button>
 						<Button
 							onClick={handleLogin}
@@ -248,7 +255,7 @@ function AuthForm({ onSuccess }: AuthFormProps) {
 							className="flex-1"
 							data-testid={testIds.auth.loginSubmit}
 						>
-							Sign in
+							<T k="auth.login.submit" />
 						</Button>
 					</div>
 				</>

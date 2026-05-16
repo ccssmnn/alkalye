@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form"
 import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
 import { User, ArrowRight, Plus } from "lucide-react"
+import { useIntl, T } from "@/shared/intl/setup"
 import {
 	Dialog,
 	DialogContent,
@@ -59,6 +60,7 @@ function MoveToSpaceDialog({
 	currentSpaceId,
 	onMove,
 }: MoveToSpaceDialogProps) {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [lastOpen, setLastOpen] = useState(false)
 	let [destination, setDestination] = useState("")
@@ -147,9 +149,11 @@ function MoveToSpaceDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Move to space</DialogTitle>
+					<DialogTitle>
+						<T k="spaces.move.title" />
+					</DialogTitle>
 					<DialogDescription>
-						Move this document to a different space or your personal documents.
+						<T k="spaces.move.description" />
 					</DialogDescription>
 				</DialogHeader>
 
@@ -161,7 +165,9 @@ function MoveToSpaceDialog({
 				>
 					<div className="space-y-4">
 						<div className="text-muted-foreground flex items-center gap-2 text-sm">
-							<span>From:</span>
+							<span>
+								<T k="spaces.move.from" />
+							</span>
 							<span className="text-foreground font-medium">
 								{currentLocation}
 							</span>
@@ -183,12 +189,16 @@ function MoveToSpaceDialog({
 											{field.state.value === "personal" ? (
 												<div className="inline-flex items-center gap-3">
 													<User />
-													<span>Personal</span>
+													<span>
+														<T k="spaces.move.personal" />
+													</span>
 												</div>
 											) : field.state.value === "__new__" ? (
 												<div className="inline-flex items-center gap-3">
 													<Plus className="size-4" />
-													<span>Create new space</span>
+													<span>
+														<T k="spaces.move.createNew" />
+													</span>
 												</div>
 											) : (
 												(() => {
@@ -210,7 +220,9 @@ function MoveToSpaceDialog({
 											{!currentSpaceId ? null : (
 												<SelectItem value="personal">
 													<User className="size-4" />
-													<span>Personal</span>
+													<span>
+														<T k="spaces.move.personal" />
+													</span>
 												</SelectItem>
 											)}
 											{availableSpaces.map(space => (
@@ -221,7 +233,9 @@ function MoveToSpaceDialog({
 											))}
 											<SelectItem value="__new__">
 												<Plus className="size-4" />
-												<span>Create new space</span>
+												<span>
+													<T k="spaces.move.createNew" />
+												</span>
 											</SelectItem>
 										</SelectContent>
 									</Select>
@@ -233,7 +247,9 @@ function MoveToSpaceDialog({
 							<form.Field name="newSpaceName">
 								{field => (
 									<Field>
-										<FieldLabel htmlFor={field.name}>Space name</FieldLabel>
+										<FieldLabel htmlFor={field.name}>
+											<T k="spaces.move.spaceNameLabel" />
+										</FieldLabel>
 										<Input
 											id={field.name}
 											name={field.name}
@@ -242,7 +258,7 @@ function MoveToSpaceDialog({
 												field.handleChange(e.target.value)
 												setNewSpaceName(e.target.value)
 											}}
-											placeholder="My Space"
+											placeholder={t("spaces.move.namePlaceholder")}
 											autoComplete="off"
 											autoFocus
 										/>
@@ -260,10 +276,14 @@ function MoveToSpaceDialog({
 							onClick={() => onOpenChange(false)}
 							disabled={isSubmitting}
 						>
-							Cancel
+							<T k="spaces.button.cancel" />
 						</Button>
 						<Button type="submit" size="sm" disabled={isDisabled}>
-							{isSubmitting ? "Moving..." : "Move"}
+							{isSubmitting ? (
+								<T k="spaces.move.submitting" />
+							) : (
+								<T k="spaces.move.submit" />
+							)}
 						</Button>
 					</DialogFooter>
 				</form>

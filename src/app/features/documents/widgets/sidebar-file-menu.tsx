@@ -45,6 +45,7 @@ import {
 import type { MarkdownEditorRef } from "@/app/features/editor"
 
 import { type LoadedThemes } from "@/app/features/themes"
+import { useIntl } from "@/shared/intl/setup"
 
 export { SidebarFileMenu }
 
@@ -80,6 +81,7 @@ let themesResolve = {
 } as const
 
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let {
 		isMobile,
@@ -127,7 +129,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 								data-testid={testIds.doc.fileMenuButton}
 							>
 								<FileText className="size-4" />
-								<span>File</span>
+								<span>{t("doc.file")}</span>
 							</SidebarMenuButton>
 						}
 					/>
@@ -136,7 +138,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 						side={isMobile ? "bottom" : "left"}
 					>
 						<DropdownMenuItem onClick={makeToggleFocusMode(focusMode)}>
-							{focusMode ? "Exit Focus Mode" : "Focus Mode"}
+							{focusMode ? t("doc.exitFocusMode") : t("doc.focusMode")}
 							<DropdownMenuShortcut>{modKey}⇧F</DropdownMenuShortcut>
 						</DropdownMenuItem>
 						<DropdownMenuItem
@@ -149,38 +151,38 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 								setRightOpenMobile,
 							)}
 						>
-							Time Machine
+							{t("doc.timeMachine")}
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem
 							onClick={makeRename(editor, isMobile, setRightOpenMobile)}
 							disabled={readOnly}
 						>
-							Rename
+							{t("doc.rename")}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeTogglePin(docWithContent)}
 							disabled={readOnly}
 						>
-							{isPinned ? "Unpin" : "Pin"}
+							{isPinned ? t("doc.unpin") : t("doc.pin")}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeAddTag(editor, isMobile, setRightOpenMobile)}
 							disabled={readOnly}
 						>
-							Add Tag
+							{t("doc.addTag")}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={() => setMoveOpen(true)}
 							disabled={readOnly || !me}
 						>
-							Move to Folder
+							{t("doc.moveToFolder")}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={() => setMoveSpaceOpen(true)}
 							disabled={!me}
 						>
-							Move to Space
+							{t("doc.moveToSpace")}
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeTurnIntoPresentation(
@@ -190,24 +192,24 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 							)}
 							disabled={readOnly || isPresentation}
 						>
-							Turn into Presentation
+							{t("doc.turnIntoPresentation")}
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={makeDownload(doc, content)}>
-							Download
+							{t("doc.download")}
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={makeSaveAs(content)}>
-							Save as...
+							{t("doc.saveAs")}
 							<DropdownMenuShortcut>{modKey}S</DropdownMenuShortcut>
 						</DropdownMenuItem>
 						<DropdownMenuItem onClick={handlePrintPdf}>
-							Print to PDF
+							{t("doc.printToPdf")}
 							<DropdownMenuShortcut>{modKey}P</DropdownMenuShortcut>
 						</DropdownMenuItem>
 						<DropdownMenuItem
 							onClick={makeDuplicate(doc, me, spaceId, navigate)}
 							data-testid={testIds.doc.duplicateButton}
 						>
-							Duplicate
+							{t("doc.duplicate")}
 						</DropdownMenuItem>
 						<DropdownMenuSeparator />
 						{isAdmin ? (
@@ -216,7 +218,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 								className="text-destructive focus:text-destructive"
 								data-testid={testIds.doc.deleteButton}
 							>
-								Delete
+								{t("doc.delete")}
 							</DropdownMenuItem>
 						) : (
 							<DropdownMenuItem
@@ -224,7 +226,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 								className="text-destructive focus:text-destructive"
 								disabled={!me}
 							>
-								Leave
+								{t("doc.leave")}
 							</DropdownMenuItem>
 						)}
 					</DropdownMenuContent>
@@ -242,9 +244,9 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 			<ConfirmDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
-				title="Delete document?"
-				description="This will move the document to trash. You can restore it later."
-				confirmLabel="Delete"
+				title={t("doc.deleteDialog.title")}
+				description={t("doc.deleteDialog.description")}
+				confirmLabel={t("doc.deleteDialog.confirm")}
 				variant="destructive"
 				onConfirm={makeDelete(doc, navigate)}
 				confirmTestId={testIds.dialog.deleteConfirm}
@@ -252,9 +254,9 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 			<ConfirmDialog
 				open={leaveOpen}
 				onOpenChange={setLeaveOpen}
-				title="Leave document?"
-				description="You will lose access to this shared document."
-				confirmLabel="Leave"
+				title={t("doc.leaveDialog.title")}
+				description={t("doc.leaveDialog.description")}
+				confirmLabel={t("doc.leaveDialog.confirm")}
 				variant="destructive"
 				onConfirm={makeLeave(docWithContent, me, doc, navigate)}
 			/>

@@ -30,6 +30,7 @@ import {
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Space, UserAccount } from "@/schema"
+import { useIntl, T } from "@/shared/intl/setup"
 import {
 	createSpaceInvite,
 	listSpaceCollaborators,
@@ -69,6 +70,7 @@ function SpaceShareDialog({
 	open: controlledOpen,
 	onOpenChange,
 }: SpaceShareDialogProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let location = useLocation()
 	let isAuthenticated = useIsAuthenticated()
@@ -202,15 +204,17 @@ function SpaceShareDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent data-testid={testIds.space.shareDialog}>
 				<DialogHeader>
-					<DialogTitle>Share space</DialogTitle>
+					<DialogTitle>
+						<T k="sharing.space.title" />
+					</DialogTitle>
 					<DialogDescription>
 						{!isAuthenticated
-							? "Sign in to share spaces with others"
+							? t("sharing.space.signInToShare")
 							: isAdmin
-								? "Invite others to collaborate on this space"
+								? t("sharing.space.inviteOthers")
 								: owner
-									? `Shared with you by ${owner.name}`
-									: "You're viewing a shared space"}
+									? t("sharing.space.sharedByUser", { name: owner.name })
+									: t("sharing.space.viewingShared")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -218,10 +222,12 @@ function SpaceShareDialog({
 					<div className="flex flex-col items-center gap-3 py-4">
 						<CloudOff className="text-muted-foreground size-8" />
 						<p className="text-muted-foreground text-center text-sm">
-							Sharing requires sync to be enabled
+							<T k="sharing.space.syncRequired" />
 						</p>
 						<Link to="/settings" search={{ from: location.pathname }}>
-							<Button size="sm">Sign in to share</Button>
+							<Button size="sm">
+								<T k="sharing.document.signInToSyncButton" />
+							</Button>
 						</Link>
 					</div>
 				)}
@@ -231,7 +237,10 @@ function SpaceShareDialog({
 						{inviteLink ? (
 							<div className="space-y-2">
 								<div className="text-muted-foreground text-xs">
-									{getRoleLabel(inviteRole)} invite link
+									{inviteRole === "writer"
+										? t("sharing.role.writer")
+										: t("sharing.role.reader")}{" "}
+									invite link
 								</div>
 								<div className="bg-muted flex items-center gap-2 rounded p-2 text-xs">
 									<input
@@ -245,7 +254,7 @@ function SpaceShareDialog({
 										variant="ghost"
 										size="icon-sm"
 										onClick={handleCopy}
-										aria-label="Copy link"
+										aria-label={t("sharing.document.link.copyLabel")}
 									>
 										{copied ? (
 											<Check className="size-3.5" />
@@ -263,13 +272,13 @@ function SpaceShareDialog({
 										setInviteRole(null)
 									}}
 								>
-									Create different link
+									<T k="sharing.space.link.createDifferent" />
 								</Button>
 							</div>
 						) : (
 							<div className="space-y-2">
 								<div className="text-muted-foreground text-xs font-medium">
-									Create invite link
+									<T k="sharing.space.link.createInviteLink" />
 								</div>
 								<div className="flex gap-2">
 									<Button
@@ -281,7 +290,7 @@ function SpaceShareDialog({
 										data-testid={testIds.space.shareWriterInviteButton}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
-										Writer
+										<T k="sharing.role.writer" />
 									</Button>
 									<Button
 										variant="outline"
@@ -292,7 +301,7 @@ function SpaceShareDialog({
 										data-testid={testIds.space.shareReaderInviteButton}
 									>
 										<LinkIcon className="mr-1 size-3.5" />
-										Reader
+										<T k="sharing.role.reader" />
 									</Button>
 								</div>
 							</div>
@@ -300,7 +309,7 @@ function SpaceShareDialog({
 
 						<div className="border-border space-y-2 border-t pt-3">
 							<div className="text-muted-foreground text-xs font-medium">
-								Public access
+								<T k="sharing.space.publicAccess" />
 							</div>
 							{spaceIsPublic ? (
 								<div className="space-y-2">
@@ -316,7 +325,7 @@ function SpaceShareDialog({
 											variant="ghost"
 											size="icon-sm"
 											onClick={handleCopyPublicLink}
-											aria-label="Copy public link"
+											aria-label={t("sharing.document.link.copyLabel")}
 										>
 											{publicCopied ? (
 												<Check className="size-3.5" />
@@ -326,7 +335,7 @@ function SpaceShareDialog({
 										</Button>
 									</div>
 									<p className="text-muted-foreground text-xs">
-										Anyone with this link can view this space and its documents
+										<T k="sharing.space.publicLink.viewDescription" />
 									</p>
 									<Button
 										variant="ghost"
@@ -336,13 +345,13 @@ function SpaceShareDialog({
 										disabled={loading}
 									>
 										<Lock className="mr-1 size-3.5" />
-										Make private
+										<T k="sharing.space.publicLink.makePrivate" />
 									</Button>
 								</div>
 							) : (
 								<div className="space-y-2">
 									<p className="text-muted-foreground text-xs">
-										Make this space publicly readable by anyone with the link
+										<T k="sharing.space.publicLink.description" />
 									</p>
 									<Button
 										variant="outline"
@@ -352,7 +361,7 @@ function SpaceShareDialog({
 										disabled={loading}
 									>
 										<Globe className="mr-1 size-3.5" />
-										Make public
+										<T k="sharing.space.publicLink.makePublic" />
 									</Button>
 								</div>
 							)}
@@ -363,7 +372,7 @@ function SpaceShareDialog({
 				{collaborators.length > 0 && (
 					<div className="space-y-2">
 						<div className="text-muted-foreground text-xs font-medium">
-							Members
+							<T k="sharing.space.members.label" />
 						</div>
 						<ul className="space-y-1">
 							{collaborators.map(c => (
@@ -374,7 +383,9 @@ function SpaceShareDialog({
 									<span className="flex items-center gap-2">
 										{c.name}
 										{c.id === me?.$jazz.id && (
-											<Badge variant="secondary">You</Badge>
+											<Badge variant="secondary">
+												<T k="sharing.space.members.you" />
+											</Badge>
 										)}
 									</span>
 									<div className="flex items-center gap-2">
@@ -393,22 +404,30 @@ function SpaceShareDialog({
 														<SelectValue />
 													</SelectTrigger>
 													<SelectContent>
-														<SelectItem value="writer">Writer</SelectItem>
-														<SelectItem value="reader">Reader</SelectItem>
+														<SelectItem value="writer">
+															<T k="sharing.role.writer" />
+														</SelectItem>
+														<SelectItem value="reader">
+															<T k="sharing.role.reader" />
+														</SelectItem>
 													</SelectContent>
 												</Select>
 												<Button
 													variant="ghost"
 													size="icon-sm"
 													onClick={() => handleRevoke(c.inviteGroupId)}
-													aria-label="Remove access"
+													aria-label={t("sharing.space.members.removeAccess")}
 												>
 													<Trash2 className="text-destructive size-3" />
 												</Button>
 											</>
 										) : (
 											<span className="text-muted-foreground text-xs">
-												{getRoleLabel(c.role)}
+												{c.role === "writer"
+													? t("sharing.role.writer")
+													: c.role === "admin"
+														? t("sharing.role.admin")
+														: t("sharing.role.reader")}
 											</span>
 										)}
 									</div>
@@ -421,7 +440,7 @@ function SpaceShareDialog({
 				{pendingInvites.length > 0 && isAdmin && (
 					<div className="space-y-2">
 						<div className="text-muted-foreground text-xs font-medium">
-							Pending invites
+							<T k="sharing.space.pendingInvites.label" />
 						</div>
 						<ul className="space-y-1">
 							{pendingInvites.map(invite => (
@@ -431,12 +450,14 @@ function SpaceShareDialog({
 									data-testid={testIds.space.sharePendingInviteRow}
 									data-invite-group-id={invite.inviteGroupId}
 								>
-									<span>Pending invite</span>
+									<span>
+										<T k="sharing.space.pendingInvites.pending" />
+									</span>
 									<Button
 										variant="ghost"
 										size="icon-sm"
 										onClick={() => handleRevoke(invite.inviteGroupId)}
-										aria-label="Revoke invite"
+										aria-label={t("sharing.space.pendingInvites.revoke")}
 										data-testid={testIds.space.sharePendingInviteRevoke}
 										data-invite-group-id={invite.inviteGroupId}
 									>
@@ -458,26 +479,13 @@ function SpaceShareDialog({
 							disabled={loading}
 						>
 							<LogOut className="mr-1 size-3.5" />
-							Leave space
+							<T k="sharing.space.leave" />
 						</Button>
 					</div>
 				)}
 			</DialogContent>
 		</Dialog>
 	)
-}
-
-function getRoleLabel(role: string | null): string {
-	switch (role) {
-		case "admin":
-			return "Admin"
-		case "writer":
-			return "Writer"
-		case "reader":
-			return "Reader"
-		default:
-			return "Unknown"
-	}
 }
 
 function getSpacePublicLink(space: LoadedSpace): string {

@@ -6,6 +6,7 @@ import {
 	readFolderEntries,
 	type ImportedFile,
 } from "../lib/import"
+import { T } from "@/shared/intl/setup"
 
 export { ImportDropZone }
 
@@ -58,7 +59,7 @@ function ImportDropZone({ onImport, children }: ImportDropZoneProps) {
 					<div className="text-center">
 						<Upload className="text-primary mx-auto mb-2 size-8" />
 						<p className="text-sm font-medium">
-							Drop .md, .txt files or folders
+							<T k="importExport.dropZone.hint" />
 						</p>
 					</div>
 				</div>

@@ -7,6 +7,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Progress } from "@/app/components/ui/progress"
 import { Button } from "@/app/components/ui/button"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { UploadProgressDialog }
 export type { UploadPhase }
@@ -28,6 +29,7 @@ function UploadProgressDialog({
 	progress,
 	onCancel,
 }: UploadProgressDialogProps) {
+	let t = useIntl()
 	let phaseLabel = phase === "compressing" ? "Compressing" : "Uploading"
 	let percent = Math.round(progress * 100)
 
@@ -35,7 +37,9 @@ function UploadProgressDialog({
 		<Dialog open={open}>
 			<DialogContent showCloseButton={false}>
 				<DialogHeader>
-					<DialogTitle>{phaseLabel} video</DialogTitle>
+					<DialogTitle>
+						{t("importExport.upload.title", { phase: phaseLabel })}
+					</DialogTitle>
 				</DialogHeader>
 
 				<div className="space-y-3">
@@ -46,7 +50,7 @@ function UploadProgressDialog({
 					</p>
 					{phase === "compressing" && (
 						<p className="text-muted-foreground text-center text-xs">
-							Videos are compressed to reduce storage and sync faster.
+							<T k="importExport.upload.compressionNote" />
 						</p>
 					)}
 				</div>
@@ -59,7 +63,7 @@ function UploadProgressDialog({
 						onClick={onCancel}
 					>
 						<X className="mr-1 size-3.5" />
-						Cancel
+						<T k="importExport.upload.cancel" />
 					</Button>
 				)}
 			</DialogContent>

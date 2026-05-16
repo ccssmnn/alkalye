@@ -93,6 +93,7 @@ import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl } from "@/shared/intl/setup"
 
 export { SpaceDocScreen, spaceResolve }
 export { settingsResolve }
@@ -197,6 +198,7 @@ function SpaceEditorContent({
 	docId: string
 	loaderMe: LoadedSettingsMe | null
 }) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
@@ -494,7 +496,7 @@ function SpaceEditorContent({
 					value={content}
 					onChange={handleChange}
 					onCursorChange={handleCursorChange}
-					placeholder="Start writing..."
+					placeholder={t("doc.startWriting")}
 					readOnly={readOnly}
 					assets={assets}
 					documents={documents}
@@ -645,6 +647,7 @@ function SpaceEditorContent({
 }
 
 function SettingsButton() {
+	let t = useIntl()
 	let { needRefresh } = usePWA()
 	let location = useLocation()
 	return (
@@ -668,7 +671,7 @@ function SettingsButton() {
 				}
 			/>
 			<TooltipContent>
-				{needRefresh ? "Settings (Update available)" : "Settings"}
+				{needRefresh ? t("doc.settingsUpdateAvailable") : t("doc.settings")}
 			</TooltipContent>
 		</Tooltip>
 	)

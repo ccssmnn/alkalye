@@ -13,6 +13,7 @@ import { Button } from "@/app/components/ui/button"
 import { Document } from "@/schema"
 import { parseFrontmatter, getPath } from "@/app/features/editor"
 import { cn } from "@/app/lib/cn"
+import { useIntl } from "@/shared/intl/setup"
 
 export { MoveToFolderDialog }
 
@@ -31,6 +32,7 @@ function MoveToFolderDialog({
 	open: controlledOpen,
 	onOpenChange,
 }: MoveToFolderDialogProps) {
+	let t = useIntl()
 	let [internalOpen, setInternalOpen] = useState(false)
 	let open = controlledOpen ?? internalOpen
 	let setOpen = onOpenChange ?? setInternalOpen
@@ -63,9 +65,13 @@ function MoveToFolderDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent className="max-w-sm">
 				<DialogHeader>
-					<DialogTitle>Move to folder</DialogTitle>
+					<DialogTitle>{t("doc.moveToFolderDialog.title")}</DialogTitle>
 					<DialogDescription>
-						{currentPath ? `Currently in: ${currentPath}` : "Not in a folder"}
+						{currentPath
+							? t("doc.moveToFolderDialog.currentLocation", {
+									path: currentPath,
+								})
+							: t("doc.moveToFolderDialog.notInFolder")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -76,7 +82,7 @@ function MoveToFolderDialog({
 				>
 					<div className="relative">
 						<Combobox.Input
-							placeholder="Search or create folder..."
+							placeholder={t("doc.moveToFolderDialog.placeholder")}
 							className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
 						/>
 					</div>
@@ -86,7 +92,7 @@ function MoveToFolderDialog({
 							<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-[var(--anchor-width)] overflow-auto rounded-none shadow-md ring-1">
 								{filteredFolders.length === 0 && !showCreateOption && (
 									<div className="text-muted-foreground px-3 py-2 text-sm">
-										No folders found
+										{t("doc.moveToFolderDialog.noFolders")}
 									</div>
 								)}
 
@@ -97,7 +103,7 @@ function MoveToFolderDialog({
 									>
 										<Folder className="text-muted-foreground size-4" />
 										<span className="text-muted-foreground italic">
-											Move to root
+											{t("doc.moveToFolderDialog.rootOption")}
 										</span>
 									</Combobox.Item>
 								)}
@@ -139,7 +145,7 @@ function MoveToFolderDialog({
 
 				<div className="flex justify-end gap-2 pt-2">
 					<Button variant="ghost" size="sm" onClick={() => setOpen(false)}>
-						Cancel
+						{t("doc.cancel")}
 					</Button>
 				</div>
 			</DialogContent>

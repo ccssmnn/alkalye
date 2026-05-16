@@ -36,6 +36,7 @@ import { Kbd } from "@/app/components/ui/kbd"
 import { isMac, altModKey } from "@/app/lib/platform"
 import { ThemePicker, PresetPicker } from "@/app/features/themes"
 import { cn } from "@/app/lib/cn"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { EditorToolbar }
 
@@ -66,6 +67,7 @@ function EditorToolbar({
 	content,
 	onThemeChange,
 }: EditorToolbarProps) {
+	let t = useIntl()
 	let [isAtTop, setIsAtTop] = useState(true)
 
 	useEffect(() => {
@@ -155,7 +157,7 @@ function EditorToolbar({
 			<div className="border-border flex shrink-0 items-center gap-1 border-r p-2 md:border-r-0">
 				<ToolbarButton
 					icon={<ListIcon />}
-					label="Documents"
+					label={t("editor.toolbar.documents")}
 					shortcutShift="E"
 					onClick={onToggleLeftSidebar}
 				/>
@@ -166,7 +168,7 @@ function EditorToolbar({
 					<>
 						<div className="text-muted-foreground flex shrink-0 items-center gap-1.5 px-2 text-sm">
 							<EyeOff className="size-4" />
-							Read only
+							<T k="editor.toolbar.readOnly" />
 						</div>
 						{onSaveCopy && (
 							<>
@@ -185,12 +187,16 @@ function EditorToolbar({
 									{saveCopyState === "saved" ? (
 										<>
 											<Check className="mr-1 size-4" />
-											Cloned
+											<T k="editor.toolbar.cloned" />
 										</>
 									) : (
 										<>
 											<Copy className="mr-1 size-4" />
-											{saveCopyState === "saving" ? "Cloning..." : "Clone"}
+											{saveCopyState === "saving" ? (
+												<T k="editor.toolbar.cloning" />
+											) : (
+												<T k="editor.toolbar.clone" />
+											)}
 										</>
 									)}
 								</Button>
@@ -201,20 +207,20 @@ function EditorToolbar({
 					<>
 						<ToolbarButton
 							icon={<Bold />}
-							label="Bold"
+							label={t("editor.toolbar.bold")}
 							shortcut="B"
 							onClick={() => editor.current?.toggleBold()}
 						/>
 						<ToolbarButton
 							icon={<Italic />}
-							label="Italic"
+							label={t("editor.toolbar.italic")}
 							shortcut="I"
 							onClick={() => editor.current?.toggleItalic()}
 						/>
 						<span className="hidden md:contents">
 							<ToolbarButton
 								icon={<Code />}
-								label="Code"
+								label={t("editor.toolbar.code")}
 								shortcut="E"
 								onClick={() => editor.current?.toggleInlineCode()}
 							/>
@@ -227,7 +233,7 @@ function EditorToolbar({
 													<Button
 														variant="ghost"
 														size="icon"
-														aria-label="Heading"
+														aria-label={t("editor.toolbar.heading")}
 														className="shrink-0"
 														nativeButton
 													>
@@ -238,7 +244,7 @@ function EditorToolbar({
 										}
 									/>
 									<TooltipContent className="flex items-center gap-2">
-										Heading
+										<T k="editor.toolbar.heading" />
 										<Kbd>
 											{isMac ? (
 												<>
@@ -271,20 +277,20 @@ function EditorToolbar({
 
 						<ToolbarButton
 							icon={<List />}
-							label="Bullet List"
+							label={t("editor.toolbar.bulletList")}
 							shortcutAlt="L"
 							onClick={() => editor.current?.toggleBulletList()}
 						/>
 						<span className="hidden md:contents">
 							<ToolbarButton
 								icon={<ListTodo />}
-								label="Task List"
+								label={t("editor.toolbar.taskList")}
 								shortcutAlt="⇧L"
 								onClick={() => editor.current?.toggleTaskList()}
 							/>
 							<ToolbarButton
 								icon={<Link2 />}
-								label="Link"
+								label={t("editor.toolbar.link")}
 								shortcut="K"
 								onClick={() => editor.current?.insertLink()}
 							/>
@@ -307,13 +313,13 @@ function EditorToolbar({
 				)}
 				<ToolbarButton
 					icon={<ArrowUpToLine />}
-					label="Scroll to top"
+					label={t("editor.toolbar.scrollToTop")}
 					onClick={scrollToTop}
 					className={isAtTop ? "hidden" : "hidden pointer-coarse:inline-flex"}
 				/>
 				<ToolbarButton
 					icon={<ArrowDownToLine />}
-					label="Scroll to bottom"
+					label={t("editor.toolbar.scrollToBottom")}
 					onClick={scrollToBottom}
 					className={isAtTop ? "hidden pointer-coarse:inline-flex" : "hidden"}
 				/>
@@ -324,7 +330,7 @@ function EditorToolbar({
 								<Button
 									variant="ghost"
 									size="icon"
-									aria-label="Preview"
+									aria-label={t("editor.toolbar.preview")}
 									className="shrink-0"
 									nativeButton={false}
 									render={
@@ -340,7 +346,7 @@ function EditorToolbar({
 							}
 						/>
 						<TooltipContent className="flex items-center gap-2">
-							Preview
+							<T k="editor.toolbar.preview" />
 							<Kbd>
 								{isMac ? (
 									<>
@@ -360,7 +366,7 @@ function EditorToolbar({
 			<div className="border-border flex shrink-0 items-center gap-1 border-l p-2 md:border-l-0">
 				<ToolbarButton
 					icon={<Wrench />}
-					label="Document tools"
+					label={t("editor.toolbar.documentTools")}
 					shortcutKey="."
 					onClick={onToggleRightSidebar}
 				/>

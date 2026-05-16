@@ -11,6 +11,7 @@ import {
 import { useSidebar } from "@/app/components/ui/sidebar"
 import { Badge } from "@/app/components/ui/badge"
 import { DEFAULT_EDITOR_SETTINGS, Settings } from "@/schema"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { EditorStatsBadge }
 
@@ -26,16 +27,16 @@ interface EditorStatsBadgeProps {
 let FRONTMATTER_RE = /^---\r?\n[\s\S]*?\r?\n---\r?\n?/
 let TASK_RE = /^\s*[-*+]\s\[([ xX])\]/gm
 
-let UNIT_LABELS: { value: StatsUnit; label: string }[] = [
-	{ value: "words", label: "Words" },
-	{ value: "sentences", label: "Sentences" },
-	{ value: "tasks", label: "Tasks" },
-]
-
 function EditorStatsBadge({ content, settings }: EditorStatsBadgeProps) {
+	let t = useIntl()
 	let { leftOpen, isMobile } = useSidebar()
 	let editorSettings = { ...DEFAULT_EDITOR_SETTINGS, ...settings?.editor }
 	let stats = getStats(content)
+	let unitLabels: { value: StatsUnit; label: string }[] = [
+		{ value: "words", label: t("editor.stats.words") },
+		{ value: "sentences", label: t("editor.stats.sentences") },
+		{ value: "tasks", label: t("editor.stats.tasks") },
+	]
 
 	if (!editorSettings.showStatsBadge) return null
 
@@ -57,7 +58,7 @@ function EditorStatsBadge({ content, settings }: EditorStatsBadgeProps) {
 							variant="outline"
 							className="bg-background rounded-none select-none"
 						>
-							{formatStat(editorSettings.statsBadgeUnit, stats)}
+							{formatStat(editorSettings.statsBadgeUnit, stats, t)}
 						</Badge>
 					}
 				/>
@@ -69,7 +70,7 @@ function EditorStatsBadge({ content, settings }: EditorStatsBadgeProps) {
 							updateEditorSettings(settings, { statsBadgeUnit: value })
 						}}
 					>
-						{UNIT_LABELS.map(({ value, label }) => (
+						{unitLabels.map(({ value, label }) => (
 							<DropdownMenuRadioItem
 								key={value}
 								value={value}
@@ -89,9 +90,11 @@ function EditorStatsBadge({ content, settings }: EditorStatsBadgeProps) {
 						}
 						className="flex-col items-start gap-1"
 					>
-						<span>Hide badge</span>
+						<span>
+							<T k="editor.stats.hideBadge" />
+						</span>
 						<span className="text-muted-foreground text-[11px]">
-							Re-enable in Settings → Editor.
+							<T k="editor.stats.hideHint" />
 						</span>
 					</DropdownMenuItem>
 				</DropdownMenuContent>
@@ -113,7 +116,7 @@ function updateEditorSettings(
 }
 
 function isStatsUnit(value: string): value is StatsUnit {
-	return UNIT_LABELS.some(unit => unit.value === value)
+	return value === "words" || value === "sentences" || value === "tasks"
 }
 
 function stripFrontmatter(content: string): string {
@@ -168,13 +171,17 @@ function formatMenuStat(
 	return stats[unit]
 }
 
-function formatStat(unit: StatsUnit, stats: Record<StatsUnit, string>): string {
+function formatStat(
+	unit: StatsUnit,
+	stats: Record<StatsUnit, string>,
+	t: ReturnType<typeof useIntl>,
+): string {
 	switch (unit) {
 		case "words":
-			return `${stats.words} words`
+			return `${stats.words} ${t("editor.stats.words").toLowerCase()}`
 		case "sentences":
-			return `${stats.sentences} sentences`
+			return `${stats.sentences} ${t("editor.stats.sentences").toLowerCase()}`
 		case "tasks":
-			return `${stats.tasks} tasks`
+			return `${stats.tasks} ${t("editor.stats.tasks").toLowerCase()}`
 	}
 }

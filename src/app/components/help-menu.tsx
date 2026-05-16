@@ -9,6 +9,7 @@ import {
 	DropdownMenuGroup,
 } from "@/app/components/ui/dropdown-menu"
 import { ExternalLink } from "lucide-react"
+import { T } from "@/shared/intl/setup"
 
 export { HelpMenu }
 
@@ -30,11 +31,13 @@ function HelpMenu({
 			<DropdownMenuTrigger render={trigger} />
 			<DropdownMenuContent align={align} side={side}>
 				<DropdownMenuGroup>
-					<DropdownMenuLabel>Help</DropdownMenuLabel>
+					<DropdownMenuLabel>
+						<T k="help.label" />
+					</DropdownMenuLabel>
 					<DropdownMenuItem
 						render={<Link to="/welcome" onClick={onNavigate} />}
 					>
-						Welcome
+						<T k="help.welcome" />
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={
@@ -45,7 +48,7 @@ function HelpMenu({
 							/>
 						}
 					>
-						Alkalye Tutor
+						<T k="help.tutorAlkalye" />
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={
@@ -56,7 +59,7 @@ function HelpMenu({
 							/>
 						}
 					>
-						Markdown Tutor
+						<T k="help.tutorMarkdown" />
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={
@@ -67,12 +70,14 @@ function HelpMenu({
 							/>
 						}
 					>
-						Presentation Tutor
+						<T k="help.tutorPresentation" />
 					</DropdownMenuItem>
 				</DropdownMenuGroup>
 				<DropdownMenuSeparator />
 				<DropdownMenuGroup>
-					<DropdownMenuLabel>Links</DropdownMenuLabel>
+					<DropdownMenuLabel>
+						<T k="help.linksLabel" />
+					</DropdownMenuLabel>
 					<DropdownMenuItem
 						render={
 							<a
@@ -82,7 +87,7 @@ function HelpMenu({
 							/>
 						}
 					>
-						GitHub
+						<T k="help.github" />
 						<ExternalLink className="ml-auto size-3 opacity-50" />
 					</DropdownMenuItem>
 					<DropdownMenuItem
@@ -94,13 +99,13 @@ function HelpMenu({
 							/>
 						}
 					>
-						Twitter
+						<T k="help.twitter" />
 						<ExternalLink className="ml-auto size-3 opacity-50" />
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						render={<a href="/" target="_blank" rel="noopener noreferrer" />}
 					>
-						Website
+						<T k="help.website" />
 						<ExternalLink className="ml-auto size-3 opacity-50" />
 					</DropdownMenuItem>
 				</DropdownMenuGroup>

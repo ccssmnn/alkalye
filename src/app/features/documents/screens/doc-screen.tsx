@@ -92,6 +92,7 @@ import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl } from "@/shared/intl/setup"
 
 export { DocScreen }
 
@@ -200,6 +201,7 @@ type LoadedMe = ReturnType<
 >
 
 function EditorContent({ doc, docId }: EditorContentProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
@@ -498,7 +500,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					value={content}
 					onChange={handleChange}
 					onCursorChange={handleCursorChange}
-					placeholder="Start writing..."
+					placeholder={t("doc.startWriting")}
 					readOnly={readOnly}
 					assets={assets}
 					documents={documents}
@@ -640,6 +642,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 }
 
 function SettingsButton() {
+	let t = useIntl()
 	let { needRefresh } = usePWA()
 	let location = useLocation()
 	return (
@@ -663,7 +666,7 @@ function SettingsButton() {
 				}
 			/>
 			<TooltipContent>
-				{needRefresh ? "Settings (Update available)" : "Settings"}
+				{needRefresh ? t("doc.settingsUpdateAvailable") : t("doc.settings")}
 			</TooltipContent>
 		</Tooltip>
 	)

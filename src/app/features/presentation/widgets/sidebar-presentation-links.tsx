@@ -5,6 +5,7 @@ import { Presentation, ScrollText } from "lucide-react"
 import { Document } from "@/schema"
 import { canEdit } from "@/app/features/sharing"
 import { getPresentationMode } from "../lib/presentation"
+import { T } from "@/shared/intl/setup"
 
 export { SidebarPresentationLinks }
 
@@ -29,21 +30,21 @@ function SidebarPresentationLinks({ doc }: SidebarPresentationLinksProps) {
 					render={<Link to="/doc/$id/slideshow" params={{ id: docId }} />}
 				>
 					<Presentation className="size-4" />
-					Slideshow
+					<T k="presentation.slideshow.label" />
 				</SidebarMenuButton>
 			</SidebarMenuItem>
 			<SidebarMenuItem>
 				{readOnly ? (
 					<SidebarMenuButton disabled>
 						<ScrollText className="size-4" />
-						Teleprompter
+						<T k="presentation.teleprompter.label" />
 					</SidebarMenuButton>
 				) : (
 					<SidebarMenuButton
 						render={<Link to="/doc/$id/teleprompter" params={{ id: docId }} />}
 					>
 						<ScrollText className="size-4" />
-						Teleprompter
+						<T k="presentation.teleprompter.label" />
 					</SidebarMenuButton>
 				)}
 			</SidebarMenuItem>

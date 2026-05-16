@@ -35,6 +35,7 @@ import {
 } from "./import-progress-dialog"
 import type { DocWithContent } from "@/app/features/documents"
 import { Link } from "@tanstack/react-router"
+import { T } from "@/shared/intl/setup"
 
 export { SidebarImportExport, handleImportFiles }
 export type { ImportOptions }
@@ -131,16 +132,16 @@ function SidebarImportExport({
 				<DropdownMenuContent align="end">
 					<DropdownMenuItem render={<Link to="/local" />}>
 						<FileUp />
-						Open Local File
+						<T k="importExport.openLocalFile" />
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
 						<Download />
-						Import
+						<T k="importExport.import" />
 					</DropdownMenuItem>
 					{activeDocs.length > 0 && (
 						<DropdownMenuItem onClick={() => handleExportDocs(activeDocs)}>
 							<Upload />
-							Export all
+							<T k="importExport.exportAll" />
 						</DropdownMenuItem>
 					)}
 				</DropdownMenuContent>

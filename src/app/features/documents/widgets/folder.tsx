@@ -31,6 +31,7 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Document } from "@/schema"
 import { parseFrontmatter, getPath } from "@/app/features/editor"
+import { useIntl } from "@/shared/intl/setup"
 
 export { FolderRow, useFolderStore }
 export type { FolderState }
@@ -134,6 +135,7 @@ function FolderRow({
 	existingFolders,
 	onDeleteDocs,
 }: FolderRowProps) {
+	let t = useIntl()
 	let folderName = path.split("/").pop() || path
 	let { renameFolder, removeFolder } = useFolderStore()
 
@@ -167,18 +169,18 @@ function FolderRow({
 				<ContextMenuContent>
 					<ContextMenuItem onClick={() => setRenameOpen(true)}>
 						<Pencil />
-						Rename
+						{t("doc.rename")}
 					</ContextMenuItem>
 					<ContextMenuItem onClick={() => setMoveOpen(true)}>
 						<FolderInput />
-						Move to folder
+						{t("doc.moveToFolder")}
 					</ContextMenuItem>
 					<ContextMenuItem
 						onClick={() => setDeleteOpen(true)}
 						variant="destructive"
 					>
 						<Trash2 />
-						Delete
+						{t("doc.delete")}
 					</ContextMenuItem>
 				</ContextMenuContent>
 			</ContextMenu>
@@ -259,6 +261,7 @@ function RenameFolderDialog({
 	existingFolders,
 	onRename,
 }: RenameFolderDialogProps) {
+	let t = useIntl()
 	let folderName = path.split("/").pop() || path
 	let parentPath = path.includes("/")
 		? path.slice(0, path.lastIndexOf("/"))
@@ -274,11 +277,11 @@ function RenameFolderDialog({
 	function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
 		if (!name.trim()) {
-			setError("Name required")
+			setError(t("doc.folderDialog.nameRequired"))
 			return
 		}
 		if (isDuplicate) {
-			setError("Folder already exists")
+			setError(t("doc.folderDialog.alreadyExists"))
 			return
 		}
 		onRename(newPath)
@@ -298,14 +301,16 @@ function RenameFolderDialog({
 			<DialogContent className="max-w-sm">
 				<form onSubmit={handleSubmit}>
 					<DialogHeader>
-						<DialogTitle>Rename folder</DialogTitle>
+						<DialogTitle>{t("doc.folderDialog.renameTitle")}</DialogTitle>
 						<DialogDescription>
-							{parentPath ? `In: ${parentPath}` : "Root folder"}
+							{parentPath
+								? `In: ${parentPath}`
+								: t("doc.folderDialog.rootFolder")}
 						</DialogDescription>
 					</DialogHeader>
 					<div className="py-4">
 						<Label htmlFor="folder-name" className="sr-only">
-							Folder name
+							{t("doc.folderDialog.renameFolderName")}
 						</Label>
 						<Input
 							id="folder-name"
@@ -318,7 +323,7 @@ function RenameFolderDialog({
 						/>
 						{(error || isDuplicate) && (
 							<p className="text-destructive mt-2 text-sm">
-								{error || "Folder already exists"}
+								{error || t("doc.folderDialog.alreadyExists")}
 							</p>
 						)}
 					</div>
@@ -355,6 +360,7 @@ function MoveFolderDialog({
 	existingFolders,
 	onMove,
 }: MoveFolderDialogProps) {
+	let t = useIntl()
 	let [inputValue, setInputValue] = useState("")
 	let folderName = path.split("/").pop() || path
 
@@ -392,7 +398,7 @@ function MoveFolderDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-sm">
 				<DialogHeader>
-					<DialogTitle>Move folder</DialogTitle>
+					<DialogTitle>{t("doc.folderDialog.moveTitle")}</DialogTitle>
 					<DialogDescription>
 						Move &ldquo;{folderName}&rdquo; to another folder
 					</DialogDescription>
@@ -405,7 +411,7 @@ function MoveFolderDialog({
 				>
 					<div className="relative">
 						<Combobox.Input
-							placeholder="Search or create folder..."
+							placeholder={t("doc.moveToFolderDialog.placeholder")}
 							className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
 						/>
 					</div>
@@ -415,7 +421,7 @@ function MoveFolderDialog({
 							<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-[var(--anchor-width)] overflow-auto rounded-none shadow-md ring-1">
 								{filteredFolders.length === 0 && !showCreateOption && (
 									<div className="text-muted-foreground px-3 py-2 text-sm">
-										No folders found
+										{t("doc.moveToFolderDialog.noFolders")}
 									</div>
 								)}
 
@@ -426,7 +432,7 @@ function MoveFolderDialog({
 									>
 										<Folder className="text-muted-foreground size-4" />
 										<span className="text-muted-foreground italic">
-											Move to root
+											{t("doc.moveToFolderDialog.rootOption")}
 										</span>
 									</Combobox.Item>
 								)}
@@ -485,15 +491,20 @@ function DeleteFolderDialog({
 	docCount,
 	onDelete,
 }: DeleteFolderDialogProps) {
+	let t = useIntl()
 	let folderName = path.split("/").pop() || path
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent className="max-w-sm">
 				<DialogHeader>
-					<DialogTitle>Delete folder &ldquo;{folderName}&rdquo;?</DialogTitle>
+					<DialogTitle>
+						{t("doc.folderDialog.deleteTitle", { folderName })}
+					</DialogTitle>
 					<DialogDescription>
-						This folder contains {docCount} document{docCount !== 1 ? "s" : ""}.
+						{t("doc.folderDialog.deleteDescription", {
+							docCount: docCount.toString(),
+						})}
 					</DialogDescription>
 				</DialogHeader>
 				<DialogFooter className="flex-col gap-2 sm:flex-col">
@@ -505,7 +516,7 @@ function DeleteFolderDialog({
 							onOpenChange(false)
 						}}
 					>
-						Move documents to root
+						{t("doc.folderDialog.moveToRoot")}
 					</Button>
 					<Button
 						variant="destructive"
@@ -515,7 +526,9 @@ function DeleteFolderDialog({
 							onOpenChange(false)
 						}}
 					>
-						Delete {docCount} document{docCount !== 1 ? "s" : ""}
+						{t("doc.folderDialog.deleteDocuments", {
+							docCount: docCount.toString(),
+						})}
 					</Button>
 				</DialogFooter>
 			</DialogContent>

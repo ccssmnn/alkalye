@@ -43,6 +43,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { cn } from "@/app/lib/cn"
 import { isMac } from "@/app/lib/platform"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export {
 	FloatingActions,
@@ -471,6 +472,7 @@ interface TaskActionProps {
 }
 
 function TaskAction({ editor, isTask, taskChecked }: TaskActionProps) {
+	let t = useIntl()
 	if (!isTask) return null
 
 	function toggleTask() {
@@ -480,7 +482,11 @@ function TaskAction({ editor, isTask, taskChecked }: TaskActionProps) {
 	return (
 		<ActionButton
 			icon={<Check />}
-			label={taskChecked ? "Mark incomplete" : "Mark complete"}
+			label={
+				taskChecked
+					? t("editor.floating.markIncomplete")
+					: t("editor.floating.markComplete")
+			}
 			shortcut="X"
 			onClick={toggleTask}
 		/>
@@ -492,6 +498,7 @@ interface LinkActionProps {
 }
 
 function LinkAction({ linkUrl }: LinkActionProps) {
+	let t = useIntl()
 	if (!linkUrl) return null
 
 	let url = linkUrl
@@ -502,7 +509,7 @@ function LinkAction({ linkUrl }: LinkActionProps) {
 	return (
 		<ActionButton
 			icon={<ExternalLink />}
-			label="Open link"
+			label={t("editor.floating.openLink")}
 			onClick={openLink}
 		/>
 	)
@@ -535,6 +542,7 @@ function WikiLinkAction({
 	docs,
 	onCreateDoc,
 }: WikiLinkActionProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let [inputValue, setInputValue] = useState(wikilinkPrefill)
 
@@ -657,7 +665,7 @@ function WikiLinkAction({
 						}
 					/>
 					<TooltipContent side="top" className="flex items-center gap-2">
-						Select document
+						<T k="editor.floating.selectDocument" />
 						<Kbd>Ctrl Space</Kbd>
 					</TooltipContent>
 				</Tooltip>
@@ -665,7 +673,7 @@ function WikiLinkAction({
 				<WikiLinkDialog
 					open={wikiLinkDialogOpen}
 					onOpenChange={setWikiLinkDialogOpen}
-					title="Link to document"
+					title={t("editor.dialog.linkToDocument")}
 					filteredDocs={filteredDocs}
 					showCreateOption={showCreateOption}
 					inputValue={inputValue}
@@ -698,25 +706,25 @@ function WikiLinkAction({
 						}
 					/>
 					<TooltipContent side="top" className="flex items-center gap-2">
-						Wiki link
+						<T k="editor.floating.wikiLink" />
 						<Kbd>Ctrl Space</Kbd>
 					</TooltipContent>
 				</Tooltip>
 				<DropdownMenuContent align="end" side="top">
 					<DropdownMenuItem onClick={openLinkedDoc}>
 						<ExternalLink className="mr-2 size-4" />
-						Open linked doc
+						<T k="editor.floating.openLinkedDoc" />
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={handleChangeLink}>
 						<Link2 className="mr-2 size-4" />
-						Change linked doc
+						<T k="editor.floating.changeLinkedDoc" />
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={handleRemoveLink}
 						className="text-destructive"
 					>
 						<Trash2 className="mr-2 size-4" />
-						Remove link
+						<T k="editor.floating.removeLink" />
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -724,7 +732,7 @@ function WikiLinkAction({
 			<WikiLinkDialog
 				open={wikiLinkDialogOpen}
 				onOpenChange={setWikiLinkDialogOpen}
-				title="Change linked document"
+				title={t("editor.dialog.changeLinkedDocument")}
 				filteredDocs={filteredDocs}
 				showCreateOption={showCreateOption}
 				inputValue={inputValue}
@@ -765,7 +773,7 @@ function WikiLinkDialog({
 				<DialogHeader>
 					<DialogTitle>{title}</DialogTitle>
 					<DialogDescription>
-						Search for a document to link to
+						<T k="editor.dialog.searchDocuments" />
 					</DialogDescription>
 				</DialogHeader>
 
@@ -787,7 +795,7 @@ function WikiLinkDialog({
 							<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
 								{filteredDocs.length === 0 && !showCreateOption && (
 									<div className="text-muted-foreground px-3 py-2 text-sm">
-										No documents found
+										<T k="editor.dialog.noDocumentsFound" />
 									</div>
 								)}
 
@@ -822,7 +830,7 @@ function WikiLinkDialog({
 
 				<div className="flex justify-end gap-2 pt-2">
 					<Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-						Cancel
+						<T k="editor.dialog.cancel" />
 					</Button>
 				</div>
 			</DialogContent>
@@ -919,7 +927,7 @@ function ImageAction({
 					}
 				/>
 				<TooltipContent side="top" className="flex items-center gap-2">
-					Select media
+					<T k="editor.floating.selectMedia" />
 					<Kbd>Ctrl Space</Kbd>
 				</TooltipContent>
 			</Tooltip>
@@ -927,9 +935,11 @@ function ImageAction({
 			<Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
 				<DialogContent className="max-w-sm">
 					<DialogHeader>
-						<DialogTitle>Select media</DialogTitle>
+						<DialogTitle>
+							<T k="editor.dialog.selectMedia" />
+						</DialogTitle>
 						<DialogDescription>
-							Search for an existing image or video
+							<T k="editor.dialog.searchMedia" />
 						</DialogDescription>
 					</DialogHeader>
 
@@ -951,7 +961,7 @@ function ImageAction({
 								<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
 									{filteredAssets.length === 0 && (
 										<div className="text-muted-foreground px-3 py-2 text-sm">
-											No media found
+											<T k="editor.dialog.noMediaFound" />
 										</div>
 									)}
 
@@ -983,7 +993,7 @@ function ImageAction({
 								className="gap-2"
 							>
 								<Upload className="size-4" />
-								Upload
+								<T k="editor.dialog.upload" />
 							</Button>
 						)}
 						<div className="flex-1" />
@@ -992,7 +1002,7 @@ function ImageAction({
 							size="sm"
 							onClick={() => setImageDialogOpen(false)}
 						>
-							Cancel
+							<T k="editor.dialog.cancel" />
 						</Button>
 					</div>
 				</DialogContent>

@@ -34,6 +34,7 @@ import {
 	type ResolvedTheme,
 	type ThemeStyles,
 } from "@/app/features/themes"
+import { T } from "@/shared/intl/setup"
 
 export { Slideshow }
 export type { Slide, HighlightRange }
@@ -291,30 +292,30 @@ function SlideControls({
 				</DropdownMenuTrigger>
 				<DropdownMenuContent align="end" side="top" sideOffset={8}>
 					<DropdownMenuItem onClick={goToPrevSlide} disabled={!hasPrev}>
-						Previous slide
+						<T k="presentation.slideshow.previous" />
 						<DropdownMenuShortcut>←</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={goToNextSlide} disabled={!hasNext}>
-						Next slide
+						<T k="presentation.slideshow.next" />
 						<DropdownMenuShortcut>→</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
 					<DropdownMenuItem onClick={handleFullscreen}>
-						Toggle fullscreen
+						<T k="presentation.slideshow.toggleFullscreen" />
 						<DropdownMenuShortcut>F</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					{onExit && (
 						<>
 							<DropdownMenuSeparator />
 							<DropdownMenuItem onClick={onExit}>
-								Go to editor
+								<T k="presentation.slideshow.goToEditor" />
 								<DropdownMenuShortcut>Esc</DropdownMenuShortcut>
 							</DropdownMenuItem>
 						</>
 					)}
 					{onGoToTeleprompter && (
 						<DropdownMenuItem onClick={onGoToTeleprompter}>
-							Go to teleprompter
+							<T k="presentation.slideshow.goToTeleprompter" />
 						</DropdownMenuItem>
 					)}
 				</DropdownMenuContent>
@@ -892,7 +893,9 @@ function SlideVideo({ asset }: { asset: Asset }) {
 	if (!url) {
 		return (
 			<div className="slideshow-image-placeholder flex aspect-video items-center justify-center">
-				<span className="text-sm opacity-60">Loading video...</span>
+				<span className="text-sm opacity-60">
+					<T k="presentation.slideshow.loadingVideo" />
+				</span>
 			</div>
 		)
 	}

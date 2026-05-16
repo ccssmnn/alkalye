@@ -17,6 +17,7 @@ import {
 	type Collaborator,
 } from "../lib/document-sharing"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { SidebarCollaboration }
 
@@ -35,6 +36,7 @@ function SidebarCollaboration({
 	docId,
 	spaceGroupId,
 }: SidebarCollaborationProps) {
+	let t = useIntl()
 	let [shareOpen, setShareOpen] = useState(false)
 	let [collaborators, setCollaborators] = useState<Collaborator[]>([])
 
@@ -60,7 +62,9 @@ function SidebarCollaboration({
 
 	return (
 		<>
-			<SidebarGroupLabel>Collaboration</SidebarGroupLabel>
+			<SidebarGroupLabel>
+				<T k="sharing.sidebar.collaboration" />
+			</SidebarGroupLabel>
 			<SidebarGroupContent>
 				<SidebarMenu>
 					{!hasCollaborators && !isPublic && (
@@ -72,7 +76,9 @@ function SidebarCollaboration({
 								data-testid={testIds.collab.docShareOpenButton}
 							>
 								<Lock className="size-4" />
-								<span>Private</span>
+								<span>
+									<T k="sharing.sidebar.private" />
+								</span>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					)}
@@ -86,7 +92,9 @@ function SidebarCollaboration({
 								data-testid={testIds.collab.docShareOpenButton}
 							>
 								<Users className="size-4" />
-								<span>Shared</span>
+								<span>
+									<T k="sharing.sidebar.shared" />
+								</span>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					)}
@@ -98,7 +106,9 @@ function SidebarCollaboration({
 						>
 							<span className="truncate">{c.name}</span>
 							<span className="shrink-0 opacity-60">
-								{c.role === "writer" ? "edit" : "view"}
+								{c.role === "writer"
+									? t("sharing.sidebar.edit")
+									: t("sharing.sidebar.view")}
 							</span>
 						</div>
 					))}
@@ -112,7 +122,9 @@ function SidebarCollaboration({
 								data-testid={testIds.collab.docShareOpenButton}
 							>
 								<Globe className="size-4 text-green-600 dark:text-green-400" />
-								<span>Public</span>
+								<span>
+									<T k="sharing.sidebar.public" />
+								</span>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					)}

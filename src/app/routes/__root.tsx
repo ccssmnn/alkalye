@@ -18,6 +18,7 @@ import {
 import { FileQuestion } from "lucide-react"
 import type { UserAccount } from "@/schema"
 import type { co } from "jazz-tools"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { Route }
 
@@ -53,11 +54,13 @@ function RootComponent() {
 }
 
 function ErrorComponent({ error }: { error?: Error }) {
+	let t = useIntl()
+
 	return (
 		<ErrorUI
 			error={error}
-			title="Something went wrong"
-			description="An unexpected error occurred. Please try reloading the page."
+			title={t("error.generic.title")}
+			description={t("error.generic.description")}
 			actions={
 				<>
 					<Button
@@ -65,10 +68,12 @@ function ErrorComponent({ error }: { error?: Error }) {
 						onClick={() => window.location.reload()}
 						className="flex-1"
 					>
-						Reload Page
+						<T k="error.generic.reloadPage" />
 					</Button>
 					<Link to="/">
-						<Button className="flex-1">Go Home</Button>
+						<Button className="flex-1">
+							<T k="common.goHome" />
+						</Button>
 					</Link>
 				</>
 			}
@@ -84,19 +89,22 @@ function NotFoundComponent() {
 					<EmptyMedia>
 						<FileQuestion className="text-muted-foreground size-12" />
 					</EmptyMedia>
-					<EmptyTitle>Page not found</EmptyTitle>
+					<EmptyTitle>
+						<T k="error.pageNotFound.title" />
+					</EmptyTitle>
 					<EmptyDescription>
-						The page you&apos;re looking for doesn&apos;t exist or has been
-						moved.
+						<T k="error.pageNotFound.description" />
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
 					<div className="flex gap-2">
 						<Button variant="outline" onClick={() => window.history.back()}>
-							Go back
+							<T k="common.goBack" />
 						</Button>
 						<Link to="/">
-							<Button>Go home</Button>
+							<Button>
+								<T k="common.home" />
+							</Button>
 						</Link>
 					</div>
 				</EmptyContent>

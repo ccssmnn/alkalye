@@ -33,6 +33,7 @@ import {
 	UserAccount,
 } from "@/schema"
 import { getSpaceGroup } from "@/app/features/spaces"
+import { useIntl } from "@/shared/intl/setup"
 
 export { DuplicateDocDialog, duplicateDocument }
 export type { DuplicateDocDialogProps, DuplicateProgress }
@@ -75,6 +76,7 @@ function DuplicateDocDialog({
 	onOpenChange,
 	onDuplicate,
 }: DuplicateDocDialogProps) {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [name, setName] = useState("")
 	let [destination, setDestination] = useState<string>("personal")
@@ -137,16 +139,16 @@ function DuplicateDocDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Duplicate document</DialogTitle>
+					<DialogTitle>{t("doc.duplicateDialog.title")}</DialogTitle>
 					<DialogDescription>
-						Create a copy of this document with a new name.
+						{t("doc.duplicateDialog.description")}
 					</DialogDescription>
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit}>
 					<div className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="doc-name">Name</Label>
+							<Label htmlFor="doc-name">{t("doc.duplicateDialog.name")}</Label>
 							<Input
 								ref={inputRef}
 								id="doc-name"
@@ -157,7 +159,7 @@ function DuplicateDocDialog({
 						</div>
 
 						<div className="space-y-2">
-							<Label>Destination</Label>
+							<Label>{t("doc.duplicateDialog.destination")}</Label>
 							<Select
 								value={destination}
 								onValueChange={v => v && setDestination(v)}
@@ -168,7 +170,7 @@ function DuplicateDocDialog({
 								<SelectContent>
 									<SelectItem value="personal">
 										<User className="size-4" />
-										<span>Personal</span>
+										<span>{t("doc.duplicateDialog.personal")}</span>
 									</SelectItem>
 									{spaces.map(space => (
 										<SelectItem key={space.$jazz.id} value={space.$jazz.id}>
@@ -184,7 +186,7 @@ function DuplicateDocDialog({
 					{isDuplicating && progress.total > 0 && (
 						<div className="space-y-2 pt-2">
 							<div className="text-muted-foreground flex justify-between text-sm">
-								<span>Copying assets...</span>
+								<span>{t("doc.duplicateDialog.copyingAssets")}</span>
 								<span>
 									{progress.copied}/{progress.total}
 								</span>

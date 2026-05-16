@@ -4,6 +4,7 @@ import {
 	SidebarFooter,
 	SidebarHeader,
 } from "@/app/components/ui/sidebar"
+import { useIntl } from "@/shared/intl/setup"
 
 export { DocumentSidebar }
 
@@ -16,13 +17,14 @@ function DocumentSidebar({
 	footer?: React.ReactNode
 	children: React.ReactNode
 }) {
+	let t = useIntl()
 	return (
 		<Sidebar side="right" collapsible="offcanvas">
 			<SidebarHeader
 				className="border-border flex-row items-center justify-between border-b p-0 px-3"
 				style={{ height: "calc(48px + 1px)" }}
 			>
-				<span className="text-sm font-medium">Document</span>
+				<span className="text-sm font-medium">{t("doc.sidebar.document")}</span>
 				<div className="flex items-center gap-1">{header}</div>
 			</SidebarHeader>
 			<SidebarContent>{children}</SidebarContent>

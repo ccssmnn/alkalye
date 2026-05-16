@@ -46,6 +46,7 @@ let UserRoot = co.map({
 	spaces: co.optional(co.list(Space)),
 	settings: co.optional(Settings),
 	themes: co.optional(co.list(Theme)),
+	language: z.enum(["de", "en"]).optional(),
 	migrationVersion: z.number().optional(),
 	lastOpenedDocId: z.string().optional(),
 	lastOpenedSpaceId: z.string().optional(),

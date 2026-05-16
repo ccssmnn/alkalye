@@ -22,6 +22,7 @@ import {
 	Settings,
 	WifiOff,
 } from "lucide-react"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { SidebarSyncStatus }
 
@@ -35,14 +36,16 @@ function SidebarSyncStatus() {
 	let isOnline = useIsOnline()
 	let { theme, setTheme } = useTheme()
 	let { needRefresh } = usePWA()
+	let t = useIntl()
 
 	let name = me?.$isLoaded ? me.profile.name.trim() || null : null
 	let statusLabel = isAuthenticated
 		? isOnline
-			? "Syncing"
-			: "Offline"
-		: "Local only"
-	let accountLabel = name ?? (isAuthenticated ? "Signed in" : "Local only")
+			? t("sync.syncing")
+			: t("sync.offline")
+		: t("sync.localOnly")
+	let accountLabel =
+		name ?? (isAuthenticated ? t("sync.signedIn") : t("sync.localOnly"))
 	let StatusIcon = isAuthenticated ? (isOnline ? Cloud : WifiOff) : CloudOff
 	let statusIconClassName = isAuthenticated
 		? isOnline
@@ -85,12 +88,12 @@ function SidebarSyncStatus() {
 					}
 				>
 					<Settings />
-					Settings
+					<T k="common.settings" />
 				</DropdownMenuItem>
 				{!isAuthenticated && (
 					<DropdownMenuItem onClick={() => setAuthOpen(true)}>
 						<CloudOff />
-						Sign in
+						<T k="common.signIn" />
 					</DropdownMenuItem>
 				)}
 				<ThemeSubmenu theme={theme} setTheme={setTheme} />
@@ -99,7 +102,7 @@ function SidebarSyncStatus() {
 						<DropdownMenuSeparator />
 						<DropdownMenuItem onClick={() => logOut()}>
 							<LogOut />
-							Log out
+							<T k="common.logOut" />
 						</DropdownMenuItem>
 					</>
 				)}

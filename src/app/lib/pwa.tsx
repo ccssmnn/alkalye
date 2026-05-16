@@ -16,6 +16,7 @@ import {
 	getPWAInstalledSnapshot,
 	useIsPWAInstalled,
 } from "@/app/lib/platform"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { PWAContext, usePWA, usePWAProvider }
 export { PWAInstallHint, PWAInstallDialog }
@@ -49,6 +50,7 @@ function usePWAProvider(): PWAContextValue {
 	let updateRef = useRef<(reload?: boolean) => Promise<void>>(() =>
 		Promise.resolve(),
 	)
+	let t = useIntl()
 
 	// virtual:pwa-register is a Vite virtual module. Dynamic-importing it
 	// inside useEffect keeps this file safe to load in non-Vite contexts
@@ -74,11 +76,11 @@ function usePWAProvider(): PWAContextValue {
 					},
 					onNeedRefresh() {
 						setNeedRefresh(true)
-						toast("Update available", {
-							description: "Reload to update to the latest version",
+						toast(t("pwa.updateAvailable"), {
+							description: t("pwa.updateDescription"),
 							duration: Infinity,
 							action: {
-								label: "Reload",
+								label: t("pwa.updateAction"),
 								onClick: () => updateSW(true),
 							},
 							onDismiss: () => setNeedRefresh(false),
@@ -87,8 +89,8 @@ function usePWAProvider(): PWAContextValue {
 					onOfflineReady() {
 						setOfflineReady(true)
 						if (isMobileDevice() && getPWAInstalledSnapshot()) {
-							toast("Ready to work offline", {
-								description: "App has been cached for offline use",
+							toast(t("pwa.offlineReady"), {
+								description: t("pwa.offlineDescription"),
 								duration: 4000,
 							})
 						}
@@ -103,7 +105,7 @@ function usePWAProvider(): PWAContextValue {
 		return () => {
 			cancelled = true
 		}
-	}, [])
+	}, [t])
 
 	async function checkForUpdates() {
 		let registration = (
@@ -147,9 +149,11 @@ function PWAInstallHint() {
 			toast(
 				<div className="flex flex-col gap-3">
 					<div>
-						<div className="font-medium">Install Alkalye</div>
+						<div className="font-medium">
+							<T k="pwa.installTitle" />
+						</div>
 						<div className="text-muted-foreground text-sm">
-							Add to your homescreen for the best experience.
+							<T k="pwa.installHint" />
 						</div>
 					</div>
 					<div className="flex flex-row-reverse justify-start gap-2">
@@ -160,7 +164,7 @@ function PWAInstallHint() {
 								setDialogOpen(true)
 							}}
 						>
-							Show me how
+							<T k="pwa.showMeHow" />
 						</Button>
 						<Button
 							size="sm"
@@ -170,7 +174,7 @@ function PWAInstallHint() {
 								setDismissed(true)
 							}}
 						>
-							Maybe later
+							<T k="pwa.maybeLater" />
 						</Button>
 					</div>
 				</div>,
@@ -202,16 +206,19 @@ function PWAInstallDialog({
 	onInstallComplete,
 }: PWAInstallDialogProps) {
 	let { canInstall, promptInstall } = usePWAInstallPrompt()
+	let t = useIntl()
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Install Alkalye</DialogTitle>
+					<DialogTitle>
+						<T k="pwa.installTitle" />
+					</DialogTitle>
 					<DialogDescription>
 						{isMobileDevice()
-							? "Add Alkalye to your homescreen for instant access and the best experience."
-							: "Install Alkalye as an app for quick access and a better experience."}
+							? t("pwa.installMobile")
+							: t("pwa.installDesktop")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4">
@@ -256,10 +263,10 @@ function AndroidChromeInstructions({
 	return (
 		<div className="space-y-3">
 			<p className="text-muted-foreground text-xs">
-				Your browser supports direct installation:
+				<T k="pwa.directInstallSupport" />
 			</p>
 			<Button onClick={handleInstall} className="w-full">
-				Install App
+				<T k="pwa.installApp" />
 			</Button>
 		</div>
 	)
@@ -269,17 +276,19 @@ function AndroidManualInstructions() {
 	return (
 		<div className="space-y-3">
 			<p className="text-muted-foreground text-xs">
-				To install, follow these steps:
+				<T k="pwa.androidManualTitle" />
 			</p>
 			<ol className="text-muted-foreground list-decimal space-y-2 pl-4 text-xs">
 				<li>
-					Tap the menu button <Share className="inline size-3" /> in your
-					browser
+					<T k="pwa.androidMenuButton" /> <Share className="inline size-3" />{" "}
+					<T k="pwa.androidInBrowser" />
 				</li>
 				<li>
-					Select &ldquo;Add to Home screen&rdquo; or &ldquo;Install app&rdquo;
+					<T k="pwa.androidSelectOption" />
 				</li>
-				<li>Confirm the installation</li>
+				<li>
+					<T k="pwa.androidConfirm" />
+				</li>
 			</ol>
 		</div>
 	)
@@ -289,18 +298,22 @@ function IOSInstructions() {
 	return (
 		<div className="space-y-3">
 			<p className="text-muted-foreground text-xs">
-				To install on iOS, use Safari and follow these steps:
+				<T k="pwa.iosTitle" />
 			</p>
 			<ol className="text-muted-foreground list-decimal space-y-2 pl-4 text-xs">
 				<li>
-					Tap the Share button <Upload className="inline size-3" /> at the
-					bottom of Safari
+					<T k="pwa.iosShareButton" /> <Upload className="inline size-3" />{" "}
+					<T k="pwa.iosAtBottom" />
 				</li>
-				<li>Scroll down and tap &ldquo;Add to Home Screen&rdquo;</li>
-				<li>Tap &ldquo;Add&rdquo; in the top right corner</li>
+				<li>
+					<T k="pwa.iosAddHome" />
+				</li>
+				<li>
+					<T k="pwa.iosAddButton" />
+				</li>
 			</ol>
 			<p className="text-muted-foreground bg-muted/50 rounded p-2 text-xs">
-				Note: This only works in Safari, not other browsers on iOS.
+				<T k="pwa.iosNote" />
 			</p>
 		</div>
 	)
@@ -324,10 +337,10 @@ function DesktopInstructions({
 		return (
 			<div className="space-y-3">
 				<p className="text-muted-foreground text-xs">
-					Your browser supports direct installation:
+					<T k="pwa.directInstallSupport" />
 				</p>
 				<Button onClick={handleInstall} className="w-full">
-					Install App
+					<T k="pwa.installApp" />
 				</Button>
 			</div>
 		)
@@ -336,25 +349,31 @@ function DesktopInstructions({
 	return (
 		<div className="space-y-3">
 			<p className="text-muted-foreground text-xs">
-				Install instructions vary by browser:
+				<T k="pwa.desktopVary" />
 			</p>
 			<div className="space-y-3 text-xs">
 				<div>
-					<p className="font-medium">Chrome / Edge</p>
+					<p className="font-medium">
+						<T k="pwa.desktopChromeEdge" />
+					</p>
 					<p className="text-muted-foreground">
-						Look for the install icon in the address bar, or use the menu and
-						select &ldquo;Install app&rdquo;
+						<T k="pwa.desktopChromeEdgeSteps" />
 					</p>
 				</div>
 				<div>
-					<p className="font-medium">Safari (macOS)</p>
-					<p className="text-muted-foreground">Click File &gt; Add to Dock</p>
+					<p className="font-medium">
+						<T k="pwa.desktopSafari" />
+					</p>
+					<p className="text-muted-foreground">
+						<T k="pwa.desktopSafariSteps" />
+					</p>
 				</div>
 				<div>
-					<p className="font-medium">Firefox</p>
+					<p className="font-medium">
+						<T k="pwa.desktopFirefox" />
+					</p>
 					<p className="text-muted-foreground">
-						Firefox doesn&apos;t support PWA installation. Use Chrome or Edge
-						instead.
+						<T k="pwa.desktopFirefoxSteps" />
 					</p>
 				</div>
 			</div>
@@ -365,11 +384,15 @@ function DesktopInstructions({
 function GenericInstructions() {
 	return (
 		<div className="space-y-3">
-			<p className="text-muted-foreground text-xs">To install:</p>
+			<p className="text-muted-foreground text-xs">
+				<T k="pwa.genericTitle" />
+			</p>
 			<ol className="text-muted-foreground list-decimal space-y-2 pl-4 text-xs">
-				<li>Open your browser&apos;s menu</li>
 				<li>
-					Look for &ldquo;Add to Home Screen&rdquo; or &ldquo;Install App&rdquo;
+					<T k="pwa.genericStep1" />
+				</li>
+				<li>
+					<T k="pwa.genericStep2" />
 				</li>
 			</ol>
 		</div>

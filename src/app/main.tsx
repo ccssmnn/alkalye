@@ -14,6 +14,8 @@ import { PWAContext, usePWAProvider, PWAInstallHint } from "@/app/lib/pwa"
 import { BackupSubscriber, SpacesBackupSubscriber } from "@/app/features/backup"
 import { useCleanupDeleted } from "@/app/features/documents"
 import { init } from "@plausible-analytics/tracker"
+import { IntlProvider } from "@/shared/intl/setup"
+import { messagesDe } from "@/shared/intl/messages"
 
 export { PWA, buildSyncConfig }
 
@@ -78,14 +80,16 @@ function ContextPWAProvider({ children }: { children: React.ReactNode }) {
 }
 
 function RouterWithJazz() {
-	let me = useAccount(UserAccount)
+	let me = useAccount(UserAccount, { resolve: { root: true } })
 	let splashReady = useSplashDelay(700)
 	let showSplash = me.$jazz.loadingState === "loading" || !splashReady
 
 	useCleanupDeleted()
 
-	return (
-		<ContextPWAProvider>
+	let locale = me.$isLoaded ? me.root?.language || "en" : "en"
+
+	let content = (
+		<>
 			<Toaster />
 			<PWAInstallHint />
 			<BackupSubscriber />
@@ -95,6 +99,18 @@ function RouterWithJazz() {
 				router={router}
 				context={{ me: me.$isLoaded ? me : null }}
 			/>
+		</>
+	)
+
+	return (
+		<ContextPWAProvider>
+			{locale === "de" ? (
+				<IntlProvider messages={messagesDe} locale="de">
+					{content}
+				</IntlProvider>
+			) : (
+				<IntlProvider>{content}</IntlProvider>
+			)}
 		</ContextPWAProvider>
 	)
 }

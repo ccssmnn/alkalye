@@ -18,6 +18,7 @@ let baseEditorMessages = messages({
 	"editor.toolbar.cloned": "Cloned",
 	"editor.toolbar.cloning": "Cloning...",
 	"editor.toolbar.clone": "Clone",
+	"editor.toolbar.documents": "Documents",
 
 	"editor.heading.h1": "H1",
 	"editor.heading.h2": "H2",
@@ -51,6 +52,9 @@ let baseEditorMessages = messages({
 	"editor.menu.addLink": "Add Link",
 	"editor.menu.addImage": "Add Image",
 	"editor.menu.addWikilink": "Add Wikilink",
+	"editor.menu.bold": "Bold",
+	"editor.menu.italic": "Italic",
+	"editor.menu.code": "Code",
 
 	"editor.find.placeholder": "Find...",
 	"editor.find.close": "Close",
@@ -107,6 +111,7 @@ let deEditorMessages = translate(baseEditorMessages, {
 	"editor.toolbar.cloned": "Geklont",
 	"editor.toolbar.cloning": "Klone...",
 	"editor.toolbar.clone": "Klonen",
+	"editor.toolbar.documents": "Dokumente",
 
 	"editor.heading.h1": "H1",
 	"editor.heading.h2": "H2",
@@ -140,6 +145,9 @@ let deEditorMessages = translate(baseEditorMessages, {
 	"editor.menu.addLink": "Link hinzufügen",
 	"editor.menu.addImage": "Bild hinzufügen",
 	"editor.menu.addWikilink": "Wikilink hinzufügen",
+	"editor.menu.bold": "Fett",
+	"editor.menu.italic": "Kursiv",
+	"editor.menu.code": "Code",
 
 	"editor.find.placeholder": "Suchen...",
 	"editor.find.close": "Schließen",

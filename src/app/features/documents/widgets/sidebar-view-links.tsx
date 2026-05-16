@@ -3,6 +3,7 @@ import { co } from "jazz-tools"
 import { SidebarMenuButton, SidebarMenuItem } from "@/app/components/ui/sidebar"
 import { Eye } from "lucide-react"
 import { Document } from "@/schema"
+import { useIntl } from "@/shared/intl/setup"
 
 export { SidebarViewLinks }
 
@@ -13,6 +14,7 @@ interface SidebarViewLinksProps {
 }
 
 function SidebarViewLinks({ doc }: SidebarViewLinksProps) {
+	let t = useIntl()
 	let docId = doc.$jazz.id
 	return (
 		<SidebarMenuItem>
@@ -26,7 +28,7 @@ function SidebarViewLinks({ doc }: SidebarViewLinksProps) {
 				}
 			>
 				<Eye className="size-4" />
-				Preview
+				{t("doc.preview")}
 			</SidebarMenuButton>
 		</SidebarMenuItem>
 	)
