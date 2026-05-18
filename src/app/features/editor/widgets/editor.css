@@ -103,7 +103,9 @@
 .markdown-editor .cm-scroller {
 	overflow: auto !important;
 	overscroll-behavior: contain;
-	padding-bottom: calc(50vh + env(safe-area-inset-bottom));
+	padding-bottom: calc(
+		50vh + var(--keyboard-scroll-padding, 0px) + env(safe-area-inset-bottom)
+	);
 	padding-top: var(--find-panel-height, 0px);
 	transition: padding-top 200ms ease-in;
 }
