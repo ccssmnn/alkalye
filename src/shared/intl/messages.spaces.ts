@@ -40,6 +40,7 @@ let baseSpacesMessages = messages({
 	"spaces.copy.errorMissingData":
 		"Failed to copy document: missing data or permission",
 	"spaces.copy.errorGeneric": "Failed to copy document: {$error}",
+	"spaces.copy.errorUnknown": "Unknown error",
 	"spaces.loading": "Loading space...",
 	"spaces.settings.title": "Space Settings",
 	"spaces.settings.backButton": "Back",
@@ -106,7 +107,7 @@ let baseSpacesMessages = messages({
 })
 
 let deSpacesMessages = translate(baseSpacesMessages, {
-	"spaces.selector.settings": "Raumeinstellungen",
+	"spaces.selector.settings": "Bereichseinstellungen",
 	"spaces.selector.personal": "Persönlich",
 	"spaces.selector.viewingPublic": "Öffentlicher Bereich wird angezeigt",
 	"spaces.selector.addToMySpaces": "Zu meinen Bereichen hinzufügen",
@@ -144,8 +145,9 @@ let deSpacesMessages = translate(baseSpacesMessages, {
 	"spaces.copy.errorMissingData":
 		"Fehler beim Kopieren des Dokuments: Fehlende Daten oder keine Berechtigung",
 	"spaces.copy.errorGeneric": "Fehler beim Kopieren des Dokuments: {$error}",
+	"spaces.copy.errorUnknown": "Unbekannter Fehler",
 	"spaces.loading": "Bereich wird geladen...",
-	"spaces.settings.title": "Raumeinstellungen",
+	"spaces.settings.title": "Bereichseinstellungen",
 	"spaces.settings.backButton": "Zurück",
 	"spaces.settings.viewingInfo":
 		"Du betrachtest einen öffentlichen Bereich. Du kannst ihn jederzeit aus deiner Bereichsliste entfernen.",
@@ -164,7 +166,7 @@ let deSpacesMessages = translate(baseSpacesMessages, {
 	"spaces.settings.avatarRemove": "Entfernen",
 	"spaces.settings.avatarCropTitle": "Avatar zuschneiden",
 	"spaces.settings.avatarCropDescription":
-		"Ziehe zum Verschieben, scrolle oder kniff zum Zoomen.",
+		"Ziehe zum Verschieben, scrolle oder ziehe mit zwei Fingern zum Zoomen.",
 	"spaces.settings.avatarCropCancel": "Abbrechen",
 	"spaces.settings.avatarCropSave": "Speichern",
 	"spaces.settings.avatarRemoveConfirmTitle": "Avatar entfernen?",

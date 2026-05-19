@@ -211,10 +211,18 @@ function TimeMachineContent({
 		let wasClamped = initialEdit !== currentEditIndex
 		if (wasClamped && !shownClampToastRef.current) {
 			shownClampToastRef.current = true
-			toast(`Showing edit ${currentEditIndex + 1} of ${totalEdits}`, {
-				description: `Edit ${initialEdit + 1} doesn't exist. Showing closest available version.`,
-				duration: 4000,
-			})
+			toast(
+				t("timeMachine.clampedTitle", {
+					edit: String(currentEditIndex + 1),
+					total: String(totalEdits),
+				}),
+				{
+					description: t("timeMachine.clampedDescription", {
+						edit: String(initialEdit + 1),
+					}),
+					duration: 4000,
+				},
+			)
 			navigate({
 				to: "/doc/$id/timemachine",
 				params: { id: docId },
@@ -233,6 +241,7 @@ function TimeMachineContent({
 		navigate,
 		viewMode,
 		selectedDayIndex,
+		t,
 	])
 
 	let isViewingDay = viewMode === "edits" && selectedDayIndex !== null

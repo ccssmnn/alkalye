@@ -87,13 +87,13 @@ function DuplicateDocDialog({
 	})
 	let inputRef = useRef<HTMLInputElement>(null)
 
-	let docName = getDocName(doc)
+	let docName = getDocName(doc, t("doc.untitled"))
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let isDuplicating = progress.status === "copying"
 
 	useEffect(() => {
 		if (open) {
-			setName(`${docName} (copy)`)
+			setName(t("doc.duplicateDialog.copyName", { name: docName }))
 			setDestination("personal")
 			setProgress({ total: 0, copied: 0, status: "idle" })
 			setTimeout(() => {
@@ -101,7 +101,7 @@ function DuplicateDocDialog({
 				inputRef.current?.select()
 			}, 0)
 		}
-	}, [open, docName])
+	}, [open, docName, t])
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
@@ -131,7 +131,7 @@ function DuplicateDocDialog({
 			setProgress(p => ({
 				...p,
 				status: "error",
-				error: err instanceof Error ? err.message : "Unknown error",
+				error: err instanceof Error ? err.message : t("doc.errorUnknown"),
 			}))
 		}
 	}
@@ -208,7 +208,7 @@ function DuplicateDocDialog({
 							onClick={() => onOpenChange(false)}
 							disabled={isDuplicating}
 						>
-							Cancel
+							{t("doc.cancel")}
 						</Button>
 						<Button
 							type="submit"
@@ -217,9 +217,12 @@ function DuplicateDocDialog({
 						>
 							{isDuplicating
 								? progress.total > 0
-									? `Copying assets (${progress.copied}/${progress.total})...`
-									: "Duplicating..."
-								: "Duplicate"}
+									? t("doc.duplicateDialog.copyingProgress", {
+											copied: String(progress.copied),
+											total: String(progress.total),
+										})
+									: t("doc.duplicateDialog.duplicating")
+								: t("doc.duplicate")}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -412,9 +415,9 @@ function getSortedSpaces(
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function getDocName(doc: LoadedDocument): string {
+function getDocName(doc: LoadedDocument, fallback: string): string {
 	let content = doc.content?.toString() ?? ""
 	let firstLine = content.split("\n")[0] ?? ""
 	let title = firstLine.replace(/^#\s*/, "").trim()
-	return title || "Untitled"
+	return title || fallback
 }

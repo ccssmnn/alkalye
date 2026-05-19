@@ -45,7 +45,7 @@ let deAuthMessages = translate(baseAuthMessages, {
 	"auth.login.title": "Gib deine Recovery-Phrase ein",
 	"auth.login.description":
 		"Gib die Recovery-Phrase von der Erstellung deines Kontos ein.",
-	"auth.login.placeholder": "word1 word2 word3 ...",
+	"auth.login.placeholder": "wort1 wort2 wort3 ...",
 	"auth.login.back": "Zurück",
 	"auth.login.submit": "Anmelden",
 	"auth.login.error.invalidPassphrase": "Ungültige Phrase",

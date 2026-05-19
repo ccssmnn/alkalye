@@ -84,18 +84,22 @@ let baseDocumentsMessages = messages({
 	"doc.duplicateDialog.name": "Name",
 	"doc.duplicateDialog.destination": "Destination",
 	"doc.duplicateDialog.personal": "Personal",
+	"doc.duplicateDialog.copyName": "{$name} (copy)",
 	"doc.duplicateDialog.copyingAssets": "Copying assets...",
 	"doc.duplicateDialog.copyingProgress":
 		"Copying assets ({$copied}/{$total})...",
 	"doc.duplicateDialog.duplicating": "Duplicating...",
 	"doc.cancel": "Cancel",
+	"doc.errorUnknown": "Unknown error",
 	"doc.folderDialog.nameRequired": "Name required",
 	"doc.folderDialog.alreadyExists": "Folder already exists",
 	"doc.folderDialog.renameTitle": "Rename folder",
 	"doc.folderDialog.renameFolderName": "Folder name",
+	"doc.folderDialog.inPath": "In: {$path}",
 	"doc.folderDialog.rootFolder": "Root folder",
 	"doc.folderDialog.moveTitle": "Move folder",
 	"doc.folderDialog.moveDescription": 'Move "{$folderName}" to another folder',
+	"doc.folderDialog.createFolder": 'Create "{$name}"',
 	"doc.folderDialog.deleteTitle": 'Delete folder "{$folderName}"?',
 	"doc.folderDialog.deleteDescription":
 		"This folder contains {$docCount} documents.",
@@ -147,6 +151,9 @@ let baseDocumentsMessages = messages({
 	"timeMachine.nextEdit": "Next edit",
 	"timeMachine.previous": "Previous",
 	"timeMachine.next": "Next",
+	"timeMachine.clampedTitle": "Showing edit {$edit} of {$total}",
+	"timeMachine.clampedDescription":
+		"Edit {$edit} doesn't exist. Showing closest available version.",
 	"timeMachine.failedToCopyAsset": "Failed to copy asset: {$name}",
 })
 
@@ -235,19 +242,23 @@ let deDocumentsMessages = translate(baseDocumentsMessages, {
 	"doc.duplicateDialog.name": "Name",
 	"doc.duplicateDialog.destination": "Ziel",
 	"doc.duplicateDialog.personal": "Persönlich",
+	"doc.duplicateDialog.copyName": "{$name} (Kopie)",
 	"doc.duplicateDialog.copyingAssets": "Kopiere Assets...",
 	"doc.duplicateDialog.copyingProgress":
 		"Kopiere Assets ({$copied}/{$total})...",
 	"doc.duplicateDialog.duplicating": "Wird dupliziert...",
 	"doc.cancel": "Abbrechen",
+	"doc.errorUnknown": "Unbekannter Fehler",
 	"doc.folderDialog.nameRequired": "Name erforderlich",
 	"doc.folderDialog.alreadyExists": "Ordner existiert bereits",
 	"doc.folderDialog.renameTitle": "Ordner umbenennen",
 	"doc.folderDialog.renameFolderName": "Ordnername",
+	"doc.folderDialog.inPath": "In: {$path}",
 	"doc.folderDialog.rootFolder": "Root-Ordner",
 	"doc.folderDialog.moveTitle": "Ordner verschieben",
 	"doc.folderDialog.moveDescription":
 		'Verschiebe "{$folderName}" in einen anderen Ordner',
+	"doc.folderDialog.createFolder": '"{$name}" erstellen',
 	"doc.folderDialog.deleteTitle": 'Ordner "{$folderName}" löschen?',
 	"doc.folderDialog.deleteDescription":
 		"Dieser Ordner enthält {$docCount} Dokumente.",
@@ -300,5 +311,8 @@ let deDocumentsMessages = translate(baseDocumentsMessages, {
 	"timeMachine.nextEdit": "Nächste Bearbeitung",
 	"timeMachine.previous": "Zurück",
 	"timeMachine.next": "Weiter",
+	"timeMachine.clampedTitle": "Zeige Bearbeitung {$edit} von {$total}",
+	"timeMachine.clampedDescription":
+		"Bearbeitung {$edit} existiert nicht. Zeige die nächste verfügbare Version.",
 	"timeMachine.failedToCopyAsset": "Fehler beim Kopieren des Assets: {$name}",
 })

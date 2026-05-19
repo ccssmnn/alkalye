@@ -237,10 +237,12 @@ function SpaceShareDialog({
 						{inviteLink ? (
 							<div className="space-y-2">
 								<div className="text-muted-foreground text-xs">
-									{inviteRole === "writer"
-										? t("sharing.role.writer")
-										: t("sharing.role.reader")}{" "}
-									invite link
+									{t("sharing.space.link.roleInviteLink", {
+										role:
+											inviteRole === "writer"
+												? t("sharing.role.writer")
+												: t("sharing.role.reader"),
+									})}
 								</div>
 								<div className="bg-muted flex items-center gap-2 rounded p-2 text-xs">
 									<input

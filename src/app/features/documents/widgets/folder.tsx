@@ -304,7 +304,7 @@ function RenameFolderDialog({
 						<DialogTitle>{t("doc.folderDialog.renameTitle")}</DialogTitle>
 						<DialogDescription>
 							{parentPath
-								? `In: ${parentPath}`
+								? t("doc.folderDialog.inPath", { path: parentPath })
 								: t("doc.folderDialog.rootFolder")}
 						</DialogDescription>
 					</DialogHeader>
@@ -333,10 +333,10 @@ function RenameFolderDialog({
 							variant="outline"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							{t("doc.cancel")}
 						</Button>
 						<Button type="submit" disabled={!name.trim() || isDuplicate}>
-							Rename
+							{t("doc.rename")}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -456,8 +456,9 @@ function MoveFolderDialog({
 									>
 										<Plus className="text-muted-foreground size-4" />
 										<span>
-											Create &ldquo;
-											<span className="font-medium">{inputValue}</span>&rdquo;
+											{t("doc.folderDialog.createFolder", {
+												name: inputValue,
+											})}
 										</span>
 									</button>
 								)}
@@ -468,7 +469,7 @@ function MoveFolderDialog({
 
 				<div className="flex justify-end gap-2 pt-2">
 					<Button variant="ghost" size="sm" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("doc.cancel")}
 					</Button>
 				</div>
 			</DialogContent>

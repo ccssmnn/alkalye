@@ -283,7 +283,10 @@ function FindPanel({
 				>
 					{query
 						? matchInfo.total > 0
-							? `${matchInfo.current} of ${matchInfo.total}`
+							? t("editor.find.matchCount", {
+									current: String(matchInfo.current),
+									total: String(matchInfo.total),
+								})
 							: t("editor.find.noResults")
 						: ""}
 				</span>
@@ -303,7 +306,7 @@ function FindPanel({
 					/>
 					<TooltipContent side="bottom">
 						<T k="editor.find.previous" /> <Kbd>Shift</Kbd>
-						<Kbd>F3</Kbd> or <Kbd>Shift</Kbd>
+						<Kbd>F3</Kbd> {t("editor.find.shortcutOr")} <Kbd>Shift</Kbd>
 						<Kbd>Enter</Kbd>
 					</TooltipContent>
 				</Tooltip>
@@ -323,7 +326,8 @@ function FindPanel({
 					/>
 					<TooltipContent side="bottom">
 						<p>
-							<T k="editor.find.next" /> <Kbd>F3</Kbd> or <Kbd>Enter</Kbd>
+							<T k="editor.find.next" /> <Kbd>F3</Kbd>{" "}
+							{t("editor.find.shortcutOr")} <Kbd>Enter</Kbd>
 						</p>
 						<p>
 							<T k="editor.find.goToMatch" />{" "}

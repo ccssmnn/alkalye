@@ -248,6 +248,7 @@ function MarkdownEditor(
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
 	let readOnlyCompartment = useRef(new Compartment())
+	let placeholderCompartment = useRef(new Compartment())
 	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
@@ -485,11 +486,12 @@ function MarkdownEditor(
 			...(initRef.current.externalExtensions ?? []),
 		]
 
-		if (initRef.current.placeholder) {
-			extensions.push(placeholderExt(initRef.current.placeholder))
-		}
-
 		extensions.push(
+			placeholderCompartment.current.of(
+				initRef.current.placeholder
+					? placeholderExt(initRef.current.placeholder)
+					: [],
+			),
 			readOnlyCompartment.current.of(
 				initRef.current.readOnly ? EditorState.readOnly.of(true) : [],
 			),
@@ -670,6 +672,15 @@ function MarkdownEditor(
 			),
 		})
 	}, [view, readOnly])
+
+	useEffect(() => {
+		if (!view) return
+		view.dispatch({
+			effects: placeholderCompartment.current.reconfigure(
+				placeholder ? placeholderExt(placeholder) : [],
+			),
+		})
+	}, [view, placeholder])
 
 	function getContent() {
 		return view?.state.doc.toString() ?? ""

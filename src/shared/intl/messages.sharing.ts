@@ -47,6 +47,7 @@ let baseSharingMessages = messages({
 	"sharing.space.link.createInviteLink": "Create invite link",
 	"sharing.space.link.createDifferent": "Create different link",
 	"sharing.space.link.createFailed": "Failed to create invite link",
+	"sharing.space.link.roleInviteLink": "{$role} invite link",
 
 	"sharing.space.publicAccess": "Public access",
 	"sharing.space.publicLink.description":
@@ -166,6 +167,7 @@ let deSharingMessages = translate(baseSharingMessages, {
 	"sharing.space.link.createDifferent": "Anderen Link erstellen",
 	"sharing.space.link.createFailed":
 		"Fehler beim Erstellen des Einladungslinks",
+	"sharing.space.link.roleInviteLink": "Einladungslink für {$role}",
 
 	"sharing.space.publicAccess": "Öffentlicher Zugriff",
 	"sharing.space.publicLink.description":

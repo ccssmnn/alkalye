@@ -165,7 +165,10 @@ function CopyToSyncedDialog({
 			} catch (err) {
 				toast.error(
 					t("spaces.copy.errorGeneric", {
-						error: err instanceof Error ? err.message : "Unknown error",
+						error:
+							err instanceof Error
+								? err.message
+								: t("spaces.copy.errorUnknown"),
 					}),
 				)
 				setIsSubmitting(false)
@@ -199,7 +202,7 @@ function CopyToSyncedDialog({
 					<DialogDescription>
 						<T
 							k="spaces.copy.description"
-							params={{ filename: filename ?? "Untitled" }}
+							params={{ filename: filename ?? t("doc.untitled") }}
 						/>
 					</DialogDescription>
 				</DialogHeader>

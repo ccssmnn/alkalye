@@ -42,9 +42,9 @@ let deImportExportMessages = translate(baseImportExportMessages, {
 		"Verarbeite Asset {$index} von {$total}",
 	"importExport.progress.readingFilesInitial": "Lese Dateien...",
 
-	"importExport.upload.compressing": "Komprimierung",
-	"importExport.upload.uploading": "Upload läuft",
-	"importExport.upload.title": "{$phase} Video",
+	"importExport.upload.compressing": "Video wird komprimiert",
+	"importExport.upload.uploading": "Video wird hochgeladen",
+	"importExport.upload.title": "{$phase}",
 	"importExport.upload.compressionNote":
 		"Videos werden komprimiert, um Speicher zu sparen und schneller zu synchronisieren.",
 	"importExport.upload.cancel": "Abbrechen",

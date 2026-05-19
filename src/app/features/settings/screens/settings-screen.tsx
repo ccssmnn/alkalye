@@ -483,8 +483,9 @@ function ThemesSection({ me }: ThemesSectionProps) {
 									))}
 									{uploadError.errors.length > 3 && (
 										<li>
-											{t("settings.themes.moreErrors")}{" "}
-											{uploadError.errors.length - 3}
+											{t("settings.themes.moreErrors", {
+												count: String(uploadError.errors.length - 3),
+											})}
 										</li>
 									)}
 								</ul>
@@ -600,7 +601,9 @@ function ThemesSection({ me }: ThemesSectionProps) {
 				open={!!themeToDelete}
 				onOpenChange={open => !open && setThemeToDelete(null)}
 				title={t("settings.themes.deleteTitle")}
-				description={`${t("settings.themes.deleteDescription")} ${themeToDelete?.name ?? ""}`}
+				description={t("settings.themes.deleteDescription", {
+					name: themeToDelete?.name ?? "",
+				})}
 				confirmLabel={t("settings.themes.deleteConfirm")}
 				onConfirm={handleDeleteTheme}
 				variant="destructive"

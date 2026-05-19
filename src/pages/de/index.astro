@@ -111,7 +111,7 @@ let aiWorkflow = [
 			let isStandalone = window.matchMedia("(display-mode: standalone)").matches
 			let isIOSStandalone = window.navigator.standalone === true
 			if ((isStandalone || isIOSStandalone) && location.pathname === "/de/") {
-				location.replace("/app")
+				location.replace("/app?lang=de")
 			}
 		</script>
 		<meta property="og:type" content="website" />
@@ -140,7 +140,7 @@ let aiWorkflow = [
 						<span class="text-border">|</span>
 						<a href="/en/" class="text-sm text-muted-foreground transition-colors hover:text-foreground">EN</a>
 						<a
-							href="/app"
+								href="/app?lang=de"
 							class="inline-flex min-h-11 items-center justify-center border border-primary bg-primary px-5 text-sm font-medium text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
 						>
 							Alkalye öffnen
@@ -171,7 +171,7 @@ let aiWorkflow = [
 					</p>
 					<div class="flex flex-wrap items-center gap-4 pt-2">
 						<a
-							href="/app"
+							href="/app?lang=de"
 							class="inline-flex min-h-12 items-center justify-center bg-primary px-8 text-base font-medium text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02] hover:shadow-lg hover:shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-none"
 						>
 							Jetzt schreiben
@@ -316,7 +316,7 @@ let aiWorkflow = [
 						Teste die kostenlose öffentliche Beta. Keine E-Mail, keine Kreditkarte, kein Konto nötig. Jederzeit selbst hosten. Deine Daten bleiben verschlüsselt und gehören dir.
 					</p>
 					<a
-						href="/app"
+						href="/app?lang=de"
 						class="inline-flex min-h-12 items-center justify-center bg-primary px-10 text-base font-medium text-primary-foreground transition-all duration-200 hover:bg-primary/90 hover:scale-[1.02] hover:shadow-xl hover:shadow-primary/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background rounded-none"
 					>
 						Jetzt schreiben

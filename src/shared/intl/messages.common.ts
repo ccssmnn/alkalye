@@ -149,7 +149,7 @@ let deCommonMessages = translate(baseCommonMessages, {
 	"assets.download": "Herunterladen",
 	"assets.rename": "Umbenennen",
 	"assets.muteAudio": "Audio stummschalten",
-	"assets.unmuteAudio": "Audio entsperren",
+	"assets.unmuteAudio": "Audio einschalten",
 	"assets.delete": "Löschen",
 	"assets.deleteTitle": "Asset löschen?",
 	"assets.deleteDescription":
@@ -237,7 +237,8 @@ let deCommonMessages = translate(baseCommonMessages, {
 		"Um auf iOS zu installieren, nutze Safari und folge diesen Schritten:",
 	"pwa.iosShareButton": "Tippe auf die Share-Schaltfläche",
 	"pwa.iosAtBottom": "unten in Safari",
-	"pwa.iosAddHome": 'Scrolle nach unten und tippe "Zum Startbildschirm"',
+	"pwa.iosAddHome":
+		'Scrolle nach unten und tippe auf "Zum Startbildschirm hinzufügen"',
 	"pwa.iosAddButton": 'Tippe "Hinzufügen" in der oberen rechten Ecke',
 	"pwa.iosNote":
 		"Hinweis: Das funktioniert nur in Safari, nicht in anderen Browsern auf iOS.",

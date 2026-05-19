@@ -1,4 +1,4 @@
-import { useState, useEffect, startTransition } from "react"
+import { useState, useEffect, useRef, startTransition } from "react"
 import { useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
@@ -31,12 +31,11 @@ function InviteScreen() {
 	let [status, setStatus] = useState<
 		"loading" | "needs-auth" | "accepting" | "success" | "error" | "revoked"
 	>(inviteData ? "loading" : "error")
-	let [error, setError] = useState<string | null>(
-		inviteData ? null : t("sharing.invite.invalidLink"),
-	)
+	let [error, setError] = useState<string | null>(null)
 
 	let isSpaceInvite = inviteData?.type === "space"
 	let [isAccepting, setIsAccepting] = useState(false)
+	let acceptInviteRef = useRef<() => void | Promise<void>>(() => {})
 
 	async function handleAcceptInvite() {
 		if (!me.$isLoaded || !inviteData || isAccepting) return
@@ -74,6 +73,10 @@ function InviteScreen() {
 		}
 	}
 
+	useEffect(() => {
+		acceptInviteRef.current = handleAcceptInvite
+	})
+
 	// Derive needs-auth state during render
 	let shouldShowAuth =
 		inviteData && me.$isLoaded && !isAuthenticated && status === "loading"
@@ -83,9 +86,8 @@ function InviteScreen() {
 		if (!inviteData || !me.$isLoaded || !isAuthenticated) return
 		if (status !== "loading" || isAccepting) return
 		startTransition(() => {
-			handleAcceptInvite()
+			void acceptInviteRef.current()
 		})
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [me.$isLoaded, isAuthenticated, inviteData, status, isAccepting])
 
 	let pageTitle = isSpaceInvite
@@ -234,7 +236,7 @@ function NeedsAuthState({
 					onClick={() => setAuthOpen(true)}
 					data-testid={testIds.invite.signInButton}
 				>
-					Sign in
+					<T k="common.signIn" />
 				</Button>
 			</div>
 			<AuthDialog
@@ -272,6 +274,8 @@ function RevokedState() {
 
 function ErrorState({ error }: { error: string | null }) {
 	let t = useIntl()
+	let errorMessage = error ?? t("sharing.invite.invalidLink")
+
 	return (
 		<div className="space-y-6 text-center">
 			<AlertCircle className="text-destructive mx-auto size-12" />
@@ -281,7 +285,7 @@ function ErrorState({ error }: { error: string | null }) {
 				</h1>
 				<p className="border-border text-muted-foreground border p-1 font-mono text-sm">
 					{t("sharing.invite.errorReason", {
-						error: error ?? t("sharing.invite.errorFallback"),
+						error: errorMessage,
 					})}
 				</p>
 				<p className="text-muted-foreground text-sm">

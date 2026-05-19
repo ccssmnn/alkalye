@@ -1,4 +1,4 @@
-import { StrictMode } from "react"
+import { StrictMode, useEffect } from "react"
 import { JazzReactProvider, useAccount } from "jazz-tools/react"
 import { createRouter, RouterProvider } from "@tanstack/react-router"
 import { PUBLIC_JAZZ_SYNC_SERVER } from "astro:env/client"
@@ -83,10 +83,21 @@ function RouterWithJazz() {
 	let me = useAccount(UserAccount, { resolve: { root: true } })
 	let splashReady = useSplashDelay(700)
 	let showSplash = me.$jazz.loadingState === "loading" || !splashReady
+	let requestedLocale = getRequestedLocale()
 
 	useCleanupDeleted()
 
-	let locale = me.$isLoaded ? me.root?.language || "en" : "en"
+	useEffect(() => {
+		if (!me.$isLoaded || !requestedLocale) return
+		if (me.root?.language !== requestedLocale) {
+			me.root?.$jazz.set("language", requestedLocale)
+		}
+		clearRequestedLocale()
+	}, [me, requestedLocale])
+
+	let locale = me.$isLoaded
+		? (requestedLocale ?? me.root?.language ?? "en")
+		: (requestedLocale ?? "en")
 
 	let content = (
 		<>
@@ -111,4 +122,17 @@ function RouterWithJazz() {
 	) : (
 		<IntlProvider>{intlWrapped}</IntlProvider>
 	)
+}
+
+function getRequestedLocale(): "de" | "en" | null {
+	if (typeof window === "undefined") return null
+	let locale = new URLSearchParams(window.location.search).get("lang")
+	if (locale === "de" || locale === "en") return locale
+	return null
+}
+
+function clearRequestedLocale() {
+	let url = new URL(window.location.href)
+	url.searchParams.delete("lang")
+	window.history.replaceState(window.history.state, "", url)
 }
