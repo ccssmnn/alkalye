@@ -9,6 +9,11 @@ export default defineConfig({
 	site: "https://www.alkalye.com",
 	adapter: vercel(),
 	devToolbar: { enabled: false },
+	i18n: {
+		locales: ["en", "de"],
+		defaultLocale: "en",
+		routing: { prefixDefaultLocale: false },
+	},
 	vite: {
 		plugins: [
 			tanstackRouter({
@@ -68,8 +73,8 @@ export default defineConfig({
 			},
 			workbox: {
 				globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
-				navigateFallback: "app/index.html",
-				navigateFallbackDenylist: [/^\/invite$/, /^\/invite\//],
+				navigateFallback: "app",
+				navigateFallbackAllowlist: [/^\/app(?:\/.*)?(?:\?.*)?$/],
 				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
 			},
 		}),

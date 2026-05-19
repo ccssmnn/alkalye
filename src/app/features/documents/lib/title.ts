@@ -37,15 +37,22 @@ function isDocumentPinned(doc: { content?: { toString(): string } }): boolean {
 	return frontmatter?.pinned === true
 }
 
-function formatRelativeDate(date: Date): string {
+type DateLabels = {
+	today: string
+	yesterday: string
+	daysAgo: (days: number) => string
+	weeksAgo: (weeks: number) => string
+}
+
+function formatRelativeDate(date: Date, labels: DateLabels): string {
 	let now = new Date()
 	let diff = now.getTime() - new Date(date).getTime()
 	let days = Math.floor(diff / (1000 * 60 * 60 * 24))
 
-	if (days === 0) return "Today"
-	if (days === 1) return "Yesterday"
-	if (days < 7) return `${days}d ago`
-	if (days < 30) return `${Math.floor(days / 7)}w ago`
+	if (days === 0) return labels.today
+	if (days === 1) return labels.yesterday
+	if (days < 7) return labels.daysAgo(days)
+	if (days < 30) return labels.weeksAgo(Math.floor(days / 7))
 	return new Date(date).toLocaleDateString()
 }
 

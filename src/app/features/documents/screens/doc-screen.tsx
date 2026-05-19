@@ -92,6 +92,7 @@ import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl } from "@/shared/intl/setup"
 
 export { DocScreen }
 
@@ -200,6 +201,7 @@ type LoadedMe = ReturnType<
 >
 
 function EditorContent({ doc, docId }: EditorContentProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
@@ -381,6 +383,11 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				let title = getDocumentTitle(docWithContent)
 				saveDocumentAs(docWithContent.content?.toString() ?? "", title)
 			},
+			labels: {
+				autosaveTitle: t("editor.autosave.title"),
+				autosaveDescription: t("editor.autosave.description"),
+				download: t("editor.autosave.download"),
+			},
 		})
 	}, [
 		navigate,
@@ -391,6 +398,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		me,
 		docWithContent,
 		editor,
+		t,
 	])
 
 	let allDocs = getPersonalDocs(me)
@@ -455,7 +463,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 							}
 						>
 							<Plus />
-							New
+							{t("doc.new")}
 						</Button>
 					</>
 				}
@@ -498,7 +506,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					value={content}
 					onChange={handleChange}
 					onCursorChange={handleCursorChange}
-					placeholder="Start writing..."
+					placeholder={t("doc.startWriting")}
 					readOnly={readOnly}
 					assets={assets}
 					documents={documents}
@@ -554,7 +562,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 						trigger={
 							<Button variant="ghost" size="sm" className="w-full" nativeButton>
 								<HelpCircle />
-								<span>Help</span>
+								<span>{t("help.label")}</span>
 							</Button>
 						}
 						align={isMobile ? "center" : "end"}
@@ -574,7 +582,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 									nativeButton
 								>
 									<Search className="size-4" />
-									Find
+									{t("doc.find")}
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarSeparator />
@@ -640,6 +648,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 }
 
 function SettingsButton() {
+	let t = useIntl()
 	let { needRefresh } = usePWA()
 	let location = useLocation()
 	return (
@@ -663,7 +672,7 @@ function SettingsButton() {
 				}
 			/>
 			<TooltipContent>
-				{needRefresh ? "Settings (Update available)" : "Settings"}
+				{needRefresh ? t("doc.settingsUpdateAvailable") : t("doc.settings")}
 			</TooltipContent>
 		</Tooltip>
 	)

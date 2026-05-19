@@ -1,4 +1,5 @@
 import { Bird } from "lucide-react"
+import { T } from "@/shared/intl/setup"
 
 export { Footer }
 
@@ -41,13 +42,13 @@ function Footer() {
 					href="/privacy"
 					className="hover:text-foreground p-1 transition-colors"
 				>
-					Privacy
+					<T k="footer.privacy" />
 				</a>
 				<a
 					href="/imprint"
 					className="hover:text-foreground p-1 transition-colors"
 				>
-					Imprint
+					<T k="footer.imprint" />
 				</a>
 			</div>
 		</footer>

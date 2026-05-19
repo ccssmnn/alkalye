@@ -12,6 +12,7 @@ import {
 	EmptyDescription,
 	EmptyContent,
 } from "@/app/components/ui/empty"
+import { T } from "@/shared/intl/setup"
 
 export {
 	DocumentNotFound,
@@ -28,14 +29,16 @@ function DocumentNotFound() {
 					<EmptyMedia>
 						<FileX className="text-muted-foreground size-12" />
 					</EmptyMedia>
-					<EmptyTitle>Document not found</EmptyTitle>
+					<EmptyTitle>
+						<T k="error.docNotFound.title" />
+					</EmptyTitle>
 					<EmptyDescription>
-						This document doesn&apos;t exist or has been deleted.
+						<T k="error.docNotFound.description" />
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
 					<Button nativeButton={false} render={<Link to="/" />}>
-						Go Home
+						<T k="common.goHome" />
 					</Button>
 				</EmptyContent>
 			</Empty>
@@ -55,22 +58,26 @@ function DocumentUnauthorized() {
 					<EmptyMedia>
 						<ShieldOff className="text-muted-foreground size-12" />
 					</EmptyMedia>
-					<EmptyTitle>Access denied</EmptyTitle>
+					<EmptyTitle>
+						<T k="error.docUnauthorized.title" />
+					</EmptyTitle>
 					<EmptyDescription>
-						{isAuthenticated
-							? "You don't have permission to view this document."
-							: "Sign in to access this document."}
+						{isAuthenticated ? (
+							<T k="error.docUnauthorized.authenticated" />
+						) : (
+							<T k="error.docUnauthorized.unauthenticated" />
+						)}
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
 					<div className="flex w-full flex-col items-center gap-3">
 						<Button nativeButton={false} render={<Link to="/" />}>
-							Go Home
+							<T k="common.goHome" />
 						</Button>
 						{!isAuthenticated && (
 							<>
 								<Button variant="outline" onClick={() => setAuthOpen(true)}>
-									Sign in
+									<T k="common.signIn" />
 								</Button>
 								<AuthDialog
 									open={authOpen}
@@ -94,14 +101,16 @@ function SpaceNotFound() {
 					<EmptyMedia>
 						<FolderSearch className="text-muted-foreground size-12" />
 					</EmptyMedia>
-					<EmptyTitle>Space not found</EmptyTitle>
+					<EmptyTitle>
+						<T k="error.spaceNotFound.title" />
+					</EmptyTitle>
 					<EmptyDescription>
-						This space doesn&apos;t exist or may have been removed.
+						<T k="error.spaceNotFound.description" />
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
 					<Button nativeButton={false} render={<Link to="/" />}>
-						Go Home
+						<T k="common.goHome" />
 					</Button>
 				</EmptyContent>
 			</Empty>
@@ -121,22 +130,26 @@ function SpaceUnauthorized() {
 					<EmptyMedia>
 						<FolderLock className="text-muted-foreground size-12" />
 					</EmptyMedia>
-					<EmptyTitle>Access denied</EmptyTitle>
+					<EmptyTitle>
+						<T k="error.spaceUnauthorized.title" />
+					</EmptyTitle>
 					<EmptyDescription>
-						{isAuthenticated
-							? "You don't have permission to view this space."
-							: "Sign in to access this space."}
+						{isAuthenticated ? (
+							<T k="error.spaceUnauthorized.authenticated" />
+						) : (
+							<T k="error.spaceUnauthorized.unauthenticated" />
+						)}
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
 					<div className="flex w-full flex-col items-center gap-3">
 						<Button nativeButton={false} render={<Link to="/" />}>
-							Go Home
+							<T k="common.goHome" />
 						</Button>
 						{!isAuthenticated && (
 							<>
 								<Button variant="outline" onClick={() => setAuthOpen(true)}>
-									Sign in
+									<T k="common.signIn" />
 								</Button>
 								<AuthDialog
 									open={authOpen}

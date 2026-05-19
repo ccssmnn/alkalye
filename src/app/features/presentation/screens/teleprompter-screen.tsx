@@ -24,6 +24,7 @@ import {
 import { Teleprompter, groupBySlide } from "../widgets/teleprompter"
 import { parsePresentation } from "../lib/presentation"
 import { useScreenWakeLock } from "../lib/screen-wake-lock"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { TeleprompterScreen, resolve, loadWikilinkCache }
 export type { LoaderData }
@@ -92,9 +93,11 @@ function TeleprompterScreen({ id, loaderData }: TeleprompterScreenProps) {
 			<Empty className="h-screen">
 				<EmptyHeader>
 					<FileText className="text-muted-foreground size-8" />
-					<EmptyTitle>No slides found</EmptyTitle>
+					<EmptyTitle>
+						<T k="presentation.teleprompter.noSlides" />
+					</EmptyTitle>
 					<EmptyDescription>
-						Add headings (# or ##) to create slides
+						<T k="presentation.teleprompter.addHeadings" />
 					</EmptyDescription>
 				</EmptyHeader>
 				<EmptyContent>
@@ -103,7 +106,7 @@ function TeleprompterScreen({ id, loaderData }: TeleprompterScreenProps) {
 						nativeButton={false}
 						render={<Link to="/doc/$id" params={{ id }} />}
 					>
-						Back to Editor
+						<T k="presentation.teleprompter.backToEditor" />
 					</Button>
 				</EmptyContent>
 			</Empty>
@@ -150,6 +153,7 @@ function TopBar({
 	currentSlideIdx: number
 	totalSlides: number
 }) {
+	let t = useIntl()
 	return (
 		<div
 			className="border-border relative flex shrink-0 items-center justify-between border-b px-4 py-2"
@@ -165,10 +169,13 @@ function TopBar({
 				nativeButton={false}
 				render={<Link to="/doc/$id" params={{ id }} />}
 			>
-				Editor
+				<T k="presentation.teleprompter.editor" />
 			</Button>
 			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 text-sm">
-				Slide {currentSlideIdx + 1} / {totalSlides}
+				{t("presentation.teleprompter.slideIndicator", {
+					index: String(currentSlideIdx + 1),
+					total: String(totalSlides),
+				})}
 			</span>
 			<Button
 				variant="ghost"
@@ -182,7 +189,7 @@ function TopBar({
 					/>
 				}
 			>
-				Slideshow
+				<T k="presentation.teleprompter.slideshow" />
 			</Button>
 		</div>
 	)

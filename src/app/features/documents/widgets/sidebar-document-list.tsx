@@ -79,6 +79,7 @@ import { MoveToFolderDialog } from "./move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl } from "@/shared/intl/setup"
 
 export { SidebarDocumentList }
 export type { DocWithContent }
@@ -112,6 +113,7 @@ function SidebarDocumentList({
 	spaceId,
 	spaceGroupId,
 }: SidebarDocumentListProps) {
+	let t = useIntl()
 	let [search, setSearch] = useState("")
 	let [sort, setSort] = useState<SortMode>("latest")
 	let [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
@@ -183,6 +185,7 @@ function SidebarDocumentList({
 				onTypeChange={setTypeFilter}
 				deletedCount={deletedDocs.length}
 				hasNonDefaultFilters={hasNonDefaultFilters}
+				t={t}
 			/>
 			<SidebarGroup
 				className="flex-1"
@@ -200,6 +203,7 @@ function SidebarDocumentList({
 						onDelete={onDelete}
 						spaceId={spaceId}
 						spaceGroupId={spaceGroupId}
+						t={t}
 					/>
 				</SidebarGroupContent>
 			</SidebarGroup>
@@ -216,6 +220,7 @@ function SearchFilterBar({
 	onTypeChange,
 	deletedCount,
 	hasNonDefaultFilters,
+	t,
 }: {
 	search: string
 	onSearchChange: (value: string) => void
@@ -225,6 +230,7 @@ function SearchFilterBar({
 	onTypeChange: (value: TypeFilter) => void
 	deletedCount: number
 	hasNonDefaultFilters: boolean
+	t: ReturnType<typeof useIntl>
 }) {
 	let { viewMode, setViewMode } = useFolderStore()
 
@@ -234,7 +240,7 @@ function SearchFilterBar({
 				<Search className="text-muted-foreground pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
 				<Input
 					data-testid={testIds.doc.searchInput}
-					placeholder="Search..."
+					placeholder={t("doc.find")}
 					value={search}
 					onChange={e => onSearchChange(e.target.value)}
 					className="h-10 pl-8 pointer-fine:h-9"
@@ -260,8 +266,8 @@ function SearchFilterBar({
 				/>
 				<TooltipContent side="bottom">
 					{viewMode === "folders"
-						? "Switch to flat view"
-						: "Switch to folder view"}
+						? t("doc.sidebar.switchToFlatView")
+						: t("doc.sidebar.switchToFolderView")}
 				</TooltipContent>
 			</Tooltip>
 			<DropdownMenu>
@@ -276,47 +282,52 @@ function SearchFilterBar({
 					}
 				/>
 				<DropdownMenuContent align="end" className="w-48">
-					<div className="px-2 py-1.5 text-xs font-medium">Sort</div>
+					<div className="px-2 py-1.5 text-xs font-medium">
+						{t("doc.sidebar.sort")}
+					</div>
 					<DropdownMenuItem
 						onClick={() => onSortChange("latest")}
 						className={sort === "latest" ? "bg-accent" : ""}
 					>
-						Latest
+						{t("doc.sidebar.sortLatest")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => onSortChange("alphabetical")}
 						className={sort === "alphabetical" ? "bg-accent" : ""}
 					>
-						Alphabetical
+						{t("doc.sidebar.sortAlphabetical")}
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
-					<div className="px-2 py-1.5 text-xs font-medium">Type</div>
+					<div className="px-2 py-1.5 text-xs font-medium">
+						{t("doc.sidebar.type")}
+					</div>
 					<DropdownMenuItem
 						onClick={() => onTypeChange("all")}
 						className={typeFilter === "all" ? "bg-accent" : ""}
 					>
-						All
+						{t("doc.sidebar.typeAll")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => onTypeChange("document")}
 						className={typeFilter === "document" ? "bg-accent" : ""}
 					>
 						<FileText className="size-4" />
-						Documents
+						{t("doc.sidebar.typeDocuments")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => onTypeChange("presentation")}
 						className={typeFilter === "presentation" ? "bg-accent" : ""}
 					>
 						<Presentation className="size-4" />
-						Presentations
+						{t("doc.sidebar.typePresentations")}
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => onTypeChange("deleted")}
 						className={typeFilter === "deleted" ? "bg-accent" : ""}
 					>
 						<Trash2 className="size-4" />
-						Deleted{deletedCount > 0 ? ` (${deletedCount})` : ""}
+						{t("doc.sidebar.typeDeleted")}
+						{deletedCount > 0 ? ` (${deletedCount})` : ""}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
@@ -335,6 +346,7 @@ function DocumentListContent({
 	onDelete,
 	spaceId,
 	spaceGroupId,
+	t,
 }: {
 	docs: DocWithContent[]
 	currentDocId: string | undefined
@@ -346,6 +358,7 @@ function DocumentListContent({
 	onDelete: (doc: DocWithContent) => void
 	spaceId?: string
 	spaceGroupId?: string
+	t: ReturnType<typeof useIntl>
 }) {
 	let parentRef = useRef<HTMLDivElement>(null)
 	let { viewMode, isCollapsed, toggleFolder } = useFolderStore()
@@ -365,7 +378,7 @@ function DocumentListContent({
 		return (
 			<div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-8 text-xs">
 				<Spinner className="size-6" />
-				<p>Loading documents...</p>
+				<p>{t("doc.sidebar.loadingDocuments")}</p>
 			</div>
 		)
 	}
@@ -376,10 +389,10 @@ function DocumentListContent({
 				<FileText className="size-6 opacity-50" />
 				<p>
 					{searchQuery
-						? "No matches"
+						? t("doc.sidebar.noMatches")
 						: typeFilter === "deleted"
-							? "No deleted documents"
-							: "No documents"}
+							? t("doc.sidebar.noDeletedDocuments")
+							: t("doc.sidebar.noDocuments")}
 				</p>
 			</div>
 		)
@@ -417,7 +430,11 @@ function DocumentListContent({
 									}}
 								/>
 							) : typeFilter === "deleted" ? (
-								<DeletedDocumentItem doc={item.doc} searchQuery={searchQuery} />
+								<DeletedDocumentItem
+									doc={item.doc}
+									searchQuery={searchQuery}
+									t={t}
+								/>
 							) : (
 								<DocumentItem
 									doc={item.doc}
@@ -431,6 +448,7 @@ function DocumentListContent({
 									depth={item.depth}
 									spaceId={spaceId}
 									spaceGroupId={spaceGroupId}
+									t={t}
 								/>
 							)}
 						</div>
@@ -453,6 +471,7 @@ function DocumentItem({
 	depth = 0,
 	spaceId,
 	spaceGroupId,
+	t,
 }: {
 	doc: DocWithContent
 	isActive: boolean
@@ -465,6 +484,7 @@ function DocumentItem({
 	depth?: number
 	spaceId?: string
 	spaceGroupId?: string
+	t: ReturnType<typeof useIntl>
 }) {
 	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 	let [shareOpen, setShareOpen] = useState(false)
@@ -475,7 +495,12 @@ function DocumentItem({
 
 	let content = doc.content?.toString() ?? ""
 	let title = getDocumentTitle(doc)
-	let date = formatRelativeDate(doc.updatedAt)
+	let date = formatRelativeDate(doc.updatedAt, {
+		today: t("doc.date.today"),
+		yesterday: t("doc.date.yesterday"),
+		daysAgo: days => t("doc.date.daysAgo", { days: String(days) }),
+		weeksAgo: weeks => t("doc.date.weeksAgo", { weeks: String(weeks) }),
+	})
 	let isPublic = isDocumentPublic(doc)
 	let status = getSharingStatus(doc)
 	let hasIndividual = hasIndividualShares(doc, spaceGroupId)
@@ -607,7 +632,7 @@ function DocumentItem({
 						}
 					>
 						<Eye />
-						Preview
+						{t("doc.preview")}
 					</ContextMenuItem>
 					{isPresentation && (
 						<>
@@ -615,7 +640,7 @@ function DocumentItem({
 								render={<Link to="/doc/$id/slideshow" params={{ id: docId }} />}
 							>
 								<Presentation />
-								Slideshow
+								{t("doc.sidebar.slideshow")}
 							</ContextMenuItem>
 							<ContextMenuItem
 								render={
@@ -623,39 +648,39 @@ function DocumentItem({
 								}
 							>
 								<ScrollText />
-								Teleprompter
+								{t("doc.sidebar.teleprompter")}
 							</ContextMenuItem>
 						</>
 					)}
 					<ContextMenuItem onClick={makeDownloadDocument(doc, title)}>
 						<Download />
-						Download
+						{t("doc.download")}
 					</ContextMenuItem>
 					<ContextMenuItem
 						onClick={() => setShareOpen(true)}
 						data-testid={testIds.doc.shareButton}
 					>
 						<Users />
-						Share
+						{t("doc.sidebar.share")}
 					</ContextMenuItem>
 					<ContextMenuItem
 						onClick={() => onDuplicate(doc)}
 						data-testid={testIds.doc.duplicateButton}
 					>
 						<Copy />
-						Duplicate
+						{t("doc.duplicate")}
 					</ContextMenuItem>
 					<ContextMenuItem onClick={makeTogglePin(doc)}>
 						<Pin />
-						{isPinned ? "Unpin" : "Pin"}
+						{isPinned ? t("doc.unpin") : t("doc.pin")}
 					</ContextMenuItem>
 					<ContextMenuItem onClick={() => setMoveOpen(true)}>
 						<FolderInput />
-						Move to folder
+						{t("doc.moveToFolder")}
 					</ContextMenuItem>
 					<ContextMenuItem onClick={() => setMoveSpaceOpen(true)}>
 						<ArrowRightLeft />
-						Move to space
+						{t("doc.moveToSpace")}
 					</ContextMenuItem>
 					{isAdmin ? (
 						<ContextMenuItem
@@ -664,7 +689,7 @@ function DocumentItem({
 							data-testid={testIds.doc.deleteButton}
 						>
 							<Trash2 />
-							Delete
+							{t("doc.delete")}
 						</ContextMenuItem>
 					) : (
 						<ContextMenuItem
@@ -672,7 +697,7 @@ function DocumentItem({
 							variant="destructive"
 						>
 							<LogOut />
-							Leave
+							{t("doc.leave")}
 						</ContextMenuItem>
 					)}
 				</ContextMenuContent>
@@ -693,9 +718,9 @@ function DocumentItem({
 			<ConfirmDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
-				title="Delete document?"
-				description="This will move the document to trash. You can restore it later."
-				confirmLabel="Delete"
+				title={t("doc.deleteDialog.title")}
+				description={t("doc.deleteDialog.description")}
+				confirmLabel={t("doc.deleteDialog.confirm")}
 				variant="destructive"
 				onConfirm={() => onDelete(doc)}
 				confirmTestId={testIds.dialog.deleteConfirm}
@@ -703,9 +728,9 @@ function DocumentItem({
 			<ConfirmDialog
 				open={leaveOpen}
 				onOpenChange={setLeaveOpen}
-				title="Leave document?"
-				description="You will lose access to this shared document."
-				confirmLabel="Leave"
+				title={t("doc.leaveDialog.title")}
+				description={t("doc.leaveDialog.description")}
+				confirmLabel={t("doc.leaveDialog.confirm")}
 				variant="destructive"
 				onConfirm={makeLeaveDocument(doc, me)}
 			>
@@ -723,9 +748,11 @@ function DocumentItem({
 function DeletedDocumentItem({
 	doc,
 	searchQuery,
+	t,
 }: {
 	doc: DocWithContent
 	searchQuery: string
+	t: ReturnType<typeof useIntl>
 }) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
 	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
@@ -782,16 +809,16 @@ function DeletedDocumentItem({
 						className="text-destructive focus:text-destructive"
 					>
 						<Trash2 />
-						Delete permanently
+						{t("doc.permanentDeleteDialog.confirm")}
 					</DropdownMenuItem>
 				</DropdownMenuContent>
 			</DropdownMenu>
 			<ConfirmDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
-				title="Delete permanently?"
-				description="This cannot be undone."
-				confirmLabel="Delete permanently"
+				title={t("doc.permanentDeleteDialog.title")}
+				description={t("doc.permanentDeleteDialog.description")}
+				confirmLabel={t("doc.permanentDeleteDialog.confirm")}
 				variant="destructive"
 				onConfirm={handlePermanentDelete}
 			>

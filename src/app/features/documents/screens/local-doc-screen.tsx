@@ -97,10 +97,12 @@ import { useDocTitles, type ResolvedDoc } from "../lib/wikilink-titles"
 import { useWikilinkResolver } from "../lib/use-wikilink-resolver"
 import { toast } from "sonner"
 import { tryCatch } from "@/app/lib/try-catch"
+import { useIntl } from "@/shared/intl/setup"
 
 export { LocalDocScreen }
 
 function LocalDocScreen() {
+	let t = useIntl()
 	let store = useLocalFileStore()
 	let [initialized, setInitialized] = useState(false)
 	let [isPreview, setIsPreview] = useState(false)
@@ -109,7 +111,9 @@ function LocalDocScreen() {
 		async function init() {
 			let result = await tryCatch(consumeLaunchQueue())
 			if (!result.ok) {
-				toast.error("Failed to open launched file: " + result.error.message)
+				toast.error(
+					t("doc.localFile.failedToOpen") + " " + result.error.message,
+				)
 				setInitialized(true)
 				return
 			}
@@ -118,9 +122,7 @@ function LocalDocScreen() {
 				let activeFile = currentState.getActiveFile()
 
 				if (activeFile && activeFile.hasUnsavedChanges) {
-					let confirmed = window.confirm(
-						"You have unsaved changes. Open the launched file anyway?",
-					)
+					let confirmed = window.confirm(t("doc.localFile.confirmUnsaved"))
 					if (!confirmed) {
 						setInitialized(true)
 						return
@@ -128,7 +130,7 @@ function LocalDocScreen() {
 				}
 
 				if (activeFile) {
-					await saveCurrentFile(activeFile.id)
+					await saveCurrentFile(activeFile.id, t)
 				}
 
 				currentState.addFile({
@@ -144,7 +146,7 @@ function LocalDocScreen() {
 			setInitialized(true)
 		}
 		void init()
-	}, [])
+	}, [t])
 
 	if (!initialized) {
 		return (
@@ -173,7 +175,10 @@ function LocalDocScreen() {
 	)
 }
 
-async function saveCurrentFile(fileId: string): Promise<boolean> {
+async function saveCurrentFile(
+	fileId: string,
+	t: ReturnType<typeof useIntl>,
+): Promise<boolean> {
 	let state = useLocalFileStore.getState()
 	let file = state.getFileById(fileId)
 	if (!file) return false
@@ -191,12 +196,13 @@ async function saveCurrentFile(fileId: string): Promise<boolean> {
 		setTimeout(() => state.setSaveStatus("idle"), 1500)
 	} else {
 		state.setSaveStatus("error")
-		state.setErrorMessage("Failed to save. Check file permissions.")
+		state.setErrorMessage(t("doc.localFile.saveFailed"))
 	}
 	return success
 }
 
 function LocalFileEmptyState() {
+	let t = useIntl()
 	async function handleOpenFile() {
 		let result = await openLocalFile()
 		if (result) {
@@ -204,14 +210,12 @@ function LocalFileEmptyState() {
 			let activeFile = state.getActiveFile()
 
 			if (activeFile && activeFile.hasUnsavedChanges) {
-				let confirmed = window.confirm(
-					"You have unsaved changes. Open a new file anyway?",
-				)
+				let confirmed = window.confirm(t("doc.localFile.confirmNewFile"))
 				if (!confirmed) return
 			}
 
 			if (activeFile) {
-				await saveCurrentFile(activeFile.id)
+				await saveCurrentFile(activeFile.id, t)
 			}
 
 			state.addFile({
@@ -234,19 +238,17 @@ function LocalFileEmptyState() {
 		let activeFile = state.getActiveFile()
 
 		if (activeFile && activeFile.hasUnsavedChanges) {
-			let confirmed = window.confirm(
-				"You have unsaved changes. Open a new file anyway?",
-			)
+			let confirmed = window.confirm(t("doc.localFile.confirmNewFile"))
 			if (!confirmed) return
 		}
 
 		if (activeFile) {
-			await saveCurrentFile(activeFile.id)
+			await saveCurrentFile(activeFile.id, t)
 		}
 
 		let contentResult = await tryCatch(file.text())
 		if (!contentResult.ok) {
-			toast.error("Failed to read file. Please try again.")
+			toast.error(t("doc.localFile.failedToRead"))
 			return
 		}
 
@@ -330,6 +332,7 @@ function LocalEditorContent({
 	setIsPreview: (value: boolean) => void
 	activeFile: LocalFileEntry
 }) {
+	let t = useIntl()
 	let editor = useMarkdownEditorRef()
 	let containerRef = useRef<HTMLDivElement>(null)
 	let saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -407,7 +410,7 @@ function LocalEditorContent({
 				setTimeout(() => currentState.setSaveStatus("idle"), 1500)
 			} else {
 				currentState.setSaveStatus("error")
-				currentState.setErrorMessage("Failed to save. Check file permissions.")
+				currentState.setErrorMessage(t("doc.localFile.saveFailed"))
 			}
 		}, 1000)
 	}
@@ -493,13 +496,11 @@ function LocalEditorContent({
 
 	async function handleOpenFile() {
 		if (isDirty) {
-			let confirmed = window.confirm(
-				"You have unsaved changes. Open a new file anyway?",
-			)
+			let confirmed = window.confirm(t("doc.localFile.confirmNewFile"))
 			if (!confirmed) return
 		}
 
-		await saveCurrentFile(activeFile.id)
+		await saveCurrentFile(activeFile.id, t)
 
 		let result = await openLocalFile()
 		if (result) {
@@ -528,23 +529,21 @@ function LocalEditorContent({
 
 	async function handleSwitchFile(fileId: string) {
 		if (isDirty) {
-			let confirmed = window.confirm(
-				"You have unsaved changes. Switch files anyway?",
-			)
+			let confirmed = window.confirm(t("doc.localFile.confirmSwitchFile"))
 			if (!confirmed) return
 		}
 
-		await saveCurrentFile(activeFile.id)
+		await saveCurrentFile(activeFile.id, t)
 
 		let handle = await getHandleFromDB(fileId)
 		if (!handle) {
-			toast.error("File handle not found")
+			toast.error(t("doc.localFile.fileHandleNotFound"))
 			return
 		}
 
 		let result = await readFileFromHandle(handle)
 		if (!result) {
-			toast.error("Failed to read file")
+			toast.error(t("doc.localFile.failedToRead"))
 			return
 		}
 
@@ -556,9 +555,7 @@ function LocalEditorContent({
 
 	async function handleCloseFile(fileId: string) {
 		if (activeFile.id === fileId && isDirty) {
-			let confirmed = window.confirm(
-				"You have unsaved changes. Close this file anyway?",
-			)
+			let confirmed = window.confirm(t("doc.localFile.confirmCloseFile"))
 			if (!confirmed) return
 		}
 
@@ -594,7 +591,7 @@ function LocalEditorContent({
 						onClick={handleOpenFile}
 					>
 						<Plus className="size-4" />
-						New Local File
+						{t("doc.sidebar.newLocalFile")}
 					</Button>
 				}
 				footer={<SidebarSyncStatus />}
@@ -636,7 +633,7 @@ function LocalEditorContent({
 					ref={editor}
 					value={content}
 					onChange={handleChange}
-					placeholder="Start writing..."
+					placeholder={t("doc.startWriting")}
 					documents={documents}
 					resolveWikilink={resolveWikilink}
 					onWikilinkClick={handleWikilinkClick}
@@ -665,7 +662,7 @@ function LocalEditorContent({
 						trigger={
 							<Button variant="ghost" size="sm" className="w-full" nativeButton>
 								<HelpCircle />
-								<span>Help</span>
+								<span>{t("help.label")}</span>
 							</Button>
 						}
 						align={isMobile ? "center" : "end"}
@@ -685,7 +682,7 @@ function LocalEditorContent({
 									nativeButton
 								>
 									<Search className="size-4" />
-									Find
+									{t("doc.find")}
 								</SidebarMenuButton>
 							</SidebarMenuItem>
 							<SidebarSeparator />
@@ -853,6 +850,7 @@ function LocalPreviewTopBar({
 	setTheme: (theme: Theme) => void
 	onExit: () => void
 }) {
+	let t = useIntl()
 	return (
 		<div
 			className="border-border relative flex shrink-0 items-center justify-between border-b px-4 py-2"
@@ -862,7 +860,9 @@ function LocalPreviewTopBar({
 				paddingRight: "max(1rem, env(safe-area-inset-right))",
 			}}
 		>
-			<span className="text-muted-foreground">{filename || "Local File"}</span>
+			<span className="text-muted-foreground">
+				{filename || t("doc.localFile.title")}
+			</span>
 			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 truncate text-sm font-medium">
 				{docTitle}
 			</span>
@@ -889,6 +889,7 @@ function LocalPreviewTopBar({
 }
 
 function LocalFileSaveStatus({ activeFile }: { activeFile: LocalFileEntry }) {
+	let t = useIntl()
 	let store = useLocalFileStore()
 	let supportsFileSystem = isFileSystemAccessSupported()
 	let [hasHandle, setHasHandle] = useState(false)
@@ -946,8 +947,8 @@ function LocalFileSaveStatus({ activeFile }: { activeFile: LocalFileEntry }) {
 						<AlertCircle className="text-muted-foreground size-4" />
 						<span className="text-muted-foreground text-sm">
 							{supportsFileSystem
-								? 'Use "Save As" to enable auto-save'
-								: "Download to save changes"}
+								? t("doc.localFile.saveAsToEnable")
+								: t("doc.localFile.downloadToSave")}
 						</span>
 					</>
 				)}

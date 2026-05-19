@@ -21,6 +21,7 @@ import {
 	observeDirectoryChanges,
 	toTimestamp,
 } from "../lib/storage"
+import { useIntl } from "@/shared/intl/setup"
 
 export { BackupSubscriber, SpacesBackupSubscriber, spaceBackupDocumentResolve }
 
@@ -52,6 +53,7 @@ let spacesBackupQuery = {
 let spaceLastPullAtById = new Map<string, number>()
 
 function BackupSubscriber() {
+	let t = useIntl()
 	let {
 		enabled,
 		bidirectional,
@@ -99,7 +101,7 @@ function BackupSubscriber() {
 				if (!handle) {
 					setEnabled(false)
 					setDirectoryName(null)
-					setLastError("Permission lost - please re-enable backup")
+					setLastError(t("backup.error"))
 					return
 				}
 
@@ -111,7 +113,7 @@ function BackupSubscriber() {
 				setLastBackupAt(new Date().toISOString())
 				setLastError(null)
 			} catch (e) {
-				setLastError(e instanceof Error ? e.message : "Backup failed")
+				setLastError(e instanceof Error ? e.message : t("backup.failed"))
 			} finally {
 				isPushingRef.current = false
 			}
@@ -120,7 +122,15 @@ function BackupSubscriber() {
 		return () => {
 			if (debounceRef.current) clearTimeout(debounceRef.current)
 		}
-	}, [enabled, me, setLastBackupAt, setLastError, setEnabled, setDirectoryName])
+	}, [
+		enabled,
+		me,
+		setLastBackupAt,
+		setLastError,
+		setEnabled,
+		setDirectoryName,
+		t,
+	])
 
 	useEffect(() => {
 		if (!enabled || !bidirectional || !me.$isLoaded) return

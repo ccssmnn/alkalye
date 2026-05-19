@@ -33,6 +33,7 @@ import {
 	UserAccount,
 } from "@/schema"
 import { getSpaceGroup } from "@/app/features/spaces"
+import { useIntl } from "@/shared/intl/setup"
 
 export { DuplicateDocDialog, duplicateDocument }
 export type { DuplicateDocDialogProps, DuplicateProgress }
@@ -75,6 +76,7 @@ function DuplicateDocDialog({
 	onOpenChange,
 	onDuplicate,
 }: DuplicateDocDialogProps) {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [name, setName] = useState("")
 	let [destination, setDestination] = useState<string>("personal")
@@ -85,13 +87,13 @@ function DuplicateDocDialog({
 	})
 	let inputRef = useRef<HTMLInputElement>(null)
 
-	let docName = getDocName(doc)
+	let docName = getDocName(doc, t("doc.untitled"))
 	let spaces = me?.$isLoaded ? getSortedSpaces(me.root.spaces) : []
 	let isDuplicating = progress.status === "copying"
 
 	useEffect(() => {
 		if (open) {
-			setName(`${docName} (copy)`)
+			setName(t("doc.duplicateDialog.copyName", { name: docName }))
 			setDestination("personal")
 			setProgress({ total: 0, copied: 0, status: "idle" })
 			setTimeout(() => {
@@ -99,7 +101,7 @@ function DuplicateDocDialog({
 				inputRef.current?.select()
 			}, 0)
 		}
-	}, [open, docName])
+	}, [open, docName, t])
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault()
@@ -121,6 +123,7 @@ function DuplicateDocDialog({
 				destination: selectedSpace,
 				me,
 				onProgress: setProgress,
+				t,
 			})
 			onDuplicate?.(newDocId, selectedSpace)
 			onOpenChange(false)
@@ -128,7 +131,7 @@ function DuplicateDocDialog({
 			setProgress(p => ({
 				...p,
 				status: "error",
-				error: err instanceof Error ? err.message : "Unknown error",
+				error: err instanceof Error ? err.message : t("doc.errorUnknown"),
 			}))
 		}
 	}
@@ -137,16 +140,16 @@ function DuplicateDocDialog({
 		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Duplicate document</DialogTitle>
+					<DialogTitle>{t("doc.duplicateDialog.title")}</DialogTitle>
 					<DialogDescription>
-						Create a copy of this document with a new name.
+						{t("doc.duplicateDialog.description")}
 					</DialogDescription>
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit}>
 					<div className="space-y-4">
 						<div className="space-y-2">
-							<Label htmlFor="doc-name">Name</Label>
+							<Label htmlFor="doc-name">{t("doc.duplicateDialog.name")}</Label>
 							<Input
 								ref={inputRef}
 								id="doc-name"
@@ -157,7 +160,7 @@ function DuplicateDocDialog({
 						</div>
 
 						<div className="space-y-2">
-							<Label>Destination</Label>
+							<Label>{t("doc.duplicateDialog.destination")}</Label>
 							<Select
 								value={destination}
 								onValueChange={v => v && setDestination(v)}
@@ -168,7 +171,7 @@ function DuplicateDocDialog({
 								<SelectContent>
 									<SelectItem value="personal">
 										<User className="size-4" />
-										<span>Personal</span>
+										<span>{t("doc.duplicateDialog.personal")}</span>
 									</SelectItem>
 									{spaces.map(space => (
 										<SelectItem key={space.$jazz.id} value={space.$jazz.id}>
@@ -184,7 +187,7 @@ function DuplicateDocDialog({
 					{isDuplicating && progress.total > 0 && (
 						<div className="space-y-2 pt-2">
 							<div className="text-muted-foreground flex justify-between text-sm">
-								<span>Copying assets...</span>
+								<span>{t("doc.duplicateDialog.copyingAssets")}</span>
 								<span>
 									{progress.copied}/{progress.total}
 								</span>
@@ -205,7 +208,7 @@ function DuplicateDocDialog({
 							onClick={() => onOpenChange(false)}
 							disabled={isDuplicating}
 						>
-							Cancel
+							{t("doc.cancel")}
 						</Button>
 						<Button
 							type="submit"
@@ -214,9 +217,12 @@ function DuplicateDocDialog({
 						>
 							{isDuplicating
 								? progress.total > 0
-									? `Copying assets (${progress.copied}/${progress.total})...`
-									: "Duplicating..."
-								: "Duplicate"}
+									? t("doc.duplicateDialog.copyingProgress", {
+											copied: String(progress.copied),
+											total: String(progress.total),
+										})
+									: t("doc.duplicateDialog.duplicating")
+								: t("doc.duplicate")}
 						</Button>
 					</DialogFooter>
 				</form>
@@ -231,12 +237,13 @@ type DuplicateOptions = {
 	destination: SpaceOption | null
 	me: co.loaded<typeof UserAccount, { root: { documents: true; spaces: true } }>
 	onProgress?: (progress: DuplicateProgress) => void
+	t: ReturnType<typeof useIntl>
 }
 
 type LoadedSpace = co.loaded<typeof Space, { documents: true }>
 
 async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
-	let { doc, newName, destination, me, onProgress } = opts
+	let { doc, newName, destination, me, onProgress, t } = opts
 	let content = doc.content?.toString() ?? ""
 	let assets = doc.assets ?? []
 	let totalAssets = assets.filter(
@@ -341,7 +348,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			onProgress?.(progress)
 		} catch (err) {
 			console.error("Failed to copy asset:", err)
-			toast.error(`Failed to copy asset: ${asset.name}`)
+			toast.error(t("timeMachine.failedToCopyAsset", { name: asset.name }))
 		}
 	}
 
@@ -408,9 +415,9 @@ function getSortedSpaces(
 		.sort((a, b) => a.name.localeCompare(b.name))
 }
 
-function getDocName(doc: LoadedDocument): string {
+function getDocName(doc: LoadedDocument, fallback: string): string {
 	let content = doc.content?.toString() ?? ""
 	let firstLine = content.split("\n")[0] ?? ""
 	let title = firstLine.replace(/^#\s*/, "").trim()
-	return title || "Untitled"
+	return title || fallback
 }

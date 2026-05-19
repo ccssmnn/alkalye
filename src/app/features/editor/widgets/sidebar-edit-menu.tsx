@@ -15,6 +15,7 @@ import {
 import { Undo2 } from "lucide-react"
 import { isMac, modKey, altModKey } from "@/app/lib/platform"
 import type { MarkdownEditorRef } from "./editor"
+import { T } from "@/shared/intl/setup"
 
 export { SidebarEditMenu }
 
@@ -49,7 +50,9 @@ function SidebarEditMenu({ editor, disabled, readOnly }: SidebarEditMenuProps) {
 					render={
 						<SidebarMenuButton disabled={disabled} nativeButton>
 							<Undo2 className="size-4" />
-							<span>Edit</span>
+							<span>
+								<T k="editor.menu.edit" />
+							</span>
 						</SidebarMenuButton>
 					}
 				/>
@@ -61,14 +64,14 @@ function SidebarEditMenu({ editor, disabled, readOnly }: SidebarEditMenuProps) {
 						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.undo())}
 					>
-						Undo
+						<T k="editor.menu.undo" />
 						<DropdownMenuShortcut>{modKey}Z</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.redo())}
 					>
-						Redo
+						<T k="editor.menu.redo" />
 						<DropdownMenuShortcut>
 							{modKey}
 							{isMac ? "⇧Z" : "Y"}
@@ -79,20 +82,20 @@ function SidebarEditMenu({ editor, disabled, readOnly }: SidebarEditMenuProps) {
 						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.cut())}
 					>
-						Cut
+						<T k="editor.menu.cut" />
 						<DropdownMenuShortcut>{modKey}X</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => runAction(() => editor?.current?.copy())}
 					>
-						Copy
+						<T k="editor.menu.copy" />
 						<DropdownMenuShortcut>{modKey}C</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						disabled={readOnly}
 						onClick={() => runAction(() => editor?.current?.paste())}
 					>
-						Paste
+						<T k="editor.menu.paste" />
 						<DropdownMenuShortcut>{modKey}V</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuSeparator />
@@ -101,13 +104,13 @@ function SidebarEditMenu({ editor, disabled, readOnly }: SidebarEditMenuProps) {
 							runAction(() => editor?.current?.toggleTaskComplete())
 						}
 					>
-						Toggle Complete
+						<T k="editor.menu.toggleComplete" />
 						<DropdownMenuShortcut>{altModKey}X</DropdownMenuShortcut>
 					</DropdownMenuItem>
 					<DropdownMenuItem
 						onClick={() => runAction(() => editor?.current?.sortTasks())}
 					>
-						Sort Tasks
+						<T k="editor.menu.sortTasks" />
 						<DropdownMenuShortcut>{altModKey}⇧X</DropdownMenuShortcut>
 					</DropdownMenuItem>
 				</DropdownMenuContent>

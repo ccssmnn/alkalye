@@ -73,6 +73,7 @@ import {
 } from "@/app/components/ui/tooltip"
 import { useIsOnline } from "@/app/hooks/use-online"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { SettingsScreen, settingsQuery }
 export type { LoadedAccount, SettingsLoaderData, SettingsSearch }
@@ -108,6 +109,7 @@ interface SettingsScreenProps {
 }
 
 function SettingsScreen({ loaderData, search }: SettingsScreenProps) {
+	let t = useIntl()
 	let { theme, setTheme } = useTheme()
 	let { from } = search
 	let subscribedMe = useAccount(UserAccount, { resolve: settingsQuery })
@@ -116,7 +118,7 @@ function SettingsScreen({ loaderData, search }: SettingsScreenProps) {
 
 	return (
 		<>
-			<title>Settings</title>
+			<title>{t("settings.title")}</title>
 			<div
 				className="bg-background fixed inset-0 overflow-auto"
 				style={{
@@ -137,11 +139,17 @@ function SettingsScreen({ loaderData, search }: SettingsScreenProps) {
 				>
 					<div className="flex w-full max-w-2xl items-center gap-3 px-4">
 						<Link to={from ?? "/"}>
-							<Button variant="ghost" size="icon" aria-label="Back">
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label={t("settings.back")}
+							>
 								<ArrowLeft className="size-4" />
 							</Button>
 						</Link>
-						<h1 className="text-foreground text-lg font-semibold">Settings</h1>
+						<h1 className="text-foreground text-lg font-semibold">
+							<T k="settings.title" />
+						</h1>
 					</div>
 				</div>
 				<div className="mx-auto max-w-2xl px-4 py-8">
@@ -151,10 +159,11 @@ function SettingsScreen({ loaderData, search }: SettingsScreenProps) {
 						<BackupSettings />
 						<section>
 							<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-								Appearance
+								<T k="settings.appearance" />
 							</h2>
 							<ThemeToggle theme={theme} setTheme={setTheme} showLabel />
 						</section>
+						<LanguageSection me={me} />
 						<ThemesSection me={me} />
 						<EditorSection settings={me?.root?.settings ?? null} />
 						<InstallationSection />
@@ -171,27 +180,33 @@ interface ProfileSectionProps {
 	me: LoadedAccount | null
 }
 
-let nameSchema = z.object({
-	name: z.string().min(1, "Name is required").max(50, "Name too long"),
-})
+function makeNameSchema(t: ReturnType<typeof useIntl>) {
+	return z.object({
+		name: z
+			.string()
+			.min(1, t("settings.profile.nameRequired"))
+			.max(50, t("settings.profile.nameTooLong")),
+	})
+}
 
 function ProfileSection({ me }: ProfileSectionProps) {
+	let t = useIntl()
 	let [dialogOpen, setDialogOpen] = useState(false)
 
 	if (!me) return null
 
-	let name = me.profile?.name ?? "Anonymous"
+	let name = me.profile?.name ?? t("common.anonymous")
 
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Profile
+				<T k="settings.profile" />
 			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
 				<div className="flex items-center justify-between">
 					<div>
 						<div className="text-muted-foreground mb-1 text-xs">
-							Display name
+							<T k="settings.profile.displayName" />
 						</div>
 						<div className="text-lg font-medium">{name}</div>
 					</div>
@@ -199,7 +214,7 @@ function ProfileSection({ me }: ProfileSectionProps) {
 						onClick={() => setDialogOpen(true)}
 						variant="ghost"
 						size="icon-sm"
-						aria-label="Edit name"
+						aria-label={t("settings.profile.editName")}
 					>
 						<Pencil className="size-4" />
 					</Button>
@@ -231,6 +246,8 @@ function EditNameDialog({
 	currentName,
 	onSave,
 }: EditNameDialogProps) {
+	let t = useIntl()
+	let nameSchema = makeNameSchema(t)
 	let form = useForm({
 		defaultValues: { name: currentName },
 		validators: { onSubmit: nameSchema },
@@ -254,7 +271,9 @@ function EditNameDialog({
 		>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Edit display name</DialogTitle>
+					<DialogTitle>
+						<T k="settings.profile.editName" />
+					</DialogTitle>
 				</DialogHeader>
 				<form
 					onSubmit={e => {
@@ -269,7 +288,9 @@ function EditNameDialog({
 								field.state.meta.isTouched && !field.state.meta.isValid
 							return (
 								<Field data-invalid={isInvalid}>
-									<FieldLabel htmlFor={field.name}>Display name</FieldLabel>
+									<FieldLabel htmlFor={field.name}>
+										<T k="settings.profile.displayName" />
+									</FieldLabel>
 									<Input
 										id={field.name}
 										name={field.name}
@@ -277,7 +298,7 @@ function EditNameDialog({
 										onBlur={field.handleBlur}
 										onChange={e => field.handleChange(e.target.value)}
 										aria-invalid={isInvalid}
-										placeholder="Your name"
+										placeholder={t("settings.profile.yourName")}
 										autoFocus
 									/>
 									{isInvalid && (
@@ -290,11 +311,53 @@ function EditNameDialog({
 						}}
 					</form.Field>
 					<DialogFooter>
-						<Button type="submit">Save</Button>
+						<Button type="submit">
+							<T k="settings.save" />
+						</Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>
 		</Dialog>
+	)
+}
+
+interface LanguageSectionProps {
+	me: LoadedAccount | null
+}
+
+function LanguageSection({ me }: LanguageSectionProps) {
+	let t = useIntl()
+	let currentLanguage = me?.root?.language || "en"
+
+	function handleLanguageChange(value: string | null) {
+		if (!me?.root) return
+		if (value !== "en" && value !== "de") return
+		me.root.$jazz.set("language", value)
+	}
+
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				<T k="settings.language" />
+			</h2>
+			<Select value={currentLanguage} onValueChange={handleLanguageChange}>
+				<SelectTrigger aria-label={t("settings.language")}>
+					<SelectValue>
+						{currentLanguage === "de"
+							? t("settings.language.de")
+							: t("settings.language.en")}
+					</SelectValue>
+				</SelectTrigger>
+				<SelectContent>
+					<SelectItem value="en">
+						<T k="settings.language.en" />
+					</SelectItem>
+					<SelectItem value="de">
+						<T k="settings.language.de" />
+					</SelectItem>
+				</SelectContent>
+			</Select>
+		</section>
 	)
 }
 
@@ -303,6 +366,7 @@ interface ThemesSectionProps {
 }
 
 function ThemesSection({ me }: ThemesSectionProps) {
+	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [isUploading, setIsUploading] = useState(false)
 	let [uploadError, setUploadError] = useState<ThemeUploadError | null>(null)
@@ -319,7 +383,6 @@ function ThemesSection({ me }: ThemesSectionProps) {
 		let file = e.target.files?.[0]
 		if (!file || !me?.root) return
 
-		// Reset input so same file can be selected again
 		e.target.value = ""
 
 		setIsUploading(true)
@@ -336,7 +399,6 @@ function ThemesSection({ me }: ThemesSectionProps) {
 		let parsed = result.theme
 		let owner = me.root.$jazz.owner
 
-		// Create theme assets for fonts
 		let assets: co.loaded<typeof ThemeAsset>[] = []
 		for (let asset of parsed.assets) {
 			let buffer = await asset.file.arrayBuffer()
@@ -355,12 +417,10 @@ function ThemesSection({ me }: ThemesSectionProps) {
 			assets.push(themeAsset)
 		}
 
-		// Create thumbnail if provided
 		let thumbnail = parsed.thumbnail
 			? await createImage(parsed.thumbnail, { owner, maxSize: 256 })
 			: undefined
 
-		// Create theme
 		let now = new Date()
 		let theme = Theme.create(
 			{
@@ -385,7 +445,6 @@ function ThemesSection({ me }: ThemesSectionProps) {
 			owner,
 		)
 
-		// Add to themes list
 		if (!me.root.themes) {
 			me.root.$jazz.set("themes", co.list(Theme).create([], owner))
 		}
@@ -408,7 +467,9 @@ function ThemesSection({ me }: ThemesSectionProps) {
 
 	return (
 		<section>
-			<h2 className="text-muted-foreground mb-3 text-sm font-medium">Themes</h2>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				<T k="settings.themes" />
+			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
 				{uploadError && (
 					<div className="bg-destructive/10 text-destructive mb-4 flex items-start gap-2 rounded-md p-3 text-sm">
@@ -421,7 +482,11 @@ function ThemesSection({ me }: ThemesSectionProps) {
 										<li key={i}>{err}</li>
 									))}
 									{uploadError.errors.length > 3 && (
-										<li>and {uploadError.errors.length - 3} more...</li>
+										<li>
+											{t("settings.themes.moreErrors", {
+												count: String(uploadError.errors.length - 3),
+											})}
+										</li>
 									)}
 								</ul>
 							)}
@@ -432,7 +497,9 @@ function ThemesSection({ me }: ThemesSectionProps) {
 							className="-mt-1 -mr-1 ml-auto"
 							onClick={() => setUploadError(null)}
 						>
-							<span className="sr-only">Dismiss</span>
+							<span className="sr-only">
+								<T k="settings.themes.dismiss" />
+							</span>
 							<span aria-hidden>×</span>
 						</Button>
 					</div>
@@ -441,9 +508,11 @@ function ThemesSection({ me }: ThemesSectionProps) {
 				{themes.length === 0 ? (
 					<div className="text-muted-foreground py-4 text-center text-sm">
 						<Palette className="mx-auto mb-2 size-8 opacity-50" />
-						<p>No custom themes yet</p>
+						<p>
+							<T k="settings.themes.noThemes" />
+						</p>
 						<p className="mt-1 text-xs opacity-70">
-							Upload a theme.zip to customize preview and slideshow
+							<T k="settings.themes.uploadHint" />
 						</p>
 					</div>
 				) : (
@@ -461,11 +530,12 @@ function ThemesSection({ me }: ThemesSectionProps) {
 											<div className="truncate font-medium">{theme.name}</div>
 											<div className="text-muted-foreground text-xs">
 												{theme.type === "both"
-													? "Preview & Slideshow"
+													? t("settings.themes.previewAndSlideshow")
 													: theme.type === "preview"
-														? "Preview"
-														: "Slideshow"}
-												{theme.author && ` • by ${theme.author}`}
+														? t("settings.themes.preview")
+														: t("settings.themes.slideshow")}
+												{theme.author &&
+													` • ${t("settings.themes.by")} ${theme.author}`}
 											</div>
 										</div>
 										<Button
@@ -516,12 +586,12 @@ function ThemesSection({ me }: ThemesSectionProps) {
 					{isUploading ? (
 						<>
 							<Loader2 className="mr-1.5 size-3.5 animate-spin" />
-							Uploading...
+							<T k="settings.themes.uploading" />
 						</>
 					) : (
 						<>
 							<Upload className="mr-1.5 size-3.5" />
-							Upload Theme
+							<T k="settings.themes.uploadTheme" />
 						</>
 					)}
 				</Button>
@@ -530,9 +600,11 @@ function ThemesSection({ me }: ThemesSectionProps) {
 			<ConfirmDialog
 				open={!!themeToDelete}
 				onOpenChange={open => !open && setThemeToDelete(null)}
-				title="Delete theme?"
-				description={`Are you sure you want to delete "${themeToDelete?.name}"? Documents using this theme will fall back to default styles.`}
-				confirmLabel="Delete"
+				title={t("settings.themes.deleteTitle")}
+				description={t("settings.themes.deleteDescription", {
+					name: themeToDelete?.name ?? "",
+				})}
+				confirmLabel={t("settings.themes.deleteConfirm")}
 				onConfirm={handleDeleteTheme}
 				variant="destructive"
 			/>
@@ -548,6 +620,7 @@ interface DefaultThemeSettingsProps {
 type LoadedTheme = co.loaded<typeof Theme>
 
 function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
+	let t = useIntl()
 	let themesList = themes ?? []
 
 	function isLoadedTheme(t: unknown): t is LoadedTheme {
@@ -589,11 +662,13 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 	return (
 		<div className="border-border/50 mb-4 space-y-3 border-t pt-4">
 			<div className="text-muted-foreground text-xs font-medium">
-				Default Themes
+				<T k="settings.themes.defaultThemes" />
 			</div>
 			{previewThemes.length > 0 && (
 				<div className="flex items-center justify-between gap-4">
-					<span className="text-sm">Preview</span>
+					<span className="text-sm">
+						<T k="settings.themes.preview" />
+					</span>
 					<Select
 						value={settings?.defaultPreviewTheme ?? "__none__"}
 						onValueChange={handlePreviewThemeChange}
@@ -602,11 +677,14 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 							<SelectValue>
 								{getThemeSelectLabel(
 									settings?.defaultPreviewTheme ?? "__none__",
+									t,
 								)}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="__none__">None</SelectItem>
+							<SelectItem value="__none__">
+								<T k="settings.themes.none" />
+							</SelectItem>
 							{previewThemes.map(theme => (
 								<SelectItem key={theme.$jazz.id} value={theme.name}>
 									{theme.name}
@@ -618,7 +696,9 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 			)}
 			{slideshowThemes.length > 0 && (
 				<div className="flex items-center justify-between gap-4">
-					<span className="text-sm">Slideshow</span>
+					<span className="text-sm">
+						<T k="settings.themes.slideshow" />
+					</span>
 					<Select
 						value={settings?.defaultSlideshowTheme ?? "__none__"}
 						onValueChange={handleSlideshowThemeChange}
@@ -627,11 +707,14 @@ function DefaultThemeSettings({ settings, themes }: DefaultThemeSettingsProps) {
 							<SelectValue>
 								{getThemeSelectLabel(
 									settings?.defaultSlideshowTheme ?? "__none__",
+									t,
 								)}
 							</SelectValue>
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="__none__">None</SelectItem>
+							<SelectItem value="__none__">
+								<T k="settings.themes.none" />
+							</SelectItem>
 							{slideshowThemes.map(theme => (
 								<SelectItem key={theme.$jazz.id} value={theme.name}>
 									{theme.name}
@@ -663,11 +746,13 @@ function SignInView() {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Cloud Sync & Backup
+				<T k="settings.sync.title" />
 			</h2>
 			<div className="text-muted-foreground mb-4 flex items-center gap-2">
 				<CloudOff className="size-4" />
-				<span className="text-sm">Local only</span>
+				<span className="text-sm">
+					<T k="settings.sync.localOnly" />
+				</span>
 			</div>
 			<Button
 				onClick={() => setAuthOpen(true)}
@@ -675,7 +760,7 @@ function SignInView() {
 				variant="outline"
 				data-testid={testIds.auth.settingsSignIn}
 			>
-				Sign in
+				<T k="settings.sync.signIn" />
 			</Button>
 			<AuthDialog
 				open={authOpen}
@@ -691,24 +776,27 @@ interface EditorSectionProps {
 }
 
 function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
+	let t = useIntl()
 	let { settings, setSettings, resetSettings } = useEditorSettings(jazzSettings)
 
 	return (
 		<section>
 			<div className="mb-3 flex items-center justify-between">
-				<h2 className="text-muted-foreground text-sm font-medium">Editor</h2>
+				<h2 className="text-muted-foreground text-sm font-medium">
+					<T k="settings.editor" />
+				</h2>
 				<Button
 					variant="ghost"
 					size="sm"
 					onClick={resetSettings}
 					className="text-muted-foreground h-auto px-2 py-1 text-xs"
 				>
-					Reset to defaults
+					<T k="settings.editor.resetDefaults" />
 				</Button>
 			</div>
 			<div className="bg-muted/30 space-y-3 rounded-lg p-4">
 				<NumericSetting
-					label="Line width"
+					label={t("settings.editor.lineWidth")}
 					value={settings.lineWidth}
 					defaultValue={DEFAULT_EDITOR_SETTINGS.lineWidth}
 					onChange={v => setSettings({ lineWidth: v })}
@@ -719,7 +807,7 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 				/>
 
 				<NumericSetting
-					label="Font size"
+					label={t("settings.editor.fontSize")}
 					value={settings.fontSize}
 					defaultValue={DEFAULT_EDITOR_SETTINGS.fontSize}
 					onChange={v => setSettings({ fontSize: v })}
@@ -730,7 +818,7 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 				/>
 
 				<NumericSetting
-					label="Line height"
+					label={t("settings.editor.lineHeight")}
 					value={settings.lineHeight}
 					defaultValue={DEFAULT_EDITOR_SETTINGS.lineHeight}
 					onChange={v => setSettings({ lineHeight: v })}
@@ -741,7 +829,7 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 				/>
 
 				<NumericSetting
-					label="Letter spacing"
+					label={t("settings.editor.letterSpacing")}
 					value={settings.letterSpacing}
 					defaultValue={DEFAULT_EDITOR_SETTINGS.letterSpacing}
 					onChange={v => setSettings({ letterSpacing: v })}
@@ -762,9 +850,9 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 										settings.strikethroughDoneTasks ? "line-through" : ""
 									}
 								>
-									Strikethrough
+									<T k="settings.editor.strikethrough" />
 								</span>{" "}
-								done tasks
+								<T k="settings.editor.doneTasks" />
 							</>
 						}
 						checked={settings.strikethroughDoneTasks}
@@ -776,9 +864,9 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 						label={
 							<>
 								<span className={settings.fadeDoneTasks ? "opacity-50" : ""}>
-									Fade
+									<T k="settings.editor.fade" />
 								</span>{" "}
-								done tasks
+								<T k="settings.editor.doneTasks" />
 							</>
 						}
 						checked={settings.fadeDoneTasks}
@@ -787,7 +875,7 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 
 					<ToggleSetting
 						id="highlight-line-toggle"
-						label="Highlight current line"
+						label={<T k="settings.editor.highlightLine" />}
 						checked={settings.highlightCurrentLine}
 						onChange={v => setSettings({ highlightCurrentLine: v })}
 						className={
@@ -799,27 +887,37 @@ function EditorSection({ settings: jazzSettings }: EditorSectionProps) {
 
 					<ToggleSetting
 						id="auto-sort-toggle"
-						label="Auto-sort tasks on toggle"
+						label={<T k="settings.editor.autoSortTasks" />}
 						checked={settings.autoSortTasks}
 						onChange={v => setSettings({ autoSortTasks: v })}
 					/>
 
 					<div className="flex min-h-8 items-center justify-between gap-4">
 						<label htmlFor="stats-badge-unit" className="text-sm">
-							Stats badge
+							<T k="settings.editor.statsBadge" />
 						</label>
 						<Select
 							value={getStatsBadgeSelectValue(settings)}
 							onValueChange={makeHandleStatsBadgeUnitChange(setSettings)}
 						>
 							<SelectTrigger id="stats-badge-unit" className="w-40">
-								<SelectValue>{getStatsBadgeSelectLabel(settings)}</SelectValue>
+								<SelectValue>
+									{getStatsBadgeSelectLabel(settings, t)}
+								</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="words">Words</SelectItem>
-								<SelectItem value="sentences">Sentences</SelectItem>
-								<SelectItem value="tasks">Tasks</SelectItem>
-								<SelectItem value="hide">Hide</SelectItem>
+								<SelectItem value="words">
+									<T k="settings.editor.statsBadge.words" />
+								</SelectItem>
+								<SelectItem value="sentences">
+									<T k="settings.editor.statsBadge.sentences" />
+								</SelectItem>
+								<SelectItem value="tasks">
+									<T k="settings.editor.statsBadge.tasks" />
+								</SelectItem>
+								<SelectItem value="hide">
+									<T k="settings.editor.statsBadge.hide" />
+								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -852,6 +950,7 @@ function NumericSetting({
 	unit = "",
 	decimals = 0,
 }: NumericSettingProps) {
+	let t = useIntl()
 	let isDefault = Math.abs(value - defaultValue) < 0.001
 
 	function clamp(v: number) {
@@ -879,7 +978,9 @@ function NumericSetting({
 			<div className="flex items-center gap-2">
 				{!isDefault && (
 					<span className="text-muted-foreground text-xs">
-						default: {defaultValue.toFixed(decimals)}
+						{t("settings.numericDefault", {
+							value: defaultValue.toFixed(decimals),
+						})}
 					</span>
 				)}
 				{unit && <span className="text-muted-foreground text-xs">{unit}</span>}
@@ -942,20 +1043,24 @@ function ToggleSetting({
 	)
 }
 
-function getThemeSelectLabel(value: string): string {
-	return value === "__none__" ? "None" : value
+function getThemeSelectLabel(
+	value: string,
+	t: ReturnType<typeof useIntl>,
+): string {
+	return value === "__none__" ? t("settings.themes.none") : value
 }
 
 function getStatsBadgeUnitLabel(
 	value: EditorSettingsData["statsBadgeUnit"],
+	t: ReturnType<typeof useIntl>,
 ): string {
 	switch (value) {
 		case "words":
-			return "Words"
+			return t("settings.editor.statsBadge.words")
 		case "sentences":
-			return "Sentences"
+			return t("settings.editor.statsBadge.sentences")
 		case "tasks":
-			return "Tasks"
+			return t("settings.editor.statsBadge.tasks")
 	}
 }
 
@@ -963,10 +1068,13 @@ function getStatsBadgeSelectValue(settings: EditorSettingsData): string {
 	return settings.showStatsBadge ? settings.statsBadgeUnit : "hide"
 }
 
-function getStatsBadgeSelectLabel(settings: EditorSettingsData): string {
+function getStatsBadgeSelectLabel(
+	settings: EditorSettingsData,
+	t: ReturnType<typeof useIntl>,
+): string {
 	return settings.showStatsBadge
-		? getStatsBadgeUnitLabel(settings.statsBadgeUnit)
-		: "Hide"
+		? getStatsBadgeUnitLabel(settings.statsBadgeUnit, t)
+		: t("settings.editor.statsBadge.hide")
 }
 
 function makeHandleStatsBadgeUnitChange(
@@ -984,6 +1092,7 @@ function makeHandleStatsBadgeUnitChange(
 }
 
 function SyncNowSection() {
+	let t = useIntl()
 	let me = useAccount(UserAccount)
 	let isOnline = useIsOnline()
 	let [isSyncing, setIsSyncing] = useState(false)
@@ -996,7 +1105,7 @@ function SyncNowSection() {
 		try {
 			await me.$jazz.waitForAllCoValuesSync({ timeout: 10000 })
 		} catch {
-			setError("Sync timed out. Check your connection.")
+			setError(t("settings.sync.syncTimeout"))
 			setTimeout(() => setError(null), 5000)
 		} finally {
 			setIsSyncing(false)
@@ -1016,7 +1125,11 @@ function SyncNowSection() {
 						<RefreshCw
 							className={`mr-1.5 size-3.5 ${isSyncing ? "animate-spin" : ""}`}
 						/>
-						{isSyncing ? "Syncing..." : "Sync now"}
+						{isSyncing ? (
+							<T k="settings.sync.syncing..." />
+						) : (
+							<T k="settings.sync.syncNow" />
+						)}
 					</Button>
 				}
 			/>
@@ -1046,30 +1159,36 @@ function SignedInView() {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Cloud Sync & Backup
+				<T k="settings.sync.title" />
 			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
 				{isOnline ? (
 					<div className="mb-4 flex items-center gap-2 text-green-600 dark:text-green-400">
 						<Cloud className="size-4" />
-						<span className="flex-1 text-sm font-medium">Syncing</span>
+						<span className="flex-1 text-sm font-medium">
+							<T k="settings.sync.syncing" />
+						</span>
 						<SyncNowSection />
 					</div>
 				) : (
 					<div className="text-muted-foreground mb-4 flex items-center gap-2">
 						<WifiOff className="size-4" />
-						<span className="text-sm font-medium">Offline</span>
+						<span className="text-sm font-medium">
+							<T k="settings.sync.offline" />
+						</span>
 					</div>
 				)}
 				<p className="text-muted-foreground mb-4 text-sm">
-					{isOnline
-						? "Your notes are synced across devices."
-						: "You're offline. Changes will sync when you reconnect."}
+					{isOnline ? (
+						<T k="settings.sync.notesSynced" />
+					) : (
+						<T k="settings.sync.offlineMessage" />
+					)}
 				</p>
 				{showPassphrase ? (
 					<>
 						<div className="text-muted-foreground mb-2 text-xs">
-							Recovery phrase
+							<T k="settings.sync.recoveryPhrase" />
 						</div>
 						<Textarea
 							readOnly
@@ -1082,12 +1201,12 @@ function SignedInView() {
 								{isCopied ? (
 									<>
 										<Check className="mr-1 size-3.5" />
-										Copied
+										<T k="settings.sync.copied" />
 									</>
 								) : (
 									<>
 										<Copy className="mr-1 size-3.5" />
-										Copy
+										<T k="settings.sync.copy" />
 									</>
 								)}
 							</Button>
@@ -1096,7 +1215,7 @@ function SignedInView() {
 								variant="ghost"
 								size="sm"
 							>
-								Hide
+								<T k="settings.sync.hide" />
 							</Button>
 						</div>
 					</>
@@ -1107,7 +1226,7 @@ function SignedInView() {
 							variant="outline"
 							size="sm"
 						>
-							Show recovery phrase
+							<T k="settings.sync.showRecoveryPhrase" />
 						</Button>
 						<Button
 							onClick={() => logOut()}
@@ -1115,7 +1234,7 @@ function SignedInView() {
 							size="sm"
 							data-testid={testIds.auth.settingsSignOut}
 						>
-							Sign out
+							<T k="settings.sync.signOut" />
 						</Button>
 					</div>
 				)}
@@ -1133,17 +1252,17 @@ function InstallationSection() {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Installation
+				<T k="settings.installation" />
 			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
 				<div className="text-foreground mb-2 text-sm font-medium">
-					Not installed
+					<T k="settings.installation.notInstalled" />
 				</div>
 				<p className="text-muted-foreground mb-4 text-sm">
-					Install Alkalye to your device for the best experience.
+					<T k="settings.installation.installDescription" />
 				</p>
 				<Button onClick={() => setDialogOpen(true)} variant="outline" size="sm">
-					Show install instructions
+					<T k="settings.installation.showInstructions" />
 				</Button>
 			</div>
 			<PWAInstallDialog open={dialogOpen} onOpenChange={setDialogOpen} />
@@ -1158,34 +1277,35 @@ function AppSection() {
 	async function handleCheckForUpdates() {
 		setIsChecking(true)
 		await checkForUpdates()
-		// Give some time for the SW to check
 		setTimeout(() => setIsChecking(false), 1500)
 	}
 
 	return (
 		<section>
-			<h2 className="text-muted-foreground mb-3 text-sm font-medium">App</h2>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				<T k="settings.app" />
+			</h2>
 			<div className="bg-muted/30 rounded-lg p-4">
 				{needRefresh ? (
 					<>
 						<div className="text-foreground mb-2 text-sm font-medium">
-							Update available
+							<T k="settings.app.updateAvailable" />
 						</div>
 						<p className="text-muted-foreground mb-4 text-sm">
-							A new version is ready to install.
+							<T k="settings.app.newVersionReady" />
 						</p>
 						<Button onClick={updateServiceWorker} size="sm">
 							<RefreshCw className="mr-1.5 size-3.5" />
-							Reload to apply update
+							<T k="settings.app.reloadToUpdate" />
 						</Button>
 					</>
 				) : (
 					<>
 						<div className="text-foreground mb-2 text-sm font-medium">
-							You&apos;re on the latest version
+							<T k="settings.app.latestVersion" />
 						</div>
 						<p className="text-muted-foreground mb-4 text-sm">
-							No updates available.
+							<T k="settings.app.noUpdates" />
 						</p>
 						<Button
 							onClick={handleCheckForUpdates}
@@ -1196,7 +1316,11 @@ function AppSection() {
 							<RefreshCw
 								className={`mr-1.5 size-3.5 ${isChecking ? "animate-spin" : ""}`}
 							/>
-							{isChecking ? "Checking..." : "Check for updates"}
+							{isChecking ? (
+								<T k="settings.app.checking" />
+							) : (
+								<T k="settings.app.checkForUpdates" />
+							)}
 						</Button>
 					</>
 				)}

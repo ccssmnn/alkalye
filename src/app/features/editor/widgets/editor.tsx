@@ -80,6 +80,7 @@ import {
 	UploadProgressDialog,
 	type UploadPhase,
 } from "@/app/features/import-export"
+import { useIntl } from "@/shared/intl/setup"
 
 export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "../lib/frontmatter"
@@ -236,6 +237,7 @@ function MarkdownEditor(
 		ref,
 	} = props
 
+	let t = useIntl()
 	let isMobile = useIsMobile()
 
 	// Find panel state is URL-driven via hook
@@ -246,6 +248,7 @@ function MarkdownEditor(
 	let lastExternalValue = useRef(value)
 	let containerRef = useRef<HTMLDivElement>(null)
 	let readOnlyCompartment = useRef(new Compartment())
+	let placeholderCompartment = useRef(new Compartment())
 	let floatingActionsRef = useRef<FloatingActionsRef>(null)
 	let [view, setView] = useState<EditorView | null>(null)
 	let [isFocused, setIsFocused] = useState(false)
@@ -483,11 +486,12 @@ function MarkdownEditor(
 			...(initRef.current.externalExtensions ?? []),
 		]
 
-		if (initRef.current.placeholder) {
-			extensions.push(placeholderExt(initRef.current.placeholder))
-		}
-
 		extensions.push(
+			placeholderCompartment.current.of(
+				initRef.current.placeholder
+					? placeholderExt(initRef.current.placeholder)
+					: [],
+			),
 			readOnlyCompartment.current.of(
 				initRef.current.readOnly ? EditorState.readOnly.of(true) : [],
 			),
@@ -573,7 +577,7 @@ function MarkdownEditor(
 								insertAtTarget(`![${result.name}](asset:${result.id})`)
 							} catch (err) {
 								console.error("Image upload failed:", err)
-								toast.error(`Failed to upload ${file.name}`)
+								toast.error(t("editor.upload.failed", { name: file.name }))
 							}
 						}
 					}
@@ -600,7 +604,7 @@ function MarkdownEditor(
 							} catch (err) {
 								if (!abortController.signal.aborted) {
 									console.error("Video upload failed:", err)
-									toast.error(`Failed to upload ${file.name}`)
+									toast.error(t("editor.upload.failed", { name: file.name }))
 								}
 							} finally {
 								setVideoUpload(null)
@@ -621,7 +625,7 @@ function MarkdownEditor(
 			dom.removeEventListener("dragover", handleDragOver, true)
 			dom.removeEventListener("drop", handleDrop, true)
 		}
-	}, [view])
+	}, [view, t])
 
 	useEffect(() => {
 		if (!view) return
@@ -668,6 +672,15 @@ function MarkdownEditor(
 			),
 		})
 	}, [view, readOnly])
+
+	useEffect(() => {
+		if (!view) return
+		view.dispatch({
+			effects: placeholderCompartment.current.reconfigure(
+				placeholder ? placeholderExt(placeholder) : [],
+			),
+		})
+	}, [view, placeholder])
 
 	function getContent() {
 		return view?.state.doc.toString() ?? ""
@@ -1003,7 +1016,9 @@ function MarkdownEditor(
 			>
 				<DialogContent className="max-w-5xl">
 					<DialogHeader>
-						<DialogTitle>{mediaPreview?.alt ?? "Media"}</DialogTitle>
+						<DialogTitle>
+							{mediaPreview?.alt ?? t("editor.dialog.selectMedia")}
+						</DialogTitle>
 					</DialogHeader>
 					{mediaPreview && (
 						<MediaPreviewContent preview={mediaPreview} assets={assets} />
@@ -1021,6 +1036,7 @@ function MediaPreviewContent({
 	preview: { url: string; alt: string; assetId: string | null }
 	assets?: Asset[]
 }) {
+	let t = useIntl()
 	let asset = preview.assetId
 		? assets?.find(a => a.id === preview.assetId)
 		: null
@@ -1041,7 +1057,7 @@ function MediaPreviewContent({
 		return (
 			<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
 				<ImageOff className="size-12 opacity-50" />
-				<p className="text-sm">Media not available</p>
+				<p className="text-sm">{t("editor.media.notAvailable")}</p>
 			</div>
 		)
 	}
@@ -1064,12 +1080,13 @@ function MediaPreviewContent({
 	return (
 		<div className="text-muted-foreground flex flex-col items-center justify-center gap-3 py-12">
 			<ImageOff className="size-12 opacity-50" />
-			<p className="text-sm">Media not available</p>
+			<p className="text-sm">{t("editor.media.notAvailable")}</p>
 		</div>
 	)
 }
 
 function VideoPreview({ asset }: { asset: Asset }) {
+	let t = useIntl()
 	let [url, setUrl] = useState<string | null>(null)
 	let [trackedVideo, setTrackedVideo] = useState(asset.video)
 
@@ -1112,7 +1129,9 @@ function VideoPreview({ asset }: { asset: Asset }) {
 	if (!url) {
 		return (
 			<div className="bg-muted flex aspect-video w-full items-center justify-center rounded-lg">
-				<span className="text-muted-foreground text-sm">Loading video...</span>
+				<span className="text-muted-foreground text-sm">
+					{t("editor.media.loadingVideo")}
+				</span>
 			</div>
 		)
 	}

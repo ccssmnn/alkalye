@@ -1,4 +1,4 @@
-import { useState, useEffect, startTransition } from "react"
+import { useState, useEffect, useRef, startTransition } from "react"
 import { useNavigate, Link } from "@tanstack/react-router"
 import { useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { FileText, FolderOpen, AlertCircle, Loader2 } from "lucide-react"
@@ -11,10 +11,12 @@ import {
 } from "../lib/document-sharing"
 import { acceptSpaceInvite, type SpaceInviteData } from "@/app/features/spaces"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { InviteScreen }
 
 function InviteScreen() {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let isAuthenticated = useIsAuthenticated()
 	let me = useAccount(UserAccount, {
@@ -29,12 +31,11 @@ function InviteScreen() {
 	let [status, setStatus] = useState<
 		"loading" | "needs-auth" | "accepting" | "success" | "error" | "revoked"
 	>(inviteData ? "loading" : "error")
-	let [error, setError] = useState<string | null>(
-		inviteData ? null : "Invalid invite link",
-	)
+	let [error, setError] = useState<string | null>(null)
 
 	let isSpaceInvite = inviteData?.type === "space"
 	let [isAccepting, setIsAccepting] = useState(false)
+	let acceptInviteRef = useRef<() => void | Promise<void>>(() => {})
 
 	async function handleAcceptInvite() {
 		if (!me.$isLoaded || !inviteData || isAccepting) return
@@ -65,10 +66,16 @@ function InviteScreen() {
 				setStatus("revoked")
 			} else {
 				setStatus("error")
-				setError(e instanceof Error ? e.message : "Failed to accept invite")
+				setError(
+					e instanceof Error ? e.message : t("sharing.invite.failedToAccept"),
+				)
 			}
 		}
 	}
+
+	useEffect(() => {
+		acceptInviteRef.current = handleAcceptInvite
+	})
 
 	// Derive needs-auth state during render
 	let shouldShowAuth =
@@ -79,12 +86,13 @@ function InviteScreen() {
 		if (!inviteData || !me.$isLoaded || !isAuthenticated) return
 		if (status !== "loading" || isAccepting) return
 		startTransition(() => {
-			handleAcceptInvite()
+			void acceptInviteRef.current()
 		})
-		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [me.$isLoaded, isAuthenticated, inviteData, status, isAccepting])
 
-	let pageTitle = isSpaceInvite ? "Join Space" : "Join Document"
+	let pageTitle = isSpaceInvite
+		? t("sharing.invite.join.space")
+		: t("sharing.invite.join.document")
 
 	return (
 		<>
@@ -136,7 +144,9 @@ function TopBar() {
 				</Button>
 			</div>
 			<Link to="/">
-				<Button size="sm">Go to App</Button>
+				<Button size="sm">
+					<T k="sharing.invite.goToApp" />
+				</Button>
 			</Link>
 		</div>
 	)
@@ -153,11 +163,13 @@ function LoadingState({
 		<div className="space-y-4 text-center">
 			<Loader2 className="text-muted-foreground mx-auto size-12 animate-spin" />
 			<p className="text-muted-foreground text-sm">
-				{status === "loading"
-					? "Loading invite..."
-					: isSpace
-						? "Joining space..."
-						: "Joining document..."}
+				{status === "loading" ? (
+					<T k="sharing.invite.loadingInvite" />
+				) : isSpace ? (
+					<T k="sharing.invite.joiningSpace" />
+				) : (
+					<T k="sharing.invite.joiningDocument" />
+				)}
 			</p>
 		</div>
 	)
@@ -175,9 +187,15 @@ function SuccessState({ isSpace }: { isSpace: boolean }) {
 				<FileText className="mx-auto size-12 text-green-600 dark:text-green-400" />
 			)}
 			<div className="space-y-2">
-				<h1 className="text-lg font-semibold">Joined successfully</h1>
+				<h1 className="text-lg font-semibold">
+					<T k="sharing.invite.successTitle" />
+				</h1>
 				<p className="text-muted-foreground text-sm">
-					{isSpace ? "Opening space..." : "Opening document..."}
+					{isSpace ? (
+						<T k="sharing.invite.successSpace" />
+					) : (
+						<T k="sharing.invite.successDocument" />
+					)}
 				</p>
 			</div>
 		</div>
@@ -201,11 +219,15 @@ function NeedsAuthState({
 				) : (
 					<FileText className="text-muted-foreground mx-auto size-12" />
 				)}
-				<h1 className="text-lg font-semibold">You&apos;ve been invited</h1>
+				<h1 className="text-lg font-semibold">
+					<T k="sharing.invite.youveBeenInvited" />
+				</h1>
 				<p className="text-muted-foreground text-sm">
-					{isSpace
-						? "Sign in to join this space and start collaborating."
-						: "Sign in to join this document and start collaborating."}
+					{isSpace ? (
+						<T k="sharing.invite.signInSpace" />
+					) : (
+						<T k="sharing.invite.signInDocument" />
+					)}
 				</p>
 			</div>
 			<div className="flex justify-center">
@@ -214,7 +236,7 @@ function NeedsAuthState({
 					onClick={() => setAuthOpen(true)}
 					data-testid={testIds.invite.signInButton}
 				>
-					Sign in
+					<T k="common.signIn" />
 				</Button>
 			</div>
 			<AuthDialog
@@ -234,15 +256,16 @@ function RevokedState() {
 		>
 			<AlertCircle className="text-muted-foreground mx-auto size-12" />
 			<div className="space-y-2">
-				<h1 className="text-lg font-semibold">Sorry, this invite expired :(</h1>
+				<h1 className="text-lg font-semibold">
+					<T k="sharing.invite.revokedTitle" />
+				</h1>
 				<p className="text-muted-foreground text-sm">
-					The invite link is no longer valid. Ask for a new one or continue to
-					the app.
+					<T k="sharing.invite.revokedDescription" />
 				</p>
 			</div>
 			<div className="flex justify-center gap-2">
 				<Button variant="outline" nativeButton={false} render={<Link to="/" />}>
-					Go to App
+					<T k="sharing.invite.goToApp" />
 				</Button>
 			</div>
 		</div>
@@ -250,23 +273,28 @@ function RevokedState() {
 }
 
 function ErrorState({ error }: { error: string | null }) {
+	let t = useIntl()
+	let errorMessage = error ?? t("sharing.invite.invalidLink")
+
 	return (
 		<div className="space-y-6 text-center">
 			<AlertCircle className="text-destructive mx-auto size-12" />
 			<div className="space-y-2">
 				<h1 className="text-lg font-semibold">
-					Oh, this invite link does not work :(
+					<T k="sharing.invite.errorTitle" />
 				</h1>
 				<p className="border-border text-muted-foreground border p-1 font-mono text-sm">
-					Reason: {error ?? "We couldn't process this invite."}
+					{t("sharing.invite.errorReason", {
+						error: errorMessage,
+					})}
 				</p>
 				<p className="text-muted-foreground text-sm">
-					Ask for a new invite link or continue to the app.
+					<T k="sharing.invite.errorDescription" />
 				</p>
 			</div>
 			<div className="flex justify-center gap-2">
 				<Button variant="outline" nativeButton={false} render={<Link to="/" />}>
-					Go to App
+					<T k="sharing.invite.goToApp" />
 				</Button>
 			</div>
 		</div>

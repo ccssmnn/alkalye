@@ -18,6 +18,7 @@ import {
 } from "@codemirror/state"
 import { CursorFeed, Document, UserAccount } from "@/schema"
 import type { MarkdownEditorRef } from "@/app/features/editor"
+import { useIntl } from "@/shared/intl/setup"
 
 export { usePresence }
 
@@ -69,6 +70,7 @@ type UsePresenceOptions = {
 }
 
 function usePresence({ doc, editorRef, enabled = true }: UsePresenceOptions) {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: { profile: true } })
 	let updateTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let lastPositionRef = useRef<{ pos: number; selEnd?: number } | null>(null)
@@ -118,6 +120,7 @@ function usePresence({ doc, editorRef, enabled = true }: UsePresenceOptions) {
 	let remoteCursors = computeRemoteCursors(
 		doc as unknown as CursorDoc,
 		mySessionId ?? null,
+		t("common.anonymous"),
 	)
 
 	useEffect(() => {
@@ -310,6 +313,7 @@ function getColorForId(id: string): string {
 function computeRemoteCursors(
 	doc: CursorDoc,
 	mySessionId: string | null,
+	anonymousLabel = "Anonymous",
 ): RemoteCursor[] {
 	if (!doc?.$isLoaded || !doc.cursors || !doc.cursors.$isLoaded || !mySessionId)
 		return []
@@ -339,7 +343,7 @@ function computeRemoteCursors(
 
 	let cursors: RemoteCursor[] = []
 	for (let [userId, { sessionId, entry }] of latestByUser) {
-		let name = "Anonymous"
+		let name = anonymousLabel
 		if (entry.by?.profile?.$isLoaded) {
 			name = entry.by.profile.name
 		}

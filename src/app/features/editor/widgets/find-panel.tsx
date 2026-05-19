@@ -13,6 +13,7 @@ import { Kbd } from "@/app/components/ui/kbd"
 import { isMac } from "@/app/lib/platform"
 import { useSidebar } from "@/app/components/ui/sidebar"
 import { setFindQuery, selectMatch, getFindState } from "../lib/find-extension"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { FindPanel }
 
@@ -39,6 +40,7 @@ function FindPanel({
 	onClose,
 	onHeightChange,
 }: FindPanelProps) {
+	let t = useIntl()
 	let { rightOpen, isMobile } = useSidebar()
 	let inputRef = useRef<HTMLInputElement>(null)
 	let panelRef = useRef<HTMLDivElement>(null)
@@ -207,7 +209,7 @@ function FindPanel({
 						}
 					}}
 					onKeyDown={handleKeyDown}
-					placeholder="Find..."
+					placeholder={t("editor.find.placeholder")}
 					className="border-input focus-visible:border-ring focus-visible:ring-ring/50 h-7 flex-1 rounded-none border bg-transparent px-2 text-xs outline-none focus-visible:ring-1 md:w-48 md:flex-none"
 				/>
 				<Tooltip>
@@ -219,7 +221,7 @@ function FindPanel({
 						}
 					/>
 					<TooltipContent side="bottom">
-						Close <Kbd>Esc</Kbd>
+						<T k="editor.find.close" /> <Kbd>Esc</Kbd>
 					</TooltipContent>
 				</Tooltip>
 			</div>
@@ -244,7 +246,9 @@ function FindPanel({
 							</Button>
 						}
 					/>
-					<TooltipContent side="bottom">Case sensitive</TooltipContent>
+					<TooltipContent side="bottom">
+						<T k="editor.find.caseSensitive" />
+					</TooltipContent>
 				</Tooltip>
 
 				<Tooltip>
@@ -266,7 +270,9 @@ function FindPanel({
 							</Button>
 						}
 					/>
-					<TooltipContent side="bottom">Fuzzy matching</TooltipContent>
+					<TooltipContent side="bottom">
+						<T k="editor.find.fuzzyMatching" />
+					</TooltipContent>
 				</Tooltip>
 
 				<span
@@ -277,8 +283,11 @@ function FindPanel({
 				>
 					{query
 						? matchInfo.total > 0
-							? `${matchInfo.current} of ${matchInfo.total}`
-							: "No results"
+							? t("editor.find.matchCount", {
+									current: String(matchInfo.current),
+									total: String(matchInfo.total),
+								})
+							: t("editor.find.noResults")
 						: ""}
 				</span>
 
@@ -296,8 +305,8 @@ function FindPanel({
 						}
 					/>
 					<TooltipContent side="bottom">
-						Previous <Kbd>Shift</Kbd>
-						<Kbd>F3</Kbd> or <Kbd>Shift</Kbd>
+						<T k="editor.find.previous" /> <Kbd>Shift</Kbd>
+						<Kbd>F3</Kbd> {t("editor.find.shortcutOr")} <Kbd>Shift</Kbd>
 						<Kbd>Enter</Kbd>
 					</TooltipContent>
 				</Tooltip>
@@ -317,10 +326,11 @@ function FindPanel({
 					/>
 					<TooltipContent side="bottom">
 						<p>
-							Next <Kbd>F3</Kbd> or <Kbd>Enter</Kbd>
+							<T k="editor.find.next" /> <Kbd>F3</Kbd>{" "}
+							{t("editor.find.shortcutOr")} <Kbd>Enter</Kbd>
 						</p>
 						<p>
-							Go to match{" "}
+							<T k="editor.find.goToMatch" />{" "}
 							<Kbd>{isMac ? <Command className="size-3" /> : "Ctrl+"}Enter</Kbd>
 						</p>
 					</TooltipContent>

@@ -10,14 +10,20 @@ function setupKeyboardShortcuts(opts: {
 	onPrintPdf?: () => void
 	onPreview?: () => void
 	onDownload?: () => void
+	labels?: {
+		autosaveTitle: string
+		autosaveDescription: string
+		download: string
+	}
 }) {
 	function showAutosaveToast() {
-		toast("Alkalye saves automatically", {
+		toast(opts.labels?.autosaveTitle ?? "Alkalye saves automatically", {
 			description:
+				opts.labels?.autosaveDescription ??
 				"Changes are saved locally and synced to the cloud while you type.",
 			action: opts.onDownload
 				? {
-						label: "Download",
+						label: opts.labels?.download ?? "Download",
 						onClick: opts.onDownload,
 					}
 				: undefined,

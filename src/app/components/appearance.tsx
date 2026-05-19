@@ -1,4 +1,5 @@
 import { useState, useEffect, useSyncExternalStore } from "react"
+import { useIntl } from "@/shared/intl/setup"
 import { Sun, Moon, SunMoon } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 import {
@@ -70,16 +71,27 @@ interface ThemeToggleProps {
 }
 
 function ThemeToggle({ theme, setTheme, showLabel }: ThemeToggleProps) {
+	let t = useIntl()
 	let icon =
 		theme === "light" ? <Sun /> : theme === "dark" ? <Moon /> : <SunMoon />
 
 	let trigger = showLabel ? (
-		<Button variant="ghost" size="sm" aria-label="Theme" nativeButton>
+		<Button
+			variant="ghost"
+			size="sm"
+			aria-label={t("appearance.theme")}
+			nativeButton
+		>
 			{icon}
-			Theme
+			{t("appearance.theme")}
 		</Button>
 	) : (
-		<Button variant="ghost" size="icon" aria-label="Theme" nativeButton>
+		<Button
+			variant="ghost"
+			size="icon"
+			aria-label={t("appearance.theme")}
+			nativeButton
+		>
 			{icon}
 		</Button>
 	)
@@ -88,26 +100,17 @@ function ThemeToggle({ theme, setTheme, showLabel }: ThemeToggleProps) {
 		<DropdownMenu>
 			<Tooltip>
 				<DropdownMenuTrigger render={<TooltipTrigger render={trigger} />} />
-				<TooltipContent>Theme</TooltipContent>
+				<TooltipContent>{t("appearance.theme")}</TooltipContent>
 			</Tooltip>
 			<DropdownMenuContent align="center">
-				<DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
-					<DropdownMenuRadioItem value="light">
-						<Sun /> Light
-					</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem value="dark">
-						<Moon /> Dark
-					</DropdownMenuRadioItem>
-					<DropdownMenuRadioItem value="system">
-						<SunMoon /> System
-					</DropdownMenuRadioItem>
-				</DropdownMenuRadioGroup>
+				<ThemeMenuItems theme={theme} setTheme={setTheme} />
 			</DropdownMenuContent>
 		</DropdownMenu>
 	)
 }
 
 function ThemeSubmenu({ theme, setTheme }: ThemeToggleProps) {
+	let t = useIntl()
 	let icon =
 		theme === "light" ? <Sun /> : theme === "dark" ? <Moon /> : <SunMoon />
 
@@ -115,7 +118,7 @@ function ThemeSubmenu({ theme, setTheme }: ThemeToggleProps) {
 		<DropdownMenuSub>
 			<DropdownMenuSubTrigger>
 				{icon}
-				Theme
+				{t("appearance.theme")}
 			</DropdownMenuSubTrigger>
 			<DropdownMenuSubContent>
 				<ThemeMenuItems theme={theme} setTheme={setTheme} />
@@ -125,16 +128,17 @@ function ThemeSubmenu({ theme, setTheme }: ThemeToggleProps) {
 }
 
 function ThemeMenuItems({ theme, setTheme }: ThemeToggleProps) {
+	let t = useIntl()
 	return (
 		<DropdownMenuRadioGroup value={theme} onValueChange={setTheme}>
 			<DropdownMenuRadioItem value="light">
-				<Sun /> Light
+				<Sun /> {t("appearance.light")}
 			</DropdownMenuRadioItem>
 			<DropdownMenuRadioItem value="dark">
-				<Moon /> Dark
+				<Moon /> {t("appearance.dark")}
 			</DropdownMenuRadioItem>
 			<DropdownMenuRadioItem value="system">
-				<SunMoon /> System
+				<SunMoon /> {t("appearance.system")}
 			</DropdownMenuRadioItem>
 		</DropdownMenuRadioGroup>
 	)

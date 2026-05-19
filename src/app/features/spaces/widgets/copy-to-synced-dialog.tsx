@@ -5,6 +5,7 @@ import { co } from "jazz-tools"
 import { useAccount } from "jazz-tools/react"
 import { User, Plus, Copy } from "lucide-react"
 import { useNavigate } from "@tanstack/react-router"
+import { useIntl, T } from "@/shared/intl/setup"
 import {
 	Dialog,
 	DialogContent,
@@ -63,6 +64,7 @@ function CopyToSyncedDialog({
 	onOpenChange,
 	onCopy,
 }: CopyToSyncedDialogProps) {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [isSubmitting, setIsSubmitting] = useState(false)
 	let navigate = useNavigate()
@@ -108,7 +110,7 @@ function CopyToSyncedDialog({
 		}
 		docs.$jazz.push(newDoc)
 
-		onCopy?.({ id: "personal", name: "Personal" })
+		onCopy?.({ id: "personal", name: t("spaces.copy.personal") })
 		handleOpenChange(false)
 		void navigate({
 			to: "/doc/$id",
@@ -157,12 +159,17 @@ function CopyToSyncedDialog({
 					success = await copyToExistingSpace(destination)
 				}
 				if (!success) {
-					toast.error("Failed to copy document: missing data or permission")
+					toast.error(t("spaces.copy.errorMissingData"))
 					setIsSubmitting(false)
 				}
 			} catch (err) {
 				toast.error(
-					`Failed to copy document: ${err instanceof Error ? err.message : "Unknown error"}`,
+					t("spaces.copy.errorGeneric", {
+						error:
+							err instanceof Error
+								? err.message
+								: t("spaces.copy.errorUnknown"),
+					}),
 				)
 				setIsSubmitting(false)
 			}
@@ -189,9 +196,14 @@ function CopyToSyncedDialog({
 		<Dialog open={open} onOpenChange={handleOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>Copy to Synced Documents</DialogTitle>
+					<DialogTitle>
+						<T k="spaces.copy.title" />
+					</DialogTitle>
 					<DialogDescription>
-						Copy &quot;{filename ?? "Untitled"}&quot; to your synced documents.
+						<T
+							k="spaces.copy.description"
+							params={{ filename: filename ?? t("doc.untitled") }}
+						/>
 					</DialogDescription>
 				</DialogHeader>
 
@@ -206,7 +218,9 @@ function CopyToSyncedDialog({
 					<form.Field name="destination">
 						{field => (
 							<Field>
-								<FieldLabel>Destination</FieldLabel>
+								<FieldLabel>
+									<T k="spaces.copy.destinationLabel" />
+								</FieldLabel>
 								<Select
 									value={field.state.value}
 									onValueChange={v => {
@@ -220,7 +234,7 @@ function CopyToSyncedDialog({
 									<SelectContent>
 										<SelectItem value="personal">
 											<User className="mr-2 size-4" />
-											Personal
+											<T k="spaces.copy.personal" />
 										</SelectItem>
 										{spaces.map(space => (
 											<SelectItem key={space.$jazz.id} value={space.$jazz.id}>
@@ -230,7 +244,7 @@ function CopyToSyncedDialog({
 										))}
 										<SelectItem value="__new__">
 											<Plus className="mr-2 size-4" />
-											Create new space
+											<T k="spaces.copy.createNew" />
 										</SelectItem>
 									</SelectContent>
 								</Select>
@@ -244,11 +258,13 @@ function CopyToSyncedDialog({
 								<form.Field name="newSpaceName">
 									{field => (
 										<Field>
-											<FieldLabel>New Space Name</FieldLabel>
+											<FieldLabel>
+												<T k="spaces.copy.newSpaceNameLabel" />
+											</FieldLabel>
 											<Input
 												value={field.state.value}
 												onChange={e => field.handleChange(e.target.value)}
-												placeholder="Enter space name"
+												placeholder={t("spaces.copy.namePlaceholder")}
 											/>
 										</Field>
 									)}
@@ -264,7 +280,7 @@ function CopyToSyncedDialog({
 							onClick={() => handleOpenChange(false)}
 							nativeButton
 						>
-							Cancel
+							<T k="spaces.button.cancel" />
 						</Button>
 						<form.Subscribe
 							selector={s => ({
@@ -282,11 +298,13 @@ function CopyToSyncedDialog({
 									nativeButton
 								>
 									{isSubmitting ? (
-										<>Copying...</>
+										<>
+											<T k="spaces.copy.submitting" />
+										</>
 									) : (
 										<>
 											<Copy className="mr-2 size-4" />
-											Copy Document
+											<T k="spaces.copy.submit" />
 										</>
 									)}
 								</Button>

@@ -15,6 +15,7 @@ import {
 	TooltipTrigger,
 } from "@/app/components/ui/tooltip"
 import { cn } from "@/app/lib/cn"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { Teleprompter, groupBySlide }
 export type { SlideGroup, HighlightRange }
@@ -44,6 +45,7 @@ function Teleprompter({
 	onHighlightChange,
 	onExit,
 }: TeleprompterProps) {
+	let t = useIntl()
 	let slideGroups = groupBySlide(items)
 
 	let currentSlideNumber =
@@ -75,10 +77,10 @@ function Teleprompter({
 					{presentationIndex === undefined && items.length > 0 && (
 						<div className="flex flex-col items-center gap-4 py-8">
 							<p className="text-muted-foreground text-sm">
-								Press any arrow key or click an item to start
+								{t("presentation.teleprompter.startPrompt")}
 							</p>
 							<Button onClick={() => onIndexChange(0)}>
-								Start Presentation
+								{t("presentation.teleprompter.start")}
 							</Button>
 						</div>
 					)}
@@ -254,6 +256,7 @@ function BottomToolbar({
 	onIndexChange: (index: number) => void
 	onExit?: () => void
 }) {
+	let t = useIntl()
 	let currentSlideNumber =
 		presentationIndex !== undefined && items[presentationIndex]
 			? items[presentationIndex].slideNumber
@@ -352,28 +355,28 @@ function BottomToolbar({
 				<div className="mt-2 flex items-center justify-center gap-4 md:hidden">
 					<NavButton
 						icon={<ChevronLeft />}
-						tooltip="Prev Slide (←)"
+						tooltip={t("presentation.teleprompter.prevSlide")}
 						onClick={goToPrevSlide}
 						disabled={!canPrevSlide}
 						mobile
 					/>
 					<NavButton
 						icon={<ArrowUp />}
-						tooltip="Prev Item (↑)"
+						tooltip={t("presentation.teleprompter.prevItem")}
 						onClick={goToPrevItem}
 						disabled={!canPrevItem}
 						mobile
 					/>
 					<NavButton
 						icon={<ArrowDown />}
-						tooltip="Next Item (↓)"
+						tooltip={t("presentation.teleprompter.nextItem")}
 						onClick={goToNextItem}
 						disabled={!canNextItem}
 						mobile
 					/>
 					<NavButton
 						icon={<ChevronRight />}
-						tooltip="Next Slide (→)"
+						tooltip={t("presentation.teleprompter.nextSlide")}
 						onClick={goToNextSlide}
 						disabled={!canNextSlide}
 						mobile
@@ -386,25 +389,25 @@ function BottomToolbar({
 				<div className="hidden items-center gap-2 md:flex">
 					<NavButton
 						icon={<ChevronLeft />}
-						tooltip="Prev Slide (←)"
+						tooltip={t("presentation.teleprompter.prevSlide")}
 						onClick={goToPrevSlide}
 						disabled={!canPrevSlide}
 					/>
 					<NavButton
 						icon={<ArrowUp />}
-						tooltip="Prev Item (↑)"
+						tooltip={t("presentation.teleprompter.prevItem")}
 						onClick={goToPrevItem}
 						disabled={!canPrevItem}
 					/>
 					<NavButton
 						icon={<ArrowDown />}
-						tooltip="Next Item (↓)"
+						tooltip={t("presentation.teleprompter.nextItem")}
 						onClick={goToNextItem}
 						disabled={!canNextItem}
 					/>
 					<NavButton
 						icon={<ChevronRight />}
-						tooltip="Next Slide (→)"
+						tooltip={t("presentation.teleprompter.nextSlide")}
 						onClick={goToNextSlide}
 						disabled={!canNextSlide}
 					/>
@@ -457,10 +460,13 @@ function SlideSection({
 	slideNumber: number
 	children: React.ReactNode
 }) {
+	let t = useIntl()
 	return (
 		<div className="border-border mb-6 border-b pb-6 last:border-0">
 			<div className="text-muted-foreground mb-2 px-4 text-xs">
-				Slide {slideNumber}
+				{t("presentation.teleprompter.slideLabel", {
+					number: String(slideNumber),
+				})}
 			</div>
 			{children}
 		</div>
@@ -749,7 +755,9 @@ function PresentationTimer() {
 					</button>
 				}
 			/>
-			<TooltipContent>Click to reset timer</TooltipContent>
+			<TooltipContent>
+				<T k="presentation.teleprompter.resetTimer" />
+			</TooltipContent>
 		</Tooltip>
 	)
 }

@@ -23,6 +23,7 @@ import {
 import { Badge } from "@/app/components/ui/badge"
 import { Button } from "@/app/components/ui/button"
 import { Document, UserAccount } from "@/schema"
+import { useIntl, T } from "@/shared/intl/setup"
 import {
 	createDocumentInvite,
 	revokeDocumentInvite,
@@ -56,6 +57,7 @@ function ShareDialog({
 	open: controlledOpen,
 	onOpenChange,
 }: ShareDialogProps) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let location = useLocation()
 	let isAuthenticated = useIsAuthenticated()
@@ -213,15 +215,17 @@ function ShareDialog({
 		<Dialog open={open} onOpenChange={setOpen}>
 			<DialogContent data-testid={testIds.collab.docShareDialog}>
 				<DialogHeader>
-					<DialogTitle>Share document</DialogTitle>
+					<DialogTitle>
+						<T k="sharing.document.title" />
+					</DialogTitle>
 					<DialogDescription>
 						{!isAuthenticated
-							? "Sign in to share documents with others"
+							? t("sharing.document.signInToShare")
 							: isOwner
-								? "Invite others to view or edit this document"
+								? t("sharing.document.inviteOthers")
 								: owner
-									? `Shared with you by ${owner.name}`
-									: "You're viewing a shared document"}
+									? t("sharing.document.sharedByUser", { name: owner.name })
+									: t("sharing.document.viewingShared")}
 					</DialogDescription>
 				</DialogHeader>
 
@@ -229,10 +233,12 @@ function ShareDialog({
 					<div className="flex flex-col items-center gap-3 py-4">
 						<CloudOff className="text-muted-foreground size-8" />
 						<p className="text-muted-foreground text-center text-sm">
-							Sharing requires sync to be enabled
+							<T k="sharing.document.syncRequired" />
 						</p>
 						<Link to="/settings" search={{ from: location.pathname }}>
-							<Button size="sm">Sign in to share</Button>
+							<Button size="sm">
+								<T k="sharing.document.signInToSyncButton" />
+							</Button>
 						</Link>
 					</div>
 				)}
@@ -253,7 +259,7 @@ function ShareDialog({
 										variant="ghost"
 										size="icon-sm"
 										onClick={handleCopy}
-										aria-label="Copy link"
+										aria-label={t("sharing.document.link.copyLabel")}
 									>
 										{copied ? (
 											<Check className="size-3.5" />
@@ -269,7 +275,7 @@ function ShareDialog({
 									onClick={() => setInviteLink(null)}
 								>
 									<X className="mr-1 size-3.5" />
-									Dismiss
+									<T k="sharing.document.link.dismiss" />
 								</Button>
 							</div>
 						) : (
@@ -283,7 +289,7 @@ function ShareDialog({
 									data-testid={testIds.collab.docShareInviteWriterButton}
 								>
 									<LinkIcon className="mr-1 size-3.5" />
-									Can edit
+									<T k="sharing.document.link.canEdit" />
 								</Button>
 								<Button
 									variant="outline"
@@ -294,14 +300,14 @@ function ShareDialog({
 									data-testid={testIds.collab.docShareInviteReaderButton}
 								>
 									<LinkIcon className="mr-1 size-3.5" />
-									Can view
+									<T k="sharing.document.link.canView" />
 								</Button>
 							</div>
 						)}
 
 						<div className="border-border space-y-2 border-t pt-3">
 							<div className="text-muted-foreground text-xs font-medium">
-								Public access
+								<T k="sharing.document.publicAccess" />
 							</div>
 							{docIsPublic ? (
 								<div className="space-y-2">
@@ -318,7 +324,7 @@ function ShareDialog({
 											variant="ghost"
 											size="icon-sm"
 											onClick={handleCopyPublicLink}
-											aria-label="Copy public link"
+											aria-label={t("sharing.document.link.copyLabel")}
 										>
 											{publicCopied ? (
 												<Check className="size-3.5" />
@@ -328,7 +334,7 @@ function ShareDialog({
 										</Button>
 									</div>
 									<p className="text-muted-foreground text-xs">
-										Anyone with this link can view this document
+										<T k="sharing.document.publicLink.description" />
 									</p>
 									<Button
 										variant="ghost"
@@ -339,13 +345,13 @@ function ShareDialog({
 										data-testid={testIds.collab.docPublicDisableButton}
 									>
 										<Lock className="mr-1 size-3.5" />
-										Make private
+										<T k="sharing.document.publicLink.makePrivate" />
 									</Button>
 								</div>
 							) : (
 								<div className="space-y-2">
 									<p className="text-muted-foreground text-xs">
-										Make this document publicly readable by anyone with the link
+										<T k="sharing.document.publicLink.description" />
 									</p>
 									<Button
 										variant="outline"
@@ -356,7 +362,7 @@ function ShareDialog({
 										data-testid={testIds.collab.docPublicEnableButton}
 									>
 										<Globe className="mr-1 size-3.5" />
-										Make public
+										<T k="sharing.document.publicLink.makePublic" />
 									</Button>
 								</div>
 							)}
@@ -367,7 +373,7 @@ function ShareDialog({
 				{collaborators.length > 0 && (
 					<div className="space-y-2">
 						<div className="text-muted-foreground text-xs font-medium">
-							Collaborators
+							<T k="sharing.document.collaborators.label" />
 						</div>
 						<ul className="space-y-1">
 							{collaborators.map(c => (
@@ -378,19 +384,25 @@ function ShareDialog({
 									<span className="flex items-center gap-2">
 										{c.name}
 										{c.id === me?.$jazz.id && (
-											<Badge variant="secondary">You</Badge>
+											<Badge variant="secondary">
+												<T k="sharing.document.collaborators.you" />
+											</Badge>
 										)}
 									</span>
 									<div className="flex items-center gap-2">
 										<span className="text-muted-foreground text-xs capitalize">
-											{c.role === "writer" ? "Can edit" : "Can view"}
+											{c.role === "writer"
+												? t("sharing.document.link.canEdit")
+												: t("sharing.document.link.canView")}
 										</span>
 										{isAdmin && (
 											<Button
 												variant="ghost"
 												size="icon-sm"
 												onClick={() => handleRevoke(c.inviteGroupId)}
-												aria-label="Remove access"
+												aria-label={t(
+													"sharing.document.collaborators.removeAccess",
+												)}
 											>
 												<Trash2 className="text-destructive size-3" />
 											</Button>
@@ -405,7 +417,7 @@ function ShareDialog({
 				{pendingInvites.length > 0 && isAdmin && (
 					<div className="space-y-2">
 						<div className="text-muted-foreground text-xs font-medium">
-							Pending invites
+							<T k="sharing.document.pendingInvites.label" />
 						</div>
 						<ul className="space-y-1">
 							{pendingInvites.map(invite => (
@@ -415,12 +427,14 @@ function ShareDialog({
 									data-testid={testIds.collab.docSharePendingInviteRow}
 									data-invite-group-id={invite.inviteGroupId}
 								>
-									<span>Pending invite</span>
+									<span>
+										<T k="sharing.document.pendingInvites.pending" />
+									</span>
 									<Button
 										variant="ghost"
 										size="icon-sm"
 										onClick={() => handleRevoke(invite.inviteGroupId)}
-										aria-label="Revoke invite"
+										aria-label={t("sharing.document.pendingInvites.revoke")}
 										data-testid={testIds.collab.docSharePendingInviteRevoke}
 										data-invite-group-id={invite.inviteGroupId}
 									>
@@ -442,7 +456,7 @@ function ShareDialog({
 							disabled={loading}
 						>
 							<LogOut className="mr-1 size-3.5" />
-							Leave document
+							<T k="sharing.document.leave" />
 						</Button>
 					</div>
 				)}

@@ -7,6 +7,7 @@ import {
 } from "@/app/components/ui/dialog"
 import { Progress } from "@/app/components/ui/progress"
 import { Button } from "@/app/components/ui/button"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { ImportProgressDialog }
 export type { ImportPhase, ImportProgress }
@@ -34,15 +35,16 @@ function ImportProgressDialog({
 	progress,
 	onCancel,
 }: ImportProgressDialogProps) {
+	let t = useIntl()
 	let { phase, currentFile, fileIndex, totalFiles, assetIndex, totalAssets } =
 		progress
 
 	let phaseLabel =
 		phase === "reading"
-			? "Reading files"
+			? t("importExport.progress.readingFiles")
 			: phase === "compressing"
-				? "Compressing video"
-				: "Creating documents"
+				? t("importExport.progress.compressingVideo")
+				: t("importExport.progress.creatingDocuments")
 
 	// Overall progress: files done + current file partial progress
 	let fileProgress = fileIndex / totalFiles
@@ -63,7 +65,9 @@ function ImportProgressDialog({
 		<Dialog open={open}>
 			<DialogContent showCloseButton={false}>
 				<DialogHeader>
-					<DialogTitle>Importing documents</DialogTitle>
+					<DialogTitle>
+						<T k="importExport.progress.importing" />
+					</DialogTitle>
 				</DialogHeader>
 
 				<div className="space-y-3">
@@ -76,14 +80,17 @@ function ImportProgressDialog({
 					</p>
 					{phase === "compressing" && (
 						<p className="text-muted-foreground text-center text-xs">
-							Processing asset {assetIndex + 1} of {totalAssets}
+							{t("importExport.progress.processingAsset", {
+								index: String(assetIndex + 1),
+								total: String(totalAssets),
+							})}
 						</p>
 					)}
 				</div>
 
 				<Button variant="ghost" size="sm" className="w-full" onClick={onCancel}>
 					<X className="mr-1 size-3.5" />
-					Cancel
+					<T k="importExport.upload.cancel" />
 				</Button>
 			</DialogContent>
 		</Dialog>

@@ -35,6 +35,7 @@ import {
 } from "./import-progress-dialog"
 import type { DocWithContent } from "@/app/features/documents"
 import { Link } from "@tanstack/react-router"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { SidebarImportExport, handleImportFiles }
 export type { ImportOptions }
@@ -53,6 +54,7 @@ function SidebarImportExport({
 	docs: DocWithContent[]
 	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 }) {
+	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [importProgress, setImportProgress] = useState<ImportProgress | null>(
 		null,
@@ -67,7 +69,7 @@ function SidebarImportExport({
 			setAbortController(controller)
 			setImportProgress({
 				phase: "reading",
-				currentFile: "Reading files...",
+				currentFile: t("importExport.progress.readingFilesInitial"),
 				fileIndex: 0,
 				totalFiles: 1,
 				assetIndex: 0,
@@ -131,16 +133,16 @@ function SidebarImportExport({
 				<DropdownMenuContent align="end">
 					<DropdownMenuItem render={<Link to="/local" />}>
 						<FileUp />
-						Open Local File
+						<T k="importExport.openLocalFile" />
 					</DropdownMenuItem>
 					<DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
 						<Download />
-						Import
+						<T k="importExport.import" />
 					</DropdownMenuItem>
 					{activeDocs.length > 0 && (
 						<DropdownMenuItem onClick={() => handleExportDocs(activeDocs)}>
 							<Upload />
-							Export all
+							<T k="importExport.exportAll" />
 						</DropdownMenuItem>
 					)}
 				</DropdownMenuContent>

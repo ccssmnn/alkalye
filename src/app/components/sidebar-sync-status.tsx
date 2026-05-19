@@ -8,6 +8,11 @@ import {
 	DropdownMenuItem,
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
+	DropdownMenuSub,
+	DropdownMenuSubTrigger,
+	DropdownMenuSubContent,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 } from "@/app/components/ui/dropdown-menu"
 import { AuthDialog } from "@/app/features/auth"
 import { ThemeSubmenu, useTheme } from "@/app/components/appearance"
@@ -18,10 +23,12 @@ import {
 	ChevronUp,
 	Cloud,
 	CloudOff,
+	Globe,
 	LogOut,
 	Settings,
 	WifiOff,
 } from "lucide-react"
+import { T, useIntl } from "@/shared/intl/setup"
 
 export { SidebarSyncStatus }
 
@@ -30,19 +37,22 @@ function SidebarSyncStatus() {
 	let location = useLocation()
 	let logOut = useLogOut()
 	let isAuthenticated = useIsAuthenticated()
-	let me = useAccount(UserAccount, { resolve: { profile: true } })
+	let me = useAccount(UserAccount, { resolve: { profile: true, root: true } })
 	let [authOpen, setAuthOpen] = useState(false)
 	let isOnline = useIsOnline()
 	let { theme, setTheme } = useTheme()
 	let { needRefresh } = usePWA()
+	let t = useIntl()
 
-	let name = me?.$isLoaded ? me.profile.name.trim() || null : null
+	let rawName = me?.$isLoaded ? me.profile.name.trim() || null : null
+	let name = rawName === "Anonymous user" ? t("common.anonymousUser") : rawName
 	let statusLabel = isAuthenticated
 		? isOnline
-			? "Syncing"
-			: "Offline"
-		: "Local only"
-	let accountLabel = name ?? (isAuthenticated ? "Signed in" : "Local only")
+			? t("sync.syncing")
+			: t("sync.offline")
+		: t("sync.localOnly")
+	let accountLabel =
+		name ?? (isAuthenticated ? t("sync.signedIn") : t("sync.localOnly"))
 	let StatusIcon = isAuthenticated ? (isOnline ? Cloud : WifiOff) : CloudOff
 	let statusIconClassName = isAuthenticated
 		? isOnline
@@ -85,21 +95,29 @@ function SidebarSyncStatus() {
 					}
 				>
 					<Settings />
-					Settings
+					<T k="common.settings" />
 				</DropdownMenuItem>
 				{!isAuthenticated && (
 					<DropdownMenuItem onClick={() => setAuthOpen(true)}>
 						<CloudOff />
-						Sign in
+						<T k="common.signIn" />
 					</DropdownMenuItem>
 				)}
 				<ThemeSubmenu theme={theme} setTheme={setTheme} />
+				<LanguageSubmenu
+					language={me?.$isLoaded ? (me.root?.language ?? "en") : "en"}
+					setLanguage={lang => {
+						if (me?.$isLoaded && me.root && (lang === "en" || lang === "de")) {
+							me.root.$jazz.set("language", lang)
+						}
+					}}
+				/>
 				{isAuthenticated && (
 					<>
 						<DropdownMenuSeparator />
 						<DropdownMenuItem onClick={() => logOut()}>
 							<LogOut />
-							Log out
+							<T k="common.logOut" />
 						</DropdownMenuItem>
 					</>
 				)}
@@ -110,5 +128,34 @@ function SidebarSyncStatus() {
 				onSuccess={() => navigate({ to: "/" })}
 			/>
 		</DropdownMenu>
+	)
+}
+
+function LanguageSubmenu({
+	language,
+	setLanguage,
+}: {
+	language: string
+	setLanguage: (lang: string) => void
+}) {
+	let t = useIntl()
+
+	return (
+		<DropdownMenuSub>
+			<DropdownMenuSubTrigger>
+				<Globe />
+				{t("settings.language")}
+			</DropdownMenuSubTrigger>
+			<DropdownMenuSubContent>
+				<DropdownMenuRadioGroup value={language} onValueChange={setLanguage}>
+					<DropdownMenuRadioItem value="en">
+						{t("settings.language.en")}
+					</DropdownMenuRadioItem>
+					<DropdownMenuRadioItem value="de">
+						{t("settings.language.de")}
+					</DropdownMenuRadioItem>
+				</DropdownMenuRadioGroup>
+			</DropdownMenuSubContent>
+		</DropdownMenuSub>
 	)
 }

@@ -7,6 +7,7 @@ import {
 	Image,
 } from "jazz-tools/react"
 import { useParams, useNavigate, Link } from "@tanstack/react-router"
+import { useIntl, T } from "@/shared/intl/setup"
 import {
 	ChevronDown,
 	User,
@@ -48,6 +49,7 @@ let currentSpaceQuery = { avatar: true } as const satisfies ResolveQuery<
 >
 
 function SpaceSelector() {
+	let t = useIntl()
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let isAuthenticated = useIsAuthenticated()
 	let navigate = useNavigate()
@@ -67,7 +69,9 @@ function SpaceSelector() {
 
 	// Use current space from list if available, otherwise from URL (for public spaces)
 	let currentSpace = currentSpaceInList ?? currentSpaceFromUrl
-	let displayName = currentSpace?.$isLoaded ? currentSpace.name : "Personal"
+	let displayName = currentSpace?.$isLoaded
+		? currentSpace.name
+		: t("spaces.selector.personal")
 	let isInSpace = currentSpace?.$isLoaded
 
 	// Check if current space is not in user's list (public space they're viewing)
@@ -118,7 +122,9 @@ function SpaceSelector() {
 							}
 						>
 							<SettingsIcon />
-							<span className="sr-only">Space Settings</span>
+							<span className="sr-only">
+								<T k="spaces.selector.settings" />
+							</span>
 						</Button>
 					)}
 				</div>
@@ -127,7 +133,9 @@ function SpaceSelector() {
 						onClick={() => navigate({ to: "/", search: { personal: true } })}
 					>
 						<User className="size-4" />
-						<span>Personal</span>
+						<span>
+							<T k="spaces.selector.personal" />
+						</span>
 						{!spaceId && <Check className="ml-auto size-4" />}
 					</DropdownMenuItem>
 					{spaces.map(space => (
@@ -153,7 +161,7 @@ function SpaceSelector() {
 						<>
 							<DropdownMenuSeparator />
 							<div className="text-muted-foreground px-2 py-1.5 text-xs">
-								Viewing public space
+								<T k="spaces.selector.viewingPublic" />
 							</div>
 							<DropdownMenuItem disabled>
 								<Users className="size-4" />
@@ -173,7 +181,9 @@ function SpaceSelector() {
 								data-testid={testIds.space.createButton}
 							>
 								<Plus className="size-4" />
-								<span>New Space</span>
+								<span>
+									<T k="spaces.selector.newSpace" />
+								</span>
 							</DropdownMenuItem>
 						</>
 					)}
@@ -233,7 +243,9 @@ function AddToSpacesMenuItem({
 	return (
 		<DropdownMenuItem onClick={handleAddToSpaces}>
 			<UserPlus className="size-4" />
-			<span>Add to my spaces</span>
+			<span>
+				<T k="spaces.selector.addToMySpaces" />
+			</span>
 		</DropdownMenuItem>
 	)
 }
@@ -247,6 +259,7 @@ function CreateSpaceDialog({
 	onOpenChange: (open: boolean) => void
 	me: ReturnType<typeof useAccount<typeof UserAccount, typeof spacesQuery>>
 }) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let [name, setName] = useState("")
 	let inputRef = useRef<HTMLInputElement>(null)
@@ -274,20 +287,24 @@ function CreateSpaceDialog({
 		>
 			<DialogContent data-testid={testIds.space.createDialog}>
 				<DialogHeader>
-					<DialogTitle>Create space</DialogTitle>
+					<DialogTitle>
+						<T k="spaces.create.title" />
+					</DialogTitle>
 					<DialogDescription>
-						Spaces let you organize documents and collaborate with others.
+						<T k="spaces.create.description" />
 					</DialogDescription>
 				</DialogHeader>
 
 				<form onSubmit={handleSubmit}>
 					<div className="space-y-2">
-						<Label htmlFor="space-name">Name</Label>
+						<Label htmlFor="space-name">
+							<T k="spaces.create.nameLabel" />
+						</Label>
 						<Input
 							ref={inputRef}
 							id="space-name"
 							data-testid={testIds.space.createNameInput}
-							placeholder="My Space"
+							placeholder={t("spaces.create.namePlaceholder")}
 							value={name}
 							onChange={e => setName(e.target.value)}
 							autoComplete="off"
@@ -301,7 +318,7 @@ function CreateSpaceDialog({
 							size="sm"
 							onClick={() => onOpenChange(false)}
 						>
-							Cancel
+							<T k="spaces.create.cancel" />
 						</Button>
 						<Button
 							type="submit"
@@ -309,7 +326,7 @@ function CreateSpaceDialog({
 							disabled={!name.trim()}
 							data-testid={testIds.space.createSubmit}
 						>
-							Create
+							<T k="spaces.create.submit" />
 						</Button>
 					</DialogFooter>
 				</form>

@@ -47,6 +47,7 @@ import {
 	VolumeX,
 	Volume2,
 } from "lucide-react"
+import { useIntl, T } from "@/shared/intl/setup"
 
 export { SidebarAssets }
 export type { SidebarAsset }
@@ -100,6 +101,7 @@ function SidebarAssets({
 	isAssetUsed,
 	canUploadVideo,
 }: SidebarAssetsProps) {
+	let t = useIntl()
 	let { isMobile } = useSidebar()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [renameOpen, setRenameOpen] = useState(false)
@@ -205,12 +207,16 @@ function SidebarAssets({
 				<div className="bg-background/90 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
 					<div className="text-center">
 						<Upload className="text-primary mx-auto mb-2 size-8" />
-						<p className="text-sm font-medium">Drop media here</p>
+						<p className="text-sm font-medium">
+							<T k="assets.dropMediaHere" />
+						</p>
 					</div>
 				</div>
 			)}
 			<SidebarGroupLabel className="flex items-center justify-between pr-2">
-				<span>Assets</span>
+				<span>
+					<T k="assets.title" />
+				</span>
 				<Tooltip>
 					<TooltipTrigger
 						render={
@@ -223,7 +229,9 @@ function SidebarAssets({
 							</button>
 						}
 					/>
-					<TooltipContent>Add asset</TooltipContent>
+					<TooltipContent>
+						<T k="assets.addAsset" />
+					</TooltipContent>
 				</Tooltip>
 			</SidebarGroupLabel>
 			<input
@@ -242,7 +250,9 @@ function SidebarAssets({
 				{assets.length === 0 ? (
 					<div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-2 text-xs">
 						<ImageIcon className="size-6 opacity-50" />
-						<p>No assets yet</p>
+						<p>
+							<T k="assets.noAssetsYet" />
+						</p>
 					</div>
 				) : (
 					<SidebarMenu>
@@ -287,7 +297,7 @@ function SidebarAssets({
 												onClick={() => onInsert(asset.id, asset.name)}
 											>
 												<Plus className="size-4" />
-												Insert
+												<T k="assets.insert" />
 											</DropdownMenuItem>
 										)}
 										{onDownload && (
@@ -295,13 +305,13 @@ function SidebarAssets({
 												onClick={() => onDownload(asset.id, asset.name)}
 											>
 												<Download className="size-4" />
-												Download
+												<T k="assets.download" />
 											</DropdownMenuItem>
 										)}
 										{onRename && (
 											<DropdownMenuItem onClick={() => handleRename(asset)}>
 												<Pencil className="size-4" />
-												Rename
+												<T k="assets.rename" />
 											</DropdownMenuItem>
 										)}
 										{asset.type === "video" && onToggleMute && (
@@ -309,12 +319,12 @@ function SidebarAssets({
 												{asset.muteAudio ? (
 													<>
 														<Volume2 className="size-4" />
-														Unmute audio
+														<T k="assets.unmuteAudio" />
 													</>
 												) : (
 													<>
 														<VolumeX className="size-4" />
-														Mute audio
+														<T k="assets.muteAudio" />
 													</>
 												)}
 											</DropdownMenuItem>
@@ -325,7 +335,7 @@ function SidebarAssets({
 												className="text-destructive focus:text-destructive"
 											>
 												<Trash2 className="size-4" />
-												Delete
+												<T k="assets.delete" />
 											</DropdownMenuItem>
 										)}
 									</DropdownMenuContent>
@@ -351,9 +361,9 @@ function SidebarAssets({
 					setDeleteOpen(open)
 					if (!open) setDeletingAssetId(null)
 				}}
-				title="Delete asset?"
-				description="This image is used in the document. Deleting it will remove it from the content."
-				confirmLabel="Delete"
+				title={t("assets.deleteTitle")}
+				description={t("assets.deleteDescription")}
+				confirmLabel={t("assets.deleteConfirm")}
 				variant="destructive"
 				onConfirm={handleConfirmDelete}
 			/>
@@ -439,15 +449,20 @@ function VideoThumbnail({
 	return <img src={thumbnailUrl} className="size-full object-cover" alt="" />
 }
 
-let assetNameSchema = z.object({
-	name: z.string().min(1, "Name is required").max(100, "Name too long"),
-})
-
 interface RenameAssetDialogProps {
 	open: boolean
 	onOpenChange: (open: boolean) => void
 	currentName: string
 	onRename: (name: string) => void
+}
+
+function makeAssetNameSchema(t: ReturnType<typeof useIntl>) {
+	return z.object({
+		name: z
+			.string()
+			.min(1, t("assets.nameRequired"))
+			.max(100, t("assets.nameTooLong")),
+	})
 }
 
 function RenameAssetDialog({
@@ -456,6 +471,8 @@ function RenameAssetDialog({
 	currentName,
 	onRename,
 }: RenameAssetDialogProps) {
+	let t = useIntl()
+	let assetNameSchema = makeAssetNameSchema(t)
 	let form = useForm({
 		defaultValues: { name: currentName },
 		validators: { onSubmit: assetNameSchema },
@@ -479,7 +496,9 @@ function RenameAssetDialog({
 		>
 			<DialogContent showCloseButton={false}>
 				<DialogHeader>
-					<DialogTitle>Rename asset</DialogTitle>
+					<DialogTitle>
+						<T k="assets.renameAsset" />
+					</DialogTitle>
 				</DialogHeader>
 				<form
 					onSubmit={e => {
@@ -494,7 +513,9 @@ function RenameAssetDialog({
 								field.state.meta.isTouched && !field.state.meta.isValid
 							return (
 								<Field data-invalid={isInvalid}>
-									<FieldLabel htmlFor={field.name}>Name</FieldLabel>
+									<FieldLabel htmlFor={field.name}>
+										<T k="assets.name" />
+									</FieldLabel>
 									<Input
 										id={field.name}
 										name={field.name}
@@ -502,7 +523,7 @@ function RenameAssetDialog({
 										onBlur={field.handleBlur}
 										onChange={e => field.handleChange(e.target.value)}
 										aria-invalid={isInvalid}
-										placeholder="Asset name"
+										placeholder={t("assets.assetName")}
 										autoFocus
 									/>
 									{isInvalid && (
@@ -515,7 +536,9 @@ function RenameAssetDialog({
 						}}
 					</form.Field>
 					<DialogFooter>
-						<Button type="submit">Save</Button>
+						<Button type="submit">
+							<T k="assets.save" />
+						</Button>
 					</DialogFooter>
 				</form>
 			</DialogContent>

@@ -44,6 +44,7 @@ import {
 } from "../lib/spaces"
 import { SpaceInitials } from "../widgets/space-selector"
 import { testIds } from "@/app/lib/test-ids"
+import { useIntl } from "@/shared/intl/setup"
 
 export { SpaceSettingsScreen, spaceSettingsResolve }
 
@@ -94,11 +95,14 @@ function SpaceSettingsContent({
 	space: LoadedSpace
 	spaceId: string
 }) {
+	let t = useIntl()
 	let isPublicSpaceViewer = !isSpaceMember(space)
 
 	return (
 		<>
-			<title>{space.name} Settings</title>
+			<title>
+				{space.name} {t("spaces.settings.title")}
+			</title>
 			<div
 				className="bg-background fixed inset-0 overflow-auto"
 				style={{
@@ -119,12 +123,16 @@ function SpaceSettingsContent({
 				>
 					<div className="flex w-full max-w-2xl items-center gap-3 px-4">
 						<Link to="/spaces/$spaceId" params={{ spaceId }}>
-							<Button variant="ghost" size="icon" aria-label="Back">
+							<Button
+								variant="ghost"
+								size="icon"
+								aria-label={t("spaces.settings.backButton")}
+							>
 								<ArrowLeft className="size-4" />
 							</Button>
 						</Link>
 						<h1 className="text-foreground text-lg font-semibold">
-							Space Settings
+							{t("spaces.settings.title")}
 						</h1>
 					</div>
 				</div>
@@ -146,6 +154,7 @@ function SpaceSettingsContent({
 }
 
 function PublicSpaceViewerSettings({ space }: { space: LoadedSpace }) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let me = useAccount(UserAccount, { resolve: { root: { spaces: true } } })
 	let leaveDialog = useConfirmDialog()
@@ -163,15 +172,16 @@ function PublicSpaceViewerSettings({ space }: { space: LoadedSpace }) {
 		<section>
 			<div className="bg-muted/30 mb-6 rounded-lg p-4">
 				<div className="text-muted-foreground text-sm">
-					Viewing a public space. You can remove it from your spaces list at any
-					time.
+					{t("spaces.settings.viewingInfo")}
 				</div>
 			</div>
 			<div className="flex items-center justify-between rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
 				<div>
-					<div className="text-sm font-medium">Leave space</div>
+					<div className="text-sm font-medium">
+						{t("spaces.settings.leaveTitle")}
+					</div>
 					<div className="text-muted-foreground text-xs">
-						Remove this space from your list
+						{t("spaces.settings.leaveDescription")}
 					</div>
 				</div>
 				<Button
@@ -179,15 +189,17 @@ function PublicSpaceViewerSettings({ space }: { space: LoadedSpace }) {
 					size="sm"
 					onClick={() => leaveDialog.setOpen(true)}
 				>
-					Leave
+					{t("spaces.settings.leaveButton")}
 				</Button>
 			</div>
 			<ConfirmDialog
 				open={leaveDialog.open}
 				onOpenChange={leaveDialog.onOpenChange}
-				title="Leave space?"
-				description={`Remove "${space.name}" from your spaces list? You can add it again anytime since it's public.`}
-				confirmLabel="Leave"
+				title={t("spaces.settings.leaveConfirmTitle")}
+				description={t("spaces.settings.leaveConfirmDescription", {
+					spaceName: space.name,
+				})}
+				confirmLabel={t("spaces.settings.leaveButton")}
 				variant="destructive"
 				onConfirm={handleLeave}
 			/>
@@ -196,6 +208,7 @@ function PublicSpaceViewerSettings({ space }: { space: LoadedSpace }) {
 }
 
 function SpaceNameSection({ space }: { space: LoadedSpace }) {
+	let t = useIntl()
 	let spaceGroup = getSpaceGroup(space)
 	let isAdmin = spaceGroup?.myRole() === "admin"
 
@@ -208,11 +221,13 @@ function SpaceNameSection({ space }: { space: LoadedSpace }) {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				General
+				{t("spaces.settings.general")}
 			</h2>
 			<div className="bg-muted/30 space-y-4 rounded-lg p-4">
 				<div>
-					<div className="text-muted-foreground mb-1 text-xs">Space name</div>
+					<div className="text-muted-foreground mb-1 text-xs">
+						{t("spaces.settings.spaceName")}
+					</div>
 					<Input
 						value={space.name}
 						onChange={handleNameChange}
@@ -247,6 +262,7 @@ function SpaceAvatarUpload({
 	space: LoadedSpace
 	isAdmin: boolean
 }) {
+	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [isUploading, setIsUploading] = useState(false)
 	let [cropperOpen, setCropperOpen] = useState(false)
@@ -293,7 +309,9 @@ function SpaceAvatarUpload({
 
 	return (
 		<div>
-			<div className="text-muted-foreground mb-1 text-xs">Space avatar</div>
+			<div className="text-muted-foreground mb-1 text-xs">
+				{t("spaces.settings.avatar")}
+			</div>
 			<div className="flex items-center gap-3">
 				<div className="flex size-12 items-center justify-center overflow-hidden rounded-lg">
 					{avatarId ? (
@@ -317,12 +335,14 @@ function SpaceAvatarUpload({
 					{isUploading ? (
 						<>
 							<Loader2 className="mr-2 size-4 animate-spin" />
-							Uploading...
+							{t("spaces.settings.avatarUploading")}
 						</>
 					) : (
 						<>
 							<Upload className="mr-2 size-4" />
-							{avatarId ? "Change" : "Upload"}
+							{avatarId
+								? t("spaces.settings.avatarUploadChange")
+								: t("spaces.settings.avatarUploadNew")}
 						</>
 					)}
 				</Button>
@@ -334,7 +354,7 @@ function SpaceAvatarUpload({
 						onClick={() => removeDialog.setOpen(true)}
 					>
 						<Trash2 className="mr-2 size-4" />
-						Remove
+						{t("spaces.settings.avatarRemove")}
 					</Button>
 				)}
 				<input
@@ -354,9 +374,9 @@ function SpaceAvatarUpload({
 			<ConfirmDialog
 				open={removeDialog.open}
 				onOpenChange={removeDialog.onOpenChange}
-				title="Remove avatar?"
-				description="The space avatar will be removed and replaced with initials."
-				confirmLabel="Remove"
+				title={t("spaces.settings.avatarRemoveConfirmTitle")}
+				description={t("spaces.settings.avatarRemoveConfirmDescription")}
+				confirmLabel={t("spaces.settings.avatarRemove")}
 				variant="destructive"
 				onConfirm={handleRemoveAvatar}
 			/>
@@ -375,6 +395,7 @@ function AvatarCropperDialog({
 	imageSrc: string | null
 	onCrop: (croppedFile: File) => void
 }) {
+	let t = useIntl()
 	let [crop, setCrop] = useState({ x: 0, y: 0 })
 	let [zoom, setZoom] = useState(1)
 	let [croppedAreaPixels, setCroppedAreaPixels] = useState<{
@@ -421,9 +442,9 @@ function AvatarCropperDialog({
 		>
 			<DialogContent className="max-w-md">
 				<DialogHeader>
-					<DialogTitle>Crop avatar</DialogTitle>
+					<DialogTitle>{t("spaces.settings.avatarCropTitle")}</DialogTitle>
 					<DialogDescription>
-						Drag to reposition, scroll or pinch to zoom.
+						{t("spaces.settings.avatarCropDescription")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="relative h-64 w-full">
@@ -439,9 +460,11 @@ function AvatarCropperDialog({
 				</div>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("spaces.settings.avatarCropCancel")}
 					</Button>
-					<Button onClick={handleConfirm}>Save</Button>
+					<Button onClick={handleConfirm}>
+						{t("spaces.settings.avatarCropSave")}
+					</Button>
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
@@ -497,6 +520,7 @@ async function getCroppedImg(
 }
 
 function SpaceMembersSection({ space }: { space: LoadedSpace }) {
+	let t = useIntl()
 	let me = useAccount(UserAccount)
 	let spaceGroup = getSpaceGroup(space)
 	let myRole = spaceGroup?.myRole()
@@ -541,7 +565,9 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 	return (
 		<section>
 			<div className="mb-3 flex items-center justify-between">
-				<h2 className="text-muted-foreground text-sm font-medium">Members</h2>
+				<h2 className="text-muted-foreground text-sm font-medium">
+					{t("spaces.members.title")}
+				</h2>
 				{myRole === "admin" && (
 					<Button
 						variant="outline"
@@ -550,7 +576,7 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 						data-testid={testIds.space.inviteButton}
 					>
 						<UserRoundPlus />
-						Invite
+						{t("spaces.members.invite")}
 					</Button>
 				)}
 			</div>
@@ -570,7 +596,11 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 								>
 									<span className="flex items-center gap-2 text-sm">
 										{member.name}
-										{isMe && <Badge variant="secondary">You</Badge>}
+										{isMe && (
+											<Badge variant="secondary">
+												{t("spaces.members.youBadge")}
+											</Badge>
+										)}
 									</span>
 									<span className="flex items-center gap-2">
 										{isEditable && (
@@ -579,11 +609,11 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 												size="sm"
 												onClick={() => handleEditMember(member)}
 											>
-												Edit
+												{t("spaces.members.editButton")}
 											</Button>
 										)}
 										<span className="text-muted-foreground w-14 text-right text-xs">
-											{getRoleLabel(member.role)}
+											{getRoleLabel(t, member.role)}
 										</span>
 									</span>
 								</li>
@@ -591,7 +621,9 @@ function SpaceMembersSection({ space }: { space: LoadedSpace }) {
 						})}
 					</ul>
 				) : (
-					<p className="text-muted-foreground text-sm">Loading members...</p>
+					<p className="text-muted-foreground text-sm">
+						{t("spaces.members.loading")}
+					</p>
 				)}
 			</div>
 			<SpaceShareDialog
@@ -620,6 +652,7 @@ function MemberEditDialog({
 	onOpenChange: (open: boolean) => void
 	onMemberUpdated: () => void
 }) {
+	let t = useIntl()
 	let [role, setRole] = useState<string>(member?.role ?? "reader")
 	let [loading, setLoading] = useState(false)
 
@@ -665,23 +698,33 @@ function MemberEditDialog({
 		<Dialog open={!!member} onOpenChange={onOpenChange}>
 			<DialogContent showCloseButton={false}>
 				<DialogHeader>
-					<DialogTitle>Edit member</DialogTitle>
+					<DialogTitle>{t("spaces.members.editDialogTitle")}</DialogTitle>
 					<DialogDescription>
-						Change permissions or remove {member?.name} from this space.
+						{t("spaces.members.editDialogDescription", {
+							memberName: member?.name ?? "",
+						})}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4 py-2">
 					<div>
-						<div className="text-muted-foreground mb-1 text-xs">Role</div>
+						<div className="text-muted-foreground mb-1 text-xs">
+							{t("spaces.members.roleLabel")}
+						</div>
 						<Select value={role} onValueChange={v => v && setRole(v)}>
 							<SelectTrigger className="w-full">
-								<SelectValue>{getRoleLabel(role)}</SelectValue>
+								<SelectValue>{getRoleLabel(t, role)}</SelectValue>
 							</SelectTrigger>
 							<SelectContent>
-								<SelectItem value="admin">Admin</SelectItem>
-								<SelectItem value="manager">Manager</SelectItem>
-								<SelectItem value="writer">Writer</SelectItem>
-								<SelectItem value="reader">Reader</SelectItem>
+								<SelectItem value="admin">{t("spaces.role.admin")}</SelectItem>
+								<SelectItem value="manager">
+									{t("spaces.role.manager")}
+								</SelectItem>
+								<SelectItem value="writer">
+									{t("spaces.role.writer")}
+								</SelectItem>
+								<SelectItem value="reader">
+									{t("spaces.role.reader")}
+								</SelectItem>
 							</SelectContent>
 						</Select>
 					</div>
@@ -693,13 +736,13 @@ function MemberEditDialog({
 						disabled={loading}
 						className="sm:mr-auto"
 					>
-						Remove from space
+						{t("spaces.members.removeButton")}
 					</Button>
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("spaces.members.editCancel")}
 					</Button>
 					<Button onClick={handleSave} disabled={loading}>
-						Save
+						{t("spaces.members.editSave")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
@@ -707,22 +750,23 @@ function MemberEditDialog({
 	)
 }
 
-function getRoleLabel(role: string): string {
+function getRoleLabel(t: ReturnType<typeof useIntl>, role: string): string {
 	switch (role) {
 		case "admin":
-			return "Admin"
+			return t("spaces.role.admin")
 		case "manager":
-			return "Manager"
+			return t("spaces.role.manager")
 		case "writer":
-			return "Writer"
+			return t("spaces.role.writer")
 		case "reader":
-			return "Reader"
+			return t("spaces.role.reader")
 		default:
 			return role
 	}
 }
 
 function DangerZoneSection({ space }: { space: LoadedSpace }) {
+	let t = useIntl()
 	let navigate = useNavigate()
 	let me = useAccount(UserAccount)
 	let spaceGroup = getSpaceGroup(space)
@@ -763,15 +807,17 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 	return (
 		<section>
 			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
-				Danger Zone
+				{t("spaces.dangerZone.title")}
 			</h2>
 			<div className="space-y-3 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-900 dark:bg-red-950/30">
 				{canLeave && (
 					<div className="flex items-center justify-between">
 						<div>
-							<div className="text-sm font-medium">Leave space</div>
+							<div className="text-sm font-medium">
+								{t("spaces.dangerZone.leaveTitle")}
+							</div>
 							<div className="text-muted-foreground text-xs">
-								Remove yourself from this space
+								{t("spaces.dangerZone.leaveDescription")}
 							</div>
 						</div>
 						<Button
@@ -780,18 +826,20 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 							onClick={() => leaveDialog.setOpen(true)}
 							disabled={loading}
 						>
-							Leave
+							{t("spaces.settings.leaveButton")}
 						</Button>
 					</div>
 				)}
 				{isAdmin && (
 					<div className="flex items-center justify-between">
 						<div>
-							<div className="text-sm font-medium">Delete space</div>
+							<div className="text-sm font-medium">
+								{t("spaces.dangerZone.deleteTitle")}
+							</div>
 							<div className="text-muted-foreground text-xs">
 								{canDelete
-									? "Permanently delete this space and all its documents"
-									: "All other admins must leave before the space can be deleted"}
+									? t("spaces.dangerZone.deleteDescriptionCanDelete")
+									: t("spaces.dangerZone.deleteDescriptionCannotDelete")}
 							</div>
 						</div>
 						<Button
@@ -801,7 +849,7 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 							onClick={() => setDeleteDialogOpen(true)}
 							data-testid={testIds.space.dangerDeleteButton}
 						>
-							Delete
+							{t("spaces.dangerZone.deleteButton")}
 						</Button>
 					</div>
 				)}
@@ -809,9 +857,11 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 			<ConfirmDialog
 				open={leaveDialog.open}
 				onOpenChange={leaveDialog.onOpenChange}
-				title="Leave space?"
-				description={`You will lose access to "${space.name}" and all its documents. You'll need a new invite to rejoin.`}
-				confirmLabel="Leave"
+				title={t("spaces.dangerZone.leaveConfirmTitle")}
+				description={t("spaces.dangerZone.leaveConfirmDescription", {
+					spaceName: space.name,
+				})}
+				confirmLabel={t("spaces.settings.leaveButton")}
 				variant="destructive"
 				onConfirm={handleLeave}
 			/>
@@ -825,8 +875,6 @@ function DangerZoneSection({ space }: { space: LoadedSpace }) {
 	)
 }
 
-let CONFIRM_PHRASE = "yes, delete permanently"
-
 function PermanentDeleteSpaceDialog({
 	open,
 	onOpenChange,
@@ -838,11 +886,13 @@ function PermanentDeleteSpaceDialog({
 	spaceName: string
 	onConfirm: () => void
 }) {
+	let t = useIntl()
+	let confirmPhrase = t("spaces.dangerZone.deleteConfirmPhrase")
 	let [nameInput, setNameInput] = useState("")
 	let [confirmInput, setConfirmInput] = useState("")
 
 	let nameMatches = nameInput === spaceName
-	let confirmMatches = confirmInput.toLowerCase() === CONFIRM_PHRASE
+	let confirmMatches = confirmInput.toLowerCase() === confirmPhrase
 	let canDelete = nameMatches && confirmMatches
 
 	function handleOpenChangeComplete(nextOpen: boolean) {
@@ -866,16 +916,15 @@ function PermanentDeleteSpaceDialog({
 		>
 			<DialogContent showCloseButton={false}>
 				<DialogHeader>
-					<DialogTitle>Delete space permanently</DialogTitle>
+					<DialogTitle>{t("spaces.dangerZone.deleteConfirmTitle")}</DialogTitle>
 					<DialogDescription>
-						This action is irreversible. All documents in this space will be
-						permanently deleted and cannot be recovered.
+						{t("spaces.dangerZone.deleteConfirmDescription")}
 					</DialogDescription>
 				</DialogHeader>
 				<div className="space-y-4 py-2">
 					<div>
 						<label className="text-muted-foreground mb-1 block text-xs">
-							Type the space name to confirm:{" "}
+							{t("spaces.dangerZone.deleteConfirmNamePrompt")}{" "}
 							<span className="text-foreground font-medium">{spaceName}</span>
 						</label>
 						<Input
@@ -888,16 +937,14 @@ function PermanentDeleteSpaceDialog({
 					</div>
 					<div>
 						<label className="text-muted-foreground mb-1 block text-xs">
-							Type{" "}
-							<span className="text-foreground font-medium">
-								{CONFIRM_PHRASE}
-							</span>{" "}
-							to confirm:
+							{t("spaces.dangerZone.deleteConfirmPhrasePrompt", {
+								phrase: confirmPhrase,
+							})}
 						</label>
 						<Input
 							value={confirmInput}
 							onChange={e => setConfirmInput(e.target.value)}
-							placeholder={CONFIRM_PHRASE}
+							placeholder={confirmPhrase}
 							autoComplete="off"
 							data-testid={testIds.space.dangerDeletePhraseInput}
 						/>
@@ -905,7 +952,7 @@ function PermanentDeleteSpaceDialog({
 				</div>
 				<DialogFooter>
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						Cancel
+						{t("spaces.dangerZone.deleteConfirmCancel")}
 					</Button>
 					<Button
 						variant="destructive"
@@ -913,7 +960,7 @@ function PermanentDeleteSpaceDialog({
 						disabled={!canDelete}
 						data-testid={testIds.space.dangerDeleteConfirmButton}
 					>
-						Delete permanently
+						{t("spaces.dangerZone.deleteConfirmSubmit")}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
