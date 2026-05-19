@@ -10,6 +10,18 @@ import "#app/index.css"
 		<title>Alkalye</title>
 		<link rel="icon" type="image/png" href="/icons/alkalye-icon.png" />
 		<script is:inline>
+			let languages =
+				navigator.languages && navigator.languages.length > 0
+					? navigator.languages
+					: [navigator.language]
+			let locale = languages.some(language =>
+				language.toLowerCase().startsWith("de"),
+			)
+				? "de"
+				: "en"
+			location.replace(`/${locale}/`)
+		</script>
+		<script is:inline>
 			if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
 				document.documentElement.classList.add("dark")
 			}

@@ -51,6 +51,20 @@ function usePWAProvider(): PWAContextValue {
 		Promise.resolve(),
 	)
 	let t = useIntl()
+	let labelsRef = useRef({
+		updateAvailable: t("pwa.updateAvailable"),
+		updateDescription: t("pwa.updateDescription"),
+		updateAction: t("pwa.updateAction"),
+		offlineReady: t("pwa.offlineReady"),
+		offlineDescription: t("pwa.offlineDescription"),
+	})
+	labelsRef.current = {
+		updateAvailable: t("pwa.updateAvailable"),
+		updateDescription: t("pwa.updateDescription"),
+		updateAction: t("pwa.updateAction"),
+		offlineReady: t("pwa.offlineReady"),
+		offlineDescription: t("pwa.offlineDescription"),
+	}
 
 	// virtual:pwa-register is a Vite virtual module. Dynamic-importing it
 	// inside useEffect keeps this file safe to load in non-Vite contexts
@@ -75,22 +89,24 @@ function usePWAProvider(): PWAContextValue {
 						console.error("[PWA] Service worker registration error:", error)
 					},
 					onNeedRefresh() {
+						let labels = labelsRef.current
 						setNeedRefresh(true)
-						toast(t("pwa.updateAvailable"), {
-							description: t("pwa.updateDescription"),
+						toast(labels.updateAvailable, {
+							description: labels.updateDescription,
 							duration: Infinity,
 							action: {
-								label: t("pwa.updateAction"),
+								label: labels.updateAction,
 								onClick: () => updateSW(true),
 							},
 							onDismiss: () => setNeedRefresh(false),
 						})
 					},
 					onOfflineReady() {
+						let labels = labelsRef.current
 						setOfflineReady(true)
 						if (isMobileDevice() && getPWAInstalledSnapshot()) {
-							toast(t("pwa.offlineReady"), {
-								description: t("pwa.offlineDescription"),
+							toast(labels.offlineReady, {
+								description: labels.offlineDescription,
 								duration: 4000,
 							})
 						}
@@ -105,7 +121,7 @@ function usePWAProvider(): PWAContextValue {
 		return () => {
 			cancelled = true
 		}
-	}, [t])
+	}, [])
 
 	async function checkForUpdates() {
 		let registration = (

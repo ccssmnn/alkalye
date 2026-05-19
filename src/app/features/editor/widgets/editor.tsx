@@ -623,7 +623,7 @@ function MarkdownEditor(
 			dom.removeEventListener("dragover", handleDragOver, true)
 			dom.removeEventListener("drop", handleDrop, true)
 		}
-	}, [view])
+	}, [view, t])
 
 	useEffect(() => {
 		if (!view) return

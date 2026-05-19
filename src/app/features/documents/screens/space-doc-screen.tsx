@@ -396,6 +396,7 @@ function SpaceEditorContent({
 		me,
 		docWithContent,
 		editor,
+		t,
 	])
 
 	let allDocs = getSpaceDocs(space)

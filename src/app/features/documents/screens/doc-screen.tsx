@@ -398,6 +398,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		me,
 		docWithContent,
 		editor,
+		t,
 	])
 
 	let allDocs = getPersonalDocs(me)
