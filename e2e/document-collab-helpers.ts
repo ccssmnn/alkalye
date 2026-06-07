@@ -42,6 +42,7 @@ async function createDocumentInvite(
 	await expect(input).toBeVisible({ timeout: 10_000 })
 	let link = await input.inputValue()
 	let inviteGroupId = parseInviteGroupId(link)
+	await page.waitForTimeout(3_000)
 
 	return {
 		ok: true,
@@ -121,6 +122,10 @@ async function acceptDocumentInvite(
 	await invitePage.getByTestId(testIds.auth.initialCreateAccount).click()
 	await invitePage.getByTestId(testIds.auth.createCopy).click()
 	await invitePage.getByTestId(testIds.auth.createSubmit).click()
+	await expect(invitePage.getByTestId(testIds.auth.dialog)).toBeHidden({
+		timeout: 10_000,
+	})
+	await waitForInviteSuccess(invitePage)
 
 	if (docId) {
 		await expect.poll(() => invitePage.url()).toContain(`/app/doc/${docId}`)
@@ -162,4 +167,20 @@ function parseInviteGroupId(link: string) {
 function parseDocIdFromInviteLink(link: string) {
 	let match = link.match(/#\/doc\/(co_[^/]+)\//)
 	return match?.[1] ?? null
+}
+
+async function waitForInviteSuccess(invitePage: Page) {
+	let success = invitePage.getByTestId(testIds.invite.successState)
+	let error = invitePage.getByTestId(testIds.invite.errorState)
+	let didSucceed = await expect(success)
+		.toBeVisible({ timeout: 30_000 })
+		.then(() => true)
+		.catch(() => false)
+
+	if (didSucceed) return
+
+	let errorText = (await error.isVisible().catch(() => false))
+		? await error.innerText()
+		: await invitePage.locator("body").innerText()
+	throw new Error(`Invite did not succeed at ${invitePage.url()}: ${errorText}`)
 }

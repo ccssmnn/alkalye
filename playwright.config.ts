@@ -1,6 +1,6 @@
 import { defineConfig, devices } from "@playwright/test"
 
-let appUrl = "https://alkalye.localhost"
+let appUrl = process.env.PLAYWRIGHT_BASE_URL ?? "https://alkalye.localhost"
 
 export default defineConfig({
 	testDir: "./e2e",

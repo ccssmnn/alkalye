@@ -18,6 +18,10 @@ interface SpaceArgs {
 	spaceId?: string
 }
 
+interface ListSpacesArgs {
+	expectedSpaceId?: string
+}
+
 interface CreateSpaceArgs {
 	name: string
 }
@@ -110,19 +114,18 @@ async function updateSpaceById(page: Page, args: UpdateSpaceByIdArgs) {
 	}
 }
 
-async function listSpaces(page: Page) {
+async function listSpaces(page: Page, args: ListSpacesArgs = {}) {
 	await waitForEditorBoot(page)
 	await openSpaceSelector(page)
 
-	let items = await page
-		.getByTestId(testIds.space.listItem)
-		.evaluateAll(rows => {
-			return rows.map(row => {
-				let id = row.getAttribute("data-space-id") ?? ""
-				let name = row.textContent?.trim() ?? ""
-				return { id, name }
-			})
+	let items = await readSpaceSelectorItems(page)
+	await expect
+		.poll(async () => {
+			items = await readSpaceSelectorItems(page)
+			if (!args.expectedSpaceId) return items.length > 0
+			return items.some(space => space.id === args.expectedSpaceId)
 		})
+		.toBe(true)
 
 	await page.keyboard.press("Escape")
 
@@ -170,6 +173,7 @@ async function createSpaceInvite(page: Page, args: CreateSpaceInviteArgs) {
 	await expect(input).toBeVisible({ timeout: 10_000 })
 	let link = await input.inputValue()
 	let inviteGroupId = parseInviteGroupId(link)
+	await page.waitForTimeout(3_000)
 
 	return {
 		ok: true,
@@ -255,6 +259,10 @@ async function acceptSpaceInvite(page: Page, args: AcceptSpaceInviteArgs) {
 	await invitePage.getByTestId(testIds.auth.initialCreateAccount).click()
 	await invitePage.getByTestId(testIds.auth.createCopy).click()
 	await invitePage.getByTestId(testIds.auth.createSubmit).click()
+	await expect(invitePage.getByTestId(testIds.auth.dialog)).toBeHidden({
+		timeout: 10_000,
+	})
+	await waitForInviteSuccess(invitePage)
 
 	if (spaceId) {
 		await expect
@@ -283,6 +291,32 @@ async function openSpaceSelector(page: Page) {
 		)
 	})
 	await expect(page.getByTestId(testIds.space.createButton)).toBeVisible()
+}
+
+async function readSpaceSelectorItems(page: Page) {
+	return page.getByTestId(testIds.space.listItem).evaluateAll(rows => {
+		return rows.map(row => {
+			let id = row.getAttribute("data-space-id") ?? ""
+			let name = row.textContent?.trim() ?? ""
+			return { id, name }
+		})
+	})
+}
+
+async function waitForInviteSuccess(invitePage: Page) {
+	let success = invitePage.getByTestId(testIds.invite.successState)
+	let error = invitePage.getByTestId(testIds.invite.errorState)
+	let didSucceed = await expect(success)
+		.toBeVisible({ timeout: 30_000 })
+		.then(() => true)
+		.catch(() => false)
+
+	if (didSucceed) return
+
+	let errorText = (await error.isVisible().catch(() => false))
+		? await error.innerText()
+		: await invitePage.locator("body").innerText()
+	throw new Error(`Invite did not succeed at ${invitePage.url()}: ${errorText}`)
 }
 
 async function openSpaceShareDialog(page: Page, args: { spaceId: string }) {

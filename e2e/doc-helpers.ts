@@ -110,7 +110,7 @@ async function updateById(page: Page, args: UpdateByIdArgs) {
 		})
 
 	await setEditorContent(page, content)
-	await page.waitForTimeout(250)
+	await waitForDocumentTitle(page, args.id, inferTitleFromContent(content))
 
 	let latest = await readById(page, { id: args.id, spaceId: args.spaceId })
 
@@ -238,8 +238,11 @@ function inferTitleFromContent(content: string) {
 async function setEditorContent(page: Page, content: string) {
 	let editor = getEditorLocator(page)
 	await editor.click()
-	await editor.press("Control+A")
-	await editor.fill(content)
+	await editor.press(selectAllShortcut())
+	await page.keyboard.insertText(content)
+	await expect
+		.poll(async () => normalizeEditorText(await getEditorContent(page)))
+		.toBe(normalizeEditorText(content))
 }
 
 async function getEditorContent(page: Page) {
@@ -249,6 +252,14 @@ async function getEditorContent(page: Page) {
 
 function getEditorLocator(page: Page) {
 	return page.locator('[data-testid="doc-editor"] .cm-content').first()
+}
+
+function normalizeEditorText(value: string) {
+	return value.replace(/\n{2,}/g, "\n").trim()
+}
+
+function selectAllShortcut() {
+	return process.platform === "darwin" ? "Meta+A" : "Control+A"
 }
 
 async function readListItemById(page: Page, docId: string) {
@@ -271,4 +282,13 @@ async function readListItemById(page: Page, docId: string) {
 		path: path || null,
 		date,
 	}
+}
+
+async function waitForDocumentTitle(page: Page, docId: string, title: string) {
+	await expect
+		.poll(async () => {
+			let item = await readListItemById(page, docId)
+			return item?.title ?? null
+		})
+		.toBe(title)
 }

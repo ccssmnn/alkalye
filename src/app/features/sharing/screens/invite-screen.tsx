@@ -19,9 +19,7 @@ function InviteScreen() {
 	let t = useIntl()
 	let navigate = useNavigate()
 	let isAuthenticated = useIsAuthenticated()
-	let me = useAccount(UserAccount, {
-		resolve: { root: { documents: true, spaces: true } },
-	})
+	let me = useAccount(UserAccount)
 
 	let [inviteData] = useState(() => {
 		let hash = typeof window !== "undefined" ? window.location.hash : ""
@@ -111,7 +109,12 @@ function InviteScreen() {
 					<div className="w-full max-w-sm">
 						{shouldShowAuth ? (
 							<NeedsAuthState
-								onAuthSuccess={handleAcceptInvite}
+								onAuthSuccess={() => {
+									setStatus("loading")
+									setTimeout(() => {
+										void acceptInviteRef.current()
+									})
+								}}
 								isSpace={isSpaceInvite}
 							/>
 						) : status === "loading" || status === "accepting" ? (

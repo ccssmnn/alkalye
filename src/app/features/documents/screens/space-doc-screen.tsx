@@ -488,7 +488,7 @@ function SpaceEditorContent({
 					onDelete={docToDelete => {
 						docToDelete.$jazz.set("deletedAt", new Date())
 						if (docToDelete.$jazz.id === docId) {
-							navigate({ to: "/" })
+							navigate({ to: "/spaces/$spaceId", params: { spaceId } })
 						}
 					}}
 					spaceId={spaceId}

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test"
 import { createAccount, waitForEditorBoot } from "./auth-helpers"
+import { deleteById } from "./doc-helpers"
 import {
 	acceptSpaceInvite,
 	createSpace,
@@ -19,7 +20,7 @@ test("space CRUD + invite helpers return JSON", async ({ page }) => {
 	let created = await createSpace(page, { name: "E2E Space" })
 	expect(created.ok).toBe(true)
 
-	let listed = await listSpaces(page)
+	let listed = await listSpaces(page, { expectedSpaceId: created.id })
 	expect(listed.ok).toBe(true)
 	expect(listed.items.some(space => space.id === created.id)).toBe(true)
 
@@ -64,7 +65,6 @@ test("reloading root returns to last opened space doc", async ({ page }) => {
 	await expect
 		.poll(() => page.url(), { timeout: 10_000 })
 		.toMatch(new RegExp(`/app/spaces/${created.id}/doc/`))
-	await waitForEditorBoot(page)
 
 	// Give useTrackLastOpened effect time to persist to IndexedDB.
 	await page.waitForTimeout(2000)
@@ -74,6 +74,22 @@ test("reloading root returns to last opened space doc", async ({ page }) => {
 	await expect
 		.poll(() => page.url(), { timeout: 10_000 })
 		.toMatch(new RegExp(`/app/spaces/${created.id}/doc/`))
+})
+
+test("deleting current space doc stays in that space", async ({ page }) => {
+	await waitForEditorBoot(page)
+	await createAccount(page)
+
+	let created = await createSpace(page, { name: "Delete Current Space Doc" })
+	let deletedDocId = page.url().match(/\/doc\/([^/?#]+)/)?.[1]
+	if (!deletedDocId)
+		throw new Error(`Could not parse doc id from ${page.url()}`)
+
+	await deleteById(page, { id: deletedDocId, spaceId: created.id })
+
+	await expect
+		.poll(() => page.url(), { timeout: 10_000 })
+		.toMatch(new RegExp(`/app/spaces/${created.id}/doc/(?!${deletedDocId})`))
 })
 
 test("space invite accept helper returns JSON", async ({ page }) => {

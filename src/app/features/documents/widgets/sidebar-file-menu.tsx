@@ -248,7 +248,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 				description={t("doc.deleteDialog.description")}
 				confirmLabel={t("doc.deleteDialog.confirm")}
 				variant="destructive"
-				onConfirm={makeDelete(doc, navigate)}
+				onConfirm={makeDelete(doc, navigate, spaceId)}
 				confirmTestId={testIds.dialog.deleteConfirm}
 			/>
 			<ConfirmDialog
@@ -531,9 +531,14 @@ function makePrintPdf(
 function makeDelete(
 	doc: LoadedDocument,
 	navigate: ReturnType<typeof useNavigate>,
+	spaceId: string | undefined,
 ) {
 	return function handleDelete() {
 		doc.$jazz.set("deletedAt", new Date())
+		if (spaceId) {
+			navigate({ to: "/spaces/$spaceId", params: { spaceId } })
+			return
+		}
 		navigate({ to: "/" })
 	}
 }

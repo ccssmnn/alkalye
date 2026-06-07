@@ -208,12 +208,12 @@ async function acceptSpaceInvite(
 	)
 
 	let space = null
-	for (let i = 0; i < 3; i++) {
+	for (let i = 0; i < 4; i++) {
 		space = await Space.load(inviteData.spaceId, {
 			resolve: { documents: true },
 		})
 		if (space?.$isLoaded) break
-		await new Promise(resolve => setTimeout(resolve, 500))
+		await new Promise(resolve => setTimeout(resolve, 250))
 	}
 
 	if (!space || !space.$isLoaded) {

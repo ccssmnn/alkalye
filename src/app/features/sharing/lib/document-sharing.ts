@@ -291,11 +291,8 @@ async function acceptDocumentInvite(
 		Group,
 	)
 
-	let doc = await Document.load(inviteData.docId, {
-		resolve: { content: true },
-	})
-
-	if (doc.$jazz.loadingState !== "loaded") {
+	let doc = await loadAcceptedDocument(inviteData)
+	if (!doc) {
 		throw new Error("Document not found or invite was revoked")
 	}
 
@@ -424,4 +421,16 @@ function hasIndividualShares(
 		parentGroups = parentGroups.filter(g => g.$jazz.id !== spaceGroupId)
 	}
 	return parentGroups.length > 0
+}
+
+async function loadAcceptedDocument(inviteData: DocInviteData) {
+	for (let i = 0; i < 4; i++) {
+		let doc = await Document.load(inviteData.docId, {
+			resolve: { content: true },
+		})
+		if (doc.$jazz.loadingState === "loaded") return doc
+		await new Promise(resolve => setTimeout(resolve, 250))
+	}
+
+	return null
 }
