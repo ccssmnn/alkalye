@@ -1,4 +1,12 @@
-import { useState, useRef, useEffect, useDeferredValue } from "react"
+import {
+	useState,
+	useRef,
+	useEffect,
+	useDeferredValue,
+	type ChangeEvent,
+	type FormEvent,
+	type ReactNode,
+} from "react"
 import { Link } from "@tanstack/react-router"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { co } from "jazz-tools"
@@ -58,6 +66,8 @@ import {
 	Search,
 	SlidersHorizontal,
 	List,
+	Plus,
+	FolderPlus,
 } from "lucide-react"
 import {
 	TextHighlight,
@@ -73,13 +83,32 @@ import {
 } from "@/app/features/sharing"
 import { useFolderStore, FolderRow } from "./folder"
 import { getPresentationMode } from "@/app/features/presentation"
-import { exportDocument, type ExportAsset } from "@/app/features/import-export"
+import {
+	exportDocument,
+	importMarkdownFiles,
+	ImportProgressDialog,
+	type ExportAsset,
+	type ImportedFile,
+	type ImportOptions,
+	type ImportProgress,
+} from "@/app/features/import-export"
 import { ShareDialog } from "@/app/features/sharing"
 import { MoveToFolderDialog } from "./move-to-folder-dialog"
 import { MoveToSpaceDialog } from "@/app/features/spaces"
 import { ConfirmDialog } from "@/app/components/ui/confirm-dialog"
 import { testIds } from "@/app/lib/test-ids"
 import { useIntl } from "@/shared/intl/setup"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "@/app/components/ui/dialog"
+import { Label } from "@/app/components/ui/label"
+import { moveDocumentsToFolder } from "../lib/folders"
+import { Checkbox } from "@/app/components/ui/checkbox"
 
 export { SidebarDocumentList }
 export type { DocWithContent }
@@ -95,6 +124,8 @@ interface SidebarDocumentListProps {
 	onDocClick: () => void
 	onDuplicate: (doc: DocWithContent) => void
 	onDelete: (doc: DocWithContent) => void
+	onCreateFolder: (path: string) => Promise<void>
+	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 	spaceId?: string
 	spaceGroupId?: string
 }
@@ -110,6 +141,8 @@ function SidebarDocumentList({
 	onDocClick,
 	onDuplicate,
 	onDelete,
+	onCreateFolder,
+	onImport,
 	spaceId,
 	spaceGroupId,
 }: SidebarDocumentListProps) {
@@ -201,6 +234,8 @@ function SidebarDocumentList({
 						onDocClick={onDocClick}
 						onDuplicate={onDuplicate}
 						onDelete={onDelete}
+						onCreateFolder={onCreateFolder}
+						onImport={onImport}
 						spaceId={spaceId}
 						spaceGroupId={spaceGroupId}
 						t={t}
@@ -344,6 +379,8 @@ function DocumentListContent({
 	onDocClick,
 	onDuplicate,
 	onDelete,
+	onCreateFolder,
+	onImport,
 	spaceId,
 	spaceGroupId,
 	t,
@@ -356,23 +393,93 @@ function DocumentListContent({
 	onDocClick: () => void
 	onDuplicate: (doc: DocWithContent) => void
 	onDelete: (doc: DocWithContent) => void
+	onCreateFolder: (path: string) => Promise<void>
+	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 	spaceId?: string
 	spaceGroupId?: string
 	t: ReturnType<typeof useIntl>
 }) {
 	let parentRef = useRef<HTMLDivElement>(null)
+	let fileInputRef = useRef<HTMLInputElement>(null)
 	let { viewMode, isCollapsed, toggleFolder } = useFolderStore()
+	let [newFolderOpen, setNewFolderOpen] = useState(false)
+	let [importProgress, setImportProgress] = useState<ImportProgress | null>(
+		null,
+	)
+	let [abortController, setAbortController] = useState<AbortController | null>(
+		null,
+	)
 
 	let listItems: ListItem[] = buildListItems(docs, viewMode, isCollapsed)
 	let existingFolders = getExistingFolders(docs)
 
-	// eslint-disable-next-line react-hooks/incompatible-library
 	let virtualizer = useVirtualizer({
 		count: listItems.length,
 		getScrollElement: () => parentRef.current,
 		estimateSize: index => (listItems[index]?.type === "folder" ? 36 : 60),
 		overscan: 5,
 	})
+
+	async function handleImportFileChange(event: ChangeEvent<HTMLInputElement>) {
+		let files = event.target.files
+		if (!files?.length) return
+
+		let controller = new AbortController()
+		setAbortController(controller)
+		setImportProgress({
+			phase: "reading",
+			currentFile: t("importExport.progress.readingFilesInitial"),
+			fileIndex: 0,
+			totalFiles: files.length,
+			assetIndex: 0,
+			totalAssets: 0,
+			compressionProgress: 0,
+		})
+
+		try {
+			let imported = await importMarkdownFiles(files)
+			if (!controller.signal.aborted) {
+				await onImport(imported, {
+					onProgress: setImportProgress,
+					signal: controller.signal,
+				})
+			}
+		} catch (error) {
+			if (!(error instanceof Error && error.name === "AbortError")) {
+				console.error("Import failed:", error)
+			}
+		} finally {
+			setImportProgress(null)
+			setAbortController(null)
+			event.target.value = ""
+		}
+	}
+
+	function handleCancelImport() {
+		abortController?.abort()
+		setImportProgress(null)
+		setAbortController(null)
+	}
+
+	let importControls = (
+		<>
+			<input
+				ref={fileInputRef}
+				type="file"
+				accept=".md,.markdown,.txt,.zip"
+				multiple
+				className="hidden"
+				onChange={handleImportFileChange}
+			/>
+			{importProgress && (
+				<ImportProgressDialog
+					open={true}
+					progress={importProgress}
+					onCancel={handleCancelImport}
+				/>
+			)}
+		</>
+	)
 
 	if (isLoading) {
 		return (
@@ -385,77 +492,358 @@ function DocumentListContent({
 
 	if (docs.length === 0) {
 		return (
-			<div className="text-muted-foreground flex flex-col items-center justify-center gap-2 py-8 text-xs">
-				<FileText className="size-6 opacity-50" />
-				<p>
-					{searchQuery
-						? t("doc.sidebar.noMatches")
-						: typeFilter === "deleted"
-							? t("doc.sidebar.noDeletedDocuments")
-							: t("doc.sidebar.noDocuments")}
-				</p>
-			</div>
+			<SidebarEmptyAreaContextMenu
+				spaceId={spaceId}
+				onNewFolder={() => setNewFolderOpen(true)}
+				onImport={() => fileInputRef.current?.click()}
+				t={t}
+			>
+				<div className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-2 py-8 text-xs">
+					<FileText className="size-6 opacity-50" />
+					<p>
+						{searchQuery
+							? t("doc.sidebar.noMatches")
+							: typeFilter === "deleted"
+								? t("doc.sidebar.noDeletedDocuments")
+								: t("doc.sidebar.noDocuments")}
+					</p>
+				</div>
+				<NewFolderDialog
+					open={newFolderOpen}
+					onOpenChange={setNewFolderOpen}
+					existingFolders={existingFolders}
+					docs={docs}
+					onCreate={onCreateFolder}
+					t={t}
+				/>
+				{importControls}
+			</SidebarEmptyAreaContextMenu>
 		)
 	}
 
 	return (
-		<div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
-			<div
-				className="relative w-full"
-				style={{ height: virtualizer.getTotalSize() }}
+		<>
+			<SidebarEmptyAreaContextMenu
+				spaceId={spaceId}
+				onNewFolder={() => setNewFolderOpen(true)}
+				onImport={() => fileInputRef.current?.click()}
+				t={t}
 			>
-				{virtualizer.getVirtualItems().map(virtualRow => {
-					let item = listItems[virtualRow.index]
-					if (!item) return null
+				<div ref={parentRef} className="min-h-0 flex-1 overflow-auto">
+					<div
+						className="relative w-full"
+						style={{ height: virtualizer.getTotalSize() }}
+					>
+						{virtualizer.getVirtualItems().map(virtualRow => {
+							let item = listItems[virtualRow.index]
+							if (!item) return null
 
-					return (
-						<div
-							key={virtualRow.key}
-							data-index={virtualRow.index}
-							ref={virtualizer.measureElement}
-							className="absolute top-0 left-0 w-full"
-							style={{ transform: `translateY(${virtualRow.start}px)` }}
-						>
-							{item.type === "folder" ? (
-								<FolderRow
-									path={item.path}
-									depth={item.depth}
-									docCount={item.docCount}
-									isCollapsed={isCollapsed(item.path)}
-									onToggle={() => toggleFolder(item.path)}
-									docsInFolder={getDocsInFolder(docs, item.path)}
-									existingFolders={existingFolders}
-									onDeleteDocs={deletedDocs => {
-										for (let d of deletedDocs) onDelete(d)
-									}}
-								/>
-							) : typeFilter === "deleted" ? (
-								<DeletedDocumentItem
-									doc={item.doc}
-									searchQuery={searchQuery}
-									t={t}
-								/>
-							) : (
-								<DocumentItem
-									doc={item.doc}
-									isActive={item.doc.$jazz.id === currentDocId}
-									onClick={onDocClick}
-									searchQuery={searchQuery}
-									onDuplicate={onDuplicate}
-									onDelete={onDelete}
-									showPath={viewMode === "flat"}
-									existingFolders={existingFolders}
-									depth={item.depth}
-									spaceId={spaceId}
-									spaceGroupId={spaceGroupId}
-									t={t}
-								/>
-							)}
+							return (
+								<div
+									key={virtualRow.key}
+									data-index={virtualRow.index}
+									ref={virtualizer.measureElement}
+									className="absolute top-0 left-0 w-full"
+									style={{ transform: `translateY(${virtualRow.start}px)` }}
+								>
+									{item.type === "folder" ? (
+										<FolderRow
+											path={item.path}
+											depth={item.depth}
+											docCount={item.docCount}
+											isCollapsed={isCollapsed(item.path)}
+											onToggle={() => toggleFolder(item.path)}
+											docsInFolder={getDocsInFolder(docs, item.path)}
+											existingFolders={existingFolders}
+											onDeleteDocs={deletedDocs => {
+												for (let d of deletedDocs) onDelete(d)
+											}}
+										/>
+									) : typeFilter === "deleted" ? (
+										<DeletedDocumentItem
+											doc={item.doc}
+											searchQuery={searchQuery}
+											t={t}
+										/>
+									) : (
+										<DocumentItem
+											doc={item.doc}
+											isActive={item.doc.$jazz.id === currentDocId}
+											onClick={onDocClick}
+											searchQuery={searchQuery}
+											onDuplicate={onDuplicate}
+											onDelete={onDelete}
+											showPath={viewMode === "flat"}
+											existingFolders={existingFolders}
+											depth={item.depth}
+											spaceId={spaceId}
+											spaceGroupId={spaceGroupId}
+											t={t}
+										/>
+									)}
+								</div>
+							)
+						})}
+					</div>
+				</div>
+			</SidebarEmptyAreaContextMenu>
+			<NewFolderDialog
+				open={newFolderOpen}
+				onOpenChange={setNewFolderOpen}
+				existingFolders={existingFolders}
+				docs={docs}
+				onCreate={onCreateFolder}
+				t={t}
+			/>
+			{importControls}
+		</>
+	)
+}
+
+function SidebarEmptyAreaContextMenu({
+	children,
+	spaceId,
+	onNewFolder,
+	onImport,
+	t,
+}: {
+	children: ReactNode
+	spaceId?: string
+	onNewFolder: () => void
+	onImport: () => void
+	t: ReturnType<typeof useIntl>
+}) {
+	return (
+		<ContextMenu>
+			<ContextMenuTrigger className="flex min-h-0 flex-1 flex-col">
+				{children}
+			</ContextMenuTrigger>
+			<ContextMenuContent>
+				<NewDocumentContextMenuItem spaceId={spaceId} t={t} />
+				<ContextMenuItem onClick={onNewFolder}>
+					<FolderPlus />
+					{t("doc.newFolder")}
+				</ContextMenuItem>
+				<ContextMenuItem onClick={onImport}>
+					<Download />
+					{t("importExport.import")}
+				</ContextMenuItem>
+			</ContextMenuContent>
+		</ContextMenu>
+	)
+}
+
+function NewDocumentContextMenuItem({
+	spaceId,
+	t,
+}: {
+	spaceId?: string
+	t: ReturnType<typeof useIntl>
+}) {
+	if (spaceId) {
+		return (
+			<ContextMenuItem render={<Link to="/new" search={{ spaceId }} />}>
+				<Plus />
+				{t("doc.new")}
+			</ContextMenuItem>
+		)
+	}
+
+	return (
+		<ContextMenuItem render={<Link to="/new" />}>
+			<Plus />
+			{t("doc.new")}
+		</ContextMenuItem>
+	)
+}
+
+function NewFolderDialog({
+	open,
+	onOpenChange,
+	existingFolders,
+	docs,
+	onCreate,
+	t,
+}: {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	existingFolders: string[]
+	docs: DocWithContent[]
+	onCreate: (path: string) => Promise<void>
+	t: ReturnType<typeof useIntl>
+}) {
+	let [name, setName] = useState("")
+	let [error, setError] = useState("")
+	let [mode, setMode] = useState<"empty" | "move">("empty")
+	let [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set())
+
+	let path = name.trim()
+	let isDuplicate = existingFolders.some(
+		folder => folder.toLowerCase() === path.toLowerCase(),
+	)
+	let selectableDocs = docs.filter(doc => !doc.deletedAt)
+	let selectedDocs = selectableDocs.filter(doc =>
+		selectedDocIds.has(doc.$jazz.id),
+	)
+	let needsSelection = mode === "move" && selectedDocIds.size === 0
+
+	function handleOpenChange(nextOpen: boolean) {
+		if (nextOpen) {
+			setName("")
+			setError("")
+			setMode("empty")
+			setSelectedDocIds(new Set())
+		}
+		onOpenChange(nextOpen)
+	}
+
+	async function handleSubmit(event: FormEvent) {
+		event.preventDefault()
+		if (!path) {
+			setError(t("doc.folderDialog.nameRequired"))
+			return
+		}
+		if (isDuplicate) {
+			setError(t("doc.folderDialog.alreadyExists"))
+			return
+		}
+		if (needsSelection) {
+			setError(t("doc.folderDialog.selectDocuments"))
+			return
+		}
+
+		if (mode === "move") {
+			moveDocumentsToFolder(selectedDocs, path)
+		} else {
+			await onCreate(path)
+		}
+		onOpenChange(false)
+	}
+
+	function toggleSelectedDoc(docId: string) {
+		setSelectedDocIds(current => {
+			let next = new Set(current)
+			if (next.has(docId)) {
+				next.delete(docId)
+			} else {
+				next.add(docId)
+			}
+			return next
+		})
+		setError("")
+	}
+
+	return (
+		<Dialog open={open} onOpenChange={handleOpenChange}>
+			<DialogContent className="max-w-sm">
+				<form onSubmit={handleSubmit}>
+					<DialogHeader>
+						<DialogTitle>{t("doc.folderDialog.createTitle")}</DialogTitle>
+						<DialogDescription>
+							{t("doc.folderDialog.createDescription")}
+						</DialogDescription>
+					</DialogHeader>
+					<div className="space-y-4 py-4">
+						<Label htmlFor="new-folder-name" className="sr-only">
+							{t("doc.folderDialog.createFolderName")}
+						</Label>
+						<Input
+							id="new-folder-name"
+							value={name}
+							onChange={event => {
+								setName(event.target.value)
+								setError("")
+							}}
+							autoFocus
+						/>
+
+						<div className="grid grid-cols-2 border">
+							<Button
+								type="button"
+								variant={mode === "empty" ? "secondary" : "ghost"}
+								onClick={() => {
+									setMode("empty")
+									setError("")
+								}}
+								className="justify-start border-r"
+							>
+								<FileText className="size-4" />
+								{t("doc.folderDialog.emptyDocument")}
+							</Button>
+							<Button
+								type="button"
+								variant={mode === "move" ? "secondary" : "ghost"}
+								onClick={() => {
+									setMode("move")
+									setError("")
+								}}
+								className="justify-start"
+							>
+								<FolderInput className="size-4" />
+								{t("doc.folderDialog.moveDocuments")}
+							</Button>
 						</div>
-					)
-				})}
-			</div>
-		</div>
+
+						{mode === "move" && (
+							<div className="border-border max-h-56 overflow-auto border">
+								{selectableDocs.length === 0 ? (
+									<p className="text-muted-foreground px-3 py-3 text-sm">
+										{t("doc.folderDialog.noDocumentsToMove")}
+									</p>
+								) : (
+									selectableDocs.map(doc => {
+										let docId = doc.$jazz.id
+										let content = doc.content?.toString() ?? ""
+										let docPath = getPath(content)
+										return (
+											<label
+												key={docId}
+												className="hover:bg-accent flex cursor-pointer items-start gap-2 border-b px-3 py-2 last:border-b-0"
+											>
+												<Checkbox
+													checked={selectedDocIds.has(docId)}
+													onCheckedChange={() => toggleSelectedDoc(docId)}
+													className="mt-0.5"
+												/>
+												<span className="min-w-0 flex-1">
+													<span className="block truncate text-sm font-medium">
+														{getDocumentTitle(doc)}
+													</span>
+													<span className="text-muted-foreground block truncate text-xs">
+														{docPath ?? t("doc.moveToFolderDialog.notInFolder")}
+													</span>
+												</span>
+											</label>
+										)
+									})
+								)}
+							</div>
+						)}
+
+						{(error || isDuplicate) && (
+							<p className="text-destructive mt-2 text-sm">
+								{error || t("doc.folderDialog.alreadyExists")}
+							</p>
+						)}
+					</div>
+					<DialogFooter>
+						<Button
+							type="button"
+							variant="outline"
+							onClick={() => onOpenChange(false)}
+						>
+							{t("doc.cancel")}
+						</Button>
+						<Button
+							type="submit"
+							disabled={!path || isDuplicate || needsSelection}
+						>
+							{t("doc.folderDialog.createTitle")}
+						</Button>
+					</DialogFooter>
+				</form>
+			</DialogContent>
+		</Dialog>
 	)
 }
 

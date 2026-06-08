@@ -94,6 +94,7 @@ import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/app/lib/test-ids"
 import { useIntl } from "@/shared/intl/setup"
+import { makeFolderDocumentContent } from "../lib/folders"
 
 export { SpaceDocScreen, spaceResolve }
 export { settingsResolve }
@@ -491,6 +492,16 @@ function SpaceEditorContent({
 							navigate({ to: "/spaces/$spaceId", params: { spaceId } })
 						}
 					}}
+					onCreateFolder={makeCreateFolderDocument(
+						space,
+						spaceId,
+						isMobile,
+						setLeftOpenMobile,
+						navigate,
+					)}
+					onImport={async (files, options) => {
+						if (spaceDocs) await handleImportFiles(files, spaceDocs, options)
+					}}
 					spaceId={spaceId}
 					spaceGroupId={space.$jazz.owner.$jazz.id}
 				/>
@@ -693,6 +704,32 @@ function makeCreateDocument(space: LoadedSpace) {
 		)
 		space.documents.$jazz.push(newDoc)
 		return newDoc.$jazz.id
+	}
+}
+
+function makeCreateFolderDocument(
+	space: LoadedSpace,
+	spaceId: string,
+	isMobile: boolean,
+	setLeftOpenMobile: (open: boolean) => void,
+	navigate: ReturnType<typeof useNavigate>,
+) {
+	return async function handleCreateFolderDocument(
+		path: string,
+	): Promise<void> {
+		if (!space.documents?.$isLoaded) throw new Error("Space not loaded")
+
+		let newDoc = createSpaceDocument(
+			space.$jazz.owner,
+			space.$jazz.id,
+			makeFolderDocumentContent(path),
+		)
+		space.documents.$jazz.push(newDoc)
+		if (isMobile) setLeftOpenMobile(false)
+		navigate({
+			to: "/spaces/$spaceId/doc/$id",
+			params: { spaceId, id: newDoc.$jazz.id },
+		})
 	}
 }
 

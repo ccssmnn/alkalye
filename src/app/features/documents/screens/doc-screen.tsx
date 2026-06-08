@@ -58,7 +58,10 @@ import {
 	SidebarMenuItem,
 	SidebarSeparator,
 } from "@/app/components/ui/sidebar"
-import { deletePersonalDocument } from "../lib/documents"
+import {
+	createPersonalDocument,
+	deletePersonalDocument,
+} from "../lib/documents"
 import {
 	canEdit,
 	isDocumentPublic,
@@ -93,6 +96,7 @@ import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
 import { testIds } from "@/app/lib/test-ids"
 import { useIntl } from "@/shared/intl/setup"
+import { makeFolderDocumentContent } from "../lib/folders"
 
 export { DocScreen }
 
@@ -493,6 +497,16 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 							navigate({ to: "/" })
 						}
 					}}
+					onCreateFolder={makeCreateFolderDocument(
+						me,
+						isMobile,
+						setLeftOpenMobile,
+						navigate,
+					)}
+					onImport={async (files, options) => {
+						if (personalDocs)
+							await handleImportFiles(files, personalDocs, options)
+					}}
 				/>
 			</ListSidebar>
 			<div
@@ -713,6 +727,27 @@ function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
 		)
 		me.root.documents.$jazz.push(newDoc)
 		return newDoc.$jazz.id
+	}
+}
+
+function makeCreateFolderDocument(
+	me: LoadedMe,
+	isMobile: boolean,
+	setLeftOpenMobile: (open: boolean) => void,
+	navigate: ReturnType<typeof useNavigate>,
+) {
+	return async function handleCreateFolderDocument(
+		path: string,
+	): Promise<void> {
+		if (!me.$isLoaded || !me.root?.documents?.$isLoaded)
+			throw new Error("Not authenticated")
+
+		let newDoc = await createPersonalDocument(
+			me,
+			makeFolderDocumentContent(path),
+		)
+		if (isMobile) setLeftOpenMobile(false)
+		navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id }, search: {} })
 	}
 }
 

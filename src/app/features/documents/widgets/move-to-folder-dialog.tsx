@@ -11,9 +11,10 @@ import {
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Document } from "@/schema"
-import { parseFrontmatter, getPath } from "@/app/features/editor"
+import { getPath } from "@/app/features/editor"
 import { cn } from "@/app/lib/cn"
 import { useIntl } from "@/shared/intl/setup"
+import { moveDocumentToFolder } from "../lib/folders"
 
 export { MoveToFolderDialog }
 
@@ -49,14 +50,14 @@ function MoveToFolderDialog({
 
 	function handleSelect(value: string | null) {
 		if (!value) return
-		moveToFolder(doc, value === "__root__" ? null : value)
+		moveDocumentToFolder(doc, value === "__root__" ? null : value)
 		setOpen(false)
 		setInputValue("")
 	}
 
 	function handleCreateAndMove() {
 		if (!inputValue.trim()) return
-		moveToFolder(doc, inputValue.trim())
+		moveDocumentToFolder(doc, inputValue.trim())
 		setOpen(false)
 		setInputValue("")
 	}
@@ -151,46 +152,4 @@ function MoveToFolderDialog({
 			</DialogContent>
 		</Dialog>
 	)
-}
-
-// Handlers
-
-function moveToFolder(doc: LoadedDocument, newPath: string | null) {
-	if (!doc.content) return
-
-	let content = doc.content.toString()
-	let { frontmatter } = parseFrontmatter(content)
-	let currentPath = getPath(content)
-
-	// No change needed
-	if (currentPath === newPath) return
-
-	let newContent: string
-
-	if (!frontmatter) {
-		// No frontmatter - add it with path
-		if (newPath) {
-			newContent = `---\npath: ${newPath}\n---\n\n${content}`
-		} else {
-			newContent = content // No path to set, no frontmatter to modify
-		}
-	} else if (currentPath && !newPath) {
-		// Remove path from frontmatter
-		newContent = content.replace(
-			/^(---\r?\n[\s\S]*?)path:\s*[^\r\n]*\r?\n([\s\S]*?---)/,
-			"$1$2",
-		)
-	} else if (currentPath && newPath) {
-		// Replace existing path
-		newContent = content.replace(
-			/^(---\r?\n[\s\S]*?)path:\s*[^\r\n]*/,
-			`$1path: ${newPath}`,
-		)
-	} else {
-		// Add path to existing frontmatter
-		newContent = content.replace(/^(---\r?\n)/, `$1path: ${newPath}\n`)
-	}
-
-	doc.content.$jazz.applyDiff(newContent)
-	doc.$jazz.set("updatedAt", new Date())
 }
