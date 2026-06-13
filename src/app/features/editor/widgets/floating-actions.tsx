@@ -5,6 +5,7 @@ import { syntaxTree } from "@codemirror/language"
 import type { EditorView } from "@codemirror/view"
 import type { MarkdownEditorRef } from "./editor"
 import { Button } from "@/app/components/ui/button"
+import { useScreenKeyboardFloatingBottomOffset } from "../hooks/use-screen-keyboard-bottom-inset"
 import {
 	Tooltip,
 	TooltipContent,
@@ -118,6 +119,8 @@ function FloatingActions({
 	actionsRef,
 }: FloatingActionsProps) {
 	let { rightOpen, isMobile } = useSidebar()
+	let { bottomOffset, screenKeyboardOpen } =
+		useScreenKeyboardFloatingBottomOffset()
 	let [context, setContext] = useState<EditorContext>({
 		isTask: false,
 		taskChecked: false,
@@ -129,7 +132,6 @@ function FloatingActions({
 		wikiLinkId: null,
 		wikiLinkRange: null,
 	})
-	let [bottomOffset, setBottomOffset] = useState(16)
 	let [imageDialogOpen, setImageDialogOpen] = useState(false)
 	let [wikiLinkMenuOpen, setWikiLinkMenuOpen] = useState(false)
 	let [wikiLinkDialogOpen, setWikiLinkDialogOpen] = useState(false)
@@ -140,26 +142,6 @@ function FloatingActions({
 	let wikiLinkRangeRef = useRef<Range | null>(null)
 
 	let rightOffset = !isMobile && rightOpen ? SIDEBAR_WIDTH + 16 : 16
-
-	// Track viewport height for keyboard avoidance
-	useEffect(() => {
-		let viewport = window.visualViewport
-		if (!viewport) return
-
-		function updatePosition() {
-			if (!viewport) return
-			let keyboardHeight = window.innerHeight - viewport.height
-			setBottomOffset(Math.max(16, keyboardHeight + 16))
-		}
-
-		updatePosition()
-		viewport.addEventListener("resize", updatePosition)
-		viewport.addEventListener("scroll", updatePosition)
-		return () => {
-			viewport.removeEventListener("resize", updatePosition)
-			viewport.removeEventListener("scroll", updatePosition)
-		}
-	}, [])
 
 	// Reset context when focus lost and not interacting
 	let shouldResetContext =
@@ -449,9 +431,10 @@ function FloatingActions({
 	return createPortal(
 		<div
 			className={cn(
+				"editor-floating-actions",
 				"fixed z-50 flex flex-col gap-1",
 				"pr-[env(safe-area-inset-right)]",
-				bottomOffset === 16 && "pb-[env(safe-area-inset-bottom)]",
+				!screenKeyboardOpen && "pb-[env(safe-area-inset-bottom)]",
 			)}
 			style={{ bottom: bottomOffset, right: rightOffset }}
 			onPointerDown={handlePointerDown}

@@ -41,19 +41,42 @@
 /* ========================================
    Editor Container
    ======================================== */
+:root {
+	--screen-keyboard-bottom-inset: 0px;
+	--screen-keyboard-top-offset: 0px;
+	--screen-keyboard-transition-duration: 220ms;
+	--screen-keyboard-transition-easing: cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
 .markdown-editor {
 	--toolbar-height: 48px;
 	position: fixed;
 	top: calc(var(--toolbar-height) + env(safe-area-inset-top));
 	left: 0;
 	right: 0;
-	bottom: var(--keyboard-height, 0px);
+	bottom: 0;
 	padding-left: env(safe-area-inset-left);
 	padding-right: env(safe-area-inset-right);
 	display: flex;
 	flex-direction: column;
 	background: var(--editor-background);
 	color: var(--editor-foreground);
+}
+
+.editor-toolbar {
+	transition:
+		padding-top var(--screen-keyboard-transition-duration)
+			var(--screen-keyboard-transition-easing),
+		left 200ms ease-in,
+		right 200ms ease-in;
+}
+
+.editor-floating-actions {
+	transition:
+		bottom var(--screen-keyboard-transition-duration)
+			var(--screen-keyboard-transition-easing),
+		right 200ms ease-in;
+	will-change: bottom;
 }
 
 /* Adjust editor and toolbar when sidebars are open on desktop */
@@ -74,6 +97,8 @@
 
 	.editor-toolbar {
 		transition:
+			padding-top var(--screen-keyboard-transition-duration)
+				var(--screen-keyboard-transition-easing),
 			left 200ms ease-in,
 			right 200ms ease-in;
 	}
@@ -104,10 +129,19 @@
 	overflow: auto !important;
 	overscroll-behavior: contain;
 	padding-bottom: calc(
-		50vh + var(--keyboard-scroll-padding, 0px) + env(safe-area-inset-bottom)
+		var(--screen-keyboard-bottom-inset, 0px) + env(safe-area-inset-bottom)
 	);
 	padding-top: var(--find-panel-height, 0px);
-	transition: padding-top 200ms ease-in;
+	transition: padding-bottom var(--screen-keyboard-transition-duration)
+		var(--screen-keyboard-transition-easing);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.markdown-editor .cm-scroller,
+	.editor-toolbar,
+	.editor-floating-actions {
+		transition: none;
+	}
 }
 
 /* ========================================

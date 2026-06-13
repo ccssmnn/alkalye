@@ -62,6 +62,7 @@ import { fileDropCursor, clearFileDropCursor } from "../lib/file-drop-cursor"
 
 import { useIsMobile } from "@/app/hooks/use-mobile"
 import { useFindPanel } from "../hooks/use-find-panel"
+import { useScreenKeyboardBottomInset } from "../hooks/use-screen-keyboard-bottom-inset"
 import {
 	Dialog,
 	DialogContent,
@@ -288,6 +289,8 @@ function MarkdownEditor(
 	useEffect(() => {
 		dataRef.current = { assets, documents }
 	})
+
+	useScreenKeyboardBottomInset(containerRef)
 
 	// Set CSS variable on parent .markdown-editor for find panel padding
 	useEffect(() => {

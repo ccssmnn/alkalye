@@ -202,7 +202,6 @@ function SpaceEditorContent({
 	let t = useIntl()
 	let navigate = useNavigate()
 	let editor = useMarkdownEditorRef()
-	let containerRef = useRef<HTMLDivElement>(null)
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
@@ -506,7 +505,7 @@ function SpaceEditorContent({
 					spaceGroupId={space.$jazz.owner.$jazz.id}
 				/>
 			</ListSidebar>
-			<div className="markdown-editor flex-1" ref={containerRef}>
+			<div className="markdown-editor flex-1">
 				<MarkdownEditor
 					key={docId}
 					ref={editor}
@@ -542,7 +541,6 @@ function SpaceEditorContent({
 				<EditorToolbar
 					editor={editor}
 					readOnly={readOnly}
-					containerRef={containerRef}
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
 					docId={docId}

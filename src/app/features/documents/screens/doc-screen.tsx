@@ -208,7 +208,6 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	let t = useIntl()
 	let navigate = useNavigate()
 	let editor = useMarkdownEditorRef()
-	let containerRef = useRef<HTMLDivElement>(null)
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
@@ -509,11 +508,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					}}
 				/>
 			</ListSidebar>
-			<div
-				className="markdown-editor flex-1"
-				ref={containerRef}
-				data-testid={testIds.doc.editor}
-			>
+			<div className="markdown-editor flex-1" data-testid={testIds.doc.editor}>
 				<MarkdownEditor
 					key={docId}
 					ref={editor}
@@ -549,7 +544,6 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				<EditorToolbar
 					editor={editor}
 					readOnly={readOnly}
-					containerRef={containerRef}
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
 					docId={docId}

@@ -334,7 +334,6 @@ function LocalEditorContent({
 }) {
 	let t = useIntl()
 	let editor = useMarkdownEditorRef()
-	let containerRef = useRef<HTMLDivElement>(null)
 	let saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 	let navigate = useNavigate()
 
@@ -628,7 +627,7 @@ function LocalEditorContent({
 				</SidebarGroup>
 			</ListSidebar>
 
-			<div className="markdown-editor flex-1" ref={containerRef}>
+			<div className="markdown-editor flex-1">
 				<MarkdownEditor
 					ref={editor}
 					value={content}
@@ -642,7 +641,6 @@ function LocalEditorContent({
 				/>
 				<EditorToolbar
 					editor={editor}
-					containerRef={containerRef}
 					onToggleLeftSidebar={toggleLeft}
 					onToggleRightSidebar={toggleRight}
 					content={content}

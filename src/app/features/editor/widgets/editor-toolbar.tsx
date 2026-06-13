@@ -43,7 +43,6 @@ export { EditorToolbar }
 interface EditorToolbarProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
 	readOnly?: boolean
-	containerRef?: React.RefObject<HTMLDivElement | null>
 	onToggleLeftSidebar: () => void
 	onToggleRightSidebar: () => void
 	docId?: string
@@ -57,7 +56,6 @@ interface EditorToolbarProps {
 function EditorToolbar({
 	editor,
 	readOnly,
-	containerRef,
 	onToggleLeftSidebar,
 	onToggleRightSidebar,
 	docId,
@@ -68,66 +66,7 @@ function EditorToolbar({
 	onThemeChange,
 }: EditorToolbarProps) {
 	let t = useIntl()
-	let [isAtTop, setIsAtTop] = useState(true)
-
-	useEffect(() => {
-		let viewport = window.visualViewport
-		if (!viewport) return
-
-		function onResize() {
-			if (!viewport) return
-			containerRef?.current?.style.setProperty(
-				"--viewport-height",
-				`${viewport.height}px`,
-			)
-		}
-
-		onResize()
-		viewport.addEventListener("resize", onResize)
-		viewport.addEventListener("scroll", onResize)
-		return () => {
-			viewport.removeEventListener("resize", onResize)
-			viewport.removeEventListener("scroll", onResize)
-		}
-	}, [containerRef])
-
-	useEffect(() => {
-		let canceled = false
-		let cleanup = () => {}
-
-		function attachScrollObserver() {
-			if (canceled) return
-			let view = editor.current?.getEditor()
-			if (!view) {
-				requestAnimationFrame(attachScrollObserver)
-				return
-			}
-
-			let scrollEl = view.scrollDOM
-			function updateScrollState() {
-				let top = scrollEl.scrollTop
-				setIsAtTop(top <= 1)
-			}
-
-			updateScrollState()
-			scrollEl.addEventListener("scroll", updateScrollState, { passive: true })
-			window.addEventListener("resize", updateScrollState)
-			let observer = new ResizeObserver(updateScrollState)
-			observer.observe(scrollEl)
-
-			cleanup = () => {
-				scrollEl.removeEventListener("scroll", updateScrollState)
-				window.removeEventListener("resize", updateScrollState)
-				observer.disconnect()
-			}
-		}
-
-		attachScrollObserver()
-		return () => {
-			canceled = true
-			cleanup()
-		}
-	}, [editor])
+	let isAtTop = useEditorScrollTopState(editor)
 
 	function scrollToTop() {
 		let view = editor.current?.getEditor()
@@ -147,9 +86,10 @@ function EditorToolbar({
 
 	return (
 		<div
-			className="editor-toolbar bg-background border-border fixed top-0 right-0 left-0 z-10 flex items-center border-b transition-[right] duration-200 ease-linear"
+			className="editor-toolbar bg-background border-border fixed top-0 right-0 left-0 z-10 flex items-center border-b"
 			style={{
-				paddingTop: "env(safe-area-inset-top)",
+				paddingTop:
+					"calc(env(safe-area-inset-top) + var(--screen-keyboard-top-offset, 0px))",
 				paddingLeft: "env(safe-area-inset-left)",
 				paddingRight: "env(safe-area-inset-right)",
 			}}
@@ -373,6 +313,56 @@ function EditorToolbar({
 			</div>
 		</div>
 	)
+}
+
+function useEditorScrollTopState(
+	editor: React.RefObject<MarkdownEditorRef | null>,
+) {
+	let [isAtTop, setIsAtTop] = useState(true)
+
+	useEffect(() => {
+		let canceled = false
+		let frame = 0
+		let cleanup = () => {}
+
+		function attachScrollObserver() {
+			if (canceled) return
+			let view = editor.current?.getEditor()
+			if (!view) {
+				frame = requestAnimationFrame(attachScrollObserver)
+				return
+			}
+
+			let scrollEl = view.scrollDOM
+
+			function updateScrollState() {
+				setIsAtTop(scrollEl.scrollTop <= 1)
+			}
+
+			updateScrollState()
+			scrollEl.addEventListener("scroll", updateScrollState, { passive: true })
+			window.addEventListener("resize", updateScrollState)
+
+			let observer = new ResizeObserver(updateScrollState)
+			observer.observe(scrollEl)
+
+			cleanup = () => {
+				scrollEl.removeEventListener("scroll", updateScrollState)
+				window.removeEventListener("resize", updateScrollState)
+				observer.disconnect()
+			}
+		}
+
+		attachScrollObserver()
+
+		return () => {
+			canceled = true
+			cancelAnimationFrame(frame)
+			cleanup()
+		}
+	}, [editor])
+
+	return isAtTop
 }
 
 interface ToolbarButtonProps {
