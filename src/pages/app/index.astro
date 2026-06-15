@@ -89,9 +89,13 @@ let metaDescription =
 				if (isStandalone) {
 					sessionStorage.setItem("pwa-session", "1")
 					let setAppHeight = () => {
+						let isPortrait = window.innerHeight >= window.innerWidth
+						let screenHeight = isPortrait ? screen.height : screen.width
+						let height = Math.max(window.innerHeight, screenHeight)
+
 						document.documentElement.style.setProperty(
 							"--app-height",
-							window.innerHeight + "px",
+							height + "px",
 						)
 					}
 					setAppHeight()

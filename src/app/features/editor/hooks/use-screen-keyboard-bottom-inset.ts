@@ -8,6 +8,7 @@ let screenKeyboardTopOffsetProperty = "--screen-keyboard-top-offset"
 let keyboardInsetThreshold = 80
 let floatingBottomOffset = 16
 let floatingKeyboardAccessoryOffset = 8
+let floatingKeyboardOverlayAccessoryOffset = 72
 let lastKeyboardInsetLog = ""
 
 function useScreenKeyboardBottomInset(
@@ -82,13 +83,18 @@ function useScreenKeyboardFloatingBottomOffset() {
 
 			let viewportOffset = getViewportOffset(viewport, baselineHeight)
 			let screenKeyboardOpen = viewportOffset.bottomInset > 0
+			let keyboardAccessoryOffset =
+				viewportOffset.topOffset > 0
+					? floatingKeyboardAccessoryOffset
+					: floatingKeyboardOverlayAccessoryOffset
 			let bottomOffset = screenKeyboardOpen
-				? viewportOffset.fixedBottomInset + floatingKeyboardAccessoryOffset
+				? viewportOffset.fixedBottomInset + keyboardAccessoryOffset
 				: floatingBottomOffset
 
 			setFloatingOffset({ bottomOffset, screenKeyboardOpen })
 			logKeyboardInset("floating", viewport, baselineHeight, viewportOffset, {
 				bottomOffset,
+				keyboardAccessoryOffset,
 				screenKeyboardOpen,
 			})
 		}
