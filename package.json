@@ -3,6 +3,9 @@
 	"private": true,
 	"version": "0.0.1",
 	"type": "module",
+	"bin": {
+		"alkalye": "./cli.ts"
+	},
 	"scripts": {
 		"dev": "portless run astro dev",
 		"dev:sync": "portless alkalye-sync sh -c 'bunx jazz-run sync --port \"$PORT\" --host \"$HOST\"'",

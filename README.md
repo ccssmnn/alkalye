@@ -43,9 +43,7 @@ bun run dev
 ## CLI
 
 ```bash
-chmod +x /path/to/alkalye/cli.ts
-ln -sf /path/to/alkalye/cli.ts ~/.local/bin/alkalye
-export PATH="$HOME/.local/bin:$PATH"
+bun link
 alkalye --help
 ```
 
