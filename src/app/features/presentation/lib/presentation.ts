@@ -359,7 +359,9 @@ function tokenToContent(token: Token): SlideContent[] {
 			if (c.codeBlockStyle === "indented") {
 				return parseIndentedCode(c)
 			}
-			return [{ type: "code", text: c.text, language: c.lang || undefined }]
+			return [
+				{ type: "code", text: c.text, language: parseCodeLanguage(c.lang) },
+			]
 		}
 		case "table": {
 			let t = token as Tokens.Table
@@ -476,6 +478,12 @@ function parseIndentedCode(token: Tokens.Code): SlideContent[] {
 }
 
 // Helpers
+
+function parseCodeLanguage(language: string | undefined): string | undefined {
+	let firstToken = language?.trim().split(/\s+/, 1)[0]?.toLowerCase()
+	if (!firstToken || firstToken.startsWith("{")) return undefined
+	return firstToken
+}
 
 function createBlock(
 	slideNumber: number,

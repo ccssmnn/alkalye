@@ -409,6 +409,19 @@ describe("parsePresentation - slide content extraction", () => {
 		])
 	})
 
+	it("extracts language from code fence metadata", () => {
+		let items = parsePresentation(
+			"# Code\n```ts {1} title=demo\nlet x = 1\n```",
+		)
+		let blocks = getBlocks(items)
+
+		expect(blocks[0].content[1]).toEqual({
+			type: "code",
+			text: "let x = 1",
+			language: "ts",
+		})
+	})
+
 	it("extracts code blocks without language", () => {
 		let items = parsePresentation("# Code\n```\nsome code\n```")
 		let blocks = getBlocks(items)

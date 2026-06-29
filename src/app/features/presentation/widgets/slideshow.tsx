@@ -7,7 +7,29 @@ import {
 	useLayoutEffect,
 } from "react"
 import { Image as JazzImage } from "jazz-tools/react"
-import { codeToHtml } from "shiki"
+import { createHighlighterCore, type HighlighterCore } from "shiki/core"
+import { createJavaScriptRegexEngine } from "shiki/engine/javascript"
+import astroLanguage from "shiki/dist/langs/astro.mjs"
+import cssLanguage from "shiki/dist/langs/css.mjs"
+import diffLanguage from "shiki/dist/langs/diff.mjs"
+import goLanguage from "shiki/dist/langs/go.mjs"
+import htmlLanguage from "shiki/dist/langs/html.mjs"
+import javascriptLanguage from "shiki/dist/langs/javascript.mjs"
+import jsonLanguage from "shiki/dist/langs/json.mjs"
+import jsxLanguage from "shiki/dist/langs/jsx.mjs"
+import markdownLanguage from "shiki/dist/langs/markdown.mjs"
+import pythonLanguage from "shiki/dist/langs/python.mjs"
+import rustLanguage from "shiki/dist/langs/rust.mjs"
+import shellscriptLanguage from "shiki/dist/langs/shellscript.mjs"
+import sqlLanguage from "shiki/dist/langs/sql.mjs"
+import svelteLanguage from "shiki/dist/langs/svelte.mjs"
+import tomlLanguage from "shiki/dist/langs/toml.mjs"
+import tsxLanguage from "shiki/dist/langs/tsx.mjs"
+import typescriptLanguage from "shiki/dist/langs/typescript.mjs"
+import vueLanguage from "shiki/dist/langs/vue.mjs"
+import yamlLanguage from "shiki/dist/langs/yaml.mjs"
+import githubLightTheme from "shiki/dist/themes/github-light.mjs"
+import vesperTheme from "shiki/dist/themes/vesper.mjs"
 import {
 	parsePresentationSize,
 	parsePresentationTheme,
@@ -978,8 +1000,7 @@ function HighlightedCode({
 	let [html, setHtml] = useState<string | null>(null)
 
 	let effectiveTheme = presentationTheme ?? systemTheme
-	let shikiTheme =
-		effectiveTheme === "light" ? "github-light-default" : "vesper"
+	let shikiTheme = effectiveTheme === "light" ? "github-light" : "vesper"
 
 	// Stable key for decorations
 	let decorationKey = highlight?.range
@@ -990,11 +1011,15 @@ function HighlightedCode({
 		let cancelled = false
 		let decorations = computeCodeDecorations(code, content, highlight)
 
-		codeToHtml(code, {
-			lang: language || "text",
-			theme: shikiTheme,
-			decorations,
-		})
+		getSlideshowHighlighter()
+			.then(highlighter => {
+				let lang = resolveCodeLanguage(language)
+				return highlighter.codeToHtml(code, {
+					lang,
+					theme: shikiTheme,
+					decorations,
+				})
+			})
 			.then(result => {
 				if (!cancelled) setHtml(result)
 			})
@@ -1020,6 +1045,86 @@ function HighlightedCode({
 			<code>{code}</code>
 		</pre>
 	)
+}
+
+let slideshowHighlighterPromise: Promise<HighlighterCore> | null = null
+
+function getSlideshowHighlighter(): Promise<HighlighterCore> {
+	if (!slideshowHighlighterPromise) {
+		slideshowHighlighterPromise = createHighlighterCore({
+			themes: [githubLightTheme, vesperTheme],
+			langs: [
+				astroLanguage,
+				cssLanguage,
+				diffLanguage,
+				goLanguage,
+				htmlLanguage,
+				javascriptLanguage,
+				jsonLanguage,
+				jsxLanguage,
+				markdownLanguage,
+				pythonLanguage,
+				rustLanguage,
+				shellscriptLanguage,
+				sqlLanguage,
+				svelteLanguage,
+				tomlLanguage,
+				tsxLanguage,
+				typescriptLanguage,
+				vueLanguage,
+				yamlLanguage,
+			],
+			engine: createJavaScriptRegexEngine(),
+		})
+	}
+	return slideshowHighlighterPromise
+}
+
+let slideshowLanguages = new Set([
+	"astro",
+	"bash",
+	"cjs",
+	"css",
+	"cts",
+	"diff",
+	"go",
+	"html",
+	"javascript",
+	"js",
+	"json",
+	"jsx",
+	"markdown",
+	"mjs",
+	"mts",
+	"python",
+	"rust",
+	"sh",
+	"shell",
+	"shellscript",
+	"sql",
+	"svelte",
+	"toml",
+	"ts",
+	"tsx",
+	"typescript",
+	"vue",
+	"yaml",
+	"zsh",
+])
+
+function resolveCodeLanguage(language: string | undefined): string {
+	let normalized = normalizeCodeLanguage(language)
+	if (!normalized) return "text"
+	if (!slideshowLanguages.has(normalized)) return "text"
+	return normalized
+}
+
+function normalizeCodeLanguage(
+	language: string | undefined,
+): string | undefined {
+	let firstToken = language?.trim().split(/\s+/, 1)[0]?.toLowerCase()
+	if (!firstToken || firstToken.startsWith("{")) return undefined
+	return firstToken
 }
 
 type ShikiDecoration = {
