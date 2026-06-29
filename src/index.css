@@ -47,6 +47,13 @@ input[type="search"]::-webkit-search-cancel-button {
 	--border: oklch(0.922 0 0);
 	--input: oklch(0.922 0 0);
 	--ring: var(--brand);
+	--scrollbar-track: var(--background);
+	--scrollbar-thumb: color-mix(in oklch, var(--foreground) 24%, transparent);
+	--scrollbar-thumb-hover: color-mix(
+		in oklch,
+		var(--foreground) 36%,
+		transparent
+	);
 	--chart-1: oklch(0.809 0.105 251.813);
 	--chart-2: oklch(0.623 0.214 259.815);
 	--chart-3: oklch(0.546 0.245 262.881);
@@ -149,8 +156,31 @@ input[type="search"]::-webkit-search-cancel-button {
 	}
 
 	html {
+		color-scheme: light;
 		height: var(--app-height, 100dvh);
 		overflow: hidden;
+		scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+	}
+	.dark {
+		color-scheme: dark;
+	}
+	* {
+		scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+	}
+	*::-webkit-scrollbar {
+		width: 12px;
+		height: 12px;
+	}
+	*::-webkit-scrollbar-track {
+		background: var(--scrollbar-track);
+	}
+	*::-webkit-scrollbar-thumb {
+		background: var(--scrollbar-thumb);
+		border: 3px solid var(--scrollbar-track);
+		border-radius: 999px;
+	}
+	*::-webkit-scrollbar-thumb:hover {
+		background: var(--scrollbar-thumb-hover);
 	}
 	body {
 		@apply bg-background text-foreground font-sans;
