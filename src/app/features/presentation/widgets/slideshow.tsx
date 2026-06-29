@@ -184,6 +184,7 @@ function Slideshow({
 									{documentTheme.isLoading ||
 									themeStylesResult.isLoading ? null : (
 										<ScaledSlideContainer
+											key={currentSlideNumber}
 											blocks={visibleBlocks}
 											size={size}
 											onClick={goToNextSlide}
@@ -355,6 +356,7 @@ function ScaledSlideContainer({
 		w: number
 		h: number
 	} | null>(null)
+	let [mediaLoadVersion, setMediaLoadVersion] = useState(0)
 	let [isPortrait, setIsPortrait] = useState(
 		() => window.innerHeight > window.innerWidth,
 	)
@@ -378,7 +380,7 @@ function ScaledSlideContainer({
 	let baseSize = baseSizes[size]
 
 	let blocksKey = JSON.stringify(blocks)
-	let depsKey = `${blocksKey}-${isPortrait}-${baseSize.h1}-${measureKey}`
+	let depsKey = `${blocksKey}-${isPortrait}-${baseSize.h1}-${measureKey}-${mediaLoadVersion}`
 	let [prevDepsKey, setPrevDepsKey] = useState(depsKey)
 	let depsChanged = depsKey !== prevDepsKey
 	if (depsChanged) {
@@ -402,9 +404,9 @@ function ScaledSlideContainer({
 		let isScheduled = false
 		let measurementComplete = false
 		let isInitialMeasure = true
-
 		function scheduleMeasure() {
 			if (cancelled) return
+			if (isMeasuring) return
 			if (isScheduled) return
 			if (measurementComplete) return
 
@@ -556,16 +558,6 @@ function ScaledSlideContainer({
 
 		scheduleMeasure()
 
-		let mutationObserver = new MutationObserver(() => {
-			measurementComplete = false
-			scheduleMeasure()
-		})
-		mutationObserver.observe(initialContent, {
-			childList: true,
-			subtree: true,
-			characterData: true,
-		})
-
 		let resizeObserver = new ResizeObserver(() => {
 			measurementComplete = false
 			scheduleMeasure()
@@ -589,7 +581,6 @@ function ScaledSlideContainer({
 
 		return () => {
 			cancelled = true
-			mutationObserver.disconnect()
 			resizeObserver.disconnect()
 			fontSet?.removeEventListener?.("loadingdone", handleFontsDone)
 			fontSet?.removeEventListener?.("loadingerror", handleFontsDone)
@@ -601,6 +592,7 @@ function ScaledSlideContainer({
 		gridTemplate.cols,
 		gridTemplate.rows,
 		measureKey,
+		mediaLoadVersion,
 	])
 
 	useEffect(() => {
@@ -620,6 +612,10 @@ function ScaledSlideContainer({
 		"--slide-scale": `${effectiveScale}`,
 		gridTemplateColumns: gridTemplate.cols,
 		gridTemplateRows: gridTemplate.rows,
+		width: effectiveMaxDimensions ? `${effectiveMaxDimensions.w}px` : undefined,
+		height: effectiveMaxDimensions
+			? `${effectiveMaxDimensions.h}px`
+			: undefined,
 		opacity: effectiveVisible ? 1 : 0,
 		transition: effectiveVisible ? "opacity 150ms ease-in" : "none",
 		maxWidth: effectiveMaxDimensions
@@ -633,12 +629,16 @@ function ScaledSlideContainer({
 	return (
 		<div
 			ref={containerRef}
-			className="flex flex-1 cursor-pointer items-center justify-center"
+			className="flex min-h-0 min-w-0 flex-1 cursor-pointer items-center justify-center overflow-hidden"
 			onClick={onClick}
+			onLoadCapture={() => setMediaLoadVersion(version => version + 1)}
+			onLoadedMetadataCapture={() =>
+				setMediaLoadVersion(version => version + 1)
+			}
 		>
 			<div
 				ref={contentRef}
-				className="slideshow-grid grid gap-8"
+				className="slideshow-grid grid min-h-0 min-w-0 gap-8"
 				style={contentStyle}
 			>
 				{blocks.map((block, i) => (
@@ -868,6 +868,7 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 					imageId={asset.image.$jazz.id}
 					alt={alt}
 					className="slideshow-image"
+					style={{ width: "100%", height: "100%", objectFit: "contain" }}
 				/>
 			)
 		}
@@ -883,7 +884,14 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 		)
 	}
 
-	return <img src={src} alt={alt} className="slideshow-image" />
+	return (
+		<img
+			src={src}
+			alt={alt}
+			className="slideshow-image"
+			style={{ width: "100%", height: "100%", objectFit: "contain" }}
+		/>
+	)
 }
 
 function SlideVideo({ asset }: { asset: Asset }) {
@@ -906,6 +914,7 @@ function SlideVideo({ asset }: { asset: Asset }) {
 			controls
 			muted={asset.muteAudio}
 			className="slideshow-image"
+			style={{ width: "100%", height: "100%", objectFit: "contain" }}
 			onClick={e => e.stopPropagation()}
 		/>
 	)
