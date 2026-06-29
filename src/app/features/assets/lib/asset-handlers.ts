@@ -3,6 +3,7 @@ import { createImage } from "jazz-tools/media"
 import { useCoState } from "jazz-tools/react"
 import { Asset, ImageAsset, VideoAsset } from "./schema"
 import { Document } from "@/app/features/documents/lib/schema"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 import { compressVideo } from "./video-conversion"
 
 export {
@@ -22,6 +23,7 @@ type LoadedDocument = co.loaded<
 		content: true
 		cursors: true
 		assets: { $each: { image: true; video: true } }
+		comments: { $each: true }
 	}
 >
 
@@ -161,17 +163,17 @@ function makeIsAssetUsed(docWithContent: MaybeDocWithContent) {
 
 function makeDeleteAsset(
 	doc: LoadedDocument,
-	docWithContent: MaybeDocWithContent,
+	_docWithContent: MaybeDocWithContent,
 ) {
 	return function handleDeleteAsset(assetId: string) {
 		if (!doc.assets) return
 
-		if (docWithContent?.$isLoaded && docWithContent.content) {
-			let content = docWithContent.content.toString()
+		if (doc.content) {
+			let content = doc.content.toString()
 			let regex = new RegExp(`!\\[[^\\]]*\\]\\(asset:${assetId}\\)`, "g")
 			let newContent = content.replace(regex, "")
 			if (newContent !== content) {
-				docWithContent.content.$jazz.applyDiff(newContent)
+				applyContentDiffWithCommentAnchors(doc, newContent)
 			}
 		}
 

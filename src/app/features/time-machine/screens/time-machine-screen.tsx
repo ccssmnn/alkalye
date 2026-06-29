@@ -15,6 +15,10 @@ import { toast } from "sonner"
 import { Document, UserAccount, Asset, ImageAsset, Space } from "@/schema"
 import { MarkdownEditor, useMarkdownEditorRef } from "@/app/features/editor"
 import { useEditorSettings } from "@/app/features/editor"
+import {
+	applyContentDiffWithCommentAnchors,
+	copyCommentsAndApplyContent,
+} from "@/app/features/comments"
 import { getDocumentTitle } from "@/app/features/documents"
 import { getSpaceGroup } from "@/app/features/spaces"
 import {
@@ -67,6 +71,7 @@ type ViewMode = "days" | "edits"
 let resolve = {
 	content: true,
 	assets: { $each: { image: true } },
+	comments: { $each: { replies: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
 let settingsResolve = {
@@ -75,8 +80,12 @@ let settingsResolve = {
 
 let meResolve = {
 	root: {
-		documents: { $each: { content: true } },
-		spaces: { $each: { documents: { $each: { content: true } } } },
+		documents: { $each: { content: true, comments: { $each: true } } },
+		spaces: {
+			$each: {
+				documents: { $each: { content: true, comments: { $each: true } } },
+			},
+		},
 		settings: true,
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
@@ -494,7 +503,7 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 		let newDoc = Document.create(
 			{
 				version: 1,
-				content: co.plainText().create(finalContent, owner),
+				content: co.plainText().create(doc.content.toString(), owner),
 				assets: newAssets,
 				createdAt: now,
 				updatedAt: now,
@@ -502,6 +511,13 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 			},
 			owner,
 		)
+		try {
+			await copyCommentsAndApplyContent(doc, newDoc, finalContent)
+		} catch (error) {
+			console.error("Failed to create document copy:", error)
+			toast.error("Failed to create document copy")
+			return
+		}
 
 		if (targetSpace?.documents?.$isLoaded) {
 			targetSpace.documents.$jazz.push(newDoc)
@@ -525,7 +541,7 @@ function makeTimeMachineRestore(params: TimeMachineRestoreParams) {
 		let { doc, historicalContent, navigate, docId } = params
 		if (!doc.content) return
 
-		doc.content.$jazz.applyDiff(historicalContent)
+		applyContentDiffWithCommentAnchors(doc, historicalContent)
 		doc.$jazz.set("updatedAt", new Date())
 
 		navigate({

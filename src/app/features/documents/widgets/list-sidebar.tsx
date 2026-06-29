@@ -23,7 +23,7 @@ function ListSidebar({
 		<Sidebar side="left" collapsible="offcanvas">
 			<SidebarHeader
 				className="border-border flex-row items-center justify-between border-b p-2"
-				style={{ height: "calc(48px + 1px)" }}
+				style={{ height: "48px" }}
 			>
 				<span className="text-foreground px-2 text-sm font-semibold">
 					Alkalye

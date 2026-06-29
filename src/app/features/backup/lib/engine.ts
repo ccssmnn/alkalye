@@ -18,6 +18,7 @@ import {
 	type ManifestEntry,
 	type ScannedFile,
 } from "./sync"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 
 export {
 	hashContent,
@@ -30,7 +31,11 @@ export {
 
 type LoadedDocument = co.loaded<
 	typeof Document,
-	{ content: true; assets: { $each: { image: true; video: true } } }
+	{
+		content: true
+		assets: { $each: { image: true; video: true } }
+		comments: { $each: true }
+	}
 >
 
 type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
@@ -655,22 +660,34 @@ async function updateDocFromFile(
 	manifestEntry: ManifestEntry,
 	targetDocs: DocumentList,
 ): Promise<boolean> {
-	let doc = targetDocs.find(
-		(d): d is LoadedDocument => d?.$isLoaded === true && d.$jazz.id === docId,
-	)
-	if (!doc || !doc.content?.$isLoaded) {
+	let doc = targetDocs.find(d => d?.$isLoaded === true && d.$jazz.id === docId)
+	if (!doc) {
+		return false
+	}
+	let loadedDoc = await Document.load(doc.$jazz.id, {
+		resolve: {
+			content: true,
+			assets: { $each: { image: true, video: true } },
+			comments: { $each: true },
+		},
+	})
+	if (!loadedDoc?.$isLoaded || !loadedDoc.content?.$isLoaded) {
 		return false
 	}
 
-	let assetFilesById = await syncDocAssetsFromFile(doc, file, manifestEntry)
+	let assetFilesById = await syncDocAssetsFromFile(
+		loadedDoc,
+		file,
+		manifestEntry,
+	)
 	let content = applyPathFromRelativePath(
 		transformContentForImport(file.content, assetFilesById),
 		file.relativePath,
 		file.assets.length > 0,
 	)
 
-	doc.content.$jazz.applyDiff(content)
-	doc.$jazz.set("updatedAt", new Date())
+	applyContentDiffWithCommentAnchors(loadedDoc, content)
+	loadedDoc.$jazz.set("updatedAt", new Date())
 	return true
 }
 

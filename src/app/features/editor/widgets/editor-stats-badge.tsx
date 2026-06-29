@@ -47,7 +47,7 @@ function EditorStatsBadge({ content, settings }: EditorStatsBadgeProps) {
 				bottom: "calc(0.75rem + env(safe-area-inset-bottom))",
 				left:
 					leftOpen && !isMobile
-						? "calc(var(--sidebar-width) + 0.75rem)"
+						? "calc(var(--left-sidebar-width) + 0.75rem)"
 						: "0.75rem",
 			}}
 		>

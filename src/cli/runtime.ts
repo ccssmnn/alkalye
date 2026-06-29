@@ -48,7 +48,11 @@ export type { JazzContext, LoadedAccount, LoadedCliDocument }
 
 type JazzContext = Awaited<ReturnType<typeof createAuthenticatedJazz>>
 type LoadedAccount = Awaited<ReturnType<typeof loadAccount>>
-type LoadedCliDocument = co.loaded<typeof Document, { content: true }>
+type CliDocumentResolve = {
+	content: true
+	comments: { $each: { replies: true } }
+}
+type LoadedCliDocument = co.loaded<typeof Document, CliDocumentResolve>
 
 function runCommand<A extends GlobalArgs>(
 	command: string,
@@ -101,9 +105,22 @@ async function loadAccount(jazz: JazzContext, timeoutMs: number = 10_000) {
 		resolve: {
 			profile: true,
 			root: {
-				documents: { $each: { content: true } },
-				inactiveDocuments: { $each: { content: true } },
-				spaces: { $each: { documents: { $each: { content: true } } } },
+				documents: {
+					$each: { content: true, comments: { $each: { replies: true } } },
+				},
+				inactiveDocuments: {
+					$each: { content: true, comments: { $each: { replies: true } } },
+				},
+				spaces: {
+					$each: {
+						documents: {
+							$each: {
+								content: true,
+								comments: { $each: { replies: true } },
+							},
+						},
+					},
+				},
 			},
 		},
 	})
@@ -376,7 +393,7 @@ async function ensureDocLoaded(
 		| {
 				$jazz: {
 					ensureLoaded(args: {
-						resolve: { content: true }
+						resolve: CliDocumentResolve
 					}): Promise<LoadedCliDocument>
 				}
 		  },
@@ -384,5 +401,7 @@ async function ensureDocLoaded(
 	if ("content" in doc) {
 		return doc
 	}
-	return doc.$jazz.ensureLoaded({ resolve: { content: true } })
+	return doc.$jazz.ensureLoaded({
+		resolve: { content: true, comments: { $each: { replies: true } } },
+	})
 }

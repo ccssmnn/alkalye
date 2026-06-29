@@ -2,6 +2,7 @@ import { useState, useSyncExternalStore } from "react"
 import { useNavigate } from "@tanstack/react-router"
 import { co, Group } from "jazz-tools"
 import { useCoState, useAccount } from "jazz-tools/react"
+import { toast } from "sonner"
 import {
 	SidebarMenuButton,
 	SidebarMenuItem,
@@ -42,6 +43,11 @@ import {
 	printToPdf,
 	type ExportAsset,
 } from "@/app/features/import-export"
+import {
+	applyContentDiffWithCommentAnchors,
+	copyCommentsAndApplyContent,
+	getExportComments,
+} from "@/app/features/comments"
 import type { MarkdownEditorRef } from "@/app/features/editor"
 
 import { type LoadedThemes } from "@/app/features/themes"
@@ -51,14 +57,21 @@ export { SidebarFileMenu }
 
 type LoadedDocument = co.loaded<
 	typeof Document,
-	{ content: true; assets: { $each: { image: true } } }
+	{
+		content: true
+		assets: { $each: { image: true } }
+		comments: { $each: { replies: true } }
+	}
 >
 type LoadedMe = co.loaded<
 	typeof UserAccount,
 	{ root: { documents: { $each: { content: true } }; settings: true } }
 >
 type MaybeDocWithContent = ReturnType<
-	typeof useCoState<typeof Document, { content: true }>
+	typeof useCoState<
+		typeof Document,
+		{ content: true; comments: { $each: true } }
+	>
 >
 type EditorRef = React.RefObject<MarkdownEditorRef | null>
 
@@ -98,7 +111,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let [moveSpaceOpen, setMoveSpaceOpen] = useState(false)
 
 	let docWithContent = useCoState(Document, doc.$jazz.id, {
-		resolve: { content: true },
+		resolve: { content: true, comments: { $each: true } },
 	})
 
 	// Load user's themes for PDF export
@@ -383,7 +396,7 @@ function makeTogglePin(docWithContent: MaybeDocWithContent) {
 		if (!docWithContent?.$isLoaded || !docWithContent.content) return
 		let content = docWithContent.content.toString()
 		let newContent = togglePinned(content)
-		docWithContent.content.$jazz.applyDiff(newContent)
+		applyContentDiffWithCommentAnchors(docWithContent, newContent)
 		docWithContent.$jazz.set("updatedAt", new Date())
 	}
 }
@@ -507,6 +520,7 @@ function makeDownload(doc: LoadedDocument, content: string) {
 			content,
 			title,
 			docAssets.length > 0 ? docAssets : undefined,
+			getExportComments(doc),
 		)
 	}
 }
@@ -566,7 +580,7 @@ function makeDuplicate(
 	spaceId: string | undefined,
 	navigate: ReturnType<typeof useNavigate>,
 ) {
-	return function handleDuplicate() {
+	return async function handleDuplicate() {
 		if (!me?.root?.documents?.$isLoaded) return
 
 		let content = doc.content?.toString() ?? ""
@@ -577,12 +591,19 @@ function makeDuplicate(
 		let newDoc = Document.create(
 			{
 				version: 1,
-				content: co.plainText().create(newContent, group),
+				content: co.plainText().create(content, group),
 				createdAt: now,
 				updatedAt: now,
 			},
 			group,
 		)
+		try {
+			await copyCommentsAndApplyContent(doc, newDoc, newContent)
+		} catch (error) {
+			console.error("Failed to duplicate document:", error)
+			toast.error("Failed to duplicate document")
+			return
+		}
 		me.root.documents.$jazz.push(newDoc)
 
 		if (spaceId) {

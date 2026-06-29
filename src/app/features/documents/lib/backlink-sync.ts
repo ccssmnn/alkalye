@@ -2,6 +2,7 @@ import { useRef, useEffect } from "react"
 import { Document } from "./schema"
 import { Space, UserAccount } from "@/schema"
 import { parseWikiLinks } from "@/app/features/editor/lib/wikilink-parser"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 import {
 	getBacklinks,
 	addBacklink,
@@ -12,7 +13,10 @@ import { useAccount, useCoState } from "jazz-tools/react"
 
 export { useBacklinkSync }
 
-type LoadedDoc = co.loaded<typeof Document, { content: true }>
+type LoadedDoc = co.loaded<
+	typeof Document,
+	{ content: true; comments: { $each: true } }
+>
 
 // Backlink sync options - when spaceId is provided, only sync within that space
 type BacklinkSyncOptions = {
@@ -27,12 +31,18 @@ function useBacklinkSync(
 	let { spaceId } = options
 
 	let me = useAccount(UserAccount, {
-		resolve: { root: { documents: { $each: { content: true } } } },
+		resolve: {
+			root: {
+				documents: { $each: { content: true, comments: { $each: true } } },
+			},
+		},
 	})
 
 	// Load space documents when in space context
 	let space = useCoState(Space, spaceId, {
-		resolve: { documents: { $each: { content: true } } },
+		resolve: {
+			documents: { $each: { content: true, comments: { $each: true } } },
+		},
 	})
 
 	// Store refs so syncBacklinks can access fresh documents
@@ -112,7 +122,9 @@ function useBacklinkSync(
 			if (getBacklinks(linkedContent).includes(docId)) continue
 
 			let updatedContent = addBacklink(linkedContent, docId)
-			linkedDoc.content?.$jazz.applyDiff(updatedContent)
+			if (linkedDoc.content) {
+				applyContentDiffWithCommentAnchors(linkedDoc, updatedContent)
+			}
 			linkedDoc.$jazz.set("updatedAt", new Date())
 		}
 
@@ -124,7 +136,9 @@ function useBacklinkSync(
 			if (!getBacklinks(linkedContent).includes(docId)) continue
 
 			let updatedContent = removeBacklink(linkedContent, docId)
-			linkedDoc.content?.$jazz.applyDiff(updatedContent)
+			if (linkedDoc.content) {
+				applyContentDiffWithCommentAnchors(linkedDoc, updatedContent)
+			}
 			linkedDoc.$jazz.set("updatedAt", new Date())
 		}
 

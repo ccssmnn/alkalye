@@ -4,6 +4,7 @@ let descriptions = {
 	auth: "Passphrase authentication.",
 	account: "Account profile.",
 	doc: "Personal and shared document workflows.",
+	docComment: "Document comments.",
 	docShare: "Document sharing.",
 	docPublic: "Document public access.",
 	space: "Shared spaces and membership.",
@@ -98,8 +99,27 @@ let groups: Record<string, GroupDef> = {
 			{
 				heading: "Groups",
 				items: [
+					["comment", "Inline document comments"],
 					["share", "Invite and role management"],
 					["public", "Public/private access controls"],
+				],
+			},
+		],
+	},
+	"doc comment": {
+		description: descriptions.docComment,
+		sections: [
+			{
+				heading: "Commands",
+				items: [
+					["list", "List comment threads"],
+					["add", "Add an inline comment"],
+					["reply", "Reply to a comment thread"],
+					["resolve", "Resolve a comment thread"],
+					["reopen", "Reopen a resolved comment thread"],
+					["delete", "Delete a comment thread"],
+					["enable", "Enable comments for a document"],
+					["disable", "Disable comments for a document"],
 				],
 			},
 		],
@@ -350,6 +370,51 @@ let leaves: Record<string, LeafDef> = {
 	"doc leave": {
 		summary: "Leave a shared personal document.",
 		usage: "alkalye doc leave <doc-id>",
+	},
+	"doc comment list": {
+		summary: "List document comments.",
+		usage: "alkalye doc comment list <doc-id>",
+		examples: ["alkalye doc comment list co_xyz --json"],
+	},
+	"doc comment add": {
+		summary: "Add an inline comment.",
+		usage:
+			"alkalye doc comment add <doc-id> --body <body> (--quote <text>|--from <n> --to <n>)",
+		options: [
+			"--body <body>     Comment body",
+			"--quote <text>    Quoted text to locate",
+			"--from <n>        Zero-based start offset",
+			"--to <n>          Zero-based end offset",
+		],
+		examples: [
+			'alkalye doc comment add co_xyz --quote "text" --body "Please revise"',
+			'alkalye doc comment add co_xyz --from 12 --to 40 --body "Question"',
+		],
+	},
+	"doc comment reply": {
+		summary: "Reply to a comment.",
+		usage: "alkalye doc comment reply <doc-id> <comment-id> --body <body>",
+		options: ["--body <body>   Reply body"],
+	},
+	"doc comment resolve": {
+		summary: "Resolve a comment.",
+		usage: "alkalye doc comment resolve <doc-id> <comment-id>",
+	},
+	"doc comment reopen": {
+		summary: "Reopen a resolved comment.",
+		usage: "alkalye doc comment reopen <doc-id> <comment-id>",
+	},
+	"doc comment delete": {
+		summary: "Delete a comment.",
+		usage: "alkalye doc comment delete <doc-id> <comment-id>",
+	},
+	"doc comment enable": {
+		summary: "Enable comments.",
+		usage: "alkalye doc comment enable <doc-id>",
+	},
+	"doc comment disable": {
+		summary: "Disable comments.",
+		usage: "alkalye doc comment disable <doc-id>",
 	},
 	"doc share create": {
 		summary: "Create an invite link for a document.",

@@ -14,6 +14,10 @@ export {
 	Document,
 	CursorEntry,
 	CursorFeed,
+	CommentTextPosition,
+	CommentAnchor,
+	CommentReply,
+	CommentThread,
 } from "@/app/features/documents/lib/schema"
 export { createSpaceDocument } from "@/app/features/documents/lib/create-space-document"
 

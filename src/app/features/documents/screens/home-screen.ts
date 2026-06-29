@@ -1,7 +1,7 @@
 import { redirect } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
 import { UserAccount } from "@/schema"
-import { Document } from "../lib/schema"
+import { CommentThread, Document } from "../lib/schema"
 
 export { homeLoader, homeLastOpenedQuery, homeDocumentsQuery }
 
@@ -73,6 +73,7 @@ async function homeLoader({ context, deps }: HomeLoaderArgs) {
 		{
 			version: 1,
 			content: co.plainText().create("", group),
+			comments: co.list(CommentThread).create([], group),
 			createdAt: now,
 			updatedAt: now,
 		},

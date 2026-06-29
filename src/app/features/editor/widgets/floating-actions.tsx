@@ -1,10 +1,18 @@
-import { useEffect, useState, useRef, useImperativeHandle } from "react"
+import {
+	useEffect,
+	useState,
+	useRef,
+	useImperativeHandle,
+	type FormEvent,
+	type KeyboardEvent,
+} from "react"
 import { createPortal } from "react-dom"
 import { useSidebar } from "@/app/components/ui/sidebar"
 import { syntaxTree } from "@codemirror/language"
 import type { EditorView } from "@codemirror/view"
 import type { MarkdownEditorRef } from "./editor"
 import { Button } from "@/app/components/ui/button"
+import { Textarea } from "@/app/components/ui/textarea"
 import { useScreenKeyboardFloatingBottomOffset } from "../hooks/use-screen-keyboard-bottom-inset"
 import {
 	Tooltip,
@@ -31,6 +39,7 @@ import {
 	Trash2,
 	Plus,
 	FileSymlinkIcon,
+	MessageSquarePlus,
 } from "lucide-react"
 import { parseWikiLinks } from "../lib/wikilink-parser"
 import { useNavigate } from "@tanstack/react-router"
@@ -52,6 +61,7 @@ export {
 	LinkAction,
 	ImageAction,
 	WikiLinkAction,
+	CommentAction,
 	WikiLinkDialog,
 }
 export type { FloatingActionsProps, FloatingActionsRef }
@@ -60,6 +70,7 @@ type Range = { from: number; to: number }
 
 interface FloatingActionsRef {
 	triggerContextAction: () => void
+	triggerAddComment: () => boolean
 }
 
 interface FloatingActionsProps {
@@ -69,6 +80,7 @@ interface FloatingActionsProps {
 	assets?: { id: string; name: string }[]
 	docs?: { id: string; title: string }[]
 	onUploadAndInsert?: (file: File, replaceRange: Range) => Promise<void>
+	onAddComment?: (selection: Range, body: string) => boolean
 	children: (ctx: FloatingActionsContext) => React.ReactNode
 	actionsRef?: React.RefObject<FloatingActionsRef | null>
 }
@@ -94,6 +106,15 @@ interface FloatingActionsContext {
 		wikilinkPrefill: string
 		setWikilinkPrefill: (value: string) => void
 	}
+	comment: {
+		selectionRange: Range | null
+		selectedText: string
+		rememberedSelection: Range | null
+		setRememberedSelection: (selection: Range | null) => void
+		commentDialogOpen: boolean
+		setCommentDialogOpen: (open: boolean) => void
+		onAddComment?: (selection: Range, body: string) => boolean
+	}
 }
 
 interface EditorContext {
@@ -106,15 +127,16 @@ interface EditorContext {
 	imageRange: Range | null
 	wikiLinkId: string | null
 	wikiLinkRange: Range | null
+	selectionRange: Range | null
+	selectedText: string
 }
-
-let SIDEBAR_WIDTH = 224 // 14rem = 224px
 
 function FloatingActions({
 	editor,
 	focused,
 	readOnly,
 	docs,
+	onAddComment,
 	children,
 	actionsRef,
 }: FloatingActionsProps) {
@@ -131,17 +153,29 @@ function FloatingActions({
 		imageRange: null,
 		wikiLinkId: null,
 		wikiLinkRange: null,
+		selectionRange: null,
+		selectedText: "",
 	})
 	let [imageDialogOpen, setImageDialogOpen] = useState(false)
 	let [wikiLinkMenuOpen, setWikiLinkMenuOpen] = useState(false)
 	let [wikiLinkDialogOpen, setWikiLinkDialogOpen] = useState(false)
+	let [commentDialogOpen, setCommentDialogOpen] = useState(false)
+	let [rememberedCommentSelection, setRememberedCommentSelection] =
+		useState<Range | null>(null)
 	let [isInteracting, setIsInteracting] = useState(false)
 	let [wikilinkPrefill, setWikilinkPrefill] = useState("")
 
 	let imageRangeRef = useRef<Range | null>(null)
 	let wikiLinkRangeRef = useRef<Range | null>(null)
 
-	let rightOffset = !isMobile && rightOpen ? SIDEBAR_WIDTH + 16 : 16
+	let rightOffset =
+		!isMobile && rightOpen
+			? "calc(var(--right-sidebar-width, 14rem) + 1rem)"
+			: "1rem"
+
+	let hasTextSelection = Boolean(
+		context.selectionRange && context.selectedText.trim(),
+	)
 
 	// Reset context when focus lost and not interacting
 	let shouldResetContext =
@@ -149,7 +183,9 @@ function FloatingActions({
 		!isInteracting &&
 		!imageDialogOpen &&
 		!wikiLinkMenuOpen &&
-		!wikiLinkDialogOpen
+		!wikiLinkDialogOpen &&
+		!commentDialogOpen &&
+		!hasTextSelection
 
 	let emptyContext: EditorContext = {
 		isTask: false,
@@ -161,6 +197,8 @@ function FloatingActions({
 		imageRange: null,
 		wikiLinkId: null,
 		wikiLinkRange: null,
+		selectionRange: null,
+		selectedText: "",
 	}
 
 	// Reset context during render when conditions change (adjust state during render pattern)
@@ -174,16 +212,17 @@ function FloatingActions({
 
 	// Subscribe to editor selection changes and compute context
 	useEffect(() => {
-		if (shouldResetContext) return
-
 		let view = editor.current?.getEditor()
-		if (!view || !focused) return
+		if (!view) return
 
 		function getEditorContext(v: EditorView): EditorContext {
 			let state = v.state
-			let pos = state.selection.main.head
+			let selection = state.selection.main
+			let pos = selection.head
 			let tree = syntaxTree(state)
 			let node = tree.resolveInner(pos, -1)
+			let selectionFrom = Math.min(selection.from, selection.to)
+			let selectionTo = Math.max(selection.from, selection.to)
 
 			let result: EditorContext = {
 				isTask: false,
@@ -195,6 +234,14 @@ function FloatingActions({
 				imageRange: null,
 				wikiLinkId: null,
 				wikiLinkRange: null,
+				selectionRange:
+					selectionFrom === selectionTo
+						? null
+						: { from: selectionFrom, to: selectionTo },
+				selectedText:
+					selectionFrom === selectionTo
+						? ""
+						: state.sliceDoc(selectionFrom, selectionTo),
 			}
 
 			let current: typeof node | null = node
@@ -277,18 +324,15 @@ function FloatingActions({
 		}
 
 		let rafId: number | null = null
-		let lastPos = -1
+		let lastSelectionKey = ""
 
 		function checkSelection() {
-			if (!focused) {
-				rafId = null
-				return
-			}
 			let v = editor.current?.getEditor()
 			if (v) {
-				let pos = v.state.selection.main.head
-				if (pos !== lastPos) {
-					lastPos = pos
+				let selection = v.state.selection.main
+				let selectionKey = `${selection.anchor}:${selection.head}`
+				if (selectionKey !== lastSelectionKey) {
+					lastSelectionKey = selectionKey
 					setContext(getEditorContext(v))
 				}
 			}
@@ -305,10 +349,29 @@ function FloatingActions({
 				cancelAnimationFrame(rafId)
 			}
 		}
-	}, [editor, focused, shouldResetContext])
+	}, [editor, focused])
 
 	// Expose triggerContextAction to parent via ref
 	useImperativeHandle(actionsRef, () => ({
+		triggerAddComment: () => {
+			let view = editor.current?.getEditor()
+			if (!view || readOnly || !onAddComment) return false
+
+			let selection = view.state.selection.main
+			let from = Math.min(selection.from, selection.to)
+			let to = Math.max(selection.from, selection.to)
+			let selectedText = from === to ? "" : view.state.sliceDoc(from, to)
+			if (!selectedText.trim()) return false
+
+			setRememberedCommentSelection({ from, to })
+			setContext(context => ({
+				...context,
+				selectionRange: { from, to },
+				selectedText,
+			}))
+			setCommentDialogOpen(true)
+			return true
+		},
 		triggerContextAction: () => {
 			let view = editor.current?.getEditor()
 			if (!view) return
@@ -388,7 +451,9 @@ function FloatingActions({
 		imageDialogOpen ||
 		wikiLinkMenuOpen ||
 		wikiLinkDialogOpen ||
-		isInteracting
+		commentDialogOpen ||
+		isInteracting ||
+		hasTextSelection
 	if (readOnly || !shouldShow) return null
 
 	let ctx: FloatingActionsContext = {
@@ -418,6 +483,15 @@ function FloatingActions({
 			wikiLinkRangeRef,
 			wikilinkPrefill,
 			setWikilinkPrefill,
+		},
+		comment: {
+			selectionRange: context.selectionRange,
+			selectedText: context.selectedText,
+			rememberedSelection: rememberedCommentSelection,
+			setRememberedSelection: setRememberedCommentSelection,
+			commentDialogOpen,
+			setCommentDialogOpen,
+			onAddComment,
 		},
 	}
 
@@ -1010,6 +1084,101 @@ interface ActionButtonProps {
 	onClick: () => void
 }
 
+interface CommentActionProps {
+	editor: React.RefObject<MarkdownEditorRef | null>
+	selectionRange: Range | null
+	selectedText: string
+	rememberedSelection: Range | null
+	setRememberedSelection: (selection: Range | null) => void
+	commentDialogOpen: boolean
+	setCommentDialogOpen: (open: boolean) => void
+	onAddComment?: (selection: Range, body: string) => boolean
+}
+
+function CommentAction({
+	editor,
+	selectionRange,
+	selectedText,
+	rememberedSelection,
+	setRememberedSelection,
+	commentDialogOpen,
+	setCommentDialogOpen,
+	onAddComment,
+}: CommentActionProps) {
+	let t = useIntl()
+	let [body, setBody] = useState("")
+	let canOpen = Boolean(onAddComment && selectionRange && selectedText.trim())
+	let canSubmit = Boolean(rememberedSelection && body.trim())
+
+	function openDialog() {
+		if (!selectionRange || !selectedText.trim()) return
+		setRememberedSelection(selectionRange)
+		setCommentDialogOpen(true)
+	}
+
+	function closeDialog(open: boolean) {
+		setCommentDialogOpen(open)
+		if (!open) {
+			setBody("")
+			setRememberedSelection(null)
+		}
+	}
+
+	function submitComment(event?: FormEvent) {
+		event?.preventDefault()
+		let selection = rememberedSelection
+		if (!onAddComment || !selection || !body.trim()) return
+		if (onAddComment(selection, body)) {
+			setBody("")
+			setRememberedSelection(null)
+			setCommentDialogOpen(false)
+			editor.current?.restoreSelection(selection)
+		}
+	}
+
+	function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
+		if (event.key !== "Enter" || event.shiftKey) return
+		event.preventDefault()
+		submitComment()
+	}
+
+	if (!canOpen && !commentDialogOpen) return null
+
+	return (
+		<>
+			<ActionButton
+				icon={<MessageSquarePlus />}
+				label={t("comments.add")}
+				shortcut="M"
+				onClick={openDialog}
+			/>
+			<Dialog open={commentDialogOpen} onOpenChange={closeDialog}>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>{t("comments.add")}</DialogTitle>
+						<DialogDescription className="line-clamp-3">
+							{selectedText || t("comments.selectionRequired")}
+						</DialogDescription>
+					</DialogHeader>
+					<form className="space-y-3" onSubmit={submitComment}>
+						<Textarea
+							value={body}
+							onChange={event => setBody(event.target.value)}
+							onKeyDown={handleKeyDown}
+							placeholder={t("comments.newPlaceholder")}
+							minRows={3}
+						/>
+						<Button type="submit" className="w-full" disabled={!canSubmit}>
+							<MessageSquarePlus />
+							{t("comments.add")}
+						</Button>
+					</form>
+				</DialogContent>
+			</Dialog>
+		</>
+	)
+}
+
 function ActionButton({ icon, label, shortcut, onClick }: ActionButtonProps) {
 	return (
 		<Tooltip>
@@ -1019,6 +1188,7 @@ function ActionButton({ icon, label, shortcut, onClick }: ActionButtonProps) {
 						size="icon"
 						variant="brand"
 						onClick={onClick}
+						aria-label={label}
 						className="shadow-md"
 						nativeButton={false}
 					>

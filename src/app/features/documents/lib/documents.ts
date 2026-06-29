@@ -1,5 +1,5 @@
 import { Group, co } from "jazz-tools"
-import { Document } from "./schema"
+import { CommentThread, Document } from "./schema"
 import { UserAccount } from "@/schema"
 import { permanentlyDeleteDocument } from "./delete-covalue"
 
@@ -27,6 +27,7 @@ async function createPersonalDocument(
 		{
 			version: 1,
 			content: co.plainText().create(content, group),
+			comments: co.list(CommentThread).create([], group),
 			createdAt: now,
 			updatedAt: now,
 		},

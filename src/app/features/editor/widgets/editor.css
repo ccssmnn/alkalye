@@ -88,11 +88,13 @@
 	}
 
 	.group\/sidebar-wrapper[data-left-sidebar-open="true"] .markdown-editor {
-		padding-left: calc(var(--sidebar-width) + env(safe-area-inset-left));
+		padding-left: calc(var(--left-sidebar-width) + env(safe-area-inset-left));
 	}
 
 	.group\/sidebar-wrapper[data-right-sidebar-open="true"] .markdown-editor {
-		padding-right: calc(var(--sidebar-width) + env(safe-area-inset-right));
+		padding-right: calc(
+			var(--right-sidebar-width) + env(safe-area-inset-right)
+		);
 	}
 
 	.editor-toolbar {
@@ -104,11 +106,11 @@
 	}
 
 	.group\/sidebar-wrapper[data-left-sidebar-open="true"] .editor-toolbar {
-		left: var(--sidebar-width);
+		left: var(--left-sidebar-width);
 	}
 
 	.group\/sidebar-wrapper[data-right-sidebar-open="true"] .editor-toolbar {
-		right: var(--sidebar-width);
+		right: var(--right-sidebar-width);
 	}
 }
 
@@ -185,4 +187,38 @@
 
 :root[data-focus-mode="true"] .cm-line.cm-activeLine {
 	opacity: 1;
+}
+
+/* ========================================
+   Inline comments
+   ======================================== */
+.cm-comment-range {
+	background: color-mix(in srgb, var(--color-brand, #2563eb) 18%, transparent);
+	border-bottom: 1px solid
+		color-mix(in srgb, var(--color-brand, #2563eb) 65%, transparent);
+	cursor: pointer;
+}
+
+.cm-comment-range-resolved {
+	background: color-mix(in srgb, var(--muted-foreground) 12%, transparent);
+	border-bottom-color: color-mix(
+		in srgb,
+		var(--muted-foreground) 45%,
+		transparent
+	);
+}
+
+.cm-comment-range-selected {
+	background: color-mix(in srgb, var(--color-brand, #2563eb) 30%, transparent);
+	box-shadow: inset 0 -2px 0 var(--color-brand, #2563eb);
+}
+
+.cm-comment-position {
+	display: inline-block;
+	width: 0.5rem;
+	height: 1rem;
+	margin-inline: 0.125rem;
+	vertical-align: -0.125rem;
+	background: color-mix(in srgb, var(--color-brand, #2563eb) 70%, transparent);
+	cursor: pointer;
 }

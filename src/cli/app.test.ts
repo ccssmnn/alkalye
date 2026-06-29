@@ -49,6 +49,16 @@ describe("help", () => {
 		expect(result.stdout).toMatch(/--title/)
 	})
 
+	test("prints leaf command help for doc comment add", async () => {
+		let result = await runCli(["doc", "comment", "add", "--help"])
+
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(/--body/)
+		expect(result.stdout).toMatch(/--quote/)
+		expect(result.stdout).toMatch(/--from/)
+		expect(result.stdout).toMatch(/--to/)
+	})
+
 	test("prints leaf command help for space share create", async () => {
 		let result = await runCli(["space", "share", "create", "--help"])
 

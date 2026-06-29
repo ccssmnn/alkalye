@@ -75,6 +75,7 @@ import {
 	LinkAction,
 	ImageAction,
 	WikiLinkAction,
+	CommentAction,
 	type FloatingActionsRef,
 } from "./floating-actions"
 import {
@@ -141,6 +142,10 @@ interface MarkdownEditorProps {
 			signal: AbortSignal
 		},
 	) => Promise<{ id: string; name: string }>
+	onAddComment?: (
+		selection: { from: number; to: number },
+		body: string,
+	) => boolean
 
 	// Extension slot for feature-supplied codemirror extensions
 	extensions?: Extension[]
@@ -230,6 +235,7 @@ function MarkdownEditor(
 		onCreateDocument,
 		onUploadImage,
 		onUploadVideo,
+		onAddComment,
 		extensions: externalExtensions,
 		placeholder,
 		readOnly,
@@ -268,6 +274,7 @@ function MarkdownEditor(
 	let autoSortRef = useRef(autoSortTasks ?? false)
 	let uploadImageRef = useRef(onUploadImage)
 	let uploadVideoRef = useRef(onUploadVideo)
+	let addCommentEnabledRef = useRef(Boolean(onAddComment))
 	let activeDropsRef = useRef<Set<DropTarget>>(new Set())
 
 	useEffect(() => {
@@ -280,6 +287,10 @@ function MarkdownEditor(
 
 	useEffect(() => {
 		uploadVideoRef.current = onUploadVideo
+	})
+
+	useEffect(() => {
+		addCommentEnabledRef.current = Boolean(onAddComment)
 	})
 
 	useEffect(() => {
@@ -371,6 +382,17 @@ function MarkdownEditor(
 					{ key: "Alt-Mod-Shift-x", run: sortTasks, preventDefault: true },
 					{ key: "Alt-Mod-q", run: toggleBlockquote, preventDefault: true },
 					{ key: "Alt-Mod-c", run: insertCodeBlock, preventDefault: true },
+					{
+						key: "Alt-Mod-m",
+						run: () => {
+							if (!addCommentEnabledRef.current) return false
+							let opened =
+								floatingActionsRef.current?.triggerAddComment() ?? false
+							if (!opened) toast.info(t("comments.selectionRequired"))
+							return true
+						},
+						preventDefault: true,
+					},
 					{ key: "Alt-Mod-ArrowUp", run: moveLineUp, preventDefault: true },
 					{
 						key: "Alt-Mod-ArrowDown",
@@ -974,9 +996,11 @@ function MarkdownEditor(
 				readOnly={readOnly}
 				docs={documents}
 				actionsRef={floatingActionsRef}
+				onAddComment={onAddComment}
 			>
 				{ctx => (
 					<>
+						<CommentAction editor={internalRef} {...ctx.comment} />
 						<TaskAction editor={internalRef} {...ctx.task} />
 						<LinkAction {...ctx.link} />
 						<WikiLinkAction

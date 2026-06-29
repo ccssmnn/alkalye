@@ -40,7 +40,7 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 	if (!doc.content?.$isLoaded) return []
 
 	let contentRaw = doc.content.$jazz.raw
-	let transactionCount = contentRaw.core.getValidSortedTransactions().length
+	let transactionCount = getTransactionCount(doc)
 	let cached = editHistoryCache.get(contentRaw)
 
 	if (cached && cached.transactionCount === transactionCount) {
@@ -67,6 +67,20 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 
 	if (doc.assets?.$isLoaded) {
 		collectTransactions(doc.assets.$jazz.raw.core)
+	}
+
+	if (doc.comments?.$isLoaded) {
+		collectTransactions(doc.comments.$jazz.raw.core)
+		for (let thread of doc.comments.values()) {
+			if (!thread?.$isLoaded) continue
+			collectTransactions(thread.$jazz.raw.core)
+			if (thread.replies?.$isLoaded) {
+				collectTransactions(thread.replies.$jazz.raw.core)
+				for (let reply of thread.replies.values()) {
+					if (reply?.$isLoaded) collectTransactions(reply.$jazz.raw.core)
+				}
+			}
+		}
 	}
 
 	let sortedTimestamps = [...timestampToOp.keys()].sort((a, b) => a - b)
@@ -163,4 +177,29 @@ function groupEditsByDay(edits: EditHistoryItem[]): DayGroup[] {
 	}
 
 	return [...dayMap.values()].sort((a, b) => a.dateKey.localeCompare(b.dateKey))
+}
+
+function getTransactionCount(doc: LoadedDocument) {
+	let count = doc.content.$jazz.raw.core.getValidSortedTransactions().length
+
+	if (doc.assets?.$isLoaded) {
+		count += doc.assets.$jazz.raw.core.getValidSortedTransactions().length
+	}
+
+	if (!doc.comments?.$isLoaded) return count
+
+	count += doc.comments.$jazz.raw.core.getValidSortedTransactions().length
+	for (let thread of doc.comments.values()) {
+		if (!thread?.$isLoaded) continue
+		count += thread.$jazz.raw.core.getValidSortedTransactions().length
+		if (!thread.replies?.$isLoaded) continue
+		count += thread.replies.$jazz.raw.core.getValidSortedTransactions().length
+		for (let reply of thread.replies.values()) {
+			if (reply?.$isLoaded) {
+				count += reply.$jazz.raw.core.getValidSortedTransactions().length
+			}
+		}
+	}
+
+	return count
 }

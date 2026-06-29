@@ -1,6 +1,7 @@
 import { Group, co, type ID } from "jazz-tools"
 import { Document } from "@/app/features/documents/lib/schema"
 import { UserAccount } from "@/schema"
+import { copyCommentsAndApplyContent } from "@/app/features/comments"
 import {
 	buildDocumentInviteLink,
 	buildDocumentPublicLink,
@@ -166,6 +167,7 @@ async function migrateDocumentToGroup(
 		},
 		group,
 	)
+	await copyCommentsAndApplyContent(doc, newDoc, doc.content?.toString() ?? "")
 
 	let account = await UserAccount.load(userId, {
 		resolve: { root: { documents: true } },

@@ -18,7 +18,10 @@ import { moveDocumentToFolder } from "../lib/folders"
 
 export { MoveToFolderDialog }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<
+	typeof Document,
+	{ content: true; comments: { $each: true } }
+>
 
 interface MoveToFolderDialogProps {
 	doc: LoadedDocument

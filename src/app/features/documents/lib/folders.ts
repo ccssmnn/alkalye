@@ -1,6 +1,7 @@
 import { co } from "jazz-tools"
 import { Document } from "@/schema"
 import { getPath, parseFrontmatter } from "@/app/features/editor"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 
 export {
 	makeFolderDocumentContent,
@@ -9,7 +10,10 @@ export {
 	moveDocumentsToFolder,
 }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<
+	typeof Document,
+	{ content: true; comments: { $each: true } }
+>
 
 function makeFolderDocumentContent(path: string): string {
 	return `---\ntitle: Untitled\npath: ${path}\n---\n\n`
@@ -53,7 +57,7 @@ function moveDocumentToFolder(
 	let newContent = applyFolderPathToContent(content, newPath)
 	if (newContent === content) return false
 
-	doc.content.$jazz.applyDiff(newContent)
+	applyContentDiffWithCommentAnchors(doc, newContent)
 	doc.$jazz.set("updatedAt", new Date())
 	return true
 }

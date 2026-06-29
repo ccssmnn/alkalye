@@ -1,4 +1,5 @@
 import { describe, it, expect } from "vitest"
+import JSZip from "jszip"
 import {
 	importMarkdownFiles,
 	importFolderFiles,
@@ -28,6 +29,36 @@ function createImageFile(name: string): File {
 	;(file as File & { text: () => Promise<string> }).text = () =>
 		Promise.resolve("")
 	return file
+}
+
+function createCommentsSidecar(name: string): File {
+	return createFile(
+		name,
+		JSON.stringify({
+			version: 1,
+			comments: [
+				{
+					id: "comment-1",
+					quote: "commented text",
+					contextBefore: "before ",
+					contextAfter: " after",
+					from: 7,
+					to: 21,
+					resolved: false,
+					createdAt: "2026-06-27T10:00:00.000Z",
+					updatedAt: "2026-06-27T10:00:00.000Z",
+					replies: [
+						{
+							body: "Looks good",
+							authorName: "Carl",
+							createdAt: "2026-06-27T10:00:00.000Z",
+							updatedAt: null,
+						},
+					],
+				},
+			],
+		}),
+	)
 }
 
 describe("importMarkdownFiles - simple files", () => {
@@ -63,6 +94,17 @@ describe("importMarkdownFiles - simple files", () => {
 		let results = await importMarkdownFiles(files)
 
 		expect(results.map(r => r.name)).toEqual(["doc", "doc", "doc"])
+	})
+
+	it("attaches matching comment sidecars", async () => {
+		let results = await importMarkdownFiles([
+			createFile("doc.md", "before commented text after"),
+			createCommentsSidecar("doc.comments.json"),
+		])
+
+		expect(results).toHaveLength(1)
+		expect(results[0].comments?.[0].quote).toBe("commented text")
+		expect(results[0].comments?.[0].replies[0].authorName).toBe("Carl")
 	})
 })
 
@@ -196,6 +238,37 @@ describe("importFolderFiles - folder structure", () => {
 		let nestedAssets = results.find(r => r.name === "Nested Assets")
 		expect(nestedAssets?.path).toBe("some/path")
 		expect(nestedAssets?.assets.length).toBeGreaterThan(0)
+	})
+
+	it("attaches folder comment sidecars", async () => {
+		let files: FileWithPath[] = [
+			{
+				file: createFile("Doc.md", "before commented text after"),
+				path: "Project/Doc/Doc.md",
+			},
+			{
+				file: createCommentsSidecar("Doc.comments.json"),
+				path: "Project/Doc/Doc.comments.json",
+			},
+		]
+		let results = await importFolderFiles(files)
+
+		expect(results).toHaveLength(1)
+		expect(results[0].comments?.[0].quote).toBe("commented text")
+	})
+})
+
+describe("importMarkdownFiles - zip comments", () => {
+	it("attaches zipped comment sidecars", async () => {
+		let zip = new JSZip()
+		zip.file("Doc/Doc.md", "before commented text after")
+		zip.file("Doc/Doc.comments.json", await createCommentsSidecar("").text())
+		let blob = await zip.generateAsync({ type: "blob" })
+		let file = new File([blob], "export.zip", { type: "application/zip" })
+		let results = await importMarkdownFiles([file])
+
+		expect(results).toHaveLength(1)
+		expect(results[0].comments?.[0].quote).toBe("commented text")
 	})
 })
 

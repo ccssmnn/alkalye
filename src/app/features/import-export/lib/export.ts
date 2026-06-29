@@ -1,4 +1,5 @@
 import JSZip from "jszip"
+import type { ExportComment } from "@/app/features/comments"
 
 export {
 	exportDocument,
@@ -10,6 +11,7 @@ export {
 	stripBacklinksFrontmatter,
 	getRelativePath,
 	type ExportAsset,
+	type ExportComment,
 	type ExportDoc,
 }
 
@@ -24,16 +26,19 @@ interface ExportDoc {
 	content: string
 	assets?: ExportAsset[]
 	path?: string | null
+	comments?: ExportComment[]
 }
 
 async function exportDocument(
 	content: string,
 	filename: string,
 	assets?: ExportAsset[],
+	comments?: ExportComment[],
 ) {
 	let safeName = sanitizeFilename(filename)
+	let hasComments = comments && comments.length > 0
 
-	if (!assets || assets.length === 0) {
+	if ((!assets || assets.length === 0) && !hasComments) {
 		// No assets - just download the .md file
 		let blob = new Blob([content], { type: "text/markdown;charset=utf-8" })
 		let url = URL.createObjectURL(blob)
@@ -45,26 +50,29 @@ async function exportDocument(
 		return
 	}
 
-	// Has assets - create folder structure: {title}/{title}.md + {title}/assets/
+	// Bundled exports keep related files together.
 	let zip = new JSZip()
 	let docFolder = zip.folder(safeName)!
-	let assetsFolder = docFolder.folder("assets")!
 	let assetNameMap = new Map<string, string>()
 	let usedAssetNames = new Set<string>()
 
-	for (let asset of assets) {
-		let ext = getExtensionFromBlob(asset.blob)
-		let baseName = asset.name.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "image"
-		let fileName = baseName + ext
-		let counter = 1
+	if (assets && assets.length > 0) {
+		let assetsFolder = docFolder.folder("assets")!
+		for (let asset of assets) {
+			let ext = getExtensionFromBlob(asset.blob)
+			let baseName =
+				asset.name.replace(/[^a-zA-Z0-9-_\s]/g, "").trim() || "image"
+			let fileName = baseName + ext
+			let counter = 1
 
-		while (usedAssetNames.has(fileName)) {
-			fileName = `${baseName}-${counter++}${ext}`
+			while (usedAssetNames.has(fileName)) {
+				fileName = `${baseName}-${counter++}${ext}`
+			}
+			usedAssetNames.add(fileName)
+
+			assetsFolder.file(fileName, asset.blob)
+			assetNameMap.set(asset.id, `assets/${fileName}`)
 		}
-		usedAssetNames.add(fileName)
-
-		assetsFolder.file(fileName, asset.blob)
-		assetNameMap.set(asset.id, `assets/${fileName}`)
 	}
 
 	let exportedContent = content.replace(
@@ -79,6 +87,7 @@ async function exportDocument(
 	)
 
 	docFolder.file(`${safeName}.md`, exportedContent)
+	writeCommentSidecar(docFolder, `${safeName}.comments.json`, comments)
 
 	let blob = await zip.generateAsync({ type: "blob" })
 	let url = URL.createObjectURL(blob)
@@ -218,6 +227,7 @@ async function exportDocumentsAsZip(docs: ExportDoc[]) {
 			let docFolderPath = parentPath ? `${parentPath}/${docName}` : docName
 			let docFolder = zip.folder(docFolderPath)!
 			docFolder.file(`${docName}.md`, exportedContent)
+			writeCommentSidecar(docFolder, `${docName}.comments.json`, doc.comments)
 
 			let assetsFolder = docFolder.folder("assets")!
 			for (let asset of doc.assets!) {
@@ -230,6 +240,10 @@ async function exportDocumentsAsZip(docs: ExportDoc[]) {
 				? `${parentPath}/${docName}.md`
 				: `${docName}.md`
 			zip.file(filePath, exportedContent)
+			let commentPath = parentPath
+				? `${parentPath}/${docName}.comments.json`
+				: `${docName}.comments.json`
+			writeCommentSidecar(zip, commentPath, doc.comments)
 		}
 	}
 
@@ -371,4 +385,17 @@ function stripBacklinksFrontmatter(content: string): string {
 	}
 
 	return `---\n${filteredLines.join("\n")}\n---\n${afterFrontmatter}`
+}
+
+function writeCommentSidecar(
+	zip: JSZip,
+	path: string,
+	comments: ExportComment[] | undefined,
+) {
+	if (!comments || comments.length === 0) return
+	zip.file(path, stringifyCommentSidecar(comments))
+}
+
+function stringifyCommentSidecar(comments: ExportComment[]) {
+	return JSON.stringify({ version: 1, comments }, null, 2)
 }

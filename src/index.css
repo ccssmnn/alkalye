@@ -186,6 +186,32 @@ input[type="search"]::-webkit-search-cancel-button {
 	background-color: color-mix(in oklch, var(--destructive) 20%, transparent);
 }
 
+.preview-comment-range {
+	display: inline;
+	border: 0;
+	border-bottom: 1px solid
+		color-mix(in srgb, var(--brand, #2563eb) 65%, transparent);
+	background: color-mix(in srgb, var(--brand, #2563eb) 18%, transparent);
+	color: inherit;
+	font: inherit;
+	padding: 0;
+	cursor: pointer;
+}
+
+.preview-comment-range-resolved {
+	border-bottom-color: color-mix(
+		in srgb,
+		var(--muted-foreground) 45%,
+		transparent
+	);
+	background: color-mix(in srgb, var(--muted-foreground) 12%, transparent);
+}
+
+.preview-comment-range-selected {
+	background: color-mix(in srgb, var(--brand, #2563eb) 30%, transparent);
+	box-shadow: inset 0 -2px 0 var(--brand, #2563eb);
+}
+
 @keyframes hold-progress {
 	from {
 		transform: scaleX(0);

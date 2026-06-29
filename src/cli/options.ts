@@ -17,8 +17,13 @@ export {
 	passphraseStdinOption,
 	contentOption,
 	contentFileOption,
+	bodyOption,
+	quoteOption,
+	fromOption,
+	toOption,
 	stdinOption,
 	docIdArg,
+	commentIdArg,
 	spaceIdArg,
 }
 export type { GlobalArgs }
@@ -108,9 +113,24 @@ let passphraseStdinOption = Options.boolean("passphrase-stdin").pipe(
 )
 let contentOption = Options.optional(Options.text("content"))
 let contentFileOption = Options.optional(Options.file("content-file"))
+let bodyOption = Options.text("body").pipe(
+	Options.withDescription("Comment or reply body."),
+)
+let quoteOption = Options.optional(Options.text("quote")).pipe(
+	Options.withDescription("Quoted document text to comment on."),
+)
+let fromOption = Options.optional(Options.integer("from")).pipe(
+	Options.withDescription("Zero-based comment start offset."),
+)
+let toOption = Options.optional(Options.integer("to")).pipe(
+	Options.withDescription("Zero-based comment end offset."),
+)
 let stdinOption = Options.boolean("stdin")
 let docIdArg = Args.text({ name: "doc-id" }).pipe(
 	Args.withDescription("Document ID."),
+)
+let commentIdArg = Args.text({ name: "comment-id" }).pipe(
+	Args.withDescription("Comment thread ID."),
 )
 let spaceIdArg = Args.text({ name: "space-id" }).pipe(
 	Args.withDescription("Space ID."),

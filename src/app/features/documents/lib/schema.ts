@@ -1,7 +1,16 @@
 import { co, z } from "jazz-tools"
 import { Asset } from "@/app/features/assets/lib/schema"
 
-export { Document, CursorEntry, CursorFeed, HighlightRange }
+export {
+	Document,
+	CursorEntry,
+	CursorFeed,
+	HighlightRange,
+	CommentTextPosition,
+	CommentAnchor,
+	CommentReply,
+	CommentThread,
+}
 
 let CursorEntry = z.object({
 	position: z.number(),
@@ -15,11 +24,42 @@ let HighlightRange = z.object({
 	end: z.number(),
 })
 
+let CommentTextPosition = z.string()
+
+let CommentAnchor = z.object({
+	start: CommentTextPosition.optional(),
+	end: CommentTextPosition.optional(),
+	quote: z.string(),
+	originalQuote: z.string().optional(),
+	contextBefore: z.string(),
+	contextAfter: z.string(),
+	collapsed: z.boolean().optional(),
+})
+
+let CommentReply = co.map({
+	body: z.string(),
+	authorName: z.string().optional(),
+	createdAt: z.date(),
+	updatedAt: z.date().optional(),
+	deletedAt: z.date().optional(),
+})
+
+let CommentThread = co.map({
+	anchor: CommentAnchor,
+	replies: co.list(CommentReply),
+	resolvedAt: z.date().optional(),
+	deletedAt: z.date().optional(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+})
+
 let Document = co.map({
 	version: z.literal(1),
 	content: co.plainText(),
 	assets: co.optional(co.list(Asset)),
 	cursors: co.optional(CursorFeed),
+	comments: co.optional(co.list(CommentThread)),
+	commentsDisabled: z.boolean().optional(),
 	deletedAt: z.date().optional(),
 	presentationLine: z.number().optional(),
 	highlightRange: HighlightRange.optional(),

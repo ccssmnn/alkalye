@@ -19,6 +19,10 @@ import {
 	type ThemeStyles,
 } from "@/app/features/themes"
 import { TriangleAlert } from "lucide-react"
+import {
+	countOccurrences,
+	findBestTextOccurrence,
+} from "../lib/comment-text-match"
 
 export { Preview }
 
@@ -36,9 +40,41 @@ interface PreviewProps {
 	assets?: Asset[]
 	wikilinks: Map<string, ResolvedDoc>
 	onExit?: () => void
+	comments?: PreviewComment[]
+	onCommentSelect?: (threadId: string) => void
+	onTextSelectionChange?: (selection: PreviewTextSelection | null) => void
 }
 
-function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
+type PreviewComment = {
+	id: string
+	quote: string
+	contextBefore: string
+	contextAfter: string
+	occurrence: number
+	renderedFrom: number | null
+	renderedTo: number | null
+	resolved: boolean
+	selected: boolean
+}
+
+type PreviewTextSelection = {
+	text: string
+	occurrence: number
+	renderedFrom: number
+	renderedTo: number
+	contextBefore: string
+	contextAfter: string
+}
+
+function Preview({
+	content,
+	assets,
+	wikilinks,
+	onExit,
+	comments = [],
+	onCommentSelect,
+	onTextSelectionChange,
+}: PreviewProps) {
 	let resolvedTheme = useResolvedTheme()
 	let documentTheme = useDocumentTheme(content, "preview", resolvedTheme)
 
@@ -58,6 +94,9 @@ function Preview({ content, assets, wikilinks, onExit }: PreviewProps) {
 			cacheVersion={wikilinks.size}
 			onExit={onExit}
 			documentTheme={documentTheme}
+			comments={comments}
+			onCommentSelect={onCommentSelect}
+			onTextSelectionChange={onTextSelectionChange}
 		/>
 	)
 }
@@ -74,6 +113,9 @@ function PreviewContent({
 	cacheVersion,
 	onExit,
 	documentTheme,
+	comments,
+	onCommentSelect,
+	onTextSelectionChange,
 }: {
 	content: string
 	assets?: Asset[]
@@ -81,9 +123,13 @@ function PreviewContent({
 	cacheVersion: number
 	onExit?: () => void
 	documentTheme: ResolvedTheme
+	comments: PreviewComment[]
+	onCommentSelect?: (threadId: string) => void
+	onTextSelectionChange?: (selection: PreviewTextSelection | null) => void
 }) {
 	let [segments, setSegments] = useState<Segment[]>([])
 	let [prevContent, setPrevContent] = useState(content)
+	let previewRef = useRef<HTMLDivElement>(null)
 	let themeStylesResult = useThemeStyles(documentTheme)
 	let themeStyles = themeStylesResult.styles
 
@@ -174,9 +220,70 @@ function PreviewContent({
 
 	let errorMessage = themeStylesResult.error || templateError || null
 
+	useEffect(() => {
+		let root = previewRef.current
+		if (!root) return
+		applyPreviewCommentHighlights(root, comments, onCommentSelect)
+		scrollSelectedPreviewCommentIntoView(root, comments)
+	}, [segments, templatedContent, comments, onCommentSelect])
+
+	useEffect(() => {
+		function handleSelectionChange() {
+			let root = previewRef.current
+			let selection = document.getSelection()
+			if (!root || !selection || selection.isCollapsed) {
+				onTextSelectionChange?.(null)
+				return
+			}
+
+			let anchorNode = selection.anchorNode
+			let focusNode = selection.focusNode
+			if (
+				!anchorNode ||
+				!focusNode ||
+				!root.contains(anchorNode) ||
+				!root.contains(focusNode)
+			) {
+				onTextSelectionChange?.(null)
+				return
+			}
+
+			let selectedText = selection.toString()
+			let leadingTrim = selectedText.length - selectedText.trimStart().length
+			let trailingTrim = selectedText.length - selectedText.trimEnd().length
+			let text = selectedText.trim()
+			let startOffset = getSelectionTextOffset(root, selection)
+			let renderedFrom = startOffset + leadingTrim
+			let renderedTo = startOffset + selectedText.length - trailingTrim
+			let rootText = getRootText(root)
+			onTextSelectionChange?.(
+				text
+					? {
+							text,
+							occurrence: countOccurrences(
+								rootText.slice(0, renderedFrom),
+								text,
+							),
+							renderedFrom,
+							renderedTo,
+							contextBefore: rootText.slice(
+								Math.max(0, renderedFrom - 80),
+								renderedFrom,
+							),
+							contextAfter: rootText.slice(renderedTo, renderedTo + 80),
+						}
+					: null,
+			)
+		}
+
+		document.addEventListener("selectionchange", handleSelectionChange)
+		return () =>
+			document.removeEventListener("selectionchange", handleSelectionChange)
+	}, [onTextSelectionChange])
+
 	return (
 		<div
-			className="flex-1 overflow-auto"
+			className="min-w-0 flex-1 overflow-auto"
 			style={{
 				paddingLeft: "env(safe-area-inset-left)",
 				paddingRight: "env(safe-area-inset-right)",
@@ -205,6 +312,7 @@ function PreviewContent({
 			{templatedContent ? (
 				// Render with custom template
 				<div
+					ref={previewRef}
 					className="mx-auto max-w-[65ch] px-6 py-8"
 					data-theme={documentTheme.theme?.name ?? undefined}
 					dangerouslySetInnerHTML={{ __html: templatedContent }}
@@ -213,6 +321,7 @@ function PreviewContent({
 				// Default rendering without template
 				// data-theme is on the outer div so themes can use [data-theme="Name"] article selectors
 				<div
+					ref={previewRef}
 					className="mx-auto max-w-[65ch] px-6 py-8"
 					data-theme={documentTheme.theme?.name ?? undefined}
 				>
@@ -258,6 +367,192 @@ function PreviewContent({
 			)}
 		</div>
 	)
+}
+
+function applyPreviewCommentHighlights(
+	root: HTMLElement,
+	comments: PreviewComment[],
+	onCommentSelect: ((threadId: string) => void) | undefined,
+) {
+	clearPreviewCommentHighlights(root)
+
+	for (let comment of comments) {
+		let quote = comment.quote.trim()
+		if (!quote) continue
+		let segments =
+			comment.renderedFrom !== null && comment.renderedTo !== null
+				? findTextSegmentsInRange(
+						root,
+						comment.renderedFrom,
+						comment.renderedTo,
+					)
+				: findTextSegments(root, comment)
+		for (let segment of segments) {
+			wrapTextSegment(segment, () =>
+				createCommentMark(comment, onCommentSelect),
+			)
+		}
+	}
+}
+
+function clearPreviewCommentHighlights(root: HTMLElement) {
+	for (let mark of root.querySelectorAll(".preview-comment-range")) {
+		let parent = mark.parentNode
+		if (!parent) continue
+		while (mark.firstChild) parent.insertBefore(mark.firstChild, mark)
+		parent.removeChild(mark)
+		parent.normalize()
+	}
+}
+
+function scrollSelectedPreviewCommentIntoView(
+	root: HTMLElement,
+	comments: PreviewComment[],
+) {
+	let selected = comments.find(comment => comment.selected)
+	if (!selected) return
+	for (let mark of root.querySelectorAll<HTMLElement>("[data-comment-id]")) {
+		if (mark.dataset.commentId !== selected.id) continue
+		mark.scrollIntoView({
+			block: "center",
+			inline: "nearest",
+			behavior: "smooth",
+		})
+		return
+	}
+}
+
+function getSelectionTextOffset(root: HTMLElement, selection: Selection) {
+	let range = selection.getRangeAt(0)
+	return getLogicalTextOffset(root, range.startContainer, range.startOffset)
+}
+
+function findTextSegments(root: HTMLElement, comment: PreviewComment) {
+	let rootText = getRootText(root)
+	let start = findCommentStart(rootText, comment)
+	if (start < 0) return []
+	let quote = comment.quote.trim()
+	return findTextSegmentsInRange(root, start, start + quote.length)
+}
+
+function findTextSegmentsInRange(
+	root: HTMLElement,
+	start: number,
+	end: number,
+) {
+	let walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+	let segments: TextSegment[] = []
+	let node = walker.nextNode()
+	let seen = 0
+	while (node) {
+		if (!(node instanceof Text)) {
+			node = walker.nextNode()
+			continue
+		}
+		if (isGeneratedWhitespaceNode(node)) {
+			node = walker.nextNode()
+			continue
+		}
+		let text = node.textContent ?? ""
+		let next = seen + text.length
+		if (next > start && seen < end) {
+			segments.push({
+				node,
+				start: Math.max(0, start - seen),
+				end: Math.min(text.length, end - seen),
+			})
+		}
+		seen = next
+		node = walker.nextNode()
+	}
+	return segments.reverse()
+}
+
+function findCommentStart(content: string, comment: PreviewComment) {
+	let quote = comment.quote.trim()
+	return findBestTextOccurrence(content, quote, comment)
+}
+
+type TextSegment = {
+	node: Text
+	start: number
+	end: number
+}
+
+function wrapTextSegment(segment: TextSegment, createMark: () => HTMLElement) {
+	if (segment.start >= segment.end) return
+	let selected = segment.node
+	if (segment.end < selected.length) selected.splitText(segment.end)
+	if (segment.start > 0) selected = selected.splitText(segment.start)
+	let parent = selected.parentNode
+	if (!parent) return
+	let mark = createMark()
+	parent.insertBefore(mark, selected)
+	mark.appendChild(selected)
+}
+
+function createCommentMark(
+	comment: PreviewComment,
+	onCommentSelect?: (threadId: string) => void,
+) {
+	let mark = document.createElement("mark")
+	mark.role = "button"
+	mark.tabIndex = 0
+	mark.dataset.commentId = comment.id
+	mark.className = [
+		"preview-comment-range",
+		comment.resolved ? "preview-comment-range-resolved" : "",
+		comment.selected ? "preview-comment-range-selected" : "",
+	]
+		.filter(Boolean)
+		.join(" ")
+	mark.addEventListener("click", event => {
+		event.preventDefault()
+		onCommentSelect?.(comment.id)
+	})
+	mark.addEventListener("keydown", event => {
+		if (event.key !== "Enter" && event.key !== " ") return
+		event.preventDefault()
+		onCommentSelect?.(comment.id)
+	})
+	return mark
+}
+
+function getRootText(root: HTMLElement) {
+	let walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+	let text = ""
+	let node = walker.nextNode()
+	while (node) {
+		if (node instanceof Text && !isGeneratedWhitespaceNode(node)) {
+			text += node.textContent ?? ""
+		}
+		node = walker.nextNode()
+	}
+	return text
+}
+
+function getLogicalTextOffset(
+	root: HTMLElement,
+	target: Node,
+	targetOffset: number,
+) {
+	let walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT)
+	let offset = 0
+	let node = walker.nextNode()
+	while (node) {
+		if (!(node instanceof Text) || isGeneratedWhitespaceNode(node)) {
+			node = walker.nextNode()
+			continue
+		}
+		if (node === target) return offset + targetOffset
+		offset += node.textContent?.length ?? 0
+		node = walker.nextNode()
+	}
+	return offset
+}
+
+function isGeneratedWhitespaceNode(node: Text) {
+	return !node.textContent?.trim() && !node.parentElement?.closest("pre, code")
 }
 
 type ThemeStylesResult = {

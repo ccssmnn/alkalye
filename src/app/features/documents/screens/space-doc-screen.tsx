@@ -7,6 +7,7 @@ import {
 } from "@tanstack/react-router"
 import { co, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
+import { toast } from "sonner"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import { handleSaveCopy } from "../lib/save-copy"
 import { resolve, settingsResolve } from "../lib/queries"
@@ -68,8 +69,29 @@ import {
 import { useBacklinkSync } from "../lib/backlink-sync"
 import { useWikilinkResolver } from "../lib/use-wikilink-resolver"
 import { usePresence } from "@/app/features/sharing"
+import {
+	SidebarComments,
+	areCommentsEnabled,
+	commentsExtension,
+	createCommentThread,
+	applyContentDiffWithCommentAnchors,
+	copyCommentsAndApplyContent,
+	getCommentRange,
+	getUnresolvedCommentCount,
+	getVisibleCommentThreads,
+	scrollEditorCommentIntoView,
+	setCommentsEnabled,
+	setCommentDecorationsEffect,
+} from "@/app/features/comments"
 import { SidebarProvider, useSidebar } from "@/app/components/ui/sidebar"
-import { HelpCircle, Search, Settings, Plus } from "lucide-react"
+import {
+	HelpCircle,
+	MessageSquare,
+	MessageSquareOff,
+	Search,
+	Settings,
+	Plus,
+} from "lucide-react"
 
 import { SidebarViewLinks } from "../widgets/sidebar-view-links"
 import {
@@ -100,7 +122,7 @@ export { SpaceDocScreen, spaceResolve }
 export { settingsResolve }
 
 let spaceResolve = {
-	documents: { $each: { content: true } },
+	documents: { $each: { content: true, comments: { $each: true } } },
 } as const satisfies ResolveQuery<typeof Space>
 
 type LoadedSpace = co.loaded<typeof Space, typeof spaceResolve>
@@ -205,6 +227,10 @@ function SpaceEditorContent({
 	let [saveCopyState, setSaveCopyState] = useState<"idle" | "saving" | "saved">(
 		"idle",
 	)
+	let [rightTab, setRightTab] = useState("tools")
+	let [selectedCommentThreadId, setSelectedCommentThreadId] = useState<
+		string | null
+	>(null)
 	let pendingSave = useRef<{
 		timeoutId: ReturnType<typeof setTimeout>
 		content: string
@@ -223,6 +249,7 @@ function SpaceEditorContent({
 		isMobile,
 		setLeftOpenMobile,
 		setRightOpenMobile,
+		setRightOpen,
 	} = useSidebar()
 
 	let isAuthenticated = useIsAuthenticated()
@@ -287,6 +314,10 @@ function SpaceEditorContent({
 
 	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
+	let commentsEnabled = areCommentsEnabled(doc)
+	let commentThreads = getVisibleCommentThreads(doc)
+	let unresolvedCommentCount = getUnresolvedCommentCount(doc)
+	let commentAuthorName = me.$isLoaded ? me.profile?.name : undefined
 	let resolveWikilink = useWikilinkResolver(content, documents)
 	let handleWikilinkClick = (id: string, newTab: boolean) => {
 		if (newTab) {
@@ -304,7 +335,7 @@ function SpaceEditorContent({
 		let pendingContent = pendingSave.current.content
 		let cursor = pendingSave.current.cursor
 		pendingSave.current = null
-		doc.content.$jazz.applyDiff(pendingContent)
+		applyContentDiffWithCommentAnchors(doc, pendingContent)
 		doc.$jazz.set("updatedAt", new Date())
 		if (cursor) {
 			updateCursor(cursor.from, cursor.to)
@@ -412,7 +443,7 @@ function SpaceEditorContent({
 			timeoutId: setTimeout(() => {
 				let cursor = pendingSave.current?.cursor
 				pendingSave.current = null
-				doc.content?.$jazz.applyDiff(newContent)
+				applyContentDiffWithCommentAnchors(doc, newContent)
 				doc.$jazz.set("updatedAt", new Date())
 				if (cursor) {
 					updateCursor(cursor.from, cursor.to)
@@ -429,6 +460,110 @@ function SpaceEditorContent({
 			updateCursor(from, to)
 		}
 	}
+
+	function flushPendingContent() {
+		let currentContent = editor.current?.getContent()
+		if (currentContent === undefined || !doc.content) return
+
+		if (pendingSave.current) {
+			clearTimeout(pendingSave.current.timeoutId)
+			pendingSave.current = null
+		}
+
+		if (currentContent !== doc.content.toString()) {
+			applyContentDiffWithCommentAnchors(doc, currentContent)
+			doc.$jazz.set("updatedAt", new Date())
+		}
+	}
+
+	function handleSelectComment(threadId: string) {
+		if (selectedCommentThreadId === threadId) {
+			setSelectedCommentThreadId(null)
+			return
+		}
+		setSelectedCommentThreadId(threadId)
+		openCommentsTab()
+		scrollToComment(threadId)
+	}
+
+	function scrollToComment(threadId: string) {
+		let view = editor.current?.getEditor()
+		let thread = commentThreads.find(thread => thread.$jazz.id === threadId)
+		if (!view || !thread) return
+		scrollEditorCommentIntoView(view, getCommentRange(doc, thread.anchor))
+	}
+
+	function handleCreateCommentFromSelection(
+		selection: { from: number; to: number },
+		body: string,
+	) {
+		if (!commentsEnabled) return false
+		flushPendingContent()
+		if (selection.from === selection.to) {
+			toast.info(t("comments.selectionRequired"))
+			return false
+		}
+
+		let thread = createCommentThread(doc, selection, body, commentAuthorName)
+		if (!thread) return false
+		setSelectedCommentThreadId(thread.$jazz.id)
+		openCommentsTab()
+		return true
+	}
+
+	function openCommentsTab() {
+		if (!commentsEnabled) return
+		setRightTab("comments")
+		if (isMobile) {
+			setRightOpenMobile(true)
+		} else {
+			setRightOpen(true)
+		}
+	}
+
+	function handleSetCommentsEnabled(enabled: boolean) {
+		setCommentsEnabled(doc, enabled)
+		if (!enabled) {
+			setRightTab("tools")
+			setSelectedCommentThreadId(null)
+		}
+	}
+
+	useEffect(() => {
+		if (commentsEnabled || rightTab !== "comments") return
+		setRightTab("tools")
+	}, [commentsEnabled, rightTab])
+
+	useEffect(() => {
+		function handleKeyDown(event: KeyboardEvent) {
+			if (event.key !== "Escape" || !selectedCommentThreadId) return
+			if (isFormControl(event.target)) return
+			setSelectedCommentThreadId(null)
+		}
+
+		document.addEventListener("keydown", handleKeyDown)
+		return () => document.removeEventListener("keydown", handleKeyDown)
+	}, [selectedCommentThreadId])
+
+	useEffect(() => {
+		let view = editor.current?.getEditor()
+		if (!view) return
+		view.dispatch({
+			effects: setCommentDecorationsEffect.of(
+				commentThreads.map(thread => {
+					let range = getCommentRange(doc, thread.anchor)
+					return {
+						id: thread.$jazz.id,
+						from: range.from,
+						to: range.to,
+						resolved: Boolean(thread.resolvedAt),
+						selected: thread.$jazz.id === selectedCommentThreadId,
+						orphaned: range.orphaned,
+					}
+				}),
+			),
+		})
+	}, [doc, editor, content, commentThreads, selectedCommentThreadId])
 
 	return (
 		<>
@@ -521,6 +656,9 @@ function SpaceEditorContent({
 					onCreateDocument={makeCreateDocument(space)}
 					onUploadImage={makeUploadImage(doc)}
 					onUploadVideo={canUploadVideo ? makeUploadVideo(doc) : undefined}
+					onAddComment={
+						commentsEnabled ? handleCreateCommentFromSelection : undefined
+					}
 					autoSortTasks={editorSettings?.editor?.autoSortTasks}
 					extensions={[
 						imageExtensions({
@@ -536,6 +674,7 @@ function SpaceEditorContent({
 						}),
 						...presentationExtensions(),
 						presenceExtension,
+						...(commentsEnabled ? commentsExtension(handleSelectComment) : []),
 					]}
 				/>
 				<EditorToolbar
@@ -556,6 +695,20 @@ function SpaceEditorContent({
 				<EditorStatsBadge content={content} settings={editorSettings} />
 			</div>
 			<DocumentSidebar
+				tabs={[
+					{ id: "tools", label: t("comments.tab.tools") },
+					...(commentsEnabled
+						? [
+								{
+									id: "comments",
+									label: t("comments.tab.comments"),
+									count: unresolvedCommentCount,
+								},
+							]
+						: []),
+				]}
+				activeTab={rightTab}
+				onTabChange={setRightTab}
 				header={
 					<>
 						<ThemeToggle theme={theme} setTheme={setTheme} />
@@ -581,81 +734,114 @@ function SpaceEditorContent({
 					/>
 				}
 			>
-				<SidebarGroup>
-					<SidebarGroupContent>
-						<SidebarMenu>
-							<SidebarMenuItem>
-								<SidebarMenuButton
-									onClick={() =>
-										setRightOpenMobile(false, () => editor.current?.openFind())
-									}
-									nativeButton
-								>
-									<Search className="size-4" />
-									{t("doc.find")}
-								</SidebarMenuButton>
-							</SidebarMenuItem>
-							<SidebarSeparator />
-							<SidebarViewLinks doc={doc} />
-							<SidebarPresentationLinks doc={doc} />
-							<SidebarSeparator />
-							<SidebarFileMenu
-								doc={doc}
-								editor={editor}
-								me={me.$isLoaded ? me : undefined}
-								spaceId={spaceId}
-							/>
-							<SidebarEditMenu
-								editor={editor}
-								disabled={!canEdit(doc)}
-								readOnly={readOnly}
-							/>
-							<SidebarFormatMenu
-								editor={editor}
-								disabled={!canEdit(doc)}
-								readOnly={readOnly}
-								documents={wikiLinkDocs}
-								onCreateDocument={makeCreateDocument(space)}
-							/>
-						</SidebarMenu>
-					</SidebarGroupContent>
-				</SidebarGroup>
-
-				<SidebarSeparator />
-
-				<SidebarGroup>
-					<SidebarCollaboration
-						docId={docId}
-						spaceGroupId={space.$jazz.owner.$jazz.id}
-					/>
-				</SidebarGroup>
-
-				<SidebarSeparator />
-
-				<SidebarGroup className="flex-1">
-					<SidebarAssets
-						assets={sidebarAssets}
+				{commentsEnabled && rightTab === "comments" ? (
+					<SidebarComments
+						doc={doc}
+						selectedThreadId={selectedCommentThreadId}
+						onSelectThread={handleSelectComment}
 						readOnly={readOnly}
-						onUploadImages={makeUploadAssets(doc)}
-						onUploadVideo={async (file, opts) => {
-							await makeUploadVideo(doc)(file, opts)
-						}}
-						onRename={makeRenameAsset(doc)}
-						onDelete={makeDeleteAsset(doc, docWithContent)}
-						onDownload={makeDownloadAsset(doc)}
-						onInsert={(assetId, name) => {
-							editor.current?.insertText(`![${name}](asset:${assetId})`)
-						}}
-						onToggleMute={assetId => {
-							let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
-							if (asset?.$isLoaded && asset.type === "video") {
-								asset.$jazz.applyDiff({ muteAudio: !asset.muteAudio })
-							}
-						}}
-						isAssetUsed={makeIsAssetUsed(docWithContent)}
-						canUploadVideo={canUploadVideo}
+						authorName={commentAuthorName}
 					/>
-				</SidebarGroup>
+				) : (
+					<>
+						<SidebarGroup>
+							<SidebarGroupContent>
+								<SidebarMenu>
+									<SidebarMenuItem>
+										<SidebarMenuButton
+											onClick={() =>
+												setRightOpenMobile(false, () =>
+													editor.current?.openFind(),
+												)
+											}
+											nativeButton
+										>
+											<Search className="size-4" />
+											{t("doc.find")}
+										</SidebarMenuButton>
+									</SidebarMenuItem>
+									<SidebarSeparator />
+									<SidebarViewLinks doc={doc} />
+									<SidebarPresentationLinks doc={doc} />
+									{!readOnly && (
+										<SidebarMenuItem>
+											<SidebarMenuButton
+												onClick={() =>
+													handleSetCommentsEnabled(!commentsEnabled)
+												}
+												nativeButton
+											>
+												{commentsEnabled ? (
+													<MessageSquareOff className="size-4" />
+												) : (
+													<MessageSquare className="size-4" />
+												)}
+												{commentsEnabled
+													? t("comments.disable")
+													: t("comments.enable")}
+											</SidebarMenuButton>
+										</SidebarMenuItem>
+									)}
+									<SidebarSeparator />
+									<SidebarFileMenu
+										doc={doc}
+										editor={editor}
+										me={me.$isLoaded ? me : undefined}
+										spaceId={spaceId}
+									/>
+									<SidebarEditMenu
+										editor={editor}
+										disabled={!canEdit(doc)}
+										readOnly={readOnly}
+									/>
+									<SidebarFormatMenu
+										editor={editor}
+										disabled={!canEdit(doc)}
+										readOnly={readOnly}
+										documents={wikiLinkDocs}
+										onCreateDocument={makeCreateDocument(space)}
+									/>
+								</SidebarMenu>
+							</SidebarGroupContent>
+						</SidebarGroup>
+
+						<SidebarSeparator />
+
+						<SidebarGroup>
+							<SidebarCollaboration
+								docId={docId}
+								spaceGroupId={space.$jazz.owner.$jazz.id}
+							/>
+						</SidebarGroup>
+
+						<SidebarSeparator />
+
+						<SidebarGroup className="flex-1">
+							<SidebarAssets
+								assets={sidebarAssets}
+								readOnly={readOnly}
+								onUploadImages={makeUploadAssets(doc)}
+								onUploadVideo={async (file, opts) => {
+									await makeUploadVideo(doc)(file, opts)
+								}}
+								onRename={makeRenameAsset(doc)}
+								onDelete={makeDeleteAsset(doc, docWithContent)}
+								onDownload={makeDownloadAsset(doc)}
+								onInsert={(assetId, name) => {
+									editor.current?.insertText(`![${name}](asset:${assetId})`)
+								}}
+								onToggleMute={assetId => {
+									let asset = doc.assets?.find(a => a?.$jazz.id === assetId)
+									if (asset?.$isLoaded && asset.type === "video") {
+										asset.$jazz.applyDiff({ muteAudio: !asset.muteAudio })
+									}
+								}}
+								isAssetUsed={makeIsAssetUsed(docWithContent)}
+								canUploadVideo={canUploadVideo}
+							/>
+						</SidebarGroup>
+					</>
+				)}
 			</DocumentSidebar>
 		</>
 	)
@@ -731,7 +917,7 @@ function makeCreateFolderDocument(
 	}
 }
 
-function handleDuplicateDocument(
+async function handleDuplicateDocument(
 	doc: co.loaded<typeof Document, { content: true }>,
 	space: LoadedSpace,
 	isMobile: boolean,
@@ -742,11 +928,14 @@ function handleDuplicateDocument(
 	if (!space.documents?.$isLoaded) return
 	let content = doc.content?.toString() ?? ""
 	let newContent = addCopyToTitle(content)
-	let newDoc = createSpaceDocument(
-		space.$jazz.owner,
-		space.$jazz.id,
-		newContent,
-	)
+	let newDoc = createSpaceDocument(space.$jazz.owner, space.$jazz.id, content)
+	try {
+		await copyCommentsAndApplyContent(doc, newDoc, newContent)
+	} catch (error) {
+		console.error("Failed to duplicate document:", error)
+		toast.error("Failed to duplicate document")
+		return
+	}
 	space.documents.$jazz.push(newDoc)
 	if (isMobile) setLeftOpenMobile(false)
 	navigate({
@@ -770,8 +959,9 @@ function useHealSpaceDocIds(space: LoadedSpace, spaceId: string) {
 // For space route: load personal docs (for SidebarFileMenu) but NOT spaces
 // Space docs come from spaceResolve
 let spaceMeResolve = {
+	profile: true,
 	root: {
-		documents: { $each: { content: true } },
+		documents: { $each: { content: true, comments: { $each: true } } },
 		settings: true,
 		themes: {
 			$each: { css: true, template: true, assets: { $each: { data: true } } },
@@ -781,14 +971,25 @@ let spaceMeResolve = {
 
 function getSpaceDocs(
 	space: LoadedSpace,
-): co.loaded<typeof Document, { content: true }>[] {
+): co.loaded<typeof Document, { content: true; comments: { $each: true } }>[] {
 	if (!space.documents?.$isLoaded) return []
-	let docs: co.loaded<typeof Document, { content: true }>[] = []
+	let docs: co.loaded<
+		typeof Document,
+		{ content: true; comments: { $each: true } }
+	>[] = []
 	for (let doc of space.documents.values()) {
 		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
 		docs.push(doc)
 	}
 	return docs
+}
+
+function isFormControl(target: EventTarget | null) {
+	return (
+		target instanceof HTMLInputElement ||
+		target instanceof HTMLTextAreaElement ||
+		target instanceof HTMLSelectElement
+	)
 }
 
 function setAutomationReadyState(ready: boolean, route: string) {

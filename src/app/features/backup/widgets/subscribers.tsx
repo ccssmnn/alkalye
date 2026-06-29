@@ -30,6 +30,7 @@ let spaceBackupDocumentResolve = {
 		$each: {
 			content: true,
 			assets: { $each: { image: true, video: true } },
+			comments: { $each: true },
 		},
 		$onError: "catch",
 	},
@@ -38,7 +39,11 @@ let spaceBackupDocumentResolve = {
 let backupQuery = {
 	root: {
 		documents: {
-			$each: { content: true, assets: { $each: { image: true, video: true } } },
+			$each: {
+				content: true,
+				assets: { $each: { image: true, video: true } },
+				comments: { $each: true },
+			},
 			$onError: "catch",
 		},
 	},

@@ -31,12 +31,16 @@ import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Document } from "@/schema"
 import { parseFrontmatter, getPath } from "@/app/features/editor"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 import { useIntl } from "@/shared/intl/setup"
 
 export { FolderRow, useFolderStore }
 export type { FolderState }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<
+	typeof Document,
+	{ content: true; comments: { $each: true } }
+>
 type ViewMode = "folders" | "flat"
 
 interface FolderState {
@@ -560,7 +564,7 @@ function handleRenameFolder(
 		}
 
 		let newContent = updatePathInContent(content, updatedPath)
-		doc.content.$jazz.applyDiff(newContent)
+		applyContentDiffWithCommentAnchors(doc, newContent)
 		doc.$jazz.set("updatedAt", new Date())
 	}
 }
@@ -604,7 +608,7 @@ function handleDeleteFolder(
 			doc.$jazz.set("deletedAt", new Date())
 		} else {
 			let newContent = removePathFromContent(content)
-			doc.content.$jazz.applyDiff(newContent)
+			applyContentDiffWithCommentAnchors(doc, newContent)
 			doc.$jazz.set("updatedAt", new Date())
 		}
 	}

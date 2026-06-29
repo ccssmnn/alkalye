@@ -19,6 +19,7 @@ import {
 	formatRelativeDate,
 	countContentMatches,
 } from "../lib/title"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 import { getDaysUntilPermanentDelete } from "../lib/delete-covalue"
 import { permanentlyDeletePersonalDocument } from "../lib/documents"
 import { Input } from "@/app/components/ui/input"
@@ -68,6 +69,7 @@ import {
 	List,
 	Plus,
 	FolderPlus,
+	MessageSquare,
 } from "lucide-react"
 import {
 	TextHighlight,
@@ -109,11 +111,18 @@ import {
 import { Label } from "@/app/components/ui/label"
 import { moveDocumentsToFolder } from "../lib/folders"
 import { Checkbox } from "@/app/components/ui/checkbox"
+import {
+	getExportComments,
+	getUnresolvedCommentCount,
+} from "@/app/features/comments"
 
 export { SidebarDocumentList }
 export type { DocWithContent }
 
-type DocWithContent = co.loaded<typeof Document, { content: true }>
+type DocWithContent = co.loaded<
+	typeof Document,
+	{ content: true; comments: { $each: true } }
+>
 type SortMode = "latest" | "alphabetical"
 type TypeFilter = "all" | "document" | "presentation" | "deleted"
 
@@ -903,6 +912,7 @@ function DocumentItem({
 	let contentMatchCount = searchQuery.trim()
 		? countContentMatches(content, searchQuery)
 		: 0
+	let unresolvedCommentCount = getUnresolvedCommentCount(doc)
 	let docId = doc.$jazz.id
 
 	// Build link props based on whether we're in a space context
@@ -968,6 +978,19 @@ function DocumentItem({
 											) : (
 												<Users className="size-3" />
 											)}
+										</span>
+									)}
+									{unresolvedCommentCount > 0 && (
+										<span
+											className={
+												isActive
+													? "inline-flex items-center gap-0.5 text-xs opacity-70"
+													: "text-brand inline-flex items-center gap-0.5 text-xs"
+											}
+											aria-label={`${unresolvedCommentCount} unresolved comments`}
+										>
+											<MessageSquare className="size-3" />
+											{unresolvedCommentCount}
 										</span>
 									)}
 									{path && (
@@ -1298,7 +1321,7 @@ function makeTogglePin(doc: DocWithContent) {
 		if (!doc.content) return
 		let content = doc.content.toString()
 		let newContent = togglePinned(content)
-		doc.content.$jazz.applyDiff(newContent)
+		applyContentDiffWithCommentAnchors(doc, newContent)
 		doc.$jazz.set("updatedAt", new Date())
 	}
 }
@@ -1306,10 +1329,14 @@ function makeTogglePin(doc: DocWithContent) {
 function makeDownloadDocument(doc: DocWithContent, title: string) {
 	return async function handleDownloadDocument() {
 		let docAssets = await loadDocumentAssets(doc)
+		let docWithComments = await doc.$jazz.ensureLoaded({
+			resolve: { content: true, comments: { $each: { replies: true } } },
+		})
 		await exportDocument(
 			doc.content?.toString() ?? "",
 			title,
 			docAssets.length > 0 ? docAssets : undefined,
+			getExportComments(docWithComments),
 		)
 	}
 }

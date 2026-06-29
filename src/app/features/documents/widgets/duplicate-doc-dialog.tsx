@@ -13,6 +13,7 @@ import {
 	DialogTitle,
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
+import { Checkbox } from "@/app/components/ui/checkbox"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import {
@@ -33,6 +34,7 @@ import {
 	UserAccount,
 } from "@/schema"
 import { getSpaceGroup } from "@/app/features/spaces"
+import { copyCommentsAndApplyContent } from "@/app/features/comments"
 import { useIntl } from "@/shared/intl/setup"
 
 export { DuplicateDocDialog, duplicateDocument }
@@ -40,7 +42,11 @@ export type { DuplicateDocDialogProps, DuplicateProgress }
 
 type LoadedDocument = co.loaded<
 	typeof Document,
-	{ content: true; assets: { $each: { image: true; video: true } } }
+	{
+		content: true
+		assets: { $each: { image: true; video: true } }
+		comments: { $each: { replies: true } }
+	}
 >
 
 type DuplicateProgress = {
@@ -80,6 +86,7 @@ function DuplicateDocDialog({
 	let me = useAccount(UserAccount, { resolve: spacesQuery })
 	let [name, setName] = useState("")
 	let [destination, setDestination] = useState<string>("personal")
+	let [copyComments, setCopyComments] = useState(true)
 	let [progress, setProgress] = useState<DuplicateProgress>({
 		total: 0,
 		copied: 0,
@@ -95,6 +102,7 @@ function DuplicateDocDialog({
 		if (open) {
 			setName(t("doc.duplicateDialog.copyName", { name: docName }))
 			setDestination("personal")
+			setCopyComments(true)
 			setProgress({ total: 0, copied: 0, status: "idle" })
 			setTimeout(() => {
 				inputRef.current?.focus()
@@ -121,6 +129,7 @@ function DuplicateDocDialog({
 				doc,
 				newName: trimmed,
 				destination: selectedSpace,
+				copyComments,
 				me,
 				onProgress: setProgress,
 				t,
@@ -182,6 +191,13 @@ function DuplicateDocDialog({
 								</SelectContent>
 							</Select>
 						</div>
+						<label className="flex items-center gap-2 text-sm">
+							<Checkbox
+								checked={copyComments}
+								onCheckedChange={checked => setCopyComments(Boolean(checked))}
+							/>
+							<span>{t("doc.duplicateDialog.copyComments")}</span>
+						</label>
 					</div>
 
 					{isDuplicating && progress.total > 0 && (
@@ -235,6 +251,7 @@ type DuplicateOptions = {
 	doc: LoadedDocument
 	newName: string
 	destination: SpaceOption | null
+	copyComments: boolean
 	me: co.loaded<typeof UserAccount, { root: { documents: true; spaces: true } }>
 	onProgress?: (progress: DuplicateProgress) => void
 	t: ReturnType<typeof useIntl>
@@ -243,7 +260,7 @@ type DuplicateOptions = {
 type LoadedSpace = co.loaded<typeof Space, { documents: true }>
 
 async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
-	let { doc, newName, destination, me, onProgress, t } = opts
+	let { doc, newName, destination, copyComments, me, onProgress, t } = opts
 	let content = doc.content?.toString() ?? ""
 	let assets = doc.assets ?? []
 	let totalAssets = assets.filter(
@@ -377,7 +394,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 	let newDoc = Document.create(
 		{
 			version: 1,
-			content: co.plainText().create(newContent, owner),
+			content: co.plainText().create(content, owner),
 			assets: newAssets,
 			createdAt: now,
 			updatedAt: now,
@@ -385,6 +402,8 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 		},
 		owner,
 	)
+
+	await copyCommentsAndApplyContent(doc, newDoc, newContent, { copyComments })
 
 	// Add to the appropriate list
 	if (targetSpace) {

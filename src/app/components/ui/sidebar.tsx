@@ -152,7 +152,8 @@ function SidebarProvider({
 				data-right-sidebar-open={rightOpen && !isMobile}
 				style={
 					{
-						"--sidebar-width": SIDEBAR_WIDTH,
+						"--left-sidebar-width": SIDEBAR_WIDTH,
+						"--right-sidebar-width": SIDEBAR_WIDTH,
 						"--sidebar-width-mobile": SIDEBAR_WIDTH_MOBILE,
 						...style,
 					} as React.CSSProperties
@@ -202,7 +203,10 @@ function Sidebar({
 			<div
 				data-slot="sidebar"
 				className={cn(
-					"bg-background text-foreground flex h-full w-(--sidebar-width) flex-col border-l",
+					"bg-background text-foreground flex h-full flex-col border-l",
+					side === "left"
+						? "w-(--left-sidebar-width)"
+						: "w-(--right-sidebar-width)",
 					className,
 				)}
 				{...props}
@@ -247,10 +251,10 @@ function Sidebar({
 		>
 			<div
 				className={cn(
-					"bg-background fixed inset-y-0 z-10 hidden h-full w-(--sidebar-width) transition-[left,right,width] duration-200 ease-in lg:flex",
+					"bg-background fixed inset-y-0 z-10 hidden h-full transition-[left,right,width] duration-200 ease-in lg:flex",
 					side === "left"
-						? "left-0 group-data-[state=collapsed]:left-[calc(var(--sidebar-width)*-1)]"
-						: "right-0 group-data-[state=collapsed]:right-[calc(var(--sidebar-width)*-1)]",
+						? "left-0 w-(--left-sidebar-width) group-data-[state=collapsed]:left-[calc(var(--left-sidebar-width)*-1)]"
+						: "right-0 w-(--right-sidebar-width) group-data-[state=collapsed]:right-[calc(var(--right-sidebar-width)*-1)]",
 					className,
 				)}
 				style={{

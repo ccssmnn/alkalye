@@ -1,4 +1,5 @@
 import JSZip from "jszip"
+import type { ExportComment } from "./export"
 
 export {
 	importMarkdownFiles,
@@ -15,6 +16,7 @@ interface ImportedFile {
 	content: string
 	assets: ImportedAsset[]
 	path: string | null
+	comments?: ExportComment[]
 }
 
 interface ImportedAsset {
@@ -33,11 +35,17 @@ async function importMarkdownFiles(
 ): Promise<ImportedFile[]> {
 	let results: ImportedFile[] = []
 	let fileArray = Array.from(files)
+	let commentSidecars = await readCommentSidecars(
+		fileArray.map(file => ({ key: file.name, file })),
+		file => file.text(),
+	)
 
 	for (let file of fileArray) {
 		if (file.name.endsWith(".zip")) {
 			let zipResults = await importZipFile(file)
 			results.push(...zipResults)
+		} else if (isCommentSidecar(file.name)) {
+			continue
 		} else if (
 			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown") ||
@@ -45,7 +53,8 @@ async function importMarkdownFiles(
 		) {
 			let content = await file.text()
 			let name = file.name.replace(/\.(md|markdown|txt)$/, "")
-			results.push({ name, content, assets: [], path: null })
+			let comments = commentSidecars.get(getCommentSidecarPath(file.name))
+			results.push({ name, content, assets: [], path: null, comments })
 		}
 	}
 
@@ -110,6 +119,7 @@ async function importFolderFiles(
 
 	let mdFiles: { path: string; file: File }[] = []
 	let assetFiles: { path: string; file: File }[] = []
+	let sidecarFiles: { key: string; file: File }[] = []
 
 	for (let { file, path } of filesWithPaths) {
 		let fileName = file.name
@@ -121,10 +131,16 @@ async function importFolderFiles(
 			fileName.endsWith(".txt")
 		) {
 			mdFiles.push({ path, file })
+		} else if (isCommentSidecar(fileName)) {
+			sidecarFiles.push({ key: path, file })
 		} else if (isMediaFile(fileName)) {
 			assetFiles.push({ path, file })
 		}
 	}
+
+	let commentSidecars = await readCommentSidecars(sidecarFiles, file =>
+		file.text(),
+	)
 
 	for (let mdFile of mdFiles) {
 		let content = await mdFile.file.text()
@@ -198,7 +214,8 @@ async function importFolderFiles(
 			}
 		}
 
-		results.push({ name, content, assets, path })
+		let comments = commentSidecars.get(getCommentSidecarPath(mdFile.path))
+		results.push({ name, content, assets, path, comments })
 	}
 
 	return results
@@ -244,6 +261,7 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 
 	let mdFiles: { path: string; name: string }[] = []
 	let assetFiles: { path: string; file: JSZip.JSZipObject }[] = []
+	let sidecarFiles: { key: string; file: JSZip.JSZipObject }[] = []
 
 	zip.forEach((relativePath, zipEntry) => {
 		if (zipEntry.dir) return
@@ -257,10 +275,16 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 			relativePath.endsWith(".txt")
 		) {
 			mdFiles.push({ path: relativePath, name: fileName })
+		} else if (isCommentSidecar(fileName)) {
+			sidecarFiles.push({ key: relativePath, file: zipEntry })
 		} else if (isMediaFile(fileName)) {
 			assetFiles.push({ path: relativePath, file: zipEntry })
 		}
 	})
+
+	let commentSidecars = await readCommentSidecars(sidecarFiles, file =>
+		file.async("string"),
+	)
 
 	for (let mdFile of mdFiles) {
 		let content = await zip.file(mdFile.path)!.async("string")
@@ -342,10 +366,88 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 			}
 		}
 
-		results.push({ name, content, assets, path })
+		let comments = commentSidecars.get(getCommentSidecarPath(mdFile.path))
+		results.push({ name, content, assets, path, comments })
 	}
 
 	return results
+}
+
+async function readCommentSidecars<T>(
+	files: { key: string; file: T }[],
+	readText: (file: T) => Promise<string>,
+): Promise<Map<string, ExportComment[]>> {
+	let sidecars = new Map<string, ExportComment[]>()
+	for (let { key, file } of files) {
+		if (!isCommentSidecar(key)) continue
+		let comments = parseCommentSidecar(await readText(file))
+		if (comments) sidecars.set(key, comments)
+	}
+	return sidecars
+}
+
+function parseCommentSidecar(content: string): ExportComment[] | undefined {
+	let parsed: unknown
+	try {
+		parsed = JSON.parse(content)
+	} catch {
+		return undefined
+	}
+
+	if (!isRecord(parsed)) return undefined
+	if (parsed.version !== 1) return undefined
+	if (!Array.isArray(parsed.comments)) return undefined
+	if (!parsed.comments.every(isExportComment)) return undefined
+	return parsed.comments
+}
+
+function isExportComment(value: unknown): value is ExportComment {
+	if (!isRecord(value)) return false
+	return (
+		typeof value.id === "string" &&
+		typeof value.quote === "string" &&
+		typeof value.contextBefore === "string" &&
+		typeof value.contextAfter === "string" &&
+		isNullableNumber(value.from) &&
+		isNullableNumber(value.to) &&
+		typeof value.resolved === "boolean" &&
+		typeof value.createdAt === "string" &&
+		typeof value.updatedAt === "string" &&
+		Array.isArray(value.replies) &&
+		value.replies.every(isExportReply)
+	)
+}
+
+function isExportReply(
+	value: unknown,
+): value is ExportComment["replies"][number] {
+	if (!isRecord(value)) return false
+	return (
+		typeof value.body === "string" &&
+		isNullableString(value.authorName) &&
+		typeof value.createdAt === "string" &&
+		isNullableString(value.updatedAt)
+	)
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+	return typeof value === "object" && value !== null
+}
+
+function isNullableNumber(value: unknown): value is number | null {
+	return typeof value === "number" || value === null
+}
+
+function isNullableString(value: unknown): value is string | null {
+	return typeof value === "string" || value === null
+}
+
+function isCommentSidecar(path: string): boolean {
+	return path.endsWith(".comments.json")
+}
+
+function getCommentSidecarPath(markdownPath: string): string {
+	return markdownPath.replace(/\.(md|markdown|txt)$/i, ".comments.json")
 }
 
 function isImageFile(filename: string): boolean {

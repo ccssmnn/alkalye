@@ -18,12 +18,14 @@ let loaderResolve = {
 	content: true,
 	cursors: true,
 	assets: true,
+	comments: { $each: { replies: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
 let resolve = {
 	content: true,
 	cursors: true,
 	assets: { $each: { image: true, video: true } },
+	comments: { $each: { replies: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
 let settingsResolve = {
@@ -32,8 +34,12 @@ let settingsResolve = {
 
 let meResolve = {
 	root: {
-		documents: { $each: { content: true } },
-		spaces: { $each: { documents: { $each: { content: true } } } },
+		documents: { $each: { content: true, comments: { $each: true } } },
+		spaces: {
+			$each: {
+				documents: { $each: { content: true, comments: { $each: true } } },
+			},
+		},
 		settings: true,
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>

@@ -1,5 +1,5 @@
 import { Group, co } from "jazz-tools"
-import { Document } from "./schema"
+import { CommentThread, Document } from "./schema"
 
 export { createSpaceDocument }
 
@@ -7,7 +7,7 @@ function createSpaceDocument(
 	spaceGroup: Group,
 	spaceId: string | undefined,
 	content: string = "",
-): co.loaded<typeof Document, { content: true }> {
+): co.loaded<typeof Document, { content: true; comments: true }> {
 	// Create a document-specific group with space group as parent (no role = inherit)
 	// Space members inherit their space role: reader→reader, writer→writer, admin→admin
 	// Doc-level invites go to docGroup, not spaceGroup (so they don't grant space access)
@@ -19,6 +19,7 @@ function createSpaceDocument(
 		{
 			version: 1,
 			content: co.plainText().create(content, docGroup),
+			comments: co.list(CommentThread).create([], docGroup),
 			spaceId,
 			createdAt: now,
 			updatedAt: now,
@@ -26,5 +27,5 @@ function createSpaceDocument(
 		docGroup,
 	)
 
-	return doc as co.loaded<typeof Document, { content: true }>
+	return doc as co.loaded<typeof Document, { content: true; comments: true }>
 }

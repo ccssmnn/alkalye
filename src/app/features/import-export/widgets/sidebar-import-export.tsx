@@ -24,11 +24,19 @@ import {
 	type ImportedFile,
 } from "../lib/import"
 import {
+	applyContentDiffWithCommentAnchors,
+	restoreExportedComments,
+} from "@/app/features/comments"
+import {
 	exportDocumentsAsZip,
 	transformWikilinksForExport,
 	stripBacklinksFrontmatter,
 	type ExportAsset,
 } from "../lib/export"
+import {
+	getExportCommentsForContent,
+	type ExportComment,
+} from "@/app/features/comments"
 import {
 	ImportProgressDialog,
 	type ImportProgress,
@@ -110,7 +118,7 @@ function SidebarImportExport({
 			<input
 				ref={fileInputRef}
 				type="file"
-				accept=".md,.markdown,.txt,.zip"
+				accept=".md,.markdown,.txt,.zip,.comments.json"
 				multiple
 				className="hidden"
 				onChange={handleFileChange}
@@ -176,7 +184,13 @@ async function handleImportFiles(
 	for (let fileIndex = 0; fileIndex < imported.length; fileIndex++) {
 		if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
 
-		let { name, content, assets: importedAssets, path } = imported[fileIndex]
+		let {
+			name,
+			content,
+			assets: importedAssets,
+			path,
+			comments,
+		} = imported[fileIndex]
 		let now = new Date()
 		let title = name.replace(/\.(md|markdown|txt)$/i, "")
 
@@ -298,6 +312,13 @@ async function handleImportFiles(
 			docGroup,
 		)
 
+		if (comments?.length) {
+			let loadedDoc = await newDoc.$jazz.ensureLoaded({
+				resolve: { content: true, comments: { $each: { replies: true } } },
+			})
+			if (loadedDoc) restoreExportedComments(loadedDoc, comments, content)
+		}
+
 		targetDocs.$jazz.push(newDoc)
 		createdDocs.push({ doc: newDoc, title, path })
 	}
@@ -310,15 +331,18 @@ async function handleImportFiles(
 	}))
 
 	for (let { doc, path } of createdDocs) {
-		if (!doc.content?.$isLoaded) continue
-		let currentContent = doc.content.toString()
+		let loadedDoc = await doc.$jazz.ensureLoaded({
+			resolve: { content: true, comments: { $each: true } },
+		})
+		if (!loadedDoc) continue
+		let currentContent = loadedDoc.content.toString()
 		let resolvedContent = resolveWikilinksForImport(
 			currentContent,
 			path,
 			docInfoForResolution,
 		)
 		if (resolvedContent !== currentContent) {
-			doc.content.$jazz.applyDiff(resolvedContent)
+			applyContentDiffWithCommentAnchors(loadedDoc, resolvedContent)
 		}
 	}
 }
@@ -340,6 +364,7 @@ async function handleExportDocs(docs: DocWithContent[]) {
 		content: string
 		assets?: ExportAsset[]
 		path?: string | null
+		comments?: ExportComment[]
 	}[] = []
 
 	for (let d of docs) {
@@ -355,11 +380,19 @@ async function handleExportDocs(docs: DocWithContent[]) {
 		transformedContent = stripBacklinksFrontmatter(transformedContent)
 
 		let docAssets = await loadDocumentAssets(d)
+		let docWithComments = await d.$jazz.ensureLoaded({
+			resolve: { content: true, comments: { $each: { replies: true } } },
+		})
+		let exportComments = getExportCommentsForContent(
+			docWithComments,
+			transformedContent,
+		)
 		exportDocs.push({
 			title: getDocumentTitle(d),
 			content: transformedContent,
 			assets: docAssets.length > 0 ? docAssets : undefined,
 			path: docPath,
+			comments: exportComments,
 		})
 	}
 

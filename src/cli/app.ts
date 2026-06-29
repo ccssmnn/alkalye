@@ -19,6 +19,7 @@ import {
 	parseInviteLink,
 	revokeDocumentInvite,
 } from "@/app/features/sharing"
+import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 import {
 	acceptSpaceInvite,
 	changeSpaceCollaboratorRole,
@@ -43,6 +44,7 @@ import {
 	buildSpacePublicLink,
 } from "@/app/features/sharing"
 import { setDocumentTitle } from "@/cli/document-title"
+import { docCommentCommand } from "@/cli/doc-comments"
 import { CliUsageError, PermissionError } from "@/cli/errors"
 import {
 	contentFileOption,
@@ -393,7 +395,7 @@ let docUpdate = Command.make(
 			let jazz = await createAuthenticatedJazz(config)
 			let account = await loadAccount(jazz)
 			let located = await findDocument(account, args.docId)
-			located.doc.content.$jazz.applyDiff(content)
+			applyContentDiffWithCommentAnchors(located.doc, content)
 			located.doc.$jazz.set("updatedAt", new Date())
 			await maybeSync(jazz.account, args.sync, config.timeoutMs)
 			await jazz.done()
@@ -417,7 +419,7 @@ let docRename = Command.make(
 				located.doc.content.toString(),
 				args.title,
 			)
-			located.doc.content.$jazz.applyDiff(nextContent)
+			applyContentDiffWithCommentAnchors(located.doc, nextContent)
 			located.doc.$jazz.set("updatedAt", new Date())
 			await syncMutation(jazz.account, config.timeoutMs)
 			await jazz.done()
@@ -737,6 +739,7 @@ let docCommand = Command.make("doc").pipe(
 		docRestore,
 		docPurge,
 		docLeave,
+		docCommentCommand,
 		docShareCommand,
 		docPublicCommand,
 	]),
