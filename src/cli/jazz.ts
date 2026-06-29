@@ -51,6 +51,7 @@ async function createAuthenticatedJazz(config: CliConfig) {
 		account: context.account,
 		authSecretStorage,
 		isConnected: () => peerState.isConnected(),
+		waitForConnection: peerState.waitForConnection,
 		async done() {
 			context.done()
 			peerState.shutdown()
@@ -175,11 +176,15 @@ function createPeerState(syncPeer: string) {
 	let peers: Peer[] = []
 	let node: Loaded<typeof UserAccount>["$jazz"]["localNode"] | null = null
 	let connected = false
+	let connectionWaiters: Array<() => void> = []
 	let websocketPeer = new WebSocketPeerWithReconnection({
 		peer: syncPeer,
 		reconnectionTimeout: 100,
 		addPeer(peer) {
 			connected = true
+			for (let resolve of connectionWaiters.splice(0)) {
+				resolve()
+			}
 			if (node) {
 				node.syncManager.addPeer(peer)
 				return
@@ -207,6 +212,20 @@ function createPeerState(syncPeer: string) {
 		},
 		isConnected() {
 			return connected
+		},
+		waitForConnection(timeoutMs: number) {
+			if (connected) return Promise.resolve()
+			return new Promise<void>((resolve, reject) => {
+				let timeout = setTimeout(() => {
+					connectionWaiters = connectionWaiters.filter(item => item !== done)
+					reject(new Error(`Timed out connecting to sync peer ${syncPeer}`))
+				}, timeoutMs)
+				function done() {
+					clearTimeout(timeout)
+					resolve()
+				}
+				connectionWaiters.push(done)
+			})
 		},
 	}
 }

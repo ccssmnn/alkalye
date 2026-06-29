@@ -11,6 +11,9 @@ export {
 	inviteGroupIdOption,
 	scopeOption,
 	deletedOption,
+	offlineOption,
+	localOption,
+	staleOkOption,
 	syncOption,
 	passphraseOption,
 	passphraseFileOption,
@@ -102,6 +105,17 @@ let scopeOption = Options.optional(Options.text("scope")).pipe(
 )
 let deletedOption = Options.boolean("deleted").pipe(
 	Options.withDescription("Include deleted documents instead of active ones."),
+)
+let offlineOption = Options.boolean("offline").pipe(
+	Options.withDescription(
+		"Use cached local data without remote freshness checks.",
+	),
+)
+let localOption = Options.boolean("local").pipe(
+	Options.withDescription("Alias for --offline."),
+)
+let staleOkOption = Options.boolean("stale-ok").pipe(
+	Options.withDescription("Allow cached data if remote sync is incomplete."),
 )
 let syncOption = Options.boolean("sync").pipe(
 	Options.withDescription("Wait for remote sync before exiting."),
