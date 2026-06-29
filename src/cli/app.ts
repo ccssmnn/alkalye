@@ -54,7 +54,9 @@ import {
 	globalOptions,
 	inviteGroupIdOption,
 	linkOption,
+	localOption,
 	nameOption,
+	offlineOption,
 	passphraseFileOption,
 	passphraseOption,
 	passphraseStdinOption,
@@ -62,6 +64,7 @@ import {
 	scopeOption,
 	spaceIdArg,
 	spaceRoleOption,
+	staleOkOption,
 	stdinOption,
 	syncOption,
 	titleOption,
@@ -85,6 +88,8 @@ import {
 	inspectInvite,
 	listDocs,
 	loadAccount,
+	loadDocumentContent,
+	loadDocumentMetadata,
 	maybeSync,
 	readRequiredContentInput,
 	readRequiredSecretInput,
@@ -304,21 +309,26 @@ let docGet = Command.make(
 	{
 		...globalOptions,
 		docId: docIdArg,
+		offline: offlineOption,
+		local: localOption,
+		staleOk: staleOkOption,
 	},
 	args =>
 		runCommand("doc.get", args, async config => {
 			let jazz = await createAuthenticatedJazz(config)
-			let account = await loadAccount(jazz)
-			let located = await findDocument(account, args.docId)
-			let owner = await getDocumentOwner(located.doc)
+			let doc = await loadDocumentMetadata(jazz, args.docId, {
+				allowStale: args.offline || args.local || args.staleOk,
+				timeoutMs: config.timeoutMs,
+			})
+			let owner = await getDocumentOwner(doc)
 			await jazz.done()
 			return {
-				docId: located.doc.$jazz.id,
-				title: getDocumentTitle(located.doc),
-				spaceId: located.space?.$jazz.id ?? null,
-				createdAt: located.doc.createdAt.toISOString(),
-				updatedAt: located.doc.updatedAt.toISOString(),
-				deletedAt: located.doc.deletedAt?.toISOString() ?? null,
+				docId: doc.$jazz.id,
+				title: getDocumentTitle(doc),
+				spaceId: doc.spaceId ?? null,
+				createdAt: doc.createdAt.toISOString(),
+				updatedAt: doc.updatedAt.toISOString(),
+				deletedAt: doc.deletedAt?.toISOString() ?? null,
 				owner,
 			}
 		}),
@@ -329,15 +339,20 @@ let docContent = Command.make(
 	{
 		...globalOptions,
 		docId: docIdArg,
+		offline: offlineOption,
+		local: localOption,
+		staleOk: staleOkOption,
 	},
 	args =>
 		runCommand("doc.content", args, async config => {
 			let jazz = await createAuthenticatedJazz(config)
-			let account = await loadAccount(jazz)
-			let located = await findDocument(account, args.docId)
-			let content = located.doc.content.toString()
+			let doc = await loadDocumentContent(jazz, args.docId, {
+				allowStale: args.offline || args.local || args.staleOk,
+				timeoutMs: config.timeoutMs,
+			})
+			let content = doc.content.toString()
 			await jazz.done()
-			if (config.json) return { docId: located.doc.$jazz.id, content }
+			if (config.json) return { docId: doc.$jazz.id, content }
 			if (!config.quiet) printContent(content)
 		}),
 )

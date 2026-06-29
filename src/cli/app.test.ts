@@ -49,6 +49,15 @@ describe("help", () => {
 		expect(result.stdout).toMatch(/--title/)
 	})
 
+	test("prints freshness options for doc content", async () => {
+		let result = await runCli(["doc", "content", "--help"])
+
+		expect(result.exitCode).toBe(0)
+		expect(result.stdout).toMatch(/--offline/)
+		expect(result.stdout).toMatch(/--local/)
+		expect(result.stdout).toMatch(/--stale-ok/)
+	})
+
 	test("prints leaf command help for doc comment add", async () => {
 		let result = await runCli(["doc", "comment", "add", "--help"])
 

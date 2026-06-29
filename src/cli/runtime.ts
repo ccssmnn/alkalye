@@ -33,6 +33,8 @@ export {
 	loadAccount,
 	listDocs,
 	findDocument,
+	loadDocumentContent,
+	loadDocumentMetadata,
 	findSpace,
 	createSpaceScopedDoc,
 	summarizeDoc,
@@ -52,7 +54,21 @@ type CliDocumentResolve = {
 	content: true
 	comments: { $each: { replies: true } }
 }
+type CliDocumentMetadataResolve = {
+	content: true
+}
 type LoadedCliDocument = co.loaded<typeof Document, CliDocumentResolve>
+type LoadedCliDocumentMetadata = co.loaded<
+	typeof Document,
+	CliDocumentMetadataResolve
+>
+type MaybeLoadedCliDocumentMetadata = Awaited<
+	ReturnType<typeof loadRawDocumentMetadata>
+>
+type FreshnessOptions = {
+	allowStale: boolean
+	timeoutMs: number
+}
 
 function runCommand<A extends GlobalArgs>(
 	command: string,
@@ -164,6 +180,37 @@ async function findDocument(account: LoadedAccount, docId: string) {
 		}
 	}
 	throw new NotFoundError({ message: `Document not found: ${docId}` })
+}
+
+async function loadDocumentMetadata(
+	jazz: JazzContext,
+	docId: string,
+	options: FreshnessOptions,
+): Promise<LoadedCliDocumentMetadata> {
+	if (!options.allowStale) await waitForRemote(jazz, docId, options.timeoutMs)
+	let loadTimeoutMessage = options.allowStale
+		? `Timed out loading target document ${docId} from local cache after ${options.timeoutMs}ms`
+		: `Remote sync timed out while loading target document ${docId} after ${options.timeoutMs}ms. Pass --offline, --local, or --stale-ok to use cached data.`
+	let doc = await withTimeout(
+		loadRawDocumentMetadata(docId),
+		options.timeoutMs,
+		loadTimeoutMessage,
+	)
+	assertLoadedDocumentMetadata(docId, doc)
+	if (!options.allowStale) {
+		await waitForTargetSync(doc, "document", options)
+		await waitForTargetSync(doc.content, "document content", options)
+	}
+	return doc
+}
+
+async function loadDocumentContent(
+	jazz: JazzContext,
+	docId: string,
+	options: FreshnessOptions,
+): Promise<LoadedCliDocumentMetadata> {
+	let doc = await loadDocumentMetadata(jazz, docId, options)
+	return doc
 }
 
 function findSpace(account: LoadedAccount, spaceId: string) {
@@ -404,4 +451,79 @@ async function ensureDocLoaded(
 	return doc.$jazz.ensureLoaded({
 		resolve: { content: true, comments: { $each: { replies: true } } },
 	})
+}
+
+async function waitForRemote(
+	jazz: JazzContext,
+	docId: string,
+	timeoutMs: number,
+) {
+	try {
+		await jazz.waitForConnection(timeoutMs)
+	} catch {
+		throw new SyncPeerError({
+			message:
+				`Remote sync timed out before loading target document ${docId} ` +
+				`after ${timeoutMs}ms. Pass --offline, --local, or --stale-ok to use cached data.`,
+		})
+	}
+}
+
+async function waitForTargetSync(
+	value: LoadedCliDocumentMetadata | LoadedCliDocumentMetadata["content"],
+	label: string,
+	options: FreshnessOptions,
+) {
+	try {
+		await withTimeout(
+			value.$jazz.raw.core.waitForSync({ timeout: options.timeoutMs }),
+			options.timeoutMs,
+			`Remote sync timed out for target ${label} ${value.$jazz.id} ` +
+				`after ${options.timeoutMs}ms. Pass --offline, --local, or --stale-ok to use cached data.`,
+		)
+	} catch (error) {
+		if (error instanceof SyncPeerError) throw error
+		throw new SyncPeerError({
+			message:
+				`Remote sync timed out for target ${label} ${value.$jazz.id} ` +
+				`after ${options.timeoutMs}ms. Pass --offline, --local, or --stale-ok to use cached data.`,
+		})
+	}
+}
+
+async function withTimeout<T>(
+	promise: Promise<T>,
+	timeoutMs: number,
+	message: string,
+): Promise<T> {
+	let timeout: ReturnType<typeof setTimeout> | undefined
+	let timeoutPromise = new Promise<never>((_, reject) => {
+		timeout = setTimeout(() => {
+			reject(new SyncPeerError({ message }))
+		}, timeoutMs)
+	})
+	try {
+		return await Promise.race([promise, timeoutPromise])
+	} finally {
+		if (timeout) clearTimeout(timeout)
+	}
+}
+
+function throwDocumentLoadError(docId: string, loadingState: string) {
+	if (loadingState === "unauthorized") {
+		throw new PermissionError({ message: `Document not accessible: ${docId}` })
+	}
+	throw new NotFoundError({ message: `Document not found: ${docId}` })
+}
+
+function loadRawDocumentMetadata(docId: string) {
+	return Document.load(docId, { resolve: { content: true } })
+}
+
+function assertLoadedDocumentMetadata(
+	docId: string,
+	doc: MaybeLoadedCliDocumentMetadata,
+): asserts doc is LoadedCliDocumentMetadata {
+	if (doc.$isLoaded) return
+	throwDocumentLoadError(docId, doc.$jazz.loadingState)
 }

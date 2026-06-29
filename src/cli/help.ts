@@ -298,11 +298,21 @@ let leaves: Record<string, LeafDef> = {
 	"doc get": {
 		summary: "Show document metadata.",
 		usage: "alkalye doc get <doc-id>",
+		options: [
+			"--offline      Use cached local data without remote freshness checks",
+			"--local        Alias for --offline",
+			"--stale-ok     Allow cached data if remote sync is incomplete",
+		],
 		examples: ["alkalye doc get co_xyz --json"],
 	},
 	"doc content": {
 		summary: "Print raw document content (pipe-friendly).",
 		usage: "alkalye doc content <doc-id>",
+		options: [
+			"--offline      Use cached local data without remote freshness checks",
+			"--local        Alias for --offline",
+			"--stale-ok     Allow cached data if remote sync is incomplete",
+		],
 		examples: [
 			"alkalye doc content co_xyz",
 			"alkalye doc content co_xyz | head -20",
