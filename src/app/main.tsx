@@ -13,6 +13,7 @@ import {
 import { PWAContext, usePWAProvider, PWAInstallHint } from "@/app/lib/pwa"
 import { BackupSubscriber, SpacesBackupSubscriber } from "@/app/features/backup"
 import { useCleanupDeleted } from "@/app/features/documents"
+import { connectLocalJazzPoke } from "@/app/lib/local-jazz-poke"
 import { init } from "@plausible-analytics/tracker"
 import { IntlProvider } from "@/shared/intl/setup"
 import { messagesDe } from "@/shared/intl/messages"
@@ -103,6 +104,7 @@ function RouterWithJazz() {
 		<>
 			<Toaster />
 			<PWAInstallHint />
+			<LocalJazzPoke />
 			<BackupSubscriber />
 			<SpacesBackupSubscriber />
 			<SplashScreen show={showSplash} />
@@ -122,6 +124,17 @@ function RouterWithJazz() {
 	) : (
 		<IntlProvider>{intlWrapped}</IntlProvider>
 	)
+}
+
+function LocalJazzPoke() {
+	let me = useAccount(UserAccount)
+
+	useEffect(() => {
+		if (!me.$isLoaded) return
+		return connectLocalJazzPoke(me)
+	}, [me])
+
+	return null
 }
 
 function getRequestedLocale(): "de" | "en" | null {
