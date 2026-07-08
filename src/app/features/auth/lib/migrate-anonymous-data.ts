@@ -1,5 +1,6 @@
 import { Group, co } from "jazz-tools"
 import { UserAccount, Document } from "@/schema"
+import { isWelcomeDoc } from "@/app/features/documents/lib/welcome-doc"
 
 export { migrateAnonymousData }
 
@@ -55,8 +56,4 @@ async function migrateAnonymousData(
 		}
 		me.root.inactiveDocuments!.$jazz.push(doc)
 	}
-}
-
-function isWelcomeDoc(content: string): boolean {
-	return content.startsWith("# Welcome to Alkalye")
 }

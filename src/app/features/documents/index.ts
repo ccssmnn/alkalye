@@ -49,6 +49,8 @@ export {
 	countContentMatches,
 } from "./lib/title"
 
+export { isWelcomeDoc } from "./lib/welcome-doc"
+
 export { handleSaveCopy } from "./lib/save-copy"
 
 // lib — queries
