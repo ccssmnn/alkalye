@@ -1,6 +1,7 @@
 import { redirect } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
-import { UserAccount, Document } from "@/schema"
+import { UserAccount, Document, CommentThread } from "@/schema"
+import { createDocumentMetadata } from "@/app/features/documents/lib/metadata"
 
 export { loadOrCreateDocFromUrl }
 
@@ -39,6 +40,8 @@ async function loadOrCreateDocFromUrl(
 		{
 			version: 1,
 			content: co.plainText().create(content, group),
+			comments: co.list(CommentThread).create([], group),
+			...createDocumentMetadata(content, now),
 			createdAt: now,
 			updatedAt: now,
 		},

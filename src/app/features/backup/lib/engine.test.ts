@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest"
-import { hashContent, syncFromBackup } from "./engine"
+import { hashContent, prepareBackupSelection, syncFromBackup } from "./engine"
+import { selectActiveBackupDocuments } from "./subscriber-state"
 
 describe("hashContent", () => {
 	it("returns consistent hash for same content", async () => {
@@ -50,3 +51,48 @@ describe("bidirectional sync exports", () => {
 		expect(typeof syncFromBackup).toBe("function")
 	})
 })
+
+describe("backup snapshot preparation", () => {
+	it("rejects a selection changed before preparation", async () => {
+		let doc = backupDocument("doc-a", "2026-07-10T12:00:00Z")
+		let selection = selectActiveBackupDocuments([doc])
+		doc.updatedAt = new Date("2026-07-10T12:01:00Z")
+		let prepared = false
+
+		await expect(
+			prepareBackupSelection(selection, async () => {
+				prepared = true
+				return []
+			}),
+		).rejects.toThrow("selection changed")
+		expect(prepared).toBe(false)
+	})
+
+	it("rejects without returning a snapshot changed during preparation", async () => {
+		let doc = backupDocument("doc-a", "2026-07-10T12:00:00Z")
+		let selection = selectActiveBackupDocuments([doc])
+
+		await expect(
+			prepareBackupSelection(selection, async () => {
+				doc.deletedAt = new Date("2026-07-10T12:01:00Z")
+				return ["prepared"]
+			}),
+		).rejects.toThrow("selection changed")
+	})
+})
+
+function backupDocument(
+	id: string,
+	updatedAt: string,
+): {
+	$isLoaded: boolean
+	$jazz: { id: string }
+	updatedAt: Date
+	deletedAt?: Date
+} {
+	return {
+		$isLoaded: true,
+		$jazz: { id },
+		updatedAt: new Date(updatedAt),
+	}
+}

@@ -56,6 +56,13 @@ let CommentThread = co.map({
 let Document = co.map({
 	version: z.literal(1),
 	content: co.plainText(),
+	title: z.string().optional(),
+	pinned: z.boolean().optional(),
+	path: z.string().optional(),
+	tags: z.array(z.string()).optional(),
+	isPresentation: z.boolean().optional(),
+	contentUpdatedAt: z.date().optional(),
+	metadataUpdatedAt: z.date().optional(),
 	assets: co.optional(co.list(Asset)),
 	cursors: co.optional(CursorFeed),
 	comments: co.optional(co.list(CommentThread)),

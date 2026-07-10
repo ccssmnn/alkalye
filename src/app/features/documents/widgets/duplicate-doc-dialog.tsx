@@ -35,6 +35,7 @@ import {
 } from "@/schema"
 import { getSpaceGroup } from "@/app/features/spaces"
 import { copyCommentsAndApplyContent } from "@/app/features/comments"
+import { createDocumentMetadata } from "@/app/features/documents"
 import { useIntl } from "@/shared/intl/setup"
 
 export { DuplicateDocDialog, duplicateDocument }
@@ -396,6 +397,7 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 			version: 1,
 			content: co.plainText().create(content, owner),
 			assets: newAssets,
+			...createDocumentMetadata(newContent, now),
 			createdAt: now,
 			updatedAt: now,
 			spaceId: destination?.id,

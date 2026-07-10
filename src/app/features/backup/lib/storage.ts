@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import { get as idbGet, set as idbSet, del as idbDel } from "idb-keyval"
@@ -8,13 +8,18 @@ export {
 	SPACE_BACKUP_DEBOUNCE_MS,
 	SPACE_BACKUP_KEY_PREFIX,
 	useBackupStore,
+	setBackupDirectoryFreshnessPending,
 	enableBackup,
 	disableBackup,
 	changeBackupDirectory,
 	checkBackupPermission,
 	getSpaceBackupPath,
 	setSpaceBackupPath,
+	getSpaceBackupHash,
+	isSpaceInitialBackupPending,
+	setSpaceBackupHash,
 	clearSpaceBackupPath,
+	subscribeSpaceBackupChanges,
 	useSpaceBackupPath,
 	getBackupHandle,
 	getSpaceBackupHandle,
@@ -61,18 +66,21 @@ let BACKUP_DEBOUNCE_MS = 1200
 let SPACE_BACKUP_DEBOUNCE_MS = 1200
 let HANDLE_STORAGE_KEY = "backup-directory-handle"
 let SPACE_BACKUP_KEY_PREFIX = "backup-settings-space-"
+let spaceBackupListeners = new Set<(spaceId: string) => void>()
 
 interface BackupState {
 	enabled: boolean
 	bidirectional: boolean
 	directoryName: string | null
 	lastBackupAt: string | null
+	lastBackupHash: string | null
 	lastPullAt: string | null
 	lastError: string | null
 	setEnabled: (enabled: boolean) => void
 	setBidirectional: (bidirectional: boolean) => void
 	setDirectoryName: (name: string | null) => void
 	setLastBackupAt: (date: string | null) => void
+	setLastBackupHash: (hash: string | null) => void
 	setLastPullAt: (date: string | null) => void
 	setLastError: (error: string | null) => void
 	reset: () => void
@@ -80,6 +88,8 @@ interface BackupState {
 
 interface SpaceBackupState {
 	directoryName: string | null
+	lastBackupHash?: string | null
+	initialBackupPending?: boolean
 }
 
 let useBackupStore = create<BackupState>()(
@@ -89,12 +99,14 @@ let useBackupStore = create<BackupState>()(
 			bidirectional: true,
 			directoryName: null,
 			lastBackupAt: null,
+			lastBackupHash: null,
 			lastPullAt: null,
 			lastError: null,
 			setEnabled: enabled => set({ enabled }),
 			setBidirectional: bidirectional => set({ bidirectional }),
 			setDirectoryName: directoryName => set({ directoryName }),
 			setLastBackupAt: lastBackupAt => set({ lastBackupAt }),
+			setLastBackupHash: lastBackupHash => set({ lastBackupHash }),
 			setLastPullAt: lastPullAt => set({ lastPullAt }),
 			setLastError: lastError => set({ lastError }),
 			reset: () =>
@@ -103,6 +115,7 @@ let useBackupStore = create<BackupState>()(
 					bidirectional: true,
 					directoryName: null,
 					lastBackupAt: null,
+					lastBackupHash: null,
 					lastPullAt: null,
 					lastError: null,
 				}),
@@ -120,8 +133,7 @@ async function enableBackup(): Promise<{
 	if (!handle) return { success: false, error: "Cancelled" }
 
 	useBackupStore.getState().setEnabled(true)
-	useBackupStore.getState().setDirectoryName(handle.name)
-	useBackupStore.getState().setLastError(null)
+	setBackupDirectoryFreshnessPending(handle.name)
 
 	return { success: true, directoryName: handle.name }
 }
@@ -139,9 +151,17 @@ async function changeBackupDirectory(): Promise<{
 	let handle = await requestBackupDirectory()
 	if (!handle) return { success: false, error: "Cancelled" }
 
-	useBackupStore.getState().setDirectoryName(handle.name)
-	useBackupStore.getState().setLastError(null)
+	setBackupDirectoryFreshnessPending(handle.name)
 	return { success: true, directoryName: handle.name }
+}
+
+function setBackupDirectoryFreshnessPending(directoryName: string): void {
+	let store = useBackupStore.getState()
+	store.setDirectoryName(directoryName)
+	store.setLastBackupAt(null)
+	store.setLastBackupHash(null)
+	store.setLastPullAt(null)
+	store.setLastError(null)
 }
 
 async function checkBackupPermission(): Promise<boolean> {
@@ -151,12 +171,7 @@ async function checkBackupPermission(): Promise<boolean> {
 
 function getSpaceBackupPath(spaceId: string): string | null {
 	try {
-		let key = getSpaceBackupStorageKey(spaceId)
-		let stored = localStorage.getItem(key)
-		if (!stored) return null
-		let parsed = JSON.parse(stored)
-		if (!isSpaceBackupState(parsed)) return null
-		return parsed.directoryName
+		return getSpaceBackupState(spaceId)?.directoryName ?? null
 	} catch {
 		return null
 	}
@@ -164,13 +179,53 @@ function getSpaceBackupPath(spaceId: string): string | null {
 
 function setSpaceBackupPath(spaceId: string, directoryName: string): void {
 	let key = getSpaceBackupStorageKey(spaceId)
-	let state: SpaceBackupState = { directoryName }
+	let state: SpaceBackupState = {
+		directoryName,
+		lastBackupHash: null,
+		initialBackupPending: true,
+	}
 	localStorage.setItem(key, JSON.stringify(state))
+	notifySpaceBackupChange(spaceId)
+}
+
+function getSpaceBackupHash(spaceId: string): string | null {
+	try {
+		return getSpaceBackupState(spaceId)?.lastBackupHash ?? null
+	} catch {
+		return null
+	}
+}
+
+function isSpaceInitialBackupPending(spaceId: string): boolean {
+	return getSpaceBackupState(spaceId)?.initialBackupPending === true
+}
+
+function setSpaceBackupHash(spaceId: string, hash: string): void {
+	let key = getSpaceBackupStorageKey(spaceId)
+	let directoryName = getSpaceBackupPath(spaceId)
+	if (!directoryName) return
+	let state: SpaceBackupState = {
+		directoryName,
+		lastBackupHash: hash,
+		initialBackupPending: false,
+	}
+	localStorage.setItem(key, JSON.stringify(state))
+	notifySpaceBackupChange(spaceId)
 }
 
 function clearSpaceBackupPath(spaceId: string): void {
 	let key = getSpaceBackupStorageKey(spaceId)
 	localStorage.removeItem(key)
+	notifySpaceBackupChange(spaceId)
+}
+
+function subscribeSpaceBackupChanges(
+	listener: (spaceId: string) => void,
+): () => void {
+	spaceBackupListeners.add(listener)
+	return () => {
+		spaceBackupListeners.delete(listener)
+	}
 }
 
 function useSpaceBackupPath(spaceId: string): {
@@ -180,6 +235,13 @@ function useSpaceBackupPath(spaceId: string): {
 	let [directoryName, setDirectoryNameState] = useState<string | null>(() =>
 		getSpaceBackupPath(spaceId),
 	)
+
+	useEffect(() => {
+		return subscribeSpaceBackupChanges(changedSpaceId => {
+			if (changedSpaceId !== spaceId) return
+			setDirectoryNameState(getSpaceBackupPath(spaceId))
+		})
+	}, [spaceId])
 
 	function setDirectoryName(name: string | null) {
 		if (name) {
@@ -258,6 +320,21 @@ function toTimestamp(value: string | null): number | null {
 
 function getSpaceBackupStorageKey(spaceId: string): string {
 	return `${SPACE_BACKUP_KEY_PREFIX}${spaceId}`
+}
+
+function notifySpaceBackupChange(spaceId: string): void {
+	for (let listener of spaceBackupListeners) {
+		listener(spaceId)
+	}
+}
+
+function getSpaceBackupState(spaceId: string): SpaceBackupState | null {
+	let key = getSpaceBackupStorageKey(spaceId)
+	let stored = localStorage.getItem(key)
+	if (!stored) return null
+	let parsed = JSON.parse(stored)
+	if (!isSpaceBackupState(parsed)) return null
+	return parsed
 }
 
 function isSpaceBackupState(value: unknown): value is SpaceBackupState {

@@ -44,7 +44,7 @@ export { ShareDialog }
 
 type InviteRole = "writer" | "reader"
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<typeof Document>
 
 interface ShareDialogProps {
 	doc: LoadedDocument
@@ -137,7 +137,11 @@ function ShareDialog({
 		try {
 			let currentDoc = doc
 			if (!getDocumentGroup(doc)) {
-				let result = await migrateDocumentToGroup(doc, me.$jazz.id)
+				let loaded = await doc.$jazz.ensureLoaded({
+					resolve: { content: true },
+				})
+				if (!loaded) return
+				let result = await migrateDocumentToGroup(loaded, me.$jazz.id)
 				currentDoc = result.document
 			}
 
@@ -170,7 +174,11 @@ function ShareDialog({
 		setLoading(true)
 
 		try {
-			let updatedDoc = await makeDocumentPublic(currentDoc, me.$jazz.id)
+			let loaded = await currentDoc.$jazz.ensureLoaded({
+				resolve: { content: true },
+			})
+			if (!loaded) return
+			let updatedDoc = await makeDocumentPublic(loaded, me.$jazz.id)
 			// Update the doc ID in case migration created a new document
 			setCurrentDocId(updatedDoc.$jazz.id)
 			setDocIsPublic(true)
@@ -181,10 +189,10 @@ function ShareDialog({
 		}
 	}
 
-	function handleMakePrivate() {
+	async function handleMakePrivate() {
 		setLoading(true)
 		try {
-			makeDocumentPrivate(currentDoc)
+			await makeDocumentPrivate(currentDoc)
 			setDocIsPublic(false)
 		} catch (e) {
 			console.error("Failed to make document private:", e)

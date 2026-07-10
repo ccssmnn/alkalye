@@ -19,7 +19,12 @@ import {
 	applyContentDiffWithCommentAnchors,
 	copyCommentsAndApplyContent,
 } from "@/app/features/comments"
-import { getDocumentTitle } from "@/app/features/documents"
+import {
+	createDocumentMetadata,
+	getDocumentTitle,
+	syncDocumentMetadata,
+} from "@/app/features/documents"
+import { canEdit } from "@/app/features/sharing"
 import { getSpaceGroup } from "@/app/features/spaces"
 import {
 	DocumentNotFound,
@@ -505,6 +510,7 @@ function makeTimeMachineCreateCopy(params: TimeMachineCopyParams) {
 				version: 1,
 				content: co.plainText().create(doc.content.toString(), owner),
 				assets: newAssets,
+				...createDocumentMetadata(finalContent, now),
 				createdAt: now,
 				updatedAt: now,
 				spaceId: doc.spaceId,
@@ -540,9 +546,11 @@ function makeTimeMachineRestore(params: TimeMachineRestoreParams) {
 	return function handleTimeMachineRestore() {
 		let { doc, historicalContent, navigate, docId } = params
 		if (!doc.content) return
+		if (!canEdit(doc)) return
 
 		applyContentDiffWithCommentAnchors(doc, historicalContent)
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(doc)
 
 		navigate({
 			to: "/doc/$id",

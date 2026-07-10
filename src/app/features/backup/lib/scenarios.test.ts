@@ -639,7 +639,7 @@ describe("backup scenarios", () => {
 		expect(getPath(loaded?.content?.toString() ?? "")).toBe("work")
 	})
 
-	it("deleted in alkalye", async () => {
+	it("removes a known-scope deleted document from backup", async () => {
 		let doc = await createDoc(docs, "# Delete Me")
 		await pushToBackup(root, docs)
 		expect(await hasFile(root, "Delete Me.md")).toBe(true)
@@ -653,6 +653,112 @@ describe("backup scenarios", () => {
 		expect(manifest?.entries.some(entry => entry.docId === doc.$jazz.id)).toBe(
 			false,
 		)
+	})
+
+	it("preserves unknown entries for a partial shallow selection", async () => {
+		let visible = await createDoc(docs, "# Visible")
+		await createDoc(docs, "# Unresolved")
+		await pushToBackup(root, docs)
+		let before = await readManifest(root)
+
+		await syncBackup(
+			root,
+			[backupDocFromDocument(visible)],
+			`docs:${docs.$jazz.id}`,
+			{ isComplete: false, deletedDocumentIds: [] },
+		)
+
+		let manifest = await readManifest(root)
+		expect(manifest?.entries.map(entry => entry.docId).sort()).toEqual(
+			before?.entries.map(entry => entry.docId).sort(),
+		)
+		expect(await hasFile(root, "Unresolved.md")).toBe(true)
+	})
+
+	it("removes a replaced path during a partial selection", async () => {
+		let moved = await createDoc(docs, "# A")
+		let unresolved = await createDoc(docs, "# B")
+		await pushToBackup(root, docs)
+
+		if (!moved.content?.$isLoaded) throw new Error("Doc content not loaded")
+		moved.content.$jazz.applyDiff("---\npath: moved\n---\n\n# Renamed A")
+		moved.$jazz.set("updatedAt", new Date(Date.now() + 4_000))
+
+		await syncBackup(
+			root,
+			[backupDocFromDocument(moved)],
+			`docs:${docs.$jazz.id}`,
+			{ isComplete: false, deletedDocumentIds: [] },
+		)
+
+		expect(await hasFile(root, "A.md")).toBe(false)
+		expect(await hasFile(root, "moved/Renamed A.md")).toBe(true)
+		expect(await hasFile(root, "B.md")).toBe(true)
+
+		let manifest = await readManifest(root)
+		expect(
+			manifest?.entries
+				.filter(
+					entry =>
+						entry.docId === moved.$jazz.id ||
+						entry.docId === unresolved.$jazz.id,
+				)
+				.map(entry => [entry.docId, entry.relativePath])
+				.sort(([left], [right]) => left.localeCompare(right)),
+		).toEqual(
+			[
+				[moved.$jazz.id, "moved/Renamed A.md"],
+				[unresolved.$jazz.id, "B.md"],
+			].sort(([left], [right]) => left.localeCompare(right)),
+		)
+		expect(manifest?.entries.some(entry => entry.relativePath === "A.md")).toBe(
+			false,
+		)
+
+		let documentCount = getLoadedDocs(docs).length
+		let result = await syncFromBackup(root, docs, true)
+		expect(result.created).toBe(0)
+		expect(getLoadedDocs(docs)).toHaveLength(documentCount)
+	})
+
+	it("preserves an unresolved child when its parent document is deleted", async () => {
+		let scopeId = `docs:${docs.$jazz.id}`
+		let parent: BackupDoc = {
+			id: "parent",
+			title: "Parent",
+			content: "# Parent\n\n![Clip](asset:parent-asset)",
+			path: null,
+			updatedAtMs: 1,
+			assets: [
+				{
+					id: "parent-asset",
+					name: "clip",
+					blob: createMockBlob("parent-asset"),
+				},
+			],
+		}
+		let child: BackupDoc = {
+			id: "child",
+			title: "Child",
+			content: "# Child",
+			path: "Parent",
+			updatedAtMs: 1,
+			assets: [],
+		}
+		await syncBackup(root, [parent, child], scopeId)
+
+		await syncBackup(root, [], scopeId, {
+			isComplete: false,
+			deletedDocumentIds: [parent.id],
+		})
+
+		expect(await hasFile(root, "Parent/Parent.md")).toBe(false)
+		expect(await hasFile(root, "Parent/assets/clip.png")).toBe(false)
+		expect(await hasFile(root, "Parent/Child.md")).toBe(true)
+		let manifest = await readManifest(root)
+		expect(manifest?.entries.map(entry => entry.relativePath)).toEqual([
+			"Parent/Child.md",
+		])
 	})
 
 	it("deleted locally", async () => {
@@ -769,21 +875,37 @@ async function pushToBackup(
 	docs: co.loaded<ReturnType<typeof co.list<typeof Document>>>,
 ): Promise<void> {
 	let backupDocs: BackupDoc[] = []
+	let deletedDocumentIds: string[] = []
+	let unresolvedSlots = 0
 
 	for (let doc of docs) {
-		if (!doc?.$isLoaded || doc.deletedAt) continue
-		let content = doc.content?.toString() ?? ""
-		backupDocs.push({
-			id: doc.$jazz.id,
-			title: getDocumentTitle(doc),
-			content,
-			path: getPath(content),
-			updatedAtMs: doc.updatedAt?.getTime() ?? 0,
-			assets: [],
-		})
+		if (!doc?.$isLoaded) {
+			unresolvedSlots += 1
+			continue
+		}
+		if (doc.deletedAt) {
+			deletedDocumentIds.push(doc.$jazz.id)
+			continue
+		}
+		backupDocs.push(backupDocFromDocument(doc))
 	}
 
-	await syncBackup(handle, backupDocs)
+	await syncBackup(handle, backupDocs, `docs:${docs.$jazz.id}`, {
+		isComplete: unresolvedSlots === 0,
+		deletedDocumentIds,
+	})
+}
+
+function backupDocFromDocument(doc: LoadedDoc): BackupDoc {
+	let content = doc.content?.toString() ?? ""
+	return {
+		id: doc.$jazz.id,
+		title: getDocumentTitle(doc),
+		content,
+		path: getPath(content),
+		updatedAtMs: doc.updatedAt?.getTime() ?? 0,
+		assets: [],
+	}
 }
 
 async function hasFile(

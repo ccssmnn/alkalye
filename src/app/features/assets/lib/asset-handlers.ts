@@ -3,6 +3,7 @@ import { createImage } from "jazz-tools/media"
 import { useCoState } from "jazz-tools/react"
 import { Asset, ImageAsset, VideoAsset } from "./schema"
 import { Document } from "@/app/features/documents/lib/schema"
+import { syncDocumentMetadata } from "@/app/features/documents/lib/metadata"
 import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
 import { compressVideo } from "./video-conversion"
 
@@ -17,12 +18,15 @@ export {
 }
 export type { LoadedDocument, MaybeDocWithContent, VideoUploadProgress }
 
+// Assets only need to be loaded as a list here; every item access below
+// guards with $isLoaded, so callers may pass docs whose asset binaries are
+// still streaming in.
 type LoadedDocument = co.loaded<
 	typeof Document,
 	{
 		content: true
 		cursors: true
-		assets: { $each: { image: true; video: true } }
+		assets: true
 		comments: { $each: true }
 	}
 >
@@ -61,6 +65,7 @@ function makeUploadImage(doc: LoadedDocument) {
 
 		doc.assets!.$jazz.push(asset)
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(doc, { contentChanged: false })
 
 		return { id: asset.$jazz.id, name: asset.name }
 	}
@@ -105,6 +110,7 @@ function makeUploadVideo(doc: LoadedDocument) {
 
 		doc.assets!.$jazz.push(asset)
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(doc, { contentChanged: false })
 
 		onProgress?.({ phase: "done", progress: 1 })
 		return { id: asset.$jazz.id, name: asset.name }
@@ -139,6 +145,7 @@ function makeUploadAssets(doc: LoadedDocument) {
 		}
 
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(doc, { contentChanged: false })
 	}
 }
 
@@ -148,6 +155,7 @@ function makeRenameAsset(doc: LoadedDocument) {
 		if (asset?.$isLoaded) {
 			asset.$jazz.applyDiff({ name: newName })
 			doc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(doc, { contentChanged: false })
 		}
 	}
 }
@@ -174,6 +182,8 @@ function makeDeleteAsset(
 			let newContent = content.replace(regex, "")
 			if (newContent !== content) {
 				applyContentDiffWithCommentAnchors(doc, newContent)
+				doc.$jazz.set("updatedAt", new Date())
+				syncDocumentMetadata(doc)
 			}
 		}
 
@@ -181,6 +191,7 @@ function makeDeleteAsset(
 		if (idx !== -1) {
 			doc.assets.$jazz.splice(idx, 1)
 			doc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(doc, { contentChanged: false })
 		}
 	}
 }

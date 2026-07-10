@@ -3,9 +3,12 @@ import { Group, co } from "jazz-tools"
 import { createImage } from "jazz-tools/media"
 import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
 import { compressVideo, canEncodeVideo } from "@/app/features/assets"
-import { getDocumentTitle } from "@/app/features/documents"
 import { getPath } from "@/app/features/editor"
 import { Button } from "@/app/components/ui/button"
+import {
+	createDocumentMetadata,
+	syncDocumentMetadata,
+} from "@/app/features/documents"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -41,7 +44,7 @@ import {
 	ImportProgressDialog,
 	type ImportProgress,
 } from "./import-progress-dialog"
-import type { DocWithContent } from "@/app/features/documents"
+import type { SidebarDoc } from "@/app/features/documents"
 import { Link } from "@tanstack/react-router"
 import { T, useIntl } from "@/shared/intl/setup"
 
@@ -59,7 +62,7 @@ function SidebarImportExport({
 	docs: activeDocs,
 	onImport,
 }: {
-	docs: DocWithContent[]
+	docs: SidebarDoc[]
 	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 }) {
 	let t = useIntl()
@@ -306,17 +309,20 @@ async function handleImportFiles(
 					docAssets.length > 0
 						? co.list(Asset).create(docAssets, docGroup)
 						: undefined,
+				...createDocumentMetadata(processedContent, now),
 				createdAt: now,
 				updatedAt: now,
 			},
 			docGroup,
 		)
 
-		if (comments?.length) {
-			let loadedDoc = await newDoc.$jazz.ensureLoaded({
-				resolve: { content: true, comments: { $each: { replies: true } } },
-			})
-			if (loadedDoc) restoreExportedComments(loadedDoc, comments, content)
+		let loadedDoc = await newDoc.$jazz.ensureLoaded({
+			resolve: { content: true, comments: { $each: { replies: true } } },
+		})
+		if (loadedDoc) {
+			syncDocumentMetadata(loadedDoc)
+			if (comments?.length)
+				restoreExportedComments(loadedDoc, comments, content)
 		}
 
 		targetDocs.$jazz.push(newDoc)
@@ -343,20 +349,21 @@ async function handleImportFiles(
 		)
 		if (resolvedContent !== currentContent) {
 			applyContentDiffWithCommentAnchors(loadedDoc, resolvedContent)
+			loadedDoc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(loadedDoc)
 		}
 	}
 }
 
 // --- Helpers ---
 
-async function handleExportDocs(docs: DocWithContent[]) {
+async function handleExportDocs(docs: SidebarDoc[]) {
 	if (docs.length === 0) return
 
-	// Build doc info map for wikilink transformation
 	let docPathInfo = docs.map(d => ({
 		id: d.$jazz.id,
-		title: getDocumentTitle(d),
-		path: getPath(d.content?.toString() ?? ""),
+		title: d.title ?? "Untitled",
+		path: d.path ?? null,
 	}))
 
 	let exportDocs: {
@@ -368,10 +375,12 @@ async function handleExportDocs(docs: DocWithContent[]) {
 	}[] = []
 
 	for (let d of docs) {
-		let content = d.content?.toString() ?? ""
-		let docPath = getPath(content)
+		let loaded = await d.$jazz.ensureLoaded({
+			resolve: { content: true, comments: { $each: { replies: true } } },
+		})
+		let content = loaded.content?.toString() ?? ""
+		let docPath = d.path ?? null
 
-		// Transform wikilinks and strip backlinks
 		let transformedContent = transformWikilinksForExport(
 			content,
 			docPath,
@@ -380,15 +389,9 @@ async function handleExportDocs(docs: DocWithContent[]) {
 		transformedContent = stripBacklinksFrontmatter(transformedContent)
 
 		let docAssets = await loadDocumentAssets(d)
-		let docWithComments = await d.$jazz.ensureLoaded({
-			resolve: { content: true, comments: { $each: { replies: true } } },
-		})
-		let exportComments = getExportCommentsForContent(
-			docWithComments,
-			transformedContent,
-		)
+		let exportComments = getExportCommentsForContent(loaded, transformedContent)
 		exportDocs.push({
-			title: getDocumentTitle(d),
+			title: d.title ?? "Untitled",
 			content: transformedContent,
 			assets: docAssets.length > 0 ? docAssets : undefined,
 			path: docPath,

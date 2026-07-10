@@ -8,6 +8,7 @@ export {
 	findPresetByAppearance,
 	getThemeName,
 	getPresetName,
+	loadThemesForPdf,
 	type ResolvedTheme,
 	type LoadedThemes,
 	type ThemesQuery,

@@ -18,8 +18,10 @@ import {
 	makeDocumentPublic,
 	parseInviteLink,
 	revokeDocumentInvite,
+	canEdit,
 } from "@/app/features/sharing"
 import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
+import { syncDocumentMetadata } from "@/app/features/documents"
 import {
 	acceptSpaceInvite,
 	changeSpaceCollaboratorRole,
@@ -410,8 +412,11 @@ let docUpdate = Command.make(
 			let jazz = await createAuthenticatedJazz(config)
 			let account = await loadAccount(jazz)
 			let located = await findDocument(account, args.docId)
+			if (!canEdit(located.doc))
+				throw new PermissionError({ message: "Document is read-only" })
 			applyContentDiffWithCommentAnchors(located.doc, content)
 			located.doc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(located.doc)
 			await maybeSync(jazz.account, args.sync, config.timeoutMs)
 			await jazz.done()
 			return summarizeDoc(located.doc, located.space?.$jazz.id)
@@ -430,12 +435,15 @@ let docRename = Command.make(
 			let jazz = await createAuthenticatedJazz(config)
 			let account = await loadAccount(jazz)
 			let located = await findDocument(account, args.docId)
+			if (!canEdit(located.doc))
+				throw new PermissionError({ message: "Document is read-only" })
 			let nextContent = setDocumentTitle(
 				located.doc.content.toString(),
 				args.title,
 			)
 			applyContentDiffWithCommentAnchors(located.doc, nextContent)
 			located.doc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(located.doc)
 			await syncMutation(jazz.account, config.timeoutMs)
 			await jazz.done()
 			return summarizeDoc(located.doc, located.space?.$jazz.id)
@@ -709,7 +717,7 @@ let docPublicDisable = Command.make(
 			let jazz = await createAuthenticatedJazz(config)
 			let account = await loadAccount(jazz)
 			let located = await findDocument(account, args.docId)
-			makeDocumentPrivate(located.doc)
+			await makeDocumentPrivate(located.doc)
 			await syncMutation(jazz.account, config.timeoutMs)
 			await jazz.done()
 			return { docId: args.docId, public: false }

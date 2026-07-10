@@ -10,16 +10,13 @@ import {
 import { Link } from "@tanstack/react-router"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { co } from "jazz-tools"
-import { useAccount } from "jazz-tools/react"
+import { useAccount, useCoState } from "jazz-tools/react"
 import { UserAccount, Document } from "@/schema"
-import { togglePinned, getTags, getPath } from "@/app/features/editor"
-import {
-	getDocumentTitle,
-	isDocumentPinned,
-	formatRelativeDate,
-	countContentMatches,
-} from "../lib/title"
-import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
+import { togglePinned } from "@/app/features/editor"
+import { formatRelativeDate } from "../lib/title"
+import { applyContentDiffLoadingCommentAnchors } from "@/app/features/comments"
+import { needsMetadataBackfill, syncDocumentMetadata } from "../lib/metadata"
+import { useMetadataBackfill } from "../hooks/use-metadata-backfill"
 import { getDaysUntilPermanentDelete } from "../lib/delete-covalue"
 import { permanentlyDeletePersonalDocument } from "../lib/documents"
 import { Input } from "@/app/components/ui/input"
@@ -69,7 +66,6 @@ import {
 	List,
 	Plus,
 	FolderPlus,
-	MessageSquare,
 } from "lucide-react"
 import {
 	TextHighlight,
@@ -84,7 +80,6 @@ import {
 	leavePersonalDocument,
 } from "@/app/features/sharing"
 import { useFolderStore, FolderRow } from "./folder"
-import { getPresentationMode } from "@/app/features/presentation"
 import {
 	exportDocument,
 	importMarkdownFiles,
@@ -111,28 +106,32 @@ import {
 import { Label } from "@/app/components/ui/label"
 import { moveDocumentsToFolder } from "../lib/folders"
 import { Checkbox } from "@/app/components/ui/checkbox"
-import {
-	getExportComments,
-	getUnresolvedCommentCount,
-} from "@/app/features/comments"
+import { getExportComments } from "@/app/features/comments"
 
-export { SidebarDocumentList }
-export type { DocWithContent }
+export { SidebarDocumentList, matchesSearchTerms, matchesTypeFilter }
+export type { SidebarDoc }
 
-type DocWithContent = co.loaded<
-	typeof Document,
-	{ content: true; comments: { $each: true } }
->
+type SidebarDoc = co.loaded<typeof Document>
 type SortMode = "latest" | "alphabetical"
 type TypeFilter = "all" | "document" | "presentation" | "deleted"
+type FilterableSidebarDoc = {
+	title?: string
+	tags?: string[]
+	pinned?: boolean
+	isPresentation?: boolean
+	contentUpdatedAt?: Date
+	metadataUpdatedAt?: Date
+	updatedAt?: Date
+	deletedAt?: Date
+}
 
 interface SidebarDocumentListProps {
-	docs: DocWithContent[]
+	docs: SidebarDoc[]
 	currentDocId: string | undefined
 	isLoading: boolean
 	onDocClick: () => void
-	onDuplicate: (doc: DocWithContent) => void
-	onDelete: (doc: DocWithContent) => void
+	onDuplicate: (doc: SidebarDoc) => void
+	onDelete: (doc: SidebarDoc) => void
 	onCreateFolder: (path: string) => Promise<void>
 	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 	spaceId?: string
@@ -140,8 +139,34 @@ interface SidebarDocumentListProps {
 }
 
 type ListItem =
-	| { type: "doc"; doc: DocWithContent; depth: number }
+	| { type: "doc"; doc: SidebarDoc; depth: number }
 	| { type: "folder"; path: string; depth: number; docCount: number }
+
+function matchesTypeFilter(
+	doc: SidebarDoc | FilterableSidebarDoc,
+	typeFilter: TypeFilter,
+) {
+	if (typeFilter === "deleted") return Boolean(doc.deletedAt)
+	if (doc.deletedAt) return false
+	if (needsMetadataBackfill(doc)) return true
+	if (typeFilter === "presentation") return doc.isPresentation === true
+	if (typeFilter === "document") return doc.isPresentation !== true
+	return true
+}
+
+function matchesSearchTerms(
+	doc: SidebarDoc | FilterableSidebarDoc,
+	search: string,
+) {
+	let terms = parseSearchTerms(search).map(t => t.toLowerCase())
+	if (terms.length === 0) return true
+	if (needsMetadataBackfill(doc)) return true
+
+	let searchable = [doc.title ?? "Untitled", ...(doc.tags ?? [])]
+		.join(" ")
+		.toLowerCase()
+	return terms.every(q => searchable.includes(q))
+}
 
 function SidebarDocumentList({
 	docs,
@@ -164,21 +189,11 @@ function SidebarDocumentList({
 	let deferredSort = useDeferredValue(sort)
 	let deferredType = useDeferredValue(typeFilter)
 
-	let activeDocs = docs.filter(d => !d.deletedAt)
 	let deletedDocs = docs.filter(d => d.deletedAt)
 
-	let typeFilteredDocs =
-		deferredType === "deleted"
-			? deletedDocs
-			: deferredType === "document"
-				? activeDocs.filter(
-						d => !getPresentationMode(d.content?.toString() ?? ""),
-					)
-				: deferredType === "presentation"
-					? activeDocs.filter(d =>
-							getPresentationMode(d.content?.toString() ?? ""),
-						)
-					: activeDocs
+	let typeFilteredDocs = docs.filter(doc =>
+		matchesTypeFilter(doc, deferredType),
+	)
 
 	let sortedDocs =
 		deferredType === "deleted"
@@ -188,30 +203,20 @@ function SidebarDocumentList({
 				)
 			: deferredSort === "alphabetical"
 				? [...typeFilteredDocs].sort((a, b) => {
-						let aPinned = isDocumentPinned(a)
-						let bPinned = isDocumentPinned(b)
-						if (aPinned !== bPinned) return bPinned ? 1 : -1
-						return getDocumentTitle(a)
+						if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
+						return (a.title ?? "")
 							.toLowerCase()
-							.localeCompare(getDocumentTitle(b).toLowerCase())
+							.localeCompare((b.title ?? "").toLowerCase())
 					})
 				: [...typeFilteredDocs].sort((a, b) => {
-						let aPinned = isDocumentPinned(a)
-						let bPinned = isDocumentPinned(b)
-						if (aPinned !== bPinned) return bPinned ? 1 : -1
+						if (a.pinned !== b.pinned) return b.pinned ? 1 : -1
 						return (
 							new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
 						)
 					})
 
 	let filteredDocs = deferredSearch.trim()
-		? sortedDocs.filter(d => {
-				let terms = parseSearchTerms(deferredSearch).map(t => t.toLowerCase())
-				if (terms.length === 0) return true
-				let title = getDocumentTitle(d).toLowerCase()
-				let content = (d.content?.toString() ?? "").toLowerCase()
-				return terms.every(q => title.includes(q) || content.includes(q))
-			})
+		? sortedDocs.filter(d => matchesSearchTerms(d, deferredSearch))
 		: sortedDocs
 
 	let hasNonDefaultFilters = sort !== "latest" || typeFilter !== "all"
@@ -394,14 +399,14 @@ function DocumentListContent({
 	spaceGroupId,
 	t,
 }: {
-	docs: DocWithContent[]
+	docs: SidebarDoc[]
 	currentDocId: string | undefined
 	searchQuery: string
 	typeFilter: TypeFilter
 	isLoading: boolean
 	onDocClick: () => void
-	onDuplicate: (doc: DocWithContent) => void
-	onDelete: (doc: DocWithContent) => void
+	onDuplicate: (doc: SidebarDoc) => void
+	onDelete: (doc: SidebarDoc) => void
 	onCreateFolder: (path: string) => Promise<void>
 	onImport: (files: ImportedFile[], options?: ImportOptions) => Promise<void>
 	spaceId?: string
@@ -677,7 +682,7 @@ function NewFolderDialog({
 	open: boolean
 	onOpenChange: (open: boolean) => void
 	existingFolders: string[]
-	docs: DocWithContent[]
+	docs: SidebarDoc[]
 	onCreate: (path: string) => Promise<void>
 	t: ReturnType<typeof useIntl>
 }) {
@@ -722,7 +727,7 @@ function NewFolderDialog({
 		}
 
 		if (mode === "move") {
-			moveDocumentsToFolder(selectedDocs, path)
+			await moveDocumentsToFolder(selectedDocs, path)
 		} else {
 			await onCreate(path)
 		}
@@ -802,8 +807,6 @@ function NewFolderDialog({
 								) : (
 									selectableDocs.map(doc => {
 										let docId = doc.$jazz.id
-										let content = doc.content?.toString() ?? ""
-										let docPath = getPath(content)
 										return (
 											<label
 												key={docId}
@@ -816,10 +819,11 @@ function NewFolderDialog({
 												/>
 												<span className="min-w-0 flex-1">
 													<span className="block truncate text-sm font-medium">
-														{getDocumentTitle(doc)}
+														{doc.title ?? "Untitled"}
 													</span>
 													<span className="text-muted-foreground block truncate text-xs">
-														{docPath ?? t("doc.moveToFolderDialog.notInFolder")}
+														{doc.path ??
+															t("doc.moveToFolderDialog.notInFolder")}
 													</span>
 												</span>
 											</label>
@@ -870,12 +874,12 @@ function DocumentItem({
 	spaceGroupId,
 	t,
 }: {
-	doc: DocWithContent
+	doc: SidebarDoc
 	isActive: boolean
 	onClick: () => void
 	searchQuery: string
-	onDuplicate: (doc: DocWithContent) => void
-	onDelete: (doc: DocWithContent) => void
+	onDuplicate: (doc: SidebarDoc) => void
+	onDelete: (doc: SidebarDoc) => void
 	showPath?: boolean
 	existingFolders: string[]
 	depth?: number
@@ -890,8 +894,7 @@ function DocumentItem({
 	let [moveOpen, setMoveOpen] = useState(false)
 	let [moveSpaceOpen, setMoveSpaceOpen] = useState(false)
 
-	let content = doc.content?.toString() ?? ""
-	let title = getDocumentTitle(doc)
+	let title = doc.title ?? "Untitled"
 	let date = formatRelativeDate(doc.updatedAt, {
 		today: t("doc.date.today"),
 		yesterday: t("doc.date.yesterday"),
@@ -901,19 +904,16 @@ function DocumentItem({
 	let isPublic = isDocumentPublic(doc)
 	let status = getSharingStatus(doc)
 	let hasIndividual = hasIndividualShares(doc, spaceGroupId)
-	// In spaces, only show indicator for individually shared docs, not just because it's in a space
 	let hasIndicator = isPublic || (spaceId ? hasIndividual : status !== "none")
-	let isPresentation = getPresentationMode(content)
-	let isPinned = isDocumentPinned(doc)
-	let tags = getTags(content)
-	let path = showPath ? getPath(content) : null
+	let isPresentation = doc.isPresentation ?? false
+	let isPinned = doc.pinned ?? false
+	let tags = doc.tags ?? []
+	let path = showPath ? (doc.path ?? null) : null
 	let docGroup = getDocumentGroup(doc)
 	let isAdmin = docGroup?.myRole() === "admin"
-	let contentMatchCount = searchQuery.trim()
-		? countContentMatches(content, searchQuery)
-		: 0
-	let unresolvedCommentCount = getUnresolvedCommentCount(doc)
 	let docId = doc.$jazz.id
+
+	useMetadataBackfill(doc)
 
 	// Build link props based on whether we're in a space context
 	// Pass search query to open find panel when document loads
@@ -980,19 +980,6 @@ function DocumentItem({
 											)}
 										</span>
 									)}
-									{unresolvedCommentCount > 0 && (
-										<span
-											className={
-												isActive
-													? "inline-flex items-center gap-0.5 text-xs opacity-70"
-													: "text-brand inline-flex items-center gap-0.5 text-xs"
-											}
-											aria-label={`${unresolvedCommentCount} unresolved comments`}
-										>
-											<MessageSquare className="size-3" />
-											{unresolvedCommentCount}
-										</span>
-									)}
 									{path && (
 										<span
 											className={
@@ -1015,18 +1002,6 @@ function DocumentItem({
 										isActive={isActive}
 										searchQuery={searchQuery}
 									/>
-								)}
-								{contentMatchCount > 0 && (
-									<span
-										className={
-											isActive
-												? "bg-background/20 inline-flex rounded px-1 text-xs"
-												: "bg-brand/20 text-brand inline-flex rounded px-1 text-xs"
-										}
-									>
-										{contentMatchCount}{" "}
-										{contentMatchCount === 1 ? "match" : "matches"} in content
-									</span>
 								)}
 							</div>
 						</SidebarMenuButton>
@@ -1113,19 +1088,23 @@ function DocumentItem({
 					)}
 				</ContextMenuContent>
 			</ContextMenu>
-			<ShareDialog doc={doc} open={shareOpen} onOpenChange={setShareOpen} />
+			{shareOpen && (
+				<ShareDialog doc={doc} open={shareOpen} onOpenChange={setShareOpen} />
+			)}
 			<MoveToFolderDialog
 				doc={doc}
 				existingFolders={existingFolders}
 				open={moveOpen}
 				onOpenChange={setMoveOpen}
 			/>
-			<MoveToSpaceDialog
-				doc={doc}
-				open={moveSpaceOpen}
-				onOpenChange={setMoveSpaceOpen}
-				currentSpaceId={spaceId}
-			/>
+			{moveSpaceOpen && (
+				<MoveToSpaceDialog
+					doc={doc}
+					open={moveSpaceOpen}
+					onOpenChange={setMoveSpaceOpen}
+					currentSpaceId={spaceId}
+				/>
+			)}
 			<ConfirmDialog
 				open={deleteOpen}
 				onOpenChange={setDeleteOpen}
@@ -1145,14 +1124,24 @@ function DocumentItem({
 				variant="destructive"
 				onConfirm={makeLeaveDocument(doc, me)}
 			>
-				{(doc.content?.toString() ?? "").length > 0 && (
-					<div className="bg-muted/50 text-muted-foreground max-h-32 overflow-auto rounded border p-3 text-sm whitespace-pre-wrap">
-						{(doc.content?.toString() ?? "").slice(0, 200)}
-						{(doc.content?.toString() ?? "").length > 200 ? "..." : ""}
-					</div>
-				)}
+				{leaveOpen && <LeaveDocumentPreview doc={doc} />}
 			</ConfirmDialog>
 		</SidebarMenuItem>
+	)
+}
+
+function LeaveDocumentPreview({ doc }: { doc: SidebarDoc }) {
+	let loaded = useCoState(Document, doc.$jazz.id, {
+		resolve: { content: true },
+	})
+	let content = loaded?.$isLoaded ? loaded.content.toString() : ""
+	if (!content) return null
+
+	return (
+		<div className="bg-muted/50 text-muted-foreground max-h-32 overflow-auto rounded border p-3 text-sm whitespace-pre-wrap">
+			{content.slice(0, 200)}
+			{content.length > 200 ? "..." : ""}
+		</div>
 	)
 }
 
@@ -1161,20 +1150,17 @@ function DeletedDocumentItem({
 	searchQuery,
 	t,
 }: {
-	doc: DocWithContent
+	doc: SidebarDoc
 	searchQuery: string
 	t: ReturnType<typeof useIntl>
 }) {
 	let [deleteOpen, setDeleteOpen] = useState(false)
 	let me = useAccount(UserAccount, { resolve: { root: { documents: true } } })
 
-	let title = getDocumentTitle(doc)
+	let title = doc.title ?? "Untitled"
 	let daysLeft = doc.deletedAt ? getDaysUntilPermanentDelete(doc.deletedAt) : 0
-	let content = doc.content?.toString() ?? ""
-	let preview = content.slice(0, 200) + (content.length > 200 ? "..." : "")
-	let contentMatchCount = searchQuery.trim()
-		? countContentMatches(content, searchQuery)
-		: 0
+
+	useMetadataBackfill(doc)
 
 	async function handlePermanentDelete() {
 		if (me.$isLoaded) {
@@ -1197,12 +1183,6 @@ function DeletedDocumentItem({
 								<span className="text-muted-foreground truncate text-sm">
 									<TextHighlight text={title} query={searchQuery} />
 								</span>
-								{contentMatchCount > 0 && (
-									<span className="bg-brand/20 text-brand inline-flex rounded px-1 text-xs">
-										{contentMatchCount}{" "}
-										{contentMatchCount === 1 ? "match" : "matches"} in content
-									</span>
-								)}
 							</div>
 						</SidebarMenuButton>
 					}
@@ -1232,13 +1212,7 @@ function DeletedDocumentItem({
 				confirmLabel={t("doc.permanentDeleteDialog.confirm")}
 				variant="destructive"
 				onConfirm={handlePermanentDelete}
-			>
-				{preview && (
-					<div className="bg-muted/50 text-muted-foreground max-h-32 overflow-auto rounded border p-3 text-sm whitespace-pre-wrap">
-						{preview}
-					</div>
-				)}
-			</ConfirmDialog>
+			></ConfirmDialog>
 		</SidebarMenuItem>
 	)
 }
@@ -1316,33 +1290,34 @@ function TagsRow({
 	)
 }
 
-function makeTogglePin(doc: DocWithContent) {
-	return function handleTogglePin() {
-		if (!doc.content) return
-		let content = doc.content.toString()
+function makeTogglePin(doc: SidebarDoc) {
+	return async function handleTogglePin() {
+		let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+		let content = loaded.content.toString()
 		let newContent = togglePinned(content)
-		applyContentDiffWithCommentAnchors(doc, newContent)
-		doc.$jazz.set("updatedAt", new Date())
+		await applyContentDiffLoadingCommentAnchors(loaded, newContent)
+		loaded.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(loaded)
 	}
 }
 
-function makeDownloadDocument(doc: DocWithContent, title: string) {
+function makeDownloadDocument(doc: SidebarDoc, title: string) {
 	return async function handleDownloadDocument() {
 		let docAssets = await loadDocumentAssets(doc)
-		let docWithComments = await doc.$jazz.ensureLoaded({
+		let loaded = await doc.$jazz.ensureLoaded({
 			resolve: { content: true, comments: { $each: { replies: true } } },
 		})
 		await exportDocument(
-			doc.content?.toString() ?? "",
+			loaded.content?.toString() ?? "",
 			title,
 			docAssets.length > 0 ? docAssets : undefined,
-			getExportComments(docWithComments),
+			getExportComments(loaded),
 		)
 	}
 }
 
 function makeLeaveDocument(
-	doc: DocWithContent,
+	doc: SidebarDoc,
 	me: ReturnType<
 		typeof useAccount<typeof UserAccount, { root: { documents: true } }>
 	>,
@@ -1382,7 +1357,7 @@ async function loadDocumentAssets(
 }
 
 function buildListItems(
-	docs: DocWithContent[],
+	docs: SidebarDoc[],
 	viewMode: "folders" | "flat",
 	isCollapsed: (path: string) => boolean,
 ): ListItem[] {
@@ -1390,11 +1365,11 @@ function buildListItems(
 		return docs.map(doc => ({ type: "doc" as const, doc, depth: 0 }))
 	}
 
-	let rootDocs: DocWithContent[] = []
-	let folderDocs = new Map<string, DocWithContent[]>()
+	let rootDocs: SidebarDoc[] = []
+	let folderDocs = new Map<string, SidebarDoc[]>()
 
 	for (let doc of docs) {
-		let path = getPath(doc.content?.toString() ?? "")
+		let path = doc.path ?? null
 		if (!path) {
 			rootDocs.push(doc)
 		} else {
@@ -1424,7 +1399,7 @@ function buildListItems(
 	}
 
 	type SortableItem =
-		| { type: "rootDoc"; doc: DocWithContent; sortDate: Date }
+		| { type: "rootDoc"; doc: SidebarDoc; sortDate: Date }
 		| { type: "topFolder"; node: FolderNode; sortDate: Date }
 
 	let sortableItems: SortableItem[] = []
@@ -1443,8 +1418,8 @@ function buildListItems(
 	}
 
 	sortableItems.sort((a, b) => {
-		let aPinned = a.type === "rootDoc" && isDocumentPinned(a.doc)
-		let bPinned = b.type === "rootDoc" && isDocumentPinned(b.doc)
+		let aPinned = a.type === "rootDoc" && (a.doc.pinned ?? false)
+		let bPinned = b.type === "rootDoc" && (b.doc.pinned ?? false)
 		if (aPinned !== bPinned) return bPinned ? 1 : -1
 
 		return b.sortDate.getTime() - a.sortDate.getTime()
@@ -1525,7 +1500,7 @@ function buildFolderTree(paths: string[]): FolderNode[] {
 function countDocsInTree(
 	node: FolderNode,
 	fullPath: string,
-	folderDocs: Map<string, DocWithContent[]>,
+	folderDocs: Map<string, SidebarDoc[]>,
 ): number {
 	let count = folderDocs.get(fullPath)?.length ?? 0
 
@@ -1537,11 +1512,11 @@ function countDocsInTree(
 	return count
 }
 
-function getExistingFolders(docs: DocWithContent[]): string[] {
+function getExistingFolders(docs: SidebarDoc[]): string[] {
 	let folders = new Set<string>()
 
 	for (let doc of docs) {
-		let path = getPath(doc.content?.toString() ?? "")
+		let path = doc.path
 		if (path) {
 			folders.add(path)
 			let parts = path.split("/")
@@ -1554,12 +1529,9 @@ function getExistingFolders(docs: DocWithContent[]): string[] {
 	return [...folders].sort()
 }
 
-function getDocsInFolder(
-	docs: DocWithContent[],
-	folderPath: string,
-): DocWithContent[] {
+function getDocsInFolder(docs: SidebarDoc[], folderPath: string): SidebarDoc[] {
 	return docs.filter(doc => {
-		let path = getPath(doc.content?.toString() ?? "")
+		let path = doc.path
 		if (!path) return false
 		return path === folderPath || path.startsWith(folderPath + "/")
 	})

@@ -110,10 +110,11 @@ function RouterWithJazz() {
 			<BackupSubscriber />
 			<SpacesBackupSubscriber />
 			<SplashScreen show={showSplash} />
-			<RouterProvider
-				router={router}
-				context={{ me: me.$isLoaded ? me : null }}
-			/>
+			{/* Mount the router only once the account root is resolved: loaders
+			    read context.me at navigation time and never re-run when it
+			    changes, so an early navigation with me=null would render an
+			    empty screen forever. */}
+			{me.$isLoaded && <RouterProvider router={router} context={{ me }} />}
 		</>
 	)
 

@@ -2,8 +2,14 @@ import { redirect } from "@tanstack/react-router"
 import { Group, co, type ResolveQuery } from "jazz-tools"
 import { UserAccount } from "@/schema"
 import { CommentThread, Document } from "../lib/schema"
+import { createDocumentMetadata } from "../lib/metadata"
 
-export { homeLoader, homeLastOpenedQuery, homeDocumentsQuery }
+export {
+	homeLoader,
+	homeLastOpenedQuery,
+	homeDocumentsQuery,
+	findFallbackHomeDocument,
+}
 
 let homeLastOpenedQuery = {
 	root: true,
@@ -11,7 +17,7 @@ let homeLastOpenedQuery = {
 
 let homeDocumentsQuery = {
 	root: {
-		documents: { $each: true, $onError: "catch" },
+		documents: { $each: true },
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
@@ -20,11 +26,17 @@ interface HomeLoaderArgs {
 	deps: { personal?: boolean }
 }
 
+type FallbackHomeDocument = {
+	$isLoaded?: boolean
+	deletedAt?: Date
+	updatedAt?: Date
+	$jazz?: { id: string }
+}
+
 async function homeLoader({ context, deps }: HomeLoaderArgs) {
 	let { me } = context
 	if (!me) return null
 
-	// Fast path: try last opened doc (skip if personal=true)
 	if (!deps.personal) {
 		let loaded = await me.$jazz.ensureLoaded({ resolve: homeLastOpenedQuery })
 		let { lastOpenedDocId, lastOpenedSpaceId } = loaded.root ?? {}
@@ -46,27 +58,18 @@ async function homeLoader({ context, deps }: HomeLoaderArgs) {
 		}
 	}
 
-	// Fallback: load all personal docs and find most recent
 	let loadedMe = await me.$jazz.ensureLoaded({ resolve: homeDocumentsQuery })
 	let docs = loadedMe.root?.documents
 	if (!docs?.$isLoaded) return null
 
-	let mostRecentDoc = docs
-		.filter(d => !d.deletedAt)
-		.sort(
-			(a, b) =>
-				new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime(),
-		)
-		.at(0)
-
-	if (mostRecentDoc !== undefined) {
+	let fallbackDoc = findFallbackHomeDocument(Array.from(docs))
+	if (fallbackDoc?.$jazz) {
 		throw redirect({
 			to: "/doc/$id",
-			params: { id: mostRecentDoc.$jazz.id },
+			params: { id: fallbackDoc.$jazz.id },
 		})
 	}
 
-	// No docs exist - create new empty doc and redirect
 	let now = new Date()
 	let group = Group.create()
 	let newDoc = Document.create(
@@ -74,6 +77,7 @@ async function homeLoader({ context, deps }: HomeLoaderArgs) {
 			version: 1,
 			content: co.plainText().create("", group),
 			comments: co.list(CommentThread).create([], group),
+			...createDocumentMetadata("", now),
 			createdAt: now,
 			updatedAt: now,
 		},
@@ -85,4 +89,14 @@ async function homeLoader({ context, deps }: HomeLoaderArgs) {
 		to: "/doc/$id",
 		params: { id: newDoc.$jazz.id },
 	})
+}
+
+function findFallbackHomeDocument<T extends FallbackHomeDocument>(docs: T[]) {
+	let fallback: T | null = null
+	for (let doc of docs) {
+		if (!doc?.$isLoaded || doc.deletedAt || !doc.updatedAt) continue
+		if (!fallback || !fallback.updatedAt || doc.updatedAt > fallback.updatedAt)
+			fallback = doc
+	}
+	return fallback
 }

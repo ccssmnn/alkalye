@@ -3,6 +3,7 @@ import type { TextPos } from "jazz-tools"
 import { stringifyOpID } from "cojson"
 import { diff } from "fast-myers-diff"
 import { CommentReply, CommentThread, Document } from "@/schema"
+import { syncDocumentMetadata } from "@/app/features/documents/lib/metadata"
 
 export {
 	createCommentThread,
@@ -23,6 +24,7 @@ export {
 	cloneCommentThreads,
 	copyCommentsAndApplyContent,
 	applyContentDiffWithCommentAnchors,
+	applyContentDiffLoadingCommentAnchors,
 	recoverRange,
 	mapCommentRangeAcrossContent,
 	type LoadedCommentDocument,
@@ -125,6 +127,7 @@ function createCommentThread(
 
 	comments.$jazz.push(thread)
 	doc.$jazz.set("updatedAt", now)
+	syncDocumentMetadata(doc, { contentChanged: false })
 	return thread
 }
 
@@ -321,6 +324,18 @@ function applyContentDiffWithCommentAnchors(
 			makeAnchor(doc, update.range.from, update.range.to, update.thread.anchor),
 		)
 	}
+}
+
+// For callers holding a document whose comments may still be streaming in:
+// anchors can only be remapped for loaded threads, so load them first.
+async function applyContentDiffLoadingCommentAnchors(
+	doc: co.loaded<typeof Document, { content: true }>,
+	newContent: string,
+) {
+	let withComments = await doc.$jazz.ensureLoaded({
+		resolve: { content: true, comments: { $each: true } },
+	})
+	applyContentDiffWithCommentAnchors(withComments, newContent)
 }
 
 async function copyCommentsAndApplyContent(

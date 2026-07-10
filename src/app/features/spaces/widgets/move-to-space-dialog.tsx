@@ -30,7 +30,7 @@ import { moveDocumentToSpace } from "@/app/features/documents"
 export { MoveToSpaceDialog }
 export type { MoveToSpaceDialogProps }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<typeof Document>
 
 let spacesQuery = {
 	root: {

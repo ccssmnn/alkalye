@@ -131,7 +131,7 @@ function SidebarCollaboration({
 				</SidebarMenu>
 			</SidebarGroupContent>
 
-			{doc?.$isLoaded && (
+			{shareOpen && doc?.$isLoaded && (
 				<ShareDialog
 					doc={doc as LoadedDocWithContent}
 					open={shareOpen}

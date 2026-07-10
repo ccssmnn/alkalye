@@ -4,9 +4,10 @@ import { Document } from "./schema"
 import { UserAccount } from "@/schema"
 
 export { loaderResolve, resolve, settingsResolve, meResolve }
-export type { LoadedDocument, MaybeDocWithContent, LoadedMe }
+export type { LoadedDocument, LoaderDocument, MaybeDocWithContent, LoadedMe }
 
 type LoadedDocument = co.loaded<typeof Document, typeof resolve>
+type LoaderDocument = co.loaded<typeof Document, typeof loaderResolve>
 type MaybeDocWithContent = ReturnType<
 	typeof useCoState<typeof Document, { content: true }>
 >
@@ -34,10 +35,10 @@ let settingsResolve = {
 
 let meResolve = {
 	root: {
-		documents: { $each: { content: true, comments: { $each: true } } },
+		documents: { $each: true },
 		spaces: {
 			$each: {
-				documents: { $each: { content: true, comments: { $each: true } } },
+				documents: { $each: true },
 			},
 		},
 		settings: true,

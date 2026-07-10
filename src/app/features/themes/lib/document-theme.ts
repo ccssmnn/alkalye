@@ -14,6 +14,7 @@ export {
 	findPresetByAppearance,
 	resolveDocumentTheme,
 	useDocumentTheme,
+	loadThemesForPdf,
 }
 
 export type { ResolvedTheme, ThemesQuery, LoadedThemes, ThemePresetType }
@@ -198,6 +199,16 @@ let themesQuery = {
 		},
 	},
 } as const
+
+// Themes carry binary assets (fonts, images), so they are loaded on demand
+// when exporting instead of being subscribed eagerly on every editor mount.
+async function loadThemesForPdf(me: co.loaded<typeof UserAccount>) {
+	let { root } = await me.$jazz.ensureLoaded({ resolve: themesQuery })
+	return {
+		themes: root.themes,
+		defaultPreviewTheme: root.settings?.defaultPreviewTheme ?? null,
+	}
+}
 
 type ThemeMode = "preview" | "slideshow"
 type Appearance = "light" | "dark"

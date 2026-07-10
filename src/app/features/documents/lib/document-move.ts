@@ -1,13 +1,14 @@
 import { Group, co } from "jazz-tools"
 import { Document } from "./schema"
 import { UserAccount } from "@/schema"
+import { syncDocumentMetadata } from "./metadata"
 import { getDocumentGroup } from "@/app/features/sharing/lib/document-sharing"
 import { getSpaceGroup } from "@/app/features/spaces/lib/spaces"
 
 export { moveDocumentToSpace }
 export type { MoveDocumentDestination, MoveDocumentOptions }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<typeof Document>
 type LoadedDocumentWithAssets = co.loaded<
 	typeof Document,
 	{ content: true; assets: { $each: true } }
@@ -60,7 +61,7 @@ async function moveDocumentToSpace(opts: MoveDocumentOptions): Promise<void> {
 	removeFromCurrentList(me, doc, sourceSpace)
 
 	let loadedDoc = await doc.$jazz.ensureLoaded({
-		resolve: { assets: { $each: true } },
+		resolve: { content: true, assets: { $each: true } },
 	})
 
 	if (
@@ -75,6 +76,7 @@ async function moveDocumentToSpace(opts: MoveDocumentOptions): Promise<void> {
 		doc.$jazz.set("spaceId", undefined)
 		me.root.documents.$jazz.push(doc)
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(loadedDoc, { contentChanged: false })
 		return
 	}
 
@@ -86,6 +88,7 @@ async function moveDocumentToSpace(opts: MoveDocumentOptions): Promise<void> {
 	doc.$jazz.set("spaceId", targetSpace.$jazz.id)
 	targetSpace.documents.$jazz.push(doc)
 	doc.$jazz.set("updatedAt", new Date())
+	syncDocumentMetadata(loadedDoc, { contentChanged: false })
 }
 
 function findLoadedSpace(

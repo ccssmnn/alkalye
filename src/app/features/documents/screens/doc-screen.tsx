@@ -5,13 +5,13 @@ import {
 	Link,
 	useLocation,
 } from "@tanstack/react-router"
-import { co, Group } from "jazz-tools"
+import { co, Group, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount, useIsAuthenticated } from "jazz-tools/react"
 import { toast } from "sonner"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import { handleSaveCopy } from "../lib/save-copy"
 import { resolve } from "../lib/queries"
-import type { LoadedDocument } from "../lib/queries"
+import type { LoaderDocument } from "../lib/queries"
 import { setupKeyboardShortcuts } from "@/app/features/editor"
 import {
 	makeUploadImage,
@@ -33,7 +33,6 @@ import {
 } from "@/app/features/editor"
 import { useEditorSettings } from "@/app/features/editor"
 import { getDocumentTitle, addCopyToTitle } from "../lib/title"
-import { getPath, getTags } from "@/app/features/editor"
 import { EditorToolbar } from "@/app/features/editor"
 import { DocumentSidebar } from "../widgets/document-sidebar"
 import { ListSidebar } from "../widgets/list-sidebar"
@@ -117,16 +116,18 @@ import { HelpMenu } from "@/app/components/help-menu"
 import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
+import { loadThemesForPdf } from "@/app/features/themes"
 import { testIds } from "@/app/lib/test-ids"
 import { useIntl } from "@/shared/intl/setup"
 import { makeFolderDocumentContent } from "../lib/folders"
+import { createDocumentMetadata, syncDocumentMetadata } from "../lib/metadata"
 
-export { DocScreen }
+export { DocScreen, personalMeResolve }
 
 interface DocScreenProps {
 	id: string
 	loaderData: {
-		doc: LoadedDocument | null
+		doc: LoaderDocument | null
 		loadingState: string | null
 	}
 }
@@ -209,20 +210,17 @@ function DocScreen({ id, loaderData }: DocScreenProps) {
 }
 
 interface EditorContentProps {
-	doc: LoadedDocument
+	doc: LoaderDocument
 	docId: string
 }
 
 let personalMeResolve = {
 	profile: true,
 	root: {
-		documents: { $each: { content: true, comments: { $each: true } } },
+		documents: { $each: true },
 		settings: true,
-		themes: {
-			$each: { css: true, template: true, assets: { $each: { data: true } } },
-		},
 	},
-} as const
+} as const satisfies ResolveQuery<typeof UserAccount>
 
 type LoadedMe = ReturnType<
 	typeof useAccount<typeof UserAccount, typeof personalMeResolve>
@@ -282,42 +280,47 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		editorRef: editor,
 	})
 	let assets =
-		doc.assets?.map(a => ({
-			id: a.$jazz.id,
-			name: a.name,
-			type: a.type,
-			imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
-			video: a.type === "video" ? a.video : undefined,
-			muteAudio: a.type === "video" ? a.muteAudio : undefined,
-		})) ?? []
+		doc.assets?.flatMap(a => {
+			if (!a?.$isLoaded) return []
+			return [
+				{
+					id: a.$jazz.id,
+					name: a.name,
+					type: a.type,
+					imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+					video: a.type === "video" ? a.video : undefined,
+					muteAudio: a.type === "video" ? a.muteAudio : undefined,
+				},
+			]
+		}) ?? []
 	let assetsRef = useRef(assets)
 	useEffect(() => {
 		assetsRef.current = assets
 	})
 
-	// Get documents for wikilink autocomplete - personal docs only
 	let documents: WikilinkDoc[] = []
 	if (me.$isLoaded && me.root.documents?.$isLoaded) {
 		documents = Array.from(me.root.documents.values()).flatMap(d => {
-			if (!d?.$isLoaded || !d.content?.$isLoaded) return []
+			if (!d?.$isLoaded) return []
 			if (d.deletedAt || d.$jazz.id === docId) return []
-			let content = d.content.toString()
 			return [
 				{
 					id: d.$jazz.id,
-					title: getDocumentTitle(content),
-					path: getPath(content),
-					tags: getTags(content),
+					title: d.title ?? "Untitled",
+					path: d.path ?? null,
+					tags: [],
 				},
 			]
 		})
 	}
 
-	let { syncBacklinks } = useBacklinkSync(docId, readOnly)
+	let content = doc.content.toString()
+	let { syncBacklinks } = useBacklinkSync(docId, readOnly, {
+		initialContent: content,
+	})
 	useEditorSettings(editorSettings)
 	useTrackLastOpened(me, doc)
 
-	let content = doc.content.toString()
 	let resolveWikilink = useWikilinkResolver(content, documents)
 	let handleWikilinkClick = (id: string, newTab: boolean) => {
 		if (newTab) {
@@ -342,37 +345,44 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		pendingSave.current = null
 		applyContentDiffWithCommentAnchors(doc, pendingContent)
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(doc)
 		if (cursor) {
 			updateCursor(cursor.from, cursor.to)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [content])
+	}, [content, doc])
+
+	useEffect(() => {
+		if (!canEdit(doc)) return
+		syncDocumentMetadata(doc, { contentChanged: false })
+	}, [doc])
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
 	})
 
 	let sidebarAssets: SidebarAsset[] =
-		doc.assets
-			?.filter(a => a?.$isLoaded)
-			.map(a => ({
-				id: a.$jazz.id,
-				name: a.name,
-				type: a.type,
-				imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
-				getVideoBlob:
-					a.type === "video" && a.video?.$isLoaded
-						? () => a.video?.toBlob()
-						: undefined,
-				muteAudio: a.type === "video" ? a.muteAudio : undefined,
-			})) ?? []
+		doc.assets?.flatMap(a => {
+			if (!a?.$isLoaded) return []
+			let video = a.type === "video" && a.video?.$isLoaded ? a.video : null
+			return [
+				{
+					id: a.$jazz.id,
+					name: a.name,
+					type: a.type,
+					imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+					getVideoBlob: video ? () => video.toBlob() : undefined,
+					muteAudio: a.type === "video" ? a.muteAudio : undefined,
+				},
+			]
+		}) ?? []
 
 	// Get documents for wikilink insertion menu - personal docs only
 	let wikiLinkDocs: { id: string; title: string }[] = []
 	if (me.$isLoaded && me.root.documents?.$isLoaded) {
 		for (let d of me.root.documents.values()) {
 			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
-			let title = getDocumentTitle(d)
+			let title = d.title ?? "Untitled"
 			wikiLinkDocs.push({ id: d.$jazz.id, title })
 		}
 	}
@@ -398,14 +408,10 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				document.documentElement.dataset.focusMode = String(!current)
 			},
 			openFind: () => editor.current?.openFind(),
-			onPrintPdf: () => {
-				void printToPdf({
-					content,
-					themes: me.$isLoaded ? me.root?.themes : undefined,
-					defaultPreviewTheme: me.$isLoaded
-						? (me.root?.settings?.defaultPreviewTheme ?? null)
-						: null,
-				})
+			onPrintPdf: async () => {
+				if (!me.$isLoaded) return
+				let { themes, defaultPreviewTheme } = await loadThemesForPdf(me)
+				void printToPdf({ content, themes, defaultPreviewTheme })
 			},
 			onPreview: () => {
 				navigate({
@@ -454,6 +460,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 				pendingSave.current = null
 				applyContentDiffWithCommentAnchors(doc, newContent)
 				doc.$jazz.set("updatedAt", new Date())
+				syncDocumentMetadata(doc)
 				if (cursor) {
 					updateCursor(cursor.from, cursor.to)
 				}
@@ -482,6 +489,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		if (currentContent !== doc.content.toString()) {
 			applyContentDiffWithCommentAnchors(doc, currentContent)
 			doc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(doc)
 		}
 	}
 
@@ -876,7 +884,7 @@ function SettingsButton() {
 
 type SpaceWithDocuments = co.loaded<
 	typeof Space,
-	{ documents: { $each: { content: true } } }
+	{ documents: { $each: true } }
 >
 
 function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
@@ -896,12 +904,14 @@ function makeCreateDocument(me: LoadedMe, space?: SpaceWithDocuments) {
 		}
 
 		// Personal context: create new group per document
+		let content = `# ${title}\n\n`
 		let now = new Date()
 		let group = Group.create()
 		let newDoc = Document.create(
 			{
 				version: 1,
-				content: co.plainText().create(`# ${title}\n\n`, group),
+				content: co.plainText().create(content, group),
+				...createDocumentMetadata(content, now),
 				createdAt: now,
 				updatedAt: now,
 			},
@@ -934,14 +944,15 @@ function makeCreateFolderDocument(
 }
 
 async function handleDuplicateDocument(
-	doc: co.loaded<typeof Document, { content: true }>,
+	doc: co.loaded<typeof Document>,
 	me: LoadedMe,
 	isMobile: boolean,
 	setLeftOpenMobile: (open: boolean) => void,
 	navigate: ReturnType<typeof useNavigate>,
 ) {
 	if (!me.$isLoaded || !me.root?.documents?.$isLoaded) return
-	let content = doc.content?.toString() ?? ""
+	let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+	let content = loaded.content?.toString() ?? ""
 	let newContent = addCopyToTitle(content)
 	let now = new Date()
 	let group = Group.create()
@@ -949,13 +960,14 @@ async function handleDuplicateDocument(
 		{
 			version: 1,
 			content: co.plainText().create(content, group),
+			...createDocumentMetadata(newContent, now),
 			createdAt: now,
 			updatedAt: now,
 		},
 		group,
 	)
 	try {
-		await copyCommentsAndApplyContent(doc, newDoc, newContent)
+		await copyCommentsAndApplyContent(loaded, newDoc, newContent)
 	} catch (error) {
 		console.error("Failed to duplicate document:", error)
 		toast.error("Failed to duplicate document")
@@ -966,16 +978,11 @@ async function handleDuplicateDocument(
 	navigate({ to: "/doc/$id", params: { id: newDoc.$jazz.id }, search: {} })
 }
 
-function getPersonalDocs(
-	me: LoadedMe,
-): co.loaded<typeof Document, { content: true; comments: { $each: true } }>[] {
+function getPersonalDocs(me: LoadedMe): co.loaded<typeof Document>[] {
 	if (!me.$isLoaded) return []
-	let docs: co.loaded<
-		typeof Document,
-		{ content: true; comments: { $each: true } }
-	>[] = []
+	let docs: co.loaded<typeof Document>[] = []
 	for (let doc of me.root.documents.values()) {
-		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
+		if (!doc?.$isLoaded) continue
 		docs.push(doc)
 	}
 	return docs

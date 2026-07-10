@@ -17,6 +17,7 @@ export {
 	cloneCommentThreads,
 	copyCommentsAndApplyContent,
 	applyContentDiffWithCommentAnchors,
+	applyContentDiffLoadingCommentAnchors,
 	type LoadedCommentDocument,
 	type LoadedAnchorDocument,
 	type CommentRange,

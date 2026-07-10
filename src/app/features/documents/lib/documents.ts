@@ -2,6 +2,7 @@ import { Group, co } from "jazz-tools"
 import { CommentThread, Document } from "./schema"
 import { UserAccount } from "@/schema"
 import { permanentlyDeleteDocument } from "./delete-covalue"
+import { createDocumentMetadata, syncDocumentMetadata } from "./metadata"
 
 export {
 	createPersonalDocument,
@@ -28,6 +29,7 @@ async function createPersonalDocument(
 			version: 1,
 			content: co.plainText().create(content, group),
 			comments: co.list(CommentThread).create([], group),
+			...createDocumentMetadata(content, now),
 			createdAt: now,
 			updatedAt: now,
 		},
@@ -56,6 +58,8 @@ async function deletePersonalDocument(
 
 	doc.$jazz.set("deletedAt", new Date())
 	doc.$jazz.set("updatedAt", new Date())
+	let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+	syncDocumentMetadata(loaded, { contentChanged: false })
 	return { type: "success" }
 }
 
@@ -76,6 +80,10 @@ async function restorePersonalDocument(
 
 	doc.$jazz.set("deletedAt", undefined)
 	doc.$jazz.set("updatedAt", new Date())
+	let docWithContent = await doc.$jazz.ensureLoaded({
+		resolve: { content: true },
+	})
+	syncDocumentMetadata(docWithContent, { contentChanged: false })
 
 	let loadedAccount = await account.$jazz.ensureLoaded({
 		resolve: { root: { documents: true, inactiveDocuments: true } },
@@ -149,10 +157,12 @@ async function copyDocumentToMyList(
 	let group = Group.create()
 
 	let now = new Date()
+	let sourceContent = doc.content?.toString() ?? ""
 	let newDoc = Document.create(
 		{
 			version: 1,
-			content: co.plainText().create(doc.content?.toString() ?? "", group),
+			content: co.plainText().create(sourceContent, group),
+			...createDocumentMetadata(sourceContent, now),
 			createdAt: now,
 			updatedAt: now,
 		},

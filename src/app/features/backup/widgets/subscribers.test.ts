@@ -1,13 +1,15 @@
 import { describe, expect, it } from "vitest"
-import { spaceBackupDocumentResolve } from "./subscribers"
+import { backupQuery, spaceBackupDocumentResolve } from "./subscribers"
 
-describe("space backup subscriber query", () => {
-	it("resolves image and video assets", () => {
-		expect(spaceBackupDocumentResolve.documents.$each.assets.$each.image).toBe(
-			true,
-		)
-		expect(spaceBackupDocumentResolve.documents.$each.assets.$each.video).toBe(
-			true,
-		)
+describe("backup subscriber queries", () => {
+	it("subscribe shallowly at mount", () => {
+		expect(backupQuery.root.documents).toEqual({
+			$each: true,
+			$onError: "catch",
+		})
+		expect(spaceBackupDocumentResolve.documents).toEqual({
+			$each: true,
+			$onError: "catch",
+		})
 	})
 })

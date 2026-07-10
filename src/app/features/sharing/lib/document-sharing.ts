@@ -3,6 +3,10 @@ import { Document } from "@/app/features/documents/lib/schema"
 import { UserAccount } from "@/schema"
 import { copyCommentsAndApplyContent } from "@/app/features/comments"
 import {
+	createDocumentMetadata,
+	syncDocumentMetadata,
+} from "@/app/features/documents/lib/metadata"
+import {
 	buildDocumentInviteLink,
 	buildDocumentPublicLink,
 } from "./invite-links"
@@ -49,7 +53,8 @@ type CollaboratorsResult = {
 	pendingInvites: { inviteGroupId: string }[]
 }
 
-type LoadedDocument = co.loaded<typeof Document, { content: true }>
+type LoadedDocument = co.loaded<typeof Document>
+type LoadedDocumentWithContent = co.loaded<typeof Document, { content: true }>
 type SharingStatus = "none" | "owner" | "collaborator"
 type InviteRole = "writer" | "reader"
 
@@ -92,10 +97,10 @@ function isDocumentPublic(doc: LoadedDocument): boolean {
 }
 
 async function makeDocumentPublic(
-	doc: LoadedDocument,
+	doc: LoadedDocumentWithContent,
 	userId: ID<typeof UserAccount>,
 ): Promise<LoadedDocument> {
-	let currentDoc = doc
+	let currentDoc: LoadedDocument = doc
 
 	if (!getDocumentGroup(doc)) {
 		let result = await migrateDocumentToGroup(doc, userId)
@@ -107,10 +112,14 @@ async function makeDocumentPublic(
 
 	docGroup.makePublic()
 	currentDoc.$jazz.set("updatedAt", new Date())
+	let loaded = await currentDoc.$jazz.ensureLoaded({
+		resolve: { content: true },
+	})
+	syncDocumentMetadata(loaded, { contentChanged: false })
 	return currentDoc
 }
 
-function makeDocumentPrivate(doc: LoadedDocument): void {
+async function makeDocumentPrivate(doc: LoadedDocument): Promise<void> {
 	let docGroup = getDocumentGroup(doc)
 	if (!docGroup) throw new Error("Document is not group-owned")
 
@@ -120,6 +129,8 @@ function makeDocumentPrivate(doc: LoadedDocument): void {
 
 	docGroup.removeMember("everyone")
 	doc.$jazz.set("updatedAt", new Date())
+	let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+	syncDocumentMetadata(loaded, { contentChanged: false })
 }
 
 function getPublicLink(doc: LoadedDocument): string {
@@ -148,7 +159,7 @@ async function getDocumentOwner(
 }
 
 async function migrateDocumentToGroup(
-	doc: LoadedDocument,
+	doc: LoadedDocumentWithContent,
 	userId: ID<typeof UserAccount>,
 ): Promise<{ group: Group; document: LoadedDocument }> {
 	if (getDocumentGroup(doc)) {
@@ -156,18 +167,21 @@ async function migrateDocumentToGroup(
 	}
 
 	let group = Group.create()
+	let now = new Date()
+	let content = doc.content?.toString() ?? ""
 
 	let newDoc = Document.create(
 		{
 			version: 1,
-			content: co.plainText().create(doc.content?.toString() ?? "", group),
+			content: co.plainText().create(content, group),
+			...createDocumentMetadata(content, now),
 			deletedAt: doc.deletedAt,
 			createdAt: doc.createdAt,
-			updatedAt: new Date(),
+			updatedAt: now,
 		},
 		group,
 	)
-	await copyCommentsAndApplyContent(doc, newDoc, doc.content?.toString() ?? "")
+	await copyCommentsAndApplyContent(doc, newDoc, content)
 
 	let account = await UserAccount.load(userId, {
 		resolve: { root: { documents: true } },

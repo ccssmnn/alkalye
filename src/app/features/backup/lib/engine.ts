@@ -19,14 +19,24 @@ import {
 	type ScannedFile,
 } from "./sync"
 import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
+import {
+	createDocumentMetadata,
+	syncDocumentMetadata,
+} from "@/app/features/documents/lib/metadata"
+import {
+	assertBackupSelectionUnchanged,
+	type BackupDocumentSelection,
+	type BackupDocumentState,
+} from "./subscriber-state"
 
 export {
 	hashContent,
 	syncBackup,
 	syncFromBackup,
-	prepareBackupDoc,
-	type LoadedDocument,
+	prepareBackupDocs,
+	prepareBackupSelection,
 	type DocumentList,
+	type BackupSyncSelection,
 }
 
 type LoadedDocument = co.loaded<
@@ -40,6 +50,14 @@ type LoadedDocument = co.loaded<
 
 type DocumentList = co.loaded<ReturnType<typeof co.list<typeof Document>>>
 
+type BackupDocumentRef = co.loaded<typeof Document>
+
+let backupDocumentResolve = {
+	content: true,
+	assets: { $each: { image: true, video: true } },
+	comments: { $each: true },
+} as const
+
 interface SyncFromBackupResult {
 	created: number
 	updated: number
@@ -50,6 +68,16 @@ interface SyncFromBackupResult {
 interface ScannedAssetHash {
 	name: string
 	hash: string
+}
+
+type BackupSyncSelection = {
+	isComplete: boolean
+	deletedDocumentIds: readonly string[]
+}
+
+let completeBackupSelection: BackupSyncSelection = {
+	isComplete: true,
+	deletedDocumentIds: [],
 }
 
 let preferredRelativePathByDocId = new Map<string, string>()
@@ -71,8 +99,9 @@ async function syncBackup(
 	handle: FileSystemDirectoryHandle,
 	docs: BackupDoc[],
 	scopeId = "docs:unknown",
+	selection = completeBackupSelection,
 ): Promise<void> {
-	await performSyncBackup(handle, docs, scopeId)
+	await performSyncBackup(handle, docs, scopeId, selection)
 }
 
 async function syncFromBackup(
@@ -286,6 +315,34 @@ async function syncFromBackup(
 	return result
 }
 
+async function prepareBackupDocs(
+	selection: BackupDocumentSelection<BackupDocumentRef>,
+): Promise<BackupDoc[]> {
+	return prepareBackupSelection(selection, async docs => {
+		let activeDocs: LoadedDocument[] = []
+		for (let doc of docs) {
+			let loaded = await doc.$jazz.ensureLoaded({
+				resolve: backupDocumentResolve,
+			})
+			if (!loaded.$isLoaded || !loaded.content?.$isLoaded || loaded.deletedAt) {
+				throw new Error("Backup document changed or did not fully load")
+			}
+			activeDocs.push(loaded)
+		}
+		return Promise.all(activeDocs.map(prepareBackupDoc))
+	})
+}
+
+async function prepareBackupSelection<T extends BackupDocumentState, Result>(
+	selection: BackupDocumentSelection<T>,
+	prepare: (documents: T[]) => Promise<Result>,
+): Promise<Result> {
+	assertBackupSelectionUnchanged(selection)
+	let result = await prepare(selection.documents)
+	assertBackupSelectionUnchanged(selection)
+	return result
+}
+
 async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 	let content = doc.content?.toString() ?? ""
 	let title = getDocumentTitle(doc)
@@ -372,6 +429,7 @@ async function performSyncBackup(
 	handle: FileSystemDirectoryHandle,
 	docs: BackupDoc[],
 	scopeId: string,
+	selection: BackupSyncSelection,
 ): Promise<void> {
 	let docLocations = computeDocLocations(docs)
 	let existingManifest = await readManifest(handle)
@@ -481,21 +539,42 @@ async function performSyncBackup(
 	}
 
 	let currentDocIds = new Set(docs.map(doc => doc.id))
-	let shouldPreserveMissingScopeEntries =
-		scopeId !== "docs:unknown" && docs.length < existingEntriesByDocId.size
-	let preservedScopeEntries = shouldPreserveMissingScopeEntries
-		? existingScopeEntries.filter(entry => !currentDocIds.has(entry.docId))
-		: []
+	let deletedDocumentIds = new Set(selection.deletedDocumentIds)
+	let preservedScopeEntries = selection.isComplete
+		? []
+		: existingScopeEntries.filter(
+				entry =>
+					!currentDocIds.has(entry.docId) &&
+					!deletedDocumentIds.has(entry.docId),
+			)
 	let nextScopeEntries = [...manifestEntries, ...preservedScopeEntries]
+	let staleScopeEntries = existingScopeEntries.filter(
+		entry =>
+			!nextScopeEntries.some(
+				nextEntry =>
+					nextEntry.docId === entry.docId &&
+					nextEntry.relativePath === entry.relativePath,
+			),
+	)
+	let retainedRelativePaths = new Set(
+		[...nextScopeEntries, ...existingForeignEntries].map(
+			entry => entry.relativePath,
+		),
+	)
 	let docsChanged =
-		existingScopeEntries.length !== nextScopeEntries.length ||
+		haveManifestEntriesChanged(existingScopeEntries, nextScopeEntries) ||
 		hasFilesystemChanges
 	let shouldCleanup =
-		existingForeignEntries.length === 0 && !shouldPreserveMissingScopeEntries
+		existingForeignEntries.length === 0 && selection.isComplete
 
 	if (docsChanged) {
 		if (shouldCleanup) {
 			await cleanupOrphanedFiles(handle, docs, docLocations)
+		} else {
+			for (let entry of staleScopeEntries) {
+				if (retainedRelativePaths.has(entry.relativePath)) continue
+				await deleteBackupEntry(handle, entry, retainedRelativePaths)
+			}
 		}
 
 		await writeManifest(handle, {
@@ -507,6 +586,64 @@ async function performSyncBackup(
 
 	for (let doc of docs) {
 		preferredRelativePathByDocId.delete(doc.id)
+	}
+}
+
+async function deleteBackupEntry(
+	handle: FileSystemDirectoryHandle,
+	entry: ManifestEntry,
+	retainedRelativePaths: ReadonlySet<string>,
+): Promise<void> {
+	let pathParts = entry.relativePath.split("/").filter(Boolean)
+	let filename = pathParts.pop()
+	if (!filename) return
+
+	let ownFolder = pathParts.at(-1)
+	if (entry.assets.length > 0 && ownFolder === removeExtension(filename)) {
+		let ownFolderPath = pathParts.join("/")
+		let hasRetainedDescendants = Array.from(retainedRelativePaths).some(path =>
+			path.startsWith(`${ownFolderPath}/`),
+		)
+		if (hasRetainedDescendants) {
+			let ownDirectory = await getExistingDirectory(handle, pathParts)
+			if (!ownDirectory) return
+			await deleteFile(ownDirectory, filename)
+			try {
+				await ownDirectory.removeEntry("assets", { recursive: true })
+			} catch {
+				return
+			}
+			return
+		}
+
+		pathParts.pop()
+		let parent = await getExistingDirectory(handle, pathParts)
+		if (!parent || !ownFolder) return
+		try {
+			await parent.removeEntry(ownFolder, { recursive: true })
+		} catch {
+			return
+		}
+		return
+	}
+
+	let parent = await getExistingDirectory(handle, pathParts)
+	if (!parent) return
+	await deleteFile(parent, filename)
+}
+
+async function getExistingDirectory(
+	handle: FileSystemDirectoryHandle,
+	pathParts: string[],
+): Promise<FileSystemDirectoryHandle | null> {
+	let current = handle
+	try {
+		for (let part of pathParts) {
+			current = await current.getDirectoryHandle(part)
+		}
+		return current
+	} catch {
+		return null
 	}
 }
 
@@ -644,6 +781,7 @@ async function createDocFromFile(
 				docAssets.length > 0
 					? co.list(Asset).create(docAssets, docGroup)
 					: undefined,
+			...createDocumentMetadata(content, now),
 			createdAt: now,
 			updatedAt: now,
 		},
@@ -688,6 +826,7 @@ async function updateDocFromFile(
 
 	applyContentDiffWithCommentAnchors(loadedDoc, content)
 	loadedDoc.$jazz.set("updatedAt", new Date())
+	syncDocumentMetadata(loadedDoc)
 	return true
 }
 

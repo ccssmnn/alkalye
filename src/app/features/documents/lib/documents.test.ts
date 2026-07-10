@@ -516,7 +516,7 @@ describe("Document Helpers", () => {
 		let publicDoc = await makeDocumentPublic(doc, adminAccount.$jazz.id)
 		expect(isDocumentPublic(publicDoc)).toBe(true)
 
-		makeDocumentPrivate(publicDoc)
+		await makeDocumentPrivate(publicDoc)
 		expect(isDocumentPublic(publicDoc)).toBe(false)
 	})
 

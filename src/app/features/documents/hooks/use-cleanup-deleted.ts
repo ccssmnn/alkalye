@@ -11,7 +11,8 @@ import {
 export { useCleanupDeleted }
 
 let CLEANUP_COOLDOWN_KEY = "alkalye:lastCleanupRun"
-let COOLDOWN_MS = 8 * 60 * 60 * 1000 // 8 hours
+let COOLDOWN_MS = 8 * 60 * 60 * 1000
+let STARTUP_DELAY_MS = 15_000
 
 let cleanupQuery = {
 	root: {
@@ -22,52 +23,49 @@ let cleanupQuery = {
 
 type LoadedUser = co.loaded<typeof UserAccount, typeof cleanupQuery>
 
-/**
- * Background cleanup hook that runs periodically.
- * - Moves soft-deleted documents to inactive list
- * - Permanently deletes documents older than 30 days from inactive list
- */
 function useCleanupDeleted(): void {
 	let cleanupRan = useRef(false)
-	let me = useAccount(UserAccount, { resolve: cleanupQuery })
+	let me = useAccount(UserAccount, { resolve: { root: true } })
 
 	useEffect(() => {
 		if (cleanupRan.current || !me.$isLoaded) return
-		cleanupRan.current = true
 
-		// Check cooldown - only run once per day
-		let lastRun = localStorage.getItem(CLEANUP_COOLDOWN_KEY)
-		if (lastRun && Date.now() - parseInt(lastRun, 10) < COOLDOWN_MS) {
-			return
-		}
+		let timer = setTimeout(() => {
+			cleanupRan.current = true
 
-		// Run cleanup in background without blocking
-		cleanupDeletedItems(me)
-			.then(() => {
-				localStorage.setItem(CLEANUP_COOLDOWN_KEY, Date.now().toString())
-			})
-			.catch(console.error)
+			let lastRun = localStorage.getItem(CLEANUP_COOLDOWN_KEY)
+			if (lastRun && Date.now() - parseInt(lastRun, 10) < COOLDOWN_MS) {
+				return
+			}
+
+			me.$jazz
+				.ensureLoaded({ resolve: cleanupQuery })
+				.then(cleanupDeletedItems)
+				.then(() => {
+					localStorage.setItem(CLEANUP_COOLDOWN_KEY, Date.now().toString())
+				})
+				.catch(console.error)
+		}, STARTUP_DELAY_MS)
+
+		return () => clearTimeout(timer)
 	}, [me.$isLoaded, me])
 }
 
 async function cleanupDeletedItems(me: LoadedUser): Promise<void> {
 	let { documents, inactiveDocuments } = me.root
 
-	// Process documents - move deleted to inactive
 	if (documents && inactiveDocuments) {
 		let docsToMove: Array<{ idx: number; doc: co.loaded<typeof Document> }> = []
 
 		for (let i = 0; i < documents.length; i++) {
 			let ref = documents[i]
 			if (!ref) continue
-			// Load each document to check deletedAt
 			let doc = await Document.load(ref.$jazz.id)
 			if (doc?.$isLoaded && doc.deletedAt) {
 				docsToMove.push({ idx: i, doc })
 			}
 		}
 
-		// Remove from end to preserve indices
 		for (let i = docsToMove.length - 1; i >= 0; i--) {
 			let { idx, doc } = docsToMove[i]
 			inactiveDocuments.$jazz.push(doc)

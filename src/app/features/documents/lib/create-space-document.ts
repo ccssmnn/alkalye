@@ -1,5 +1,6 @@
 import { Group, co } from "jazz-tools"
 import { CommentThread, Document } from "./schema"
+import { createDocumentMetadata } from "./metadata"
 
 export { createSpaceDocument }
 
@@ -20,6 +21,7 @@ function createSpaceDocument(
 			version: 1,
 			content: co.plainText().create(content, docGroup),
 			comments: co.list(CommentThread).create([], docGroup),
+			...createDocumentMetadata(content, now),
 			spaceId,
 			createdAt: now,
 			updatedAt: now,

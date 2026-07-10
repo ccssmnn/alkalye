@@ -6,6 +6,7 @@ import {
 } from "@/app/features/settings/lib/schema"
 import { fetchWelcomeContent } from "@/app/features/onboarding/lib/welcome-content"
 import { Document } from "@/app/features/documents/lib/schema"
+import { createDocumentMetadata } from "@/app/features/documents/lib/metadata"
 import { Space } from "@/app/features/spaces/lib/schema"
 import { UserRoot, UserProfile, type UserAccount } from "@/schema"
 
@@ -123,6 +124,7 @@ async function createWelcomeDocument() {
 		{
 			version: 1,
 			content: co.plainText().create(welcomeContent, group),
+			...createDocumentMetadata(welcomeContent, now),
 			createdAt: now,
 			updatedAt: now,
 		},

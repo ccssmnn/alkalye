@@ -32,7 +32,6 @@ import {
 	parseFrontmatter,
 	togglePinned,
 	getFrontmatterRange,
-	getPath,
 } from "@/app/features/editor"
 import { unfoldEffect } from "@codemirror/language"
 import { getPresentationMode } from "@/app/features/presentation"
@@ -50,7 +49,8 @@ import {
 } from "@/app/features/comments"
 import type { MarkdownEditorRef } from "@/app/features/editor"
 
-import { type LoadedThemes } from "@/app/features/themes"
+import { loadThemesForPdf } from "@/app/features/themes"
+import { createDocumentMetadata, syncDocumentMetadata } from "../lib/metadata"
 import { useIntl } from "@/shared/intl/setup"
 
 export { SidebarFileMenu }
@@ -59,13 +59,13 @@ type LoadedDocument = co.loaded<
 	typeof Document,
 	{
 		content: true
-		assets: { $each: { image: true } }
+		assets: true
 		comments: { $each: { replies: true } }
 	}
 >
 type LoadedMe = co.loaded<
 	typeof UserAccount,
-	{ root: { documents: { $each: { content: true } }; settings: true } }
+	{ root: { documents: { $each: true }; settings: true } }
 >
 type MaybeDocWithContent = ReturnType<
 	typeof useCoState<
@@ -83,15 +83,6 @@ interface SidebarFileMenuProps {
 }
 
 // --- Component ---
-
-let themesResolve = {
-	root: {
-		settings: true,
-		themes: {
-			$each: { css: true, template: true, assets: { $each: { data: true } } },
-		},
-	},
-} as const
 
 function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let t = useIntl()
@@ -114,8 +105,8 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 		resolve: { content: true, comments: { $each: true } },
 	})
 
-	// Load user's themes for PDF export
-	let meWithThemes = useAccount(UserAccount, { resolve: themesResolve })
+	// Themes carry binary assets, so load them on demand when exporting
+	let account = useAccount(UserAccount)
 
 	let content = doc.content?.toString() ?? ""
 	let readOnly = !canEdit(doc)
@@ -123,13 +114,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 	let isAdmin = docGroup?.myRole() === "admin"
 	let isPinned = parseFrontmatter(content).frontmatter?.pinned === true
 	let isPresentation = getPresentationMode(content)
-	let handlePrintPdf = makePrintPdf(
-		content,
-		meWithThemes.$isLoaded ? meWithThemes.root?.themes : undefined,
-		meWithThemes.$isLoaded
-			? (meWithThemes.root?.settings?.defaultPreviewTheme ?? null)
-			: null,
-	)
+	let handlePrintPdf = makePrintPdf(content, account)
 
 	return (
 		<>
@@ -274,7 +259,7 @@ function SidebarFileMenu({ doc, editor, me, spaceId }: SidebarFileMenuProps) {
 				onConfirm={makeLeave(docWithContent, me, doc, navigate)}
 			/>
 
-			{docWithContent?.$isLoaded && (
+			{moveSpaceOpen && docWithContent?.$isLoaded && (
 				<MoveToSpaceDialog
 					doc={docWithContent}
 					open={moveSpaceOpen}
@@ -398,6 +383,7 @@ function makeTogglePin(docWithContent: MaybeDocWithContent) {
 		let newContent = togglePinned(content)
 		applyContentDiffWithCommentAnchors(docWithContent, newContent)
 		docWithContent.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(docWithContent)
 	}
 }
 
@@ -534,10 +520,11 @@ function makeSaveAs(content: string) {
 
 function makePrintPdf(
 	content: string,
-	themes: LoadedThemes | undefined,
-	defaultPreviewTheme: string | null,
+	account: ReturnType<typeof useAccount<typeof UserAccount>>,
 ) {
 	return async function handlePrintPdf() {
+		if (!account.$isLoaded) return
+		let { themes, defaultPreviewTheme } = await loadThemesForPdf(account)
 		await printToPdf({ content, themes, defaultPreviewTheme })
 	}
 }
@@ -592,6 +579,7 @@ function makeDuplicate(
 			{
 				version: 1,
 				content: co.plainText().create(content, group),
+				...createDocumentMetadata(newContent, now),
 				createdAt: now,
 				updatedAt: now,
 			},
@@ -676,16 +664,12 @@ function getExistingFolders(me?: LoadedMe): string[] {
 	if (!me?.root?.documents?.$isLoaded) return []
 
 	let folders = new Set<string>()
-	let docs = Array.from(me.root.documents)
-	for (let doc of docs) {
-		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
-		let path = getPath(doc.content.toString())
-		if (path) {
-			folders.add(path)
-			let parts = path.split("/")
-			for (let i = 1; i < parts.length; i++) {
-				folders.add(parts.slice(0, i).join("/"))
-			}
+	for (let doc of me.root.documents.values()) {
+		if (!doc?.$isLoaded || !doc.path) continue
+		folders.add(doc.path)
+		let parts = doc.path.split("/")
+		for (let i = 1; i < parts.length; i++) {
+			folders.add(parts.slice(0, i).join("/"))
 		}
 	}
 

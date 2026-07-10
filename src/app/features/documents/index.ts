@@ -62,6 +62,7 @@ export {
 } from "./lib/queries"
 export type {
 	LoadedDocument,
+	LoaderDocument,
 	MaybeDocWithContent,
 	LoadedMe,
 } from "./lib/queries"
@@ -85,14 +86,24 @@ export { DocumentSidebar } from "./widgets/document-sidebar"
 export { ListSidebar } from "./widgets/list-sidebar"
 export { Preview } from "./widgets/preview"
 export { SidebarDocumentList } from "./widgets/sidebar-document-list"
-export type { DocWithContent } from "./widgets/sidebar-document-list"
+export type { SidebarDoc } from "./widgets/sidebar-document-list"
+
+export {
+	syncDocumentMetadata,
+	extractDocumentMetadata,
+	createDocumentMetadata,
+} from "./lib/metadata"
 export { SidebarFileMenu } from "./widgets/sidebar-file-menu"
 export { SidebarViewLinks } from "./widgets/sidebar-view-links"
 export { MoveToFolderDialog } from "./widgets/move-to-folder-dialog"
 
 // screens
 export { DocScreen } from "./screens/doc-screen"
-export { SpaceDocScreen, spaceResolve } from "./screens/space-doc-screen"
+export {
+	SpaceDocScreen,
+	spaceResolve,
+	spaceLoaderResolve,
+} from "./screens/space-doc-screen"
 export { DocPreviewScreen, previewResolve } from "./screens/doc-preview-screen"
 export { LocalDocScreen } from "./screens/local-doc-screen"
 export { newDocLoader } from "./screens/new-doc-screen"

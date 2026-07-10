@@ -1,7 +1,8 @@
 import { co } from "jazz-tools"
 import { Document } from "@/schema"
 import { getPath, parseFrontmatter } from "@/app/features/editor"
-import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
+import { applyContentDiffLoadingCommentAnchors } from "@/app/features/comments"
+import { syncDocumentMetadata } from "./metadata"
 
 export {
 	makeFolderDocumentContent,
@@ -9,11 +10,6 @@ export {
 	moveDocumentToFolder,
 	moveDocumentsToFolder,
 }
-
-type LoadedDocument = co.loaded<
-	typeof Document,
-	{ content: true; comments: { $each: true } }
->
 
 function makeFolderDocumentContent(path: string): string {
 	return `---\ntitle: Untitled\npath: ${path}\n---\n\n`
@@ -47,28 +43,31 @@ function applyFolderPathToContent(
 	return content.replace(/^(---\r?\n)/, `$1path: ${newPath}\n`)
 }
 
-function moveDocumentToFolder(
-	doc: LoadedDocument,
+async function moveDocumentToFolder(
+	doc: co.loaded<typeof Document, { content: true }>,
 	newPath: string | null,
-): boolean {
+): Promise<boolean> {
 	if (!doc.content) return false
 
 	let content = doc.content.toString()
 	let newContent = applyFolderPathToContent(content, newPath)
 	if (newContent === content) return false
 
-	applyContentDiffWithCommentAnchors(doc, newContent)
+	await applyContentDiffLoadingCommentAnchors(doc, newContent)
 	doc.$jazz.set("updatedAt", new Date())
+	syncDocumentMetadata(doc)
 	return true
 }
 
-function moveDocumentsToFolder(
-	docs: LoadedDocument[],
+async function moveDocumentsToFolder(
+	docs: co.loaded<typeof Document>[],
 	newPath: string,
-): number {
+): Promise<number> {
 	let moved = 0
 	for (let doc of docs) {
-		if (moveDocumentToFolder(doc, newPath)) moved++
+		let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+		if (!loaded) continue
+		if (await moveDocumentToFolder(loaded, newPath)) moved++
 	}
 	return moved
 }

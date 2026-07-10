@@ -7,15 +7,24 @@ import {
 	setActiveAccount,
 	TestJSCrypto,
 } from "jazz-tools/testing"
-import { Group, co } from "jazz-tools"
+import { Group, co, z } from "jazz-tools"
 import {
 	UserAccount,
 	UserProfile,
 	UserRoot,
 	Document,
+	Asset,
+	CursorFeed,
+	CommentThread,
 	Space,
+	Settings,
 	Theme,
 } from "@/schema"
+import { HighlightRange } from "@/app/features/documents/lib/schema"
+import {
+	backfillDocumentMetadata,
+	needsMetadataBackfill,
+} from "@/app/features/documents/lib/metadata"
 import {
 	runAccountMigration,
 	setMigrationFullDownloadTimeout,
@@ -61,6 +70,93 @@ let MinimalRootAccount = co
 			)
 		}
 	})
+
+let LegacyDocument = co.map({
+	version: z.literal(1),
+	content: co.plainText(),
+	assets: co.optional(co.list(Asset)),
+	cursors: co.optional(CursorFeed),
+	comments: co.optional(co.list(CommentThread)),
+	commentsDisabled: z.boolean().optional(),
+	deletedAt: z.date().optional(),
+	presentationLine: z.number().optional(),
+	highlightRange: HighlightRange.optional(),
+	spaceId: z.string().optional(),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+})
+
+let LegacySpace = co.map({
+	name: z.string(),
+	avatar: co.optional(co.image()),
+	documents: co.list(LegacyDocument),
+	createdAt: z.date(),
+	updatedAt: z.date(),
+})
+
+let LegacyRoot = co.map({
+	documents: co.list(LegacyDocument),
+	inactiveDocuments: co.optional(co.list(LegacyDocument)),
+	spaces: co.optional(co.list(LegacySpace)),
+	settings: co.optional(Settings),
+	themes: co.optional(co.list(Theme)),
+	language: z.enum(["de", "en"]).optional(),
+	migrationVersion: z.number().optional(),
+	lastOpenedDocId: z.string().optional(),
+	lastOpenedSpaceId: z.string().optional(),
+})
+
+let LegacyAccount = co
+	.account({ profile: UserProfile, root: LegacyRoot })
+	.withMigration((account, creationProps?: { name: string }) => {
+		let profileGroup = Group.create()
+		profileGroup.makePublic()
+		account.$jazz.set(
+			"profile",
+			UserProfile.create(
+				{ name: creationProps?.name ?? "Legacy fixture" },
+				profileGroup,
+			),
+		)
+	})
+
+function createLegacyDocument(content: string, owner: Group, spaceId?: string) {
+	let now = new Date()
+	return LegacyDocument.create(
+		{
+			version: 1,
+			content: co.plainText().create(content, owner),
+			spaceId,
+			createdAt: now,
+			updatedAt: now,
+		},
+		owner,
+	)
+}
+
+function createLegacySpace(name: string, contents: string[]) {
+	let group = Group.create()
+	let now = new Date()
+	let space = LegacySpace.create(
+		{
+			name,
+			documents: co.list(LegacyDocument).create([], group),
+			createdAt: now,
+			updatedAt: now,
+		},
+		group,
+	)
+
+	for (let content of contents) {
+		let documentGroup = Group.create()
+		documentGroup.addMember(group)
+		space.documents.$jazz.push(
+			createLegacyDocument(content, documentGroup, space.$jazz.id),
+		)
+	}
+
+	return space
+}
 
 function feedAllChunks(from: CoValueCore, into: LocalNode) {
 	let content = from.verified?.newContentSince(undefined)
@@ -180,6 +276,167 @@ describe("runAccountMigration - guarded backfill of missing keys", () => {
 		expect(after.spaces?.$isLoaded).toBe(true)
 		expect(after.settings?.$isLoaded).toBe(true)
 		expect(after.themes?.$isLoaded).toBe(true)
+	})
+})
+
+describe("runAccountMigration - previous document schema", () => {
+	beforeEach(async () => {
+		await setupJazzTestSync()
+	})
+
+	test("preserves several personal and space documents and supports lazy metadata backfill", async () => {
+		let legacyAccount = await createJazzTestAccount({
+			isCurrentActiveAccount: true,
+			AccountSchema: LegacyAccount,
+		})
+		let personalContents = [
+			"# Personal one\n\nBody",
+			"",
+			"---\ntags: launch, performance\n---\n\n## Personal three",
+		]
+		let personalDocuments = personalContents.map(content => {
+			let group = Group.create()
+			return createLegacyDocument(content, group)
+		})
+		let spaces = [
+			createLegacySpace("Product", [
+				"---\ntitle: Product plan\npinned: true\n---\n\nBody",
+				"# Product notes",
+			]),
+			createLegacySpace("Research", ["", "# Research findings"]),
+		]
+		let legacyRoot = LegacyRoot.create(
+			{
+				documents: co
+					.list(LegacyDocument)
+					.create(personalDocuments, legacyAccount),
+				spaces: co.list(LegacySpace).create(spaces, legacyAccount),
+				migrationVersion: 1,
+				lastOpenedDocId: personalDocuments[0].$jazz.id,
+			},
+			legacyAccount,
+		)
+		legacyAccount.$jazz.set("root", legacyRoot)
+
+		await legacyAccount.$jazz.waitForAllCoValuesSync()
+
+		let expectedDocumentIds = personalDocuments.map(
+			document => document.$jazz.id,
+		)
+		for (let space of spaces) {
+			for (let document of space.documents) {
+				if (document) expectedDocumentIds.push(document.$jazz.id)
+			}
+		}
+		let spacesId = legacyRoot.spaces?.$jazz.id
+		let crypto = await TestJSCrypto.create()
+		let sourceNode = legacyAccount.$jazz.localNode
+		let freshNode = new LocalNode(
+			sourceNode.getCurrentAgent().agentSecret,
+			crypto.newRandomSessionID(legacyAccount.$jazz.raw.id),
+			crypto,
+		)
+		feedAllChunks(legacyAccount.$jazz.raw.core, freshNode)
+		feedAllChunks(legacyAccount.profile.$jazz.owner.$jazz.raw.core, freshNode)
+		feedAllChunks(legacyAccount.profile.$jazz.raw.core, freshNode)
+		feedAllChunks(legacyRoot.$jazz.raw.core, freshNode)
+
+		let currentAgent = UserAccount.getCoValueClass().fromNode(freshNode)
+		setActiveAccount(currentAgent)
+		let currentAccount = await UserAccount.load(legacyAccount.$jazz.id, {
+			loadAs: currentAgent,
+			resolve: { profile: true, root: true },
+		})
+		if (!currentAccount.$isLoaded) {
+			throw new Error("account failed to load with the current schema")
+		}
+		setActiveAccount(currentAccount)
+
+		await runAccountMigration(currentAccount)
+		expect(currentAccount.root.documents.$isLoaded).toBe(false)
+		expect(currentAccount.root.spaces?.$isLoaded).toBe(false)
+		for (let core of sourceNode.allCoValues()) {
+			feedAllChunks(core, freshNode)
+		}
+
+		let { root } = await currentAccount.$jazz.ensureLoaded({
+			resolve: {
+				root: {
+					documents: { $each: { content: true } },
+					inactiveDocuments: true,
+					spaces: {
+						$each: { documents: { $each: { content: true } } },
+					},
+					settings: true,
+					themes: true,
+				},
+			},
+		})
+		if (!root.spaces) throw new Error("spaces failed to load")
+
+		expect(root.$jazz.id).toBe(legacyRoot.$jazz.id)
+		expect(root.spaces.$jazz.id).toBe(spacesId)
+		expect(root.spaces.map(space => space?.name)).toEqual([
+			"Product",
+			"Research",
+		])
+		expect(root.documents.map(document => document?.$jazz.id)).toEqual(
+			personalDocuments.map(document => document.$jazz.id),
+		)
+		expect(
+			root.spaces.map(space =>
+				space?.documents.map(document => document?.$jazz.id),
+			),
+		).toEqual(
+			spaces.map(space => space.documents.map(document => document?.$jazz.id)),
+		)
+		expect(root.lastOpenedDocId).toBe(personalDocuments[0].$jazz.id)
+		expect(root.inactiveDocuments?.$isLoaded).toBe(true)
+		expect(root.settings?.$isLoaded).toBe(true)
+		expect(root.themes?.$isLoaded).toBe(true)
+
+		let loadedDocuments = await Promise.all(
+			expectedDocumentIds.map(async documentId => {
+				let document = await Document.load(documentId, {
+					loadAs: currentAccount,
+					resolve: { content: true },
+				})
+				if (!document.$isLoaded) throw new Error("document failed to load")
+				return document
+			}),
+		)
+		expect(loadedDocuments.map(document => document.$jazz.id)).toEqual(
+			expectedDocumentIds,
+		)
+		expect(
+			loadedDocuments.map(document => document.content.toString()),
+		).toEqual([
+			...personalContents,
+			"---\ntitle: Product plan\npinned: true\n---\n\nBody",
+			"# Product notes",
+			"",
+			"# Research findings",
+		])
+		expect(loadedDocuments.every(needsMetadataBackfill)).toBe(true)
+
+		for (let document of loadedDocuments) {
+			backfillDocumentMetadata(document)
+		}
+
+		expect(loadedDocuments.map(document => document.title)).toEqual([
+			"Personal one",
+			"Untitled",
+			"Personal three",
+			"Product plan",
+			"Product notes",
+			"Untitled",
+			"Research findings",
+		])
+		expect(
+			loadedDocuments.every(document => !needsMetadataBackfill(document)),
+		).toBe(true)
+		expect(loadedDocuments[2].tags).toEqual(["launch", "performance"])
+		expect(loadedDocuments[3].pinned).toBe(true)
 	})
 })
 

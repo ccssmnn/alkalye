@@ -11,7 +11,7 @@ import { toast } from "sonner"
 import { Document, Space, UserAccount, createSpaceDocument } from "@/schema"
 import { handleSaveCopy } from "../lib/save-copy"
 import { resolve, settingsResolve } from "../lib/queries"
-import type { LoadedDocument } from "../lib/queries"
+import type { LoaderDocument } from "../lib/queries"
 import { setupKeyboardShortcuts } from "@/app/features/editor"
 import {
 	makeUploadImage,
@@ -33,7 +33,6 @@ import {
 } from "@/app/features/editor"
 import { useEditorSettings } from "@/app/features/editor"
 import { getDocumentTitle, addCopyToTitle } from "../lib/title"
-import { getPath, getTags } from "@/app/features/editor"
 import { EditorToolbar } from "@/app/features/editor"
 import { DocumentSidebar } from "../widgets/document-sidebar"
 import { ListSidebar } from "../widgets/list-sidebar"
@@ -114,18 +113,27 @@ import { HelpMenu } from "@/app/components/help-menu"
 import { EditorStatsBadge } from "@/app/features/editor"
 import { useTrackLastOpened } from "../hooks/use-track-last-opened"
 import { printToPdf } from "@/app/features/import-export"
+import { loadThemesForPdf } from "@/app/features/themes"
 import { testIds } from "@/app/lib/test-ids"
 import { useIntl } from "@/shared/intl/setup"
 import { makeFolderDocumentContent } from "../lib/folders"
+import { syncDocumentMetadata } from "../lib/metadata"
 
-export { SpaceDocScreen, spaceResolve }
+export { SpaceDocScreen, spaceResolve, spaceLoaderResolve, spaceMeResolve }
 export { settingsResolve }
 
 let spaceResolve = {
-	documents: { $each: { content: true, comments: { $each: true } } },
+	documents: { $each: true },
 } as const satisfies ResolveQuery<typeof Space>
 
-type LoadedSpace = co.loaded<typeof Space, typeof spaceResolve>
+// The route loader blocks navigation only on the document list itself; the
+// documents' contents hydrate afterwards through the spaceResolve
+// subscription, so everything below guards item access with $isLoaded.
+let spaceLoaderResolve = {
+	documents: true,
+} as const satisfies ResolveQuery<typeof Space>
+
+type LoadedSpace = co.loaded<typeof Space, typeof spaceLoaderResolve>
 type LoadedSettingsMe = co.loaded<typeof UserAccount, typeof settingsResolve>
 
 interface SpaceDocScreenProps {
@@ -133,7 +141,7 @@ interface SpaceDocScreenProps {
 	id: string
 	loaderData: {
 		space: LoadedSpace | null
-		doc: LoadedDocument | null
+		doc: LoaderDocument | null
 		loadingState: string | null
 		me: LoadedSettingsMe | null
 	}
@@ -216,7 +224,7 @@ function SpaceEditorContent({
 	loaderMe,
 }: {
 	space: LoadedSpace
-	doc: LoadedDocument
+	doc: LoaderDocument
 	spaceId: string
 	docId: string
 	loaderMe: LoadedSettingsMe | null
@@ -276,14 +284,19 @@ function SpaceEditorContent({
 		editorRef: editor,
 	})
 	let assets =
-		doc.assets?.map(a => ({
-			id: a.$jazz.id,
-			name: a.name,
-			type: a.type,
-			imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
-			video: a.type === "video" ? a.video : undefined,
-			muteAudio: a.type === "video" ? a.muteAudio : undefined,
-		})) ?? []
+		doc.assets?.flatMap(a => {
+			if (!a?.$isLoaded) return []
+			return [
+				{
+					id: a.$jazz.id,
+					name: a.name,
+					type: a.type,
+					imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+					video: a.type === "video" ? a.video : undefined,
+					muteAudio: a.type === "video" ? a.muteAudio : undefined,
+				},
+			]
+		}) ?? []
 	let assetsRef = useRef(assets)
 	useEffect(() => {
 		assetsRef.current = assets
@@ -293,26 +306,28 @@ function SpaceEditorContent({
 	let documents: WikilinkDoc[] = []
 	if (space.documents?.$isLoaded) {
 		documents = Array.from(space.documents.values()).flatMap(d => {
-			if (!d?.$isLoaded || !d.content?.$isLoaded) return []
+			if (!d?.$isLoaded) return []
 			if (d.deletedAt || d.$jazz.id === docId) return []
-			let content = d.content.toString()
 			return [
 				{
 					id: d.$jazz.id,
-					title: getDocumentTitle(content),
-					path: getPath(content),
-					tags: getTags(content),
+					title: d.title ?? "Untitled",
+					path: d.path ?? null,
+					tags: [],
 				},
 			]
 		})
 	}
 
-	let { syncBacklinks } = useBacklinkSync(docId, readOnly, { spaceId })
+	let content = doc.content?.toString() ?? ""
+	let { syncBacklinks } = useBacklinkSync(docId, readOnly, {
+		spaceId,
+		initialContent: content,
+	})
 	useEditorSettings(editorSettings)
 	useTrackLastOpened(me, doc)
 	useHealSpaceDocIds(space, spaceId)
 
-	let content = doc.content?.toString() ?? ""
 	let docTitle = getDocumentTitle(content)
 	let commentsEnabled = areCommentsEnabled(doc)
 	let commentThreads = getVisibleCommentThreads(doc)
@@ -337,36 +352,43 @@ function SpaceEditorContent({
 		pendingSave.current = null
 		applyContentDiffWithCommentAnchors(doc, pendingContent)
 		doc.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(doc)
 		if (cursor) {
 			updateCursor(cursor.from, cursor.to)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [content])
+	}, [content, doc])
+
+	useEffect(() => {
+		if (!canEdit(doc)) return
+		syncDocumentMetadata(doc, { contentChanged: false })
+	}, [doc])
 
 	let docWithContent = useCoState(Document, docId, {
 		resolve: { content: true },
 	})
 
 	let sidebarAssets: SidebarAsset[] =
-		doc.assets
-			?.filter(a => a?.$isLoaded)
-			.map(a => ({
-				id: a.$jazz.id,
-				name: a.name,
-				type: a.type,
-				imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
-				getVideoBlob:
-					a.type === "video" && a.video?.$isLoaded
-						? () => a.video?.toBlob()
-						: undefined,
-				muteAudio: a.type === "video" ? a.muteAudio : undefined,
-			})) ?? []
+		doc.assets?.flatMap(a => {
+			if (!a?.$isLoaded) return []
+			let video = a.type === "video" && a.video?.$isLoaded ? a.video : null
+			return [
+				{
+					id: a.$jazz.id,
+					name: a.name,
+					type: a.type,
+					imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
+					getVideoBlob: video ? () => video.toBlob() : undefined,
+					muteAudio: a.type === "video" ? a.muteAudio : undefined,
+				},
+			]
+		}) ?? []
 
 	let wikiLinkDocs: { id: string; title: string }[] = []
 	if (space.documents?.$isLoaded) {
 		for (let d of space.documents.values()) {
 			if (!d?.$isLoaded || d.deletedAt || d.$jazz.id === docId) continue
-			let title = getDocumentTitle(d)
+			let title = d.title ?? "Untitled"
 			wikiLinkDocs.push({ id: d.$jazz.id, title })
 		}
 	}
@@ -391,14 +413,10 @@ function SpaceEditorContent({
 				document.documentElement.dataset.focusMode = String(!current)
 			},
 			openFind: () => editor.current?.openFind(),
-			onPrintPdf: () => {
-				void printToPdf({
-					content,
-					themes: me.$isLoaded ? me.root?.themes : undefined,
-					defaultPreviewTheme: me.$isLoaded
-						? (me.root?.settings?.defaultPreviewTheme ?? null)
-						: null,
-				})
+			onPrintPdf: async () => {
+				if (!me.$isLoaded) return
+				let { themes, defaultPreviewTheme } = await loadThemesForPdf(me)
+				void printToPdf({ content, themes, defaultPreviewTheme })
 			},
 			onPreview: () => {
 				navigate({
@@ -445,6 +463,7 @@ function SpaceEditorContent({
 				pendingSave.current = null
 				applyContentDiffWithCommentAnchors(doc, newContent)
 				doc.$jazz.set("updatedAt", new Date())
+				syncDocumentMetadata(doc)
 				if (cursor) {
 					updateCursor(cursor.from, cursor.to)
 				}
@@ -473,6 +492,7 @@ function SpaceEditorContent({
 		if (currentContent !== doc.content.toString()) {
 			applyContentDiffWithCommentAnchors(doc, currentContent)
 			doc.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(doc)
 		}
 	}
 
@@ -608,7 +628,10 @@ function SpaceEditorContent({
 				<SidebarDocumentList
 					docs={allDocs}
 					currentDocId={docId}
-					isLoading={!space.documents?.$isLoaded}
+					isLoading={
+						!space.documents?.$isLoaded ||
+						(space.documents.length > 0 && allDocs.length === 0)
+					}
 					onDocClick={() => isMobile && setLeftOpenMobile(false)}
 					onDuplicate={docToDuplicate =>
 						handleDuplicateDocument(
@@ -918,7 +941,7 @@ function makeCreateFolderDocument(
 }
 
 async function handleDuplicateDocument(
-	doc: co.loaded<typeof Document, { content: true }>,
+	doc: co.loaded<typeof Document>,
 	space: LoadedSpace,
 	isMobile: boolean,
 	setLeftOpenMobile: (open: boolean) => void,
@@ -926,11 +949,13 @@ async function handleDuplicateDocument(
 	spaceId: string,
 ) {
 	if (!space.documents?.$isLoaded) return
-	let content = doc.content?.toString() ?? ""
+	let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+	let content = loaded.content?.toString() ?? ""
 	let newContent = addCopyToTitle(content)
 	let newDoc = createSpaceDocument(space.$jazz.owner, space.$jazz.id, content)
 	try {
-		await copyCommentsAndApplyContent(doc, newDoc, newContent)
+		await copyCommentsAndApplyContent(loaded, newDoc, newContent)
+		syncDocumentMetadata(newDoc)
 	} catch (error) {
 		console.error("Failed to duplicate document:", error)
 		toast.error("Failed to duplicate document")
@@ -948,7 +973,7 @@ function useHealSpaceDocIds(space: LoadedSpace, spaceId: string) {
 	useEffect(() => {
 		if (!space.documents?.$isLoaded) return
 		for (let d of space.documents.values()) {
-			if (!d?.$isLoaded || !d.content?.$isLoaded) continue
+			if (!d?.$isLoaded) continue
 			if (d.spaceId === spaceId) continue
 			if (!canEdit(d)) continue
 			d.$jazz.set("spaceId", spaceId)
@@ -961,24 +986,16 @@ function useHealSpaceDocIds(space: LoadedSpace, spaceId: string) {
 let spaceMeResolve = {
 	profile: true,
 	root: {
-		documents: { $each: { content: true, comments: { $each: true } } },
+		documents: { $each: true },
 		settings: true,
-		themes: {
-			$each: { css: true, template: true, assets: { $each: { data: true } } },
-		},
 	},
-} as const
+} as const satisfies ResolveQuery<typeof UserAccount>
 
-function getSpaceDocs(
-	space: LoadedSpace,
-): co.loaded<typeof Document, { content: true; comments: { $each: true } }>[] {
+function getSpaceDocs(space: LoadedSpace): co.loaded<typeof Document>[] {
 	if (!space.documents?.$isLoaded) return []
-	let docs: co.loaded<
-		typeof Document,
-		{ content: true; comments: { $each: true } }
-	>[] = []
+	let docs: co.loaded<typeof Document>[] = []
 	for (let doc of space.documents.values()) {
-		if (!doc?.$isLoaded || !doc.content?.$isLoaded) continue
+		if (!doc?.$isLoaded) continue
 		docs.push(doc)
 	}
 	return docs

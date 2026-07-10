@@ -30,17 +30,15 @@ import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Label } from "@/app/components/ui/label"
 import { Document } from "@/schema"
-import { parseFrontmatter, getPath } from "@/app/features/editor"
-import { applyContentDiffWithCommentAnchors } from "@/app/features/comments"
+import { parseFrontmatter } from "@/app/features/editor"
+import { applyContentDiffLoadingCommentAnchors } from "@/app/features/comments"
+import { syncDocumentMetadata } from "../lib/metadata"
 import { useIntl } from "@/shared/intl/setup"
 
 export { FolderRow, useFolderStore }
 export type { FolderState }
 
-type LoadedDocument = co.loaded<
-	typeof Document,
-	{ content: true; comments: { $each: true } }
->
+type LoadedDocument = co.loaded<typeof Document>
 type ViewMode = "folders" | "flat"
 
 interface FolderState {
@@ -195,7 +193,7 @@ function FolderRow({
 				path={path}
 				existingFolders={existingFolders}
 				onRename={newPath => {
-					handleRenameFolder(docsInFolder, path, newPath)
+					void handleRenameFolder(docsInFolder, path, newPath)
 					renameFolder(path, newPath)
 				}}
 			/>
@@ -206,7 +204,7 @@ function FolderRow({
 				path={path}
 				existingFolders={existingFolders}
 				onMove={targetPath => {
-					handleMoveFolder(docsInFolder, path, targetPath)
+					void handleMoveFolder(docsInFolder, path, targetPath)
 					removeFolder(path)
 				}}
 			/>
@@ -223,7 +221,7 @@ function FolderRow({
 						onDeleteDocs(docsToDelete)
 					} else {
 						// Fallback: handle deletion/path-removal directly
-						handleDeleteFolder(docsInFolder, path, deleteDocuments)
+						void handleDeleteFolder(docsInFolder, path, deleteDocuments)
 					}
 					removeFolder(path)
 				}}
@@ -543,15 +541,13 @@ function DeleteFolderDialog({
 
 // Handlers
 
-function handleRenameFolder(
+async function handleRenameFolder(
 	docs: LoadedDocument[],
 	oldPath: string,
 	newPath: string,
 ) {
 	for (let doc of docs) {
-		if (!doc.content) continue
-		let content = doc.content.toString()
-		let docPath = getPath(content)
+		let docPath = doc.path
 		if (!docPath) continue
 
 		let updatedPath: string
@@ -563,19 +559,20 @@ function handleRenameFolder(
 			continue
 		}
 
-		let newContent = updatePathInContent(content, updatedPath)
-		applyContentDiffWithCommentAnchors(doc, newContent)
-		doc.$jazz.set("updatedAt", new Date())
+		let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+		let newContent = updatePathInContent(loaded.content.toString(), updatedPath)
+		await applyContentDiffLoadingCommentAnchors(loaded, newContent)
+		loaded.$jazz.set("updatedAt", new Date())
+		syncDocumentMetadata(loaded)
 	}
 }
 
-function handleMoveFolder(
+async function handleMoveFolder(
 	docs: LoadedDocument[],
 	oldPath: string,
 	newPath: string,
 ) {
-	// Same logic as rename - just updating paths
-	handleRenameFolder(docs, oldPath, newPath)
+	await handleRenameFolder(docs, oldPath, newPath)
 }
 
 function getDocsToDeleteInFolder(
@@ -583,22 +580,19 @@ function getDocsToDeleteInFolder(
 	path: string,
 ): LoadedDocument[] {
 	return docs.filter(doc => {
-		if (!doc.content) return false
-		let docPath = getPath(doc.content.toString())
+		let docPath = doc.path
 		if (!docPath) return false
 		return docPath === path || docPath.startsWith(path + "/")
 	})
 }
 
-function handleDeleteFolder(
+async function handleDeleteFolder(
 	docs: LoadedDocument[],
 	path: string,
 	deleteDocuments: boolean,
 ) {
 	for (let doc of docs) {
-		if (!doc.content) continue
-		let content = doc.content.toString()
-		let docPath = getPath(content)
+		let docPath = doc.path
 		if (!docPath) continue
 
 		let isInFolder = docPath === path || docPath.startsWith(path + "/")
@@ -607,9 +601,11 @@ function handleDeleteFolder(
 		if (deleteDocuments) {
 			doc.$jazz.set("deletedAt", new Date())
 		} else {
-			let newContent = removePathFromContent(content)
-			applyContentDiffWithCommentAnchors(doc, newContent)
-			doc.$jazz.set("updatedAt", new Date())
+			let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+			let newContent = removePathFromContent(loaded.content.toString())
+			await applyContentDiffLoadingCommentAnchors(loaded, newContent)
+			loaded.$jazz.set("updatedAt", new Date())
+			syncDocumentMetadata(loaded)
 		}
 	}
 }

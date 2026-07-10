@@ -2,12 +2,7 @@ import { useEffect, useRef, useState } from "react"
 import { useAccount, useCoState } from "jazz-tools/react"
 import { type ResolveQuery, Group } from "jazz-tools"
 import { UserAccount, Space } from "@/schema"
-import {
-	syncBackup,
-	syncFromBackup,
-	prepareBackupDoc,
-	type LoadedDocument,
-} from "../lib/engine"
+import { syncBackup, syncFromBackup, prepareBackupDocs } from "../lib/engine"
 import {
 	BACKUP_DEBOUNCE_MS,
 	SPACE_BACKUP_DEBOUNCE_MS,
@@ -15,37 +10,38 @@ import {
 	useBackupStore,
 	useSpaceBackupPath,
 	getSpaceBackupPath,
+	getSpaceBackupHash,
+	setSpaceBackupHash,
+	isSpaceInitialBackupPending,
+	subscribeSpaceBackupChanges,
 	getBackupHandle,
 	getSpaceBackupHandle,
 	supportsFileSystemWatch,
 	observeDirectoryChanges,
 	toTimestamp,
 } from "../lib/storage"
+import {
+	chooseBackupPush,
+	createBackupSyncCoordinator,
+	hasBackupDocumentsChangedSince,
+	selectActiveBackupDocuments,
+} from "../lib/subscriber-state"
 import { useIntl } from "@/shared/intl/setup"
 
-export { BackupSubscriber, SpacesBackupSubscriber, spaceBackupDocumentResolve }
+export {
+	BackupSubscriber,
+	SpacesBackupSubscriber,
+	backupQuery,
+	spaceBackupDocumentResolve,
+}
 
 let spaceBackupDocumentResolve = {
-	documents: {
-		$each: {
-			content: true,
-			assets: { $each: { image: true, video: true } },
-			comments: { $each: true },
-		},
-		$onError: "catch",
-	},
+	documents: { $each: true, $onError: "catch" },
 } as const
 
 let backupQuery = {
 	root: {
-		documents: {
-			$each: {
-				content: true,
-				assets: { $each: { image: true, video: true } },
-				comments: { $each: true },
-			},
-			$onError: "catch",
-		},
+		documents: { $each: true, $onError: "catch" },
 	},
 } as const satisfies ResolveQuery<typeof UserAccount>
 
@@ -58,27 +54,90 @@ let spacesBackupQuery = {
 let spaceLastPullAtById = new Map<string, number>()
 
 function BackupSubscriber() {
+	let { enabled } = useBackupStore()
+	if (!enabled) return null
+	return <ActiveBackupSubscriber />
+}
+
+function SpacesBackupSubscriber() {
+	let me = useAccount(UserAccount, { resolve: spacesBackupQuery })
+	let [, setStorageVersion] = useState(0)
+
+	useEffect(() => {
+		let unsubscribe = subscribeSpaceBackupChanges(() => {
+			setStorageVersion(v => v + 1)
+		})
+
+		function handleStorageChange(e: StorageEvent) {
+			if (e.key?.startsWith(SPACE_BACKUP_KEY_PREFIX)) {
+				setStorageVersion(v => v + 1)
+			}
+		}
+
+		window.addEventListener("storage", handleStorageChange)
+		return () => {
+			unsubscribe()
+			window.removeEventListener("storage", handleStorageChange)
+		}
+	}, [])
+
+	let spacesWithBackup = getSpacesWithBackup(me)
+
+	return (
+		<>
+			{spacesWithBackup.map(spaceId => (
+				<SpaceBackupSubscriber key={spaceId} spaceId={spaceId} />
+			))}
+		</>
+	)
+}
+
+function ActiveBackupSubscriber() {
 	let t = useIntl()
 	let {
 		enabled,
 		bidirectional,
+		directoryName,
+		lastBackupAt,
+		lastBackupHash,
 		lastPullAt,
 		setLastBackupAt,
+		setLastBackupHash,
 		setLastPullAt,
 		setLastError,
 		setEnabled,
 		setDirectoryName,
 	} = useBackupStore()
 	let me = useAccount(UserAccount, { resolve: backupQuery })
-	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	let lastContentHashRef = useRef<string>("")
+	let [pushCoordinator] = useState(() =>
+		createBackupSyncCoordinator(BACKUP_DEBOUNCE_MS),
+	)
+	let lastContentHashRef = useRef<string | null>(lastBackupHash)
+	let directoryGenerationRef = useRef(0)
+	let previousDirectoryNameRef = useRef(directoryName)
 	let lastPullAtRef = useRef<number | null>(toTimestamp(lastPullAt))
-	let isPushingRef = useRef(false)
-	let isPullingRef = useRef(false)
 
 	useEffect(() => {
 		lastPullAtRef.current = toTimestamp(lastPullAt)
 	}, [lastPullAt])
+
+	useEffect(() => {
+		return () => pushCoordinator.dispose()
+	}, [pushCoordinator])
+
+	useEffect(() => {
+		if (previousDirectoryNameRef.current === directoryName) return
+		previousDirectoryNameRef.current = directoryName
+		directoryGenerationRef.current += 1
+		pushCoordinator.cancel()
+		lastContentHashRef.current = lastBackupHash
+		lastPullAtRef.current = null
+	}, [directoryName, lastBackupHash, pushCoordinator])
+
+	useEffect(() => {
+		if (pushCoordinator.isBusy()) return
+		lastContentHashRef.current = lastBackupHash
+	}, [lastBackupHash, pushCoordinator])
 
 	useEffect(() => {
 		if (!enabled || !me.$isLoaded) return
@@ -86,54 +145,79 @@ function BackupSubscriber() {
 		let docs = me.root?.documents
 		if (!docs?.$isLoaded) return
 
-		let activeDocs: LoadedDocument[] = []
-		for (let doc of docs.values()) {
-			if (!doc?.$isLoaded || !doc.content?.$isLoaded || doc.deletedAt) continue
-			activeDocs.push(doc)
-		}
-		let contentHash = activeDocs
-			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
-			.sort()
-			.join("|")
-
-		if (contentHash === lastContentHashRef.current) return
-		lastContentHashRef.current = contentHash
-
-		if (debounceRef.current) clearTimeout(debounceRef.current)
-		debounceRef.current = setTimeout(async () => {
-			try {
+		let selection = selectActiveBackupDocuments(docs.values())
+		let { contentHash } = selection
+		let changedSinceLastBackup = hasBackupDocumentsChangedSince(
+			selection,
+			lastBackupAt,
+		)
+		let previousHash = lastContentHashRef.current ?? lastBackupHash
+		let directoryGeneration = directoryGenerationRef.current
+		let request = {
+			key: `${directoryGeneration}:${contentHash}`,
+			async run() {
 				let handle = await getBackupHandle()
 				if (!handle) {
+					if (directoryGeneration !== directoryGenerationRef.current)
+						return false
 					setEnabled(false)
 					setDirectoryName(null)
 					setLastError(t("backup.error"))
-					return
+					return false
 				}
 
-				let backupDocs = await Promise.all(activeDocs.map(prepareBackupDoc))
+				let backupDocs = await prepareBackupDocs(selection)
 				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
-				isPushingRef.current = true
-				await syncBackup(handle, backupDocs, scopeId)
-
+				await syncBackup(handle, backupDocs, scopeId, {
+					isComplete: selection.isComplete,
+					deletedDocumentIds: selection.deletedDocumentIds,
+				})
+				return true
+			},
+			commit() {
+				if (directoryGeneration !== directoryGenerationRef.current) return
+				lastContentHashRef.current = contentHash
 				setLastBackupAt(new Date().toISOString())
+				setLastBackupHash(contentHash)
 				setLastError(null)
-			} catch (e) {
-				setLastError(e instanceof Error ? e.message : t("backup.failed"))
-			} finally {
-				isPushingRef.current = false
-			}
-		}, BACKUP_DEBOUNCE_MS)
-
-		return () => {
-			if (debounceRef.current) clearTimeout(debounceRef.current)
+			},
+			fail(error: unknown) {
+				if (directoryGeneration !== directoryGenerationRef.current) return
+				setLastError(
+					error instanceof Error ? error.message : t("backup.failed"),
+				)
+			},
 		}
+
+		let pushChoice = chooseBackupPush(
+			previousHash,
+			contentHash,
+			Boolean(lastBackupAt) && !changedSinceLastBackup,
+		)
+		if (!pushChoice.shouldPush) {
+			if (pushCoordinator.isRunning()) {
+				pushCoordinator.queue(request)
+				return
+			}
+			pushCoordinator.cancelPush()
+			lastContentHashRef.current = pushChoice.nextHash
+			if (lastBackupHash !== contentHash) setLastBackupHash(contentHash)
+			return
+		}
+
+		pushCoordinator.queue(request)
 	}, [
 		enabled,
 		me,
+		directoryName,
+		lastBackupAt,
+		lastBackupHash,
 		setLastBackupAt,
+		setLastBackupHash,
 		setLastError,
 		setEnabled,
 		setDirectoryName,
+		pushCoordinator,
 		t,
 	])
 
@@ -146,9 +230,7 @@ function BackupSubscriber() {
 
 		async function doPull() {
 			try {
-				if (isPushingRef.current) return
-				if (isPullingRef.current) return
-				isPullingRef.current = true
+				if (watchAborted) return
 				let handle = await getBackupHandle()
 				if (!handle) return
 
@@ -168,8 +250,6 @@ function BackupSubscriber() {
 				setLastPullAt(pulledAt)
 			} catch (e) {
 				console.error("Backup pull failed:", e)
-			} finally {
-				isPullingRef.current = false
 			}
 		}
 
@@ -181,14 +261,14 @@ function BackupSubscriber() {
 			if (!handle) return
 
 			let stop = await observeDirectoryChanges(handle, () => {
-				if (!watchAborted) doPull()
+				if (!watchAborted) pushCoordinator.pull(doPull)
 			})
 			if (watchAborted) {
 				stop?.()
 				return
 			}
 			stopWatching = stop
-			doPull()
+			pushCoordinator.pull(doPull)
 		}
 
 		setupWatch()
@@ -197,35 +277,16 @@ function BackupSubscriber() {
 			watchAborted = true
 			stopWatching?.()
 		}
-	}, [enabled, bidirectional, me, setLastPullAt])
+	}, [
+		enabled,
+		bidirectional,
+		directoryName,
+		me,
+		pushCoordinator,
+		setLastPullAt,
+	])
 
 	return null
-}
-
-function SpacesBackupSubscriber() {
-	let me = useAccount(UserAccount, { resolve: spacesBackupQuery })
-	let [storageVersion, setStorageVersion] = useState(0)
-
-	useEffect(() => {
-		function handleStorageChange(e: StorageEvent) {
-			if (e.key?.startsWith(SPACE_BACKUP_KEY_PREFIX)) {
-				setStorageVersion(v => v + 1)
-			}
-		}
-
-		window.addEventListener("storage", handleStorageChange)
-		return () => window.removeEventListener("storage", handleStorageChange)
-	}, [])
-
-	let spacesWithBackup = getSpacesWithBackup(me, storageVersion)
-
-	return (
-		<>
-			{spacesWithBackup.map(spaceId => (
-				<SpaceBackupSubscriber key={spaceId} spaceId={spaceId} />
-			))}
-		</>
-	)
 }
 
 interface SpaceBackupSubscriberProps {
@@ -234,58 +295,91 @@ interface SpaceBackupSubscriberProps {
 
 function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 	let { directoryName, setDirectoryName } = useSpaceBackupPath(spaceId)
-	let debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-	let lastContentHashRef = useRef<string>("")
-	let isPushingRef = useRef(false)
-	let isPullingRef = useRef(false)
+	let [pushCoordinator] = useState(() =>
+		createBackupSyncCoordinator(SPACE_BACKUP_DEBOUNCE_MS),
+	)
+	let lastContentHashRef = useRef<string | null>(getSpaceBackupHash(spaceId))
+	let directoryGenerationRef = useRef(0)
+	let previousDirectoryNameRef = useRef(directoryName)
 
 	let space = useCoState(Space, spaceId, {
 		resolve: spaceBackupDocumentResolve,
 	})
 
 	useEffect(() => {
-		if (!directoryName) return
+		return () => pushCoordinator.dispose()
+	}, [pushCoordinator])
+
+	useEffect(() => {
+		if (previousDirectoryNameRef.current === directoryName) return
+		previousDirectoryNameRef.current = directoryName
+		directoryGenerationRef.current += 1
+		pushCoordinator.cancel()
+		lastContentHashRef.current = getSpaceBackupHash(spaceId)
+		spaceLastPullAtById.delete(spaceId)
+	}, [directoryName, pushCoordinator, spaceId])
+
+	useEffect(() => {
+		if (!directoryName) {
+			pushCoordinator.cancel()
+			lastContentHashRef.current = null
+			return
+		}
 		if (!space?.$isLoaded || !space.documents?.$isLoaded) return
 
 		let docs = space.documents
-		let activeDocs: LoadedDocument[] = []
-		for (let doc of docs.values()) {
-			if (!doc?.$isLoaded || !doc.content?.$isLoaded || doc.deletedAt) continue
-			activeDocs.push(doc)
-		}
-
-		let contentHash = activeDocs
-			.map(d => `${d.$jazz.id}:${d.updatedAt?.getTime()}`)
-			.sort()
-			.join("|")
-
-		if (contentHash === lastContentHashRef.current) return
-		lastContentHashRef.current = contentHash
-
-		if (debounceRef.current) clearTimeout(debounceRef.current)
-		debounceRef.current = setTimeout(async () => {
-			try {
+		let selection = selectActiveBackupDocuments(docs.values())
+		let { contentHash } = selection
+		let previousHash = lastContentHashRef.current ?? getSpaceBackupHash(spaceId)
+		let directoryGeneration = directoryGenerationRef.current
+		let request = {
+			key: `${directoryGeneration}:${contentHash}`,
+			async run() {
 				let handle = await getSpaceBackupHandle(spaceId)
 				if (!handle) {
-					setDirectoryName(null)
-					return
+					if (directoryGeneration === directoryGenerationRef.current) {
+						setDirectoryName(null)
+					}
+					return false
 				}
 
-				let backupDocs = await Promise.all(activeDocs.map(prepareBackupDoc))
+				let backupDocs = await prepareBackupDocs(selection)
 				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
-				isPushingRef.current = true
-				await syncBackup(handle, backupDocs, scopeId)
-			} catch (e) {
-				console.error(`Space backup failed for ${spaceId}:`, e)
-			} finally {
-				isPushingRef.current = false
-			}
-		}, SPACE_BACKUP_DEBOUNCE_MS)
-
-		return () => {
-			if (debounceRef.current) clearTimeout(debounceRef.current)
+				await syncBackup(handle, backupDocs, scopeId, {
+					isComplete: selection.isComplete,
+					deletedDocumentIds: selection.deletedDocumentIds,
+				})
+				return true
+			},
+			commit() {
+				if (directoryGeneration !== directoryGenerationRef.current) return
+				lastContentHashRef.current = contentHash
+				setSpaceBackupHash(spaceId, contentHash)
+			},
+			fail(error: unknown) {
+				if (directoryGeneration !== directoryGenerationRef.current) return
+				console.error(`Space backup failed for ${spaceId}:`, error)
+			},
 		}
-	}, [directoryName, space, spaceId, setDirectoryName])
+
+		let pushChoice = chooseBackupPush(
+			previousHash,
+			contentHash,
+			!isSpaceInitialBackupPending(spaceId),
+		)
+		if (!pushChoice.shouldPush) {
+			if (pushCoordinator.isRunning()) {
+				pushCoordinator.queue(request)
+				return
+			}
+			pushCoordinator.cancelPush()
+			lastContentHashRef.current = pushChoice.nextHash
+			setSpaceBackupHash(spaceId, contentHash)
+			return
+		}
+
+		pushCoordinator.queue(request)
+	}, [directoryName, pushCoordinator, space, spaceId, setDirectoryName])
 
 	useEffect(() => {
 		if (!directoryName) return
@@ -301,9 +395,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 
 		async function doPull() {
 			try {
-				if (isPushingRef.current) return
-				if (isPullingRef.current) return
-				isPullingRef.current = true
+				if (watchAborted) return
 				let handle = await getSpaceBackupHandle(spaceId)
 				if (!handle) return
 
@@ -320,8 +412,6 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 				spaceLastPullAtById.set(spaceId, Date.now())
 			} catch (e) {
 				console.error(`Space backup pull failed for ${spaceId}:`, e)
-			} finally {
-				isPullingRef.current = false
 			}
 		}
 
@@ -333,14 +423,14 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 			if (!handle) return
 
 			let stop = await observeDirectoryChanges(handle, () => {
-				if (!watchAborted) doPull()
+				if (!watchAborted) pushCoordinator.pull(doPull)
 			})
 			if (watchAborted) {
 				stop?.()
 				return
 			}
 			stopWatching = stop
-			doPull()
+			pushCoordinator.pull(doPull)
 		}
 
 		setupWatch()
@@ -349,7 +439,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 			watchAborted = true
 			stopWatching?.()
 		}
-	}, [directoryName, space, spaceId])
+	}, [directoryName, pushCoordinator, space, spaceId])
 
 	return null
 }
@@ -358,7 +448,6 @@ function getSpacesWithBackup(
 	me: ReturnType<
 		typeof useAccount<typeof UserAccount, typeof spacesBackupQuery>
 	>,
-	_storageVersion: number,
 ): string[] {
 	if (!me.$isLoaded || !me.root?.spaces?.$isLoaded) return []
 

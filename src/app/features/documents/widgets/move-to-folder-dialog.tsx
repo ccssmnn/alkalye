@@ -11,20 +11,17 @@ import {
 } from "@/app/components/ui/dialog"
 import { Button } from "@/app/components/ui/button"
 import { Document } from "@/schema"
-import { getPath } from "@/app/features/editor"
 import { cn } from "@/app/lib/cn"
 import { useIntl } from "@/shared/intl/setup"
 import { moveDocumentToFolder } from "../lib/folders"
+import { syncDocumentMetadata } from "../lib/metadata"
 
 export { MoveToFolderDialog }
 
-type LoadedDocument = co.loaded<
-	typeof Document,
-	{ content: true; comments: { $each: true } }
->
+type SidebarDoc = co.loaded<typeof Document>
 
 interface MoveToFolderDialogProps {
-	doc: LoadedDocument
+	doc: SidebarDoc
 	existingFolders: string[]
 	open?: boolean
 	onOpenChange?: (open: boolean) => void
@@ -42,7 +39,7 @@ function MoveToFolderDialog({
 	let setOpen = onOpenChange ?? setInternalOpen
 
 	let [inputValue, setInputValue] = useState("")
-	let currentPath = getPath(doc.content?.toString() ?? "")
+	let currentPath = doc.path ?? null
 
 	let filteredFolders = existingFolders.filter(folder =>
 		folder.toLowerCase().includes(inputValue.toLowerCase()),
@@ -51,16 +48,23 @@ function MoveToFolderDialog({
 		inputValue.trim() &&
 		!existingFolders.some(f => f.toLowerCase() === inputValue.toLowerCase())
 
+	async function handleMoveToFolder(newPath: string | null) {
+		let loaded = await doc.$jazz.ensureLoaded({ resolve: { content: true } })
+		if (!loaded) return
+		await moveDocumentToFolder(loaded, newPath)
+		syncDocumentMetadata(loaded)
+	}
+
 	function handleSelect(value: string | null) {
 		if (!value) return
-		moveDocumentToFolder(doc, value === "__root__" ? null : value)
+		void handleMoveToFolder(value === "__root__" ? null : value)
 		setOpen(false)
 		setInputValue("")
 	}
 
 	function handleCreateAndMove() {
 		if (!inputValue.trim()) return
-		moveDocumentToFolder(doc, inputValue.trim())
+		void handleMoveToFolder(inputValue.trim())
 		setOpen(false)
 		setInputValue("")
 	}

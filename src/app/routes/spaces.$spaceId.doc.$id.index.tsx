@@ -3,8 +3,8 @@ import { z } from "zod"
 import { Document, Space } from "@/schema"
 import {
 	SpaceDocScreen,
-	spaceResolve,
-	resolve,
+	spaceLoaderResolve,
+	loaderResolve,
 	settingsResolve,
 } from "@/app/features/documents"
 
@@ -20,9 +20,12 @@ let findSearchSchema = z.object({
 let Route = createFileRoute("/spaces/$spaceId/doc/$id/")({
 	validateSearch: findSearchSchema,
 	loader: async ({ params, context }) => {
+		// Block navigation only on the space's document list and the opened
+		// document; the other documents' contents stream in afterwards via the
+		// screen's deep subscription.
 		let [space, doc] = await Promise.all([
-			Space.load(params.spaceId, { resolve: spaceResolve }),
-			Document.load(params.id, { resolve }),
+			Space.load(params.spaceId, { resolve: spaceLoaderResolve }),
+			Document.load(params.id, { resolve: loaderResolve }),
 		])
 
 		if (!space.$isLoaded) {

@@ -32,6 +32,7 @@ import {
 	createSpaceDocument,
 } from "@/schema"
 import { getSpaceGroup } from "../lib/spaces"
+import { createDocumentMetadata } from "@/app/features/documents"
 
 export { CopyToSyncedDialog }
 export type { CopyToSyncedDialogProps }
@@ -93,12 +94,14 @@ function CopyToSyncedDialog({
 	async function copyToPersonalSpace() {
 		if (!me?.$isLoaded) return false
 
+		let now = new Date()
 		let newDoc = Document.create(
 			{
 				version: 1,
 				content: co.plainText().create(content, me.$jazz.owner),
-				createdAt: new Date(),
-				updatedAt: new Date(),
+				...createDocumentMetadata(content, now),
+				createdAt: now,
+				updatedAt: now,
 			},
 			me.$jazz.owner,
 		)
