@@ -103,6 +103,25 @@ describe("Space Collaboration", () => {
 		)
 	})
 
+	test("accepting a space invite does not depend on the active account", async () => {
+		let unrelatedAccount = await createJazzTestAccount({
+			AccountSchema: UserAccount,
+		})
+		let { link: inviteLink } = await createSpaceInvite(space, "writer")
+		let inviteData = parseSpaceInviteLink(inviteLink)
+
+		setActiveAccount(unrelatedAccount)
+
+		await acceptSpaceInvite(otherAccount, inviteData)
+
+		let { root } = await otherAccount.$jazz.ensureLoaded({
+			resolve: { root: { spaces: true } },
+		})
+		expect(root.spaces?.some(item => item?.$jazz.id === space.$jazz.id)).toBe(
+			true,
+		)
+	})
+
 	test("revoked user cannot access space", async () => {
 		let { link: inviteLink } = await createSpaceInvite(space, "writer")
 		let inviteData = parseSpaceInviteLink(inviteLink)

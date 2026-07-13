@@ -210,6 +210,7 @@ async function acceptSpaceInvite(
 	let space = null
 	for (let i = 0; i < 4; i++) {
 		space = await Space.load(inviteData.spaceId, {
+			loadAs: account,
 			resolve: { documents: true },
 		})
 		if (space?.$isLoaded) break
