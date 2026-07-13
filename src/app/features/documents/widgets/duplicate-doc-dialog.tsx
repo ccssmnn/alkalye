@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from "react"
 import { co, Group } from "jazz-tools"
-import { createImage } from "jazz-tools/media"
 import { useAccount } from "jazz-tools/react"
 import { toast } from "sonner"
 import { User } from "lucide-react"
@@ -25,18 +24,12 @@ import {
 } from "@/app/components/ui/select"
 import { Progress } from "@/app/components/ui/progress"
 import { SpaceInitials } from "@/app/features/spaces"
-import {
-	Asset,
-	ImageAsset,
-	VideoAsset,
-	Document,
-	Space,
-	UserAccount,
-} from "@/schema"
+import { Asset, Document, Space, UserAccount } from "@/schema"
 import { getSpaceGroup } from "@/app/features/spaces"
 import { copyCommentsAndApplyContent } from "@/app/features/comments"
 import { createDocumentMetadata } from "@/app/features/documents"
 import { useIntl } from "@/shared/intl/setup"
+import { assetContentResolve, copyAsset } from "@/app/features/assets"
 
 export { DuplicateDocDialog, duplicateDocument }
 export type { DuplicateDocDialogProps, DuplicateProgress }
@@ -45,7 +38,9 @@ type LoadedDocument = co.loaded<
 	typeof Document,
 	{
 		content: true
-		assets: { $each: { image: true; video: true } }
+		assets: {
+			$each: typeof assetContentResolve
+		}
 		comments: { $each: { replies: true } }
 	}
 >
@@ -268,7 +263,8 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 		a =>
 			a?.$isLoaded &&
 			((a.type === "image" && a.image?.$isLoaded) ||
-				(a.type === "video" && a.video?.$isLoaded)),
+				(a.type === "video" && a.video?.$isLoaded) ||
+				(a.type === "tldraw" && a.revision?.$isLoaded)),
 	).length
 	let progress: DuplicateProgress = {
 		total: totalAssets,
@@ -307,60 +303,15 @@ async function duplicateDocument(opts: DuplicateOptions): Promise<string> {
 	// Create the new assets list
 	let newAssets = co.list(Asset).create([], owner)
 
-	// Deep copy each asset (image or video)
+	// Deep copy each asset
 	for (let asset of [...assets]) {
 		if (!asset?.$isLoaded) continue
 
 		try {
-			let newAssetId: string
+			let newAsset = await copyAsset(asset, owner)
+			newAssets.$jazz.push(newAsset)
 
-			if (asset.type === "image" && asset.image?.$isLoaded) {
-				let original = asset.image.original
-				if (!original?.$isLoaded) continue
-
-				let blob = original.toBlob()
-				if (!blob) continue
-
-				let newImage = await createImage(blob, {
-					owner,
-					maxSize: 2048,
-				})
-
-				let newAsset = ImageAsset.create(
-					{
-						type: "image",
-						name: asset.name,
-						image: newImage,
-						createdAt: new Date(),
-					},
-					owner,
-				)
-				newAssets.$jazz.push(newAsset)
-				newAssetId = newAsset.$jazz.id
-			} else if (asset.type === "video" && asset.video?.$isLoaded) {
-				let blob = asset.video.toBlob()
-				if (!blob) continue
-
-				let newVideo = await co.fileStream().createFromBlob(blob, { owner })
-
-				let newAsset = VideoAsset.create(
-					{
-						type: "video",
-						name: asset.name,
-						video: newVideo,
-						mimeType: asset.mimeType,
-						muteAudio: asset.muteAudio,
-						createdAt: new Date(),
-					},
-					owner,
-				)
-				newAssets.$jazz.push(newAsset)
-				newAssetId = newAsset.$jazz.id
-			} else {
-				continue
-			}
-
-			assetIdMap.set(asset.$jazz.id, newAssetId)
+			assetIdMap.set(asset.$jazz.id, newAsset.$jazz.id)
 
 			progress = { ...progress, copied: progress.copied + 1 }
 			onProgress?.(progress)

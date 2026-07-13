@@ -82,10 +82,14 @@ let ContentContext = createContext<string>("")
 type Asset = {
 	$jazz: { id: string }
 	$isLoaded?: boolean
-	type?: "image" | "video"
+	type?: "image" | "video" | "tldraw"
 	image?: { $jazz: { id: string } }
 	video?: { $isLoaded?: boolean; toBlob?: () => Blob | undefined }
 	muteAudio?: boolean
+	revision?: {
+		lightPreview?: { $jazz: { id: string } }
+		darkPreview?: { $jazz: { id: string } }
+	}
 }
 
 let AssetContext = createContext<Asset[] | undefined>(undefined)
@@ -608,6 +612,7 @@ function ScaledSlideContainer({
 			fontSet?.removeEventListener?.("loadingerror", handleFontsDone)
 		}
 	}, [
+		blocks,
 		blocksKey,
 		isPortrait,
 		baseSize,
@@ -878,6 +883,7 @@ function SlideContentItem({ item }: { item: SlideContent }) {
 
 function SlideImage({ src, alt }: { src: string; alt: string }) {
 	let assets = useContext(AssetContext)
+	let colorScheme = useResolvedTheme()
 
 	let assetMatch = src.match(/^asset:(.+)$/)
 	if (assetMatch) {
@@ -893,6 +899,23 @@ function SlideImage({ src, alt }: { src: string; alt: string }) {
 					style={{ width: "100%", height: "100%", objectFit: "contain" }}
 				/>
 			)
+		}
+
+		if (asset?.$isLoaded && asset.type === "tldraw") {
+			let preview =
+				colorScheme === "dark"
+					? asset.revision?.darkPreview
+					: asset.revision?.lightPreview
+			if (preview) {
+				return (
+					<JazzImage
+						imageId={preview.$jazz.id}
+						alt={alt}
+						className="slideshow-image"
+						style={{ width: "100%", height: "100%", objectFit: "contain" }}
+					/>
+				)
+			}
 		}
 
 		if (asset?.$isLoaded && asset.video) {

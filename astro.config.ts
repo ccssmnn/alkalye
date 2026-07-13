@@ -72,10 +72,10 @@ export default defineConfig({
 				],
 			},
 			workbox: {
-				globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
+				globPatterns: ["**/*.{js,json,css,html,ico,png,svg,woff2,woff,ttf}"],
 				navigateFallback: "app",
 				navigateFallbackAllowlist: [/^\/app(?:\/.*)?(?:\?.*)?$/],
-				maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
+				maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
 			},
 		}),
 	],
@@ -84,6 +84,11 @@ export default defineConfig({
 			PUBLIC_JAZZ_SYNC_SERVER: envField.string({
 				context: "client",
 				access: "public",
+			}),
+			PUBLIC_TLDRAW_LICENSE_KEY: envField.string({
+				context: "client",
+				access: "public",
+				optional: true,
 			}),
 		},
 	},

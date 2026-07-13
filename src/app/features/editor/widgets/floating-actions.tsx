@@ -40,6 +40,8 @@ import {
 	Plus,
 	FileSymlinkIcon,
 	MessageSquarePlus,
+	PenTool,
+	ArrowLeft,
 } from "lucide-react"
 import { parseWikiLinks } from "../lib/wikilink-parser"
 import { useNavigate } from "@tanstack/react-router"
@@ -59,7 +61,7 @@ export {
 	FloatingActions,
 	TaskAction,
 	LinkAction,
-	ImageAction,
+	MediaAction,
 	WikiLinkAction,
 	CommentAction,
 	WikiLinkDialog,
@@ -895,18 +897,27 @@ function WikiLinkDialog({
 	)
 }
 
-interface ImageActionProps {
+interface MediaActionProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
 	isImage: boolean
 	imageRange: Range | null
 	imageDialogOpen: boolean
 	setImageDialogOpen: (open: boolean) => void
 	imageRangeRef: React.RefObject<Range | null>
-	assets: { id: string; name: string; type: "image" | "video" }[]
+	assets: {
+		id: string
+		name: string
+		type: "image" | "video" | "tldraw"
+	}[]
 	onUploadAndInsert?: (file: File, replaceRange: Range) => Promise<void>
+	onCreateTldraw?: (
+		onCreated: (asset: { id: string; name: string }) => void,
+	) => void
 }
 
-function ImageAction({
+type AssetPickerStep = "type" | "media" | "whiteboard"
+
+function MediaAction({
 	editor,
 	isImage,
 	imageDialogOpen,
@@ -914,22 +925,27 @@ function ImageAction({
 	imageRangeRef,
 	assets,
 	onUploadAndInsert,
-}: ImageActionProps) {
+	onCreateTldraw,
+}: MediaActionProps) {
 	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [inputValue, setInputValue] = useState("")
+	let [step, setStep] = useState<AssetPickerStep>("type")
+	let canUseWhiteboards =
+		Boolean(onCreateTldraw) || assets.some(asset => asset.type === "tldraw")
 
 	if (!isImage) return null
 
-	let filteredAssets = assets.filter(asset =>
+	let selectableAssets = assets.filter(asset =>
+		step === "whiteboard"
+			? asset.type === "tldraw"
+			: asset.type === "image" || asset.type === "video",
+	)
+	let filteredAssets = selectableAssets.filter(asset =>
 		asset.name.toLowerCase().includes(inputValue.toLowerCase()),
 	)
 
-	function handleSelectAsset(assetId: string | null) {
-		if (!assetId) return
-		let asset = assets.find(a => a.id === assetId)
-		if (!asset) return
-
+	function insertAsset(asset: { id: string; name: string }) {
 		let view = editor.current?.getEditor()
 		let range = imageRangeRef.current
 		if (!view || !range) return
@@ -938,12 +954,32 @@ function ImageAction({
 			changes: {
 				from: range.from,
 				to: range.to,
-				insert: `![${asset.name}](asset:${assetId})`,
+				insert: `![${asset.name}](asset:${asset.id})`,
 			},
 		})
-		setImageDialogOpen(false)
-		setInputValue("")
 		view.focus()
+	}
+
+	function handleSelectAsset(assetId: string | null) {
+		if (!assetId) return
+		let asset = assets.find(a => a.id === assetId)
+		if (!asset) return
+
+		insertAsset(asset)
+		setImageDialogOpen(false)
+	}
+
+	function handleDialogOpenChange(open: boolean) {
+		setImageDialogOpen(open)
+		if (!open) {
+			setStep("type")
+			setInputValue("")
+		}
+	}
+
+	function handleCreateWhiteboard() {
+		handleDialogOpenChange(false)
+		requestAnimationFrame(() => onCreateTldraw?.(insertAsset))
 	}
 
 	function handleUploadClick() {
@@ -957,9 +993,16 @@ function ImageAction({
 
 		e.target.value = ""
 		setImageDialogOpen(false)
-		setInputValue("")
 		await onUploadAndInsert(file, range)
 		editor.current?.focus()
+	}
+
+	function openAssetPicker() {
+		if (editor.current?.getEditor()) {
+			imageRangeRef.current = editor.current.getSelection() as Range | null
+		}
+		setStep("type")
+		setImageDialogOpen(true)
 	}
 
 	return (
@@ -972,97 +1015,186 @@ function ImageAction({
 							variant="brand"
 							className="shadow-md"
 							nativeButton={false}
-							onClick={() => {
-								if (editor.current?.getEditor()) {
-									imageRangeRef.current =
-										editor.current.getSelection() as Range | null
-								}
-								setImageDialogOpen(true)
-							}}
+							onClick={openAssetPicker}
+							aria-label={t("editor.floating.addAsset")}
 						>
-							<ImagePlus />
+							<Plus />
 						</Button>
 					}
 				/>
 				<TooltipContent side="top" className="flex items-center gap-2">
-					<T k="editor.floating.selectMedia" />
+					<T k="editor.floating.addAsset" />
 					<Kbd>Ctrl Space</Kbd>
 				</TooltipContent>
 			</Tooltip>
 
-			<Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+			<Dialog open={imageDialogOpen} onOpenChange={handleDialogOpenChange}>
 				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>
-							<T k="editor.dialog.selectMedia" />
-						</DialogTitle>
-						<DialogDescription>
-							<T k="editor.dialog.searchMedia" />
-						</DialogDescription>
-					</DialogHeader>
+					{step === "type" ? (
+						<>
+							<DialogHeader>
+								<DialogTitle>
+									<T k="editor.dialog.addAsset" />
+								</DialogTitle>
+								<DialogDescription>
+									<T k="editor.dialog.chooseAssetType" />
+								</DialogDescription>
+							</DialogHeader>
+							<div className="grid gap-2 sm:grid-cols-2">
+								<Button
+									variant="outline"
+									className="h-auto min-h-24 touch-manipulation items-start justify-start gap-3 p-4 text-left whitespace-normal"
+									onClick={() => setStep("media")}
+								>
+									<ImagePlus className="mt-0.5 size-5 shrink-0" />
+									<span>
+										<span className="block font-medium">
+											<T k="editor.dialog.media" />
+										</span>
+										<span className="text-muted-foreground mt-1 block text-xs font-normal">
+											<T k="editor.dialog.mediaDescription" />
+										</span>
+									</span>
+								</Button>
+								{canUseWhiteboards && (
+									<Button
+										variant="outline"
+										className="h-auto min-h-24 touch-manipulation items-start justify-start gap-3 p-4 text-left whitespace-normal"
+										onClick={() => setStep("whiteboard")}
+									>
+										<PenTool className="mt-0.5 size-5 shrink-0" />
+										<span>
+											<span className="block font-medium">
+												<T k="assets.whiteboard" />
+											</span>
+											<span className="text-muted-foreground mt-1 block text-xs font-normal">
+												<T k="editor.dialog.whiteboardDescription" />
+											</span>
+										</span>
+									</Button>
+								)}
+							</div>
+							<div className="flex justify-end pt-2">
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={() => setImageDialogOpen(false)}
+								>
+									<T k="editor.dialog.cancel" />
+								</Button>
+							</div>
+						</>
+					) : (
+						<>
+							<DialogHeader>
+								<DialogTitle>
+									{step === "media"
+										? t("editor.dialog.selectMedia")
+										: t("editor.dialog.selectWhiteboard")}
+								</DialogTitle>
+								<DialogDescription>
+									{step === "media"
+										? t("editor.dialog.searchMedia")
+										: t("editor.dialog.searchWhiteboards")}
+								</DialogDescription>
+							</DialogHeader>
 
-					<Combobox.Root
-						value={null}
-						inputValue={inputValue}
-						onValueChange={handleSelectAsset}
-						onInputValueChange={setInputValue}
-					>
-						<div className="relative">
-							<Combobox.Input
-								placeholder={t("editor.dialog.searchMediaPlaceholder")}
-								className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
-							/>
-						</div>
-
-						<Combobox.Portal>
-							<Combobox.Positioner sideOffset={4} className="z-50">
-								<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
-									{filteredAssets.length === 0 && (
-										<div className="text-muted-foreground px-3 py-2 text-sm">
-											<T k="editor.dialog.noMediaFound" />
-										</div>
-									)}
-
-									{filteredAssets.map(asset => (
-										<Combobox.Item
-											key={asset.id}
-											value={asset.id}
-											className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
-										>
-											{asset.type === "video" ? (
-												<Film className="text-muted-foreground size-4" />
-											) : (
-												<ImageIcon className="text-muted-foreground size-4" />
-											)}
-											<span className="flex-1 truncate">{asset.name}</span>
-										</Combobox.Item>
-									))}
-								</Combobox.Popup>
-							</Combobox.Positioner>
-						</Combobox.Portal>
-					</Combobox.Root>
-
-					<div className="flex justify-between gap-2 pt-2">
-						{onUploadAndInsert && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={handleUploadClick}
-								className="gap-2"
+							<Combobox.Root
+								value={null}
+								inputValue={inputValue}
+								onValueChange={handleSelectAsset}
+								onInputValueChange={setInputValue}
 							>
-								<Upload className="size-4" />
-								<T k="editor.dialog.upload" />
-							</Button>
-						)}
-						<div className="flex-1" />
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setImageDialogOpen(false)}
-						>
-							<T k="editor.dialog.cancel" />
-						</Button>
-					</div>
+								<div className="relative">
+									<Combobox.Input
+										placeholder={
+											step === "media"
+												? t("editor.dialog.searchMediaPlaceholder")
+												: t("editor.dialog.searchWhiteboardsPlaceholder")
+										}
+										className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-11 w-full rounded-none border px-3 py-1 text-base focus-visible:ring-1 focus-visible:outline-none sm:h-9 sm:text-sm"
+									/>
+								</div>
+
+								<Combobox.Portal>
+									<Combobox.Positioner sideOffset={4} className="z-50">
+										<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
+											{filteredAssets.length === 0 && (
+												<div className="text-muted-foreground px-3 py-2 text-sm">
+													{step === "media"
+														? t("editor.dialog.noMediaFound")
+														: t("editor.dialog.noWhiteboardsFound")}
+												</div>
+											)}
+
+											{filteredAssets.map(asset => (
+												<Combobox.Item
+													key={asset.id}
+													value={asset.id}
+													className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none sm:min-h-9"
+												>
+													{asset.type === "video" ? (
+														<Film className="text-muted-foreground size-4" />
+													) : asset.type === "tldraw" ? (
+														<PenTool className="text-muted-foreground size-4" />
+													) : (
+														<ImageIcon className="text-muted-foreground size-4" />
+													)}
+													<span className="flex-1 truncate">{asset.name}</span>
+												</Combobox.Item>
+											))}
+										</Combobox.Popup>
+									</Combobox.Positioner>
+								</Combobox.Portal>
+							</Combobox.Root>
+
+							<div className="flex items-center gap-2 pt-2">
+								<Button
+									variant="ghost"
+									size="sm"
+									className="min-h-11 gap-2 sm:min-h-9"
+									onClick={() => {
+										setInputValue("")
+										setStep("type")
+									}}
+								>
+									<ArrowLeft className="size-4" />
+									<T k="editor.dialog.back" />
+								</Button>
+								{step === "media" && onUploadAndInsert && (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={handleUploadClick}
+										className="min-h-11 gap-2 sm:min-h-9"
+									>
+										<Upload className="size-4" />
+										<T k="editor.dialog.upload" />
+									</Button>
+								)}
+								{step === "whiteboard" && onCreateTldraw && (
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={handleCreateWhiteboard}
+										className="min-h-11 gap-2 sm:min-h-9"
+									>
+										<Plus className="size-4" />
+										<T k="assets.newWhiteboard" />
+									</Button>
+								)}
+								<div className="flex-1" />
+								<Button
+									variant="ghost"
+									size="sm"
+									className="min-h-11 sm:min-h-9"
+									onClick={() => setImageDialogOpen(false)}
+								>
+									<T k="editor.dialog.cancel" />
+								</Button>
+							</div>
+						</>
+					)}
 				</DialogContent>
 			</Dialog>
 

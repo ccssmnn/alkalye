@@ -1,6 +1,12 @@
 import { co, Group, Account } from "jazz-tools"
-import { createImage } from "jazz-tools/media"
-import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
+import { Document, Asset } from "@/schema"
+import {
+	assetContentResolve,
+	classifyAssetFile,
+	createAssetFromFile,
+	serializeAsset,
+	updateAssetFromFile,
+} from "@/app/features/assets"
 import { getDocumentTitle } from "@/app/features/documents/lib/title"
 import {
 	getPath,
@@ -43,7 +49,9 @@ type LoadedDocument = co.loaded<
 	typeof Document,
 	{
 		content: true
-		assets: { $each: { image: true; video: true } }
+		assets: {
+			$each: typeof assetContentResolve
+		}
 		comments: { $each: true }
 	}
 >
@@ -54,7 +62,9 @@ type BackupDocumentRef = co.loaded<typeof Document>
 
 let backupDocumentResolve = {
 	content: true,
-	assets: { $each: { image: true, video: true } },
+	assets: {
+		$each: assetContentResolve,
+	},
 	comments: { $each: true },
 } as const
 
@@ -354,15 +364,7 @@ async function prepareBackupDoc(doc: LoadedDocument): Promise<BackupDoc> {
 		for (let asset of Array.from(doc.assets)) {
 			if (!asset?.$isLoaded) continue
 
-			let blob: Blob | undefined
-			if (asset.type === "image" && asset.image?.$isLoaded) {
-				let original = asset.image.original
-				if (original?.$isLoaded) {
-					blob = original.toBlob()
-				}
-			} else if (asset.type === "video" && asset.video?.$isLoaded) {
-				blob = asset.video.toBlob()
-			}
+			let blob = await serializeAsset(asset)
 
 			if (blob) {
 				assets.push({ id: asset.$jazz.id, name: asset.name, blob })
@@ -758,7 +760,10 @@ async function createDocFromFile(
 	let docAssets: co.loaded<typeof Asset>[] = []
 	let assetFilesById = new Map<string, string>()
 	for (let assetFile of file.assets) {
-		let asset = await createAssetFromBlob(assetFile, docGroup, now)
+		let asset = await createAssetFromFile(
+			{ blob: assetFile.blob, fileName: assetFile.name, createdAt: now },
+			docGroup,
+		)
 		docAssets.push(asset)
 		assetFilesById.set(asset.$jazz.id, assetFile.name)
 	}
@@ -805,7 +810,9 @@ async function updateDocFromFile(
 	let loadedDoc = await Document.load(doc.$jazz.id, {
 		resolve: {
 			content: true,
-			assets: { $each: { image: true, video: true } },
+			assets: {
+				$each: assetContentResolve,
+			},
 			comments: { $each: true },
 		},
 	})
@@ -933,10 +940,13 @@ async function syncDocAssetsFromFile(
 			continue
 		}
 
-		let created = await createAssetFromBlob(
-			fileAsset,
+		let created = await createAssetFromFile(
+			{
+				blob: fileAsset.blob,
+				fileName: fileAsset.name,
+				createdAt: new Date(),
+			},
 			doc.$jazz.owner,
-			new Date(),
 		)
 		doc.assets.$jazz.push(created)
 		keepAssetIds.add(created.$jazz.id)
@@ -963,76 +973,34 @@ async function syncExistingAssetFromFile(
 	assetId: string,
 	fileAsset: { name: string; blob: Blob },
 ): Promise<string> {
-	let nextType = fileAsset.blob.type.startsWith("video/") ? "video" : "image"
+	let nextType = classifyAssetFile({
+		name: fileAsset.name,
+		type: fileAsset.blob.type,
+	})
+	if (!nextType) throw new Error(`Unsupported asset file: ${fileAsset.name}`)
 	if (existing.type !== nextType) {
 		let index =
 			doc.assets?.findIndex(asset => asset?.$jazz.id === assetId) ?? -1
 		if (index === -1 || !doc.assets) return assetId
 		doc.assets.$jazz.splice(index, 1)
-		let replacement = await createAssetFromBlob(
-			fileAsset,
+		let replacement = await createAssetFromFile(
+			{
+				blob: fileAsset.blob,
+				fileName: fileAsset.name,
+				createdAt: existing.createdAt,
+			},
 			doc.$jazz.owner,
-			existing.createdAt,
 		)
 		doc.assets.$jazz.push(replacement)
 		return replacement.$jazz.id
 	}
 
-	if (existing.type === "video") {
-		let stream = await co.fileStream().createFromBlob(fileAsset.blob, {
-			owner: doc.$jazz.owner,
-		})
-		existing.$jazz.applyDiff({
-			name: removeExtension(fileAsset.name),
-			video: stream,
-			mimeType: fileAsset.blob.type || "video/mp4",
-		})
-		return assetId
-	}
-
-	let image = await createImage(fileAsset.blob, {
-		owner: doc.$jazz.owner,
-		maxSize: 2048,
-	})
-	existing.$jazz.applyDiff({ name: removeExtension(fileAsset.name), image })
-	return assetId
-}
-
-async function createAssetFromBlob(
-	assetFile: { name: string; blob: Blob },
-	owner: Group,
-	now: Date,
-) {
-	let isVideo = assetFile.blob.type.startsWith("video/")
-	if (isVideo) {
-		let video = await co.fileStream().createFromBlob(assetFile.blob, {
-			owner,
-		})
-		return VideoAsset.create(
-			{
-				type: "video",
-				name: removeExtension(assetFile.name),
-				video,
-				mimeType: assetFile.blob.type || "video/mp4",
-				createdAt: now,
-			},
-			owner,
-		)
-	}
-
-	let image = await createImage(assetFile.blob, {
-		owner,
-		maxSize: 2048,
-	})
-	return ImageAsset.create(
-		{
-			type: "image",
-			name: removeExtension(assetFile.name),
-			image,
-			createdAt: now,
-		},
-		owner,
+	await updateAssetFromFile(
+		existing,
+		{ blob: fileAsset.blob, fileName: fileAsset.name },
+		doc.$jazz.owner,
 	)
+	return assetId
 }
 
 function removeExtension(filename: string): string {

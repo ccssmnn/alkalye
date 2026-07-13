@@ -1,4 +1,8 @@
 import JSZip from "jszip"
+import {
+	assetMimeTypeFromFileName,
+	isAssetFileName,
+} from "@/app/features/assets"
 import type { ExportComment } from "./export"
 
 export {
@@ -133,7 +137,7 @@ async function importFolderFiles(
 			mdFiles.push({ path, file })
 		} else if (isCommentSidecar(fileName)) {
 			sidecarFiles.push({ key: path, file })
-		} else if (isMediaFile(fileName)) {
+		} else if (isAssetFileName(fileName)) {
 			assetFiles.push({ path, file })
 		}
 	}
@@ -277,7 +281,7 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 			mdFiles.push({ path: relativePath, name: fileName })
 		} else if (isCommentSidecar(fileName)) {
 			sidecarFiles.push({ key: relativePath, file: zipEntry })
-		} else if (isMediaFile(fileName)) {
+		} else if (isAssetFileName(fileName)) {
 			assetFiles.push({ path: relativePath, file: zipEntry })
 		}
 	})
@@ -319,7 +323,7 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 				let blob = await assetEntry.file.async("blob")
 				let fileName = assetEntry.path.split("/").pop() || "image"
 				let assetFile = new File([blob], fileName, {
-					type: getMimeType(fileName),
+					type: assetMimeTypeFromFileName(fileName),
 				})
 
 				assets.push({
@@ -337,7 +341,7 @@ async function importZipFile(file: File): Promise<ImportedFile[]> {
 				let blob = await assetFile.file.async("blob")
 				let fileName = assetFile.path.split("/").pop() || "image"
 				let file = new File([blob], fileName, {
-					type: getMimeType(fileName),
+					type: assetMimeTypeFromFileName(fileName),
 				})
 				assets.push({
 					name: fileName.replace(/\.[^.]+$/, ""),
@@ -448,37 +452,6 @@ function isCommentSidecar(path: string): boolean {
 
 function getCommentSidecarPath(markdownPath: string): string {
 	return markdownPath.replace(/\.(md|markdown|txt)$/i, ".comments.json")
-}
-
-function isImageFile(filename: string): boolean {
-	let ext = filename.toLowerCase().split(".").pop()
-	return ["png", "jpg", "jpeg", "gif", "webp", "svg", "bmp"].includes(ext || "")
-}
-
-function isVideoFile(filename: string): boolean {
-	let ext = filename.toLowerCase().split(".").pop()
-	return ["mp4", "webm", "mov"].includes(ext || "")
-}
-
-function isMediaFile(filename: string): boolean {
-	return isImageFile(filename) || isVideoFile(filename)
-}
-
-function getMimeType(filename: string): string {
-	let ext = filename.toLowerCase().split(".").pop()
-	let mimeTypes: Record<string, string> = {
-		png: "image/png",
-		jpg: "image/jpeg",
-		jpeg: "image/jpeg",
-		gif: "image/gif",
-		webp: "image/webp",
-		svg: "image/svg+xml",
-		bmp: "image/bmp",
-		mp4: "video/mp4",
-		webm: "video/webm",
-		mov: "video/quicktime",
-	}
-	return mimeTypes[ext || ""] || "application/octet-stream"
 }
 
 function resolveWikilinkPath(

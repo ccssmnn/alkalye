@@ -54,9 +54,11 @@ function DialogContent({
 	className,
 	children,
 	showCloseButton = true,
+	animated = true,
 	...props
 }: DialogPrimitive.Popup.Props & {
 	showCloseButton?: boolean
+	animated?: boolean
 }) {
 	return (
 		<DialogPortal>
@@ -64,7 +66,9 @@ function DialogContent({
 			<DialogPrimitive.Popup
 				data-slot="dialog-content"
 				className={cn(
-					"bg-background data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 ring-foreground/10 fixed left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 gap-4 rounded-none p-4 text-xs/relaxed ring-1 duration-100 outline-none sm:max-w-sm",
+					"bg-background ring-foreground/10 fixed left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 gap-4 rounded-none p-4 text-xs/relaxed ring-1 outline-none sm:max-w-sm",
+					animated &&
+						"data-open:animate-in data-closed:animate-out data-closed:fade-out-0 data-open:fade-in-0 data-closed:zoom-out-95 data-open:zoom-in-95 duration-100",
 					"top-[max(1rem,env(safe-area-inset-top))] sm:top-1/2 sm:-translate-y-1/2",
 					className,
 				)}

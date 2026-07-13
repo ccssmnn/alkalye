@@ -25,6 +25,28 @@ let baseCommonMessages = messages({
 	"assets.save": "Save",
 	"assets.nameRequired": "Name is required",
 	"assets.nameTooLong": "Name too long",
+	"assets.newWhiteboard": "New whiteboard",
+	"assets.editWhiteboard": "Edit whiteboard",
+	"assets.uploadOrImport": "Upload or import",
+	"assets.whiteboard": "Whiteboard",
+	"assets.importOneWhiteboard": "Import one whiteboard at a time",
+	"assets.multiplePagesUnsupported": "This tldraw file has multiple pages",
+	"assets.embeddedMediaUnsupported":
+		"Embedded images and media are not supported yet",
+	"assets.invalidTldraw": "This is not a valid tldraw file",
+	"assets.whiteboardEditorDescription":
+		"Edit the whiteboard, then save or cancel your changes.",
+	"assets.whiteboardLoading": "Whiteboard is still loading",
+	"assets.addBeforeSaving": "Add something to the whiteboard before saving",
+	"assets.whiteboardSaved": "Whiteboard saved",
+	"assets.whiteboardAdded": "Whiteboard added",
+	"assets.whiteboardSaveFailed": "Could not save the whiteboard",
+	"assets.discardWhiteboardTitle": "Discard whiteboard changes?",
+	"assets.discardWhiteboardDescription":
+		"Your changes since opening the whiteboard will be lost.",
+	"assets.discard": "Discard",
+	"assets.saving": "Saving…",
+	"assets.import": "Import",
 
 	"common.goHome": "Go Home",
 	"common.goBack": "Go back",
@@ -161,6 +183,30 @@ let deCommonMessages = translate(baseCommonMessages, {
 	"assets.save": "Speichern",
 	"assets.nameRequired": "Name erforderlich",
 	"assets.nameTooLong": "Name zu lang",
+	"assets.newWhiteboard": "Neues Whiteboard",
+	"assets.editWhiteboard": "Whiteboard bearbeiten",
+	"assets.uploadOrImport": "Hochladen oder importieren",
+	"assets.whiteboard": "Whiteboard",
+	"assets.importOneWhiteboard": "Importiere jeweils nur ein Whiteboard",
+	"assets.multiplePagesUnsupported":
+		"Diese tldraw-Datei enthält mehrere Seiten",
+	"assets.embeddedMediaUnsupported":
+		"Eingebettete Bilder und Medien werden noch nicht unterstützt",
+	"assets.invalidTldraw": "Dies ist keine gültige tldraw-Datei",
+	"assets.whiteboardEditorDescription":
+		"Bearbeite das Whiteboard und speichere oder verwirf anschließend deine Änderungen.",
+	"assets.whiteboardLoading": "Das Whiteboard wird noch geladen",
+	"assets.addBeforeSaving": "Füge vor dem Speichern etwas zum Whiteboard hinzu",
+	"assets.whiteboardSaved": "Whiteboard gespeichert",
+	"assets.whiteboardAdded": "Whiteboard hinzugefügt",
+	"assets.whiteboardSaveFailed":
+		"Das Whiteboard konnte nicht gespeichert werden",
+	"assets.discardWhiteboardTitle": "Whiteboard-Änderungen verwerfen?",
+	"assets.discardWhiteboardDescription":
+		"Deine Änderungen seit dem Öffnen des Whiteboards gehen verloren.",
+	"assets.discard": "Verwerfen",
+	"assets.saving": "Speichern…",
+	"assets.import": "Importieren",
 
 	"common.goHome": "Zur Startseite",
 	"common.goBack": "Zurück",

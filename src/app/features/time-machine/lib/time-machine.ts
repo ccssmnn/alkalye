@@ -1,9 +1,13 @@
 import type { co } from "jazz-tools"
 import type { Document, UserAccount } from "@/schema"
+import { Asset, TldrawRevision } from "@/schema"
 
 export {
 	getEditHistory,
 	getContentAtEdit,
+	getEditTimestamp,
+	getHistoricalAssetIds,
+	restoreAssetsAtTime,
 	formatEditDate,
 	getAuthorName,
 	accountIdFromSessionId,
@@ -67,6 +71,9 @@ function getEditHistory(doc: LoadedDocument): EditHistoryItem[] {
 
 	if (doc.assets?.$isLoaded) {
 		collectTransactions(doc.assets.$jazz.raw.core)
+		for (let asset of doc.assets.values()) {
+			if (asset?.$isLoaded) collectTransactions(asset.$jazz.raw.core)
+		}
 	}
 
 	if (doc.comments?.$isLoaded) {
@@ -118,6 +125,84 @@ function getContentAtEdit(doc: LoadedDocument, editIndex: number): string {
 
 	let edit = edits[editIndex]
 	return doc.content.$jazz.raw.atTime(edit.madeAt.getTime()).toString()
+}
+
+function getEditTimestamp(doc: LoadedDocument, editIndex: number): number {
+	let edits = getEditHistory(doc)
+	return edits[editIndex]?.madeAt.getTime() ?? Date.now()
+}
+
+function getHistoricalAssetIds(
+	doc: LoadedDocument,
+	timestamp: number,
+): string[] {
+	if (!doc.assets?.$isLoaded) return []
+	let items = doc.assets.$jazz.raw.atTime(timestamp).toJSON()
+	return items.filter(item => typeof item === "string")
+}
+
+async function restoreAssetsAtTime(doc: LoadedDocument, timestamp: number) {
+	if (!doc.assets?.$isLoaded) return
+
+	let assetIds = getHistoricalAssetIds(doc, timestamp)
+	let assets = await Promise.all(
+		assetIds.map(assetId =>
+			Asset.load(assetId, {
+				resolve: {
+					image: true,
+					video: true,
+					revision: true,
+				},
+			}),
+		),
+	)
+	let loadedAssets = assets.map(asset => {
+		if (!asset?.$isLoaded) throw new Error("Historical asset is unavailable")
+		return asset
+	})
+	let restorations = await Promise.all(
+		loadedAssets.map(async asset => {
+			let historical = asset.$jazz.raw.atTime(timestamp)
+			let historicalName = historical.get("name")
+			let name =
+				typeof historicalName === "string" ? historicalName : asset.name
+			if (asset.type !== "tldraw") {
+				return { asset, name, revision: undefined }
+			}
+			let revisionId = historical.get("revision")
+			if (typeof revisionId !== "string") {
+				throw new Error("Historical whiteboard revision is unavailable")
+			}
+			let revision = await TldrawRevision.load(revisionId, {
+				resolve: {
+					snapshot: true,
+					lightPreview: true,
+					darkPreview: true,
+				},
+			})
+			if (!revision?.$isLoaded) {
+				throw new Error("Historical whiteboard revision is unavailable")
+			}
+			return { asset, name, revision }
+		}),
+	)
+
+	for (let { asset, name, revision } of restorations) {
+		if (asset.type === "image" && name !== asset.name) {
+			asset.$jazz.set("name", name)
+		}
+		if (asset.type === "video" && name !== asset.name) {
+			asset.$jazz.set("name", name)
+		}
+		if (asset.type === "tldraw" && name !== asset.name) {
+			asset.$jazz.set("name", name)
+		}
+		if (asset.type === "tldraw" && revision) {
+			asset.$jazz.set("revision", revision)
+		}
+	}
+
+	doc.assets.$jazz.splice(0, doc.assets.length, ...loadedAssets)
 }
 
 function formatEditDate(date: Date): string {
@@ -184,6 +269,10 @@ function getTransactionCount(doc: LoadedDocument) {
 
 	if (doc.assets?.$isLoaded) {
 		count += doc.assets.$jazz.raw.core.getValidSortedTransactions().length
+		for (let asset of doc.assets.values()) {
+			if (!asset?.$isLoaded) continue
+			count += asset.$jazz.raw.core.getValidSortedTransactions().length
+		}
 	}
 
 	if (!doc.comments?.$isLoaded) return count

@@ -1,4 +1,5 @@
 import JSZip from "jszip"
+import { assetExtensionFromMimeType } from "@/app/features/assets"
 import type { ExportComment } from "@/app/features/comments"
 
 export {
@@ -152,18 +153,7 @@ function sanitizeFilename(name: string): string {
 }
 
 function getExtensionFromBlob(blob: Blob): string {
-	let mimeToExt: Record<string, string> = {
-		"image/png": ".png",
-		"image/jpeg": ".jpg",
-		"image/gif": ".gif",
-		"image/webp": ".webp",
-		"image/svg+xml": ".svg",
-		"image/bmp": ".bmp",
-		"video/mp4": ".mp4",
-		"video/webm": ".webm",
-		"video/quicktime": ".mov",
-	}
-	return mimeToExt[blob.type] || ".png"
+	return assetExtensionFromMimeType(blob.type) ?? ".png"
 }
 
 // Structure:

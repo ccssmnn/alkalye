@@ -12,6 +12,7 @@ import { useVirtualizer } from "@tanstack/react-virtual"
 import { co } from "jazz-tools"
 import { useAccount, useCoState } from "jazz-tools/react"
 import { UserAccount, Document } from "@/schema"
+import { assetContentResolve, serializeAsset } from "@/app/features/assets"
 import { togglePinned } from "@/app/features/editor"
 import { formatRelativeDate } from "../lib/title"
 import { applyContentDiffLoadingCommentAnchors } from "@/app/features/comments"
@@ -1332,24 +1333,19 @@ async function loadDocumentAssets(
 	doc: co.loaded<typeof Document>,
 ): Promise<ExportAsset[]> {
 	let loaded = await doc.$jazz.ensureLoaded({
-		resolve: { assets: { $each: { image: true } } },
+		resolve: {
+			assets: {
+				$each: assetContentResolve,
+			},
+		},
 	})
 	let docAssets: ExportAsset[] = []
 
 	if (loaded.assets?.$isLoaded) {
 		for (let asset of Array.from(loaded.assets)) {
-			if (
-				!asset?.$isLoaded ||
-				asset.type !== "image" ||
-				!asset.image?.$isLoaded
-			)
-				continue
-			let original = asset.image.original
-			if (!original?.$isLoaded) continue
-			let blob = original.toBlob()
-			if (blob) {
-				docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
-			}
+			if (!asset?.$isLoaded) continue
+			let blob = await serializeAsset(asset)
+			if (blob) docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
 		}
 	}
 

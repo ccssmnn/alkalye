@@ -1,6 +1,6 @@
 import { co, z } from "jazz-tools"
 
-export { ImageAsset, VideoAsset, Asset }
+export { ImageAsset, VideoAsset, TldrawRevision, TldrawAsset, Asset }
 
 let ImageAsset = co.map({
 	type: z.literal("image"),
@@ -18,4 +18,19 @@ let VideoAsset = co.map({
 	createdAt: z.date(),
 })
 
-let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset])
+let TldrawRevision = co.map({
+	snapshot: co.fileStream(),
+	lightPreview: co.image(),
+	darkPreview: co.image(),
+	createdAt: z.date(),
+})
+
+let TldrawAsset = co.map({
+	version: z.literal(1).optional(),
+	type: z.literal("tldraw"),
+	name: z.string(),
+	revision: TldrawRevision,
+	createdAt: z.date(),
+})
+
+let Asset = co.discriminatedUnion("type", [ImageAsset, VideoAsset, TldrawAsset])

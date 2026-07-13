@@ -2,6 +2,7 @@ import { co, type ResolveQuery } from "jazz-tools"
 import { useCoState, useAccount } from "jazz-tools/react"
 import { Document } from "./schema"
 import { UserAccount } from "@/schema"
+import { assetPreviewResolve } from "@/app/features/assets"
 
 export { loaderResolve, resolve, settingsResolve, meResolve }
 export type { LoadedDocument, LoaderDocument, MaybeDocWithContent, LoadedMe }
@@ -25,7 +26,9 @@ let loaderResolve = {
 let resolve = {
 	content: true,
 	cursors: true,
-	assets: { $each: { image: true, video: true } },
+	assets: {
+		$each: assetPreviewResolve,
+	},
 	comments: { $each: { replies: true } },
 } as const satisfies ResolveQuery<typeof Document>
 
