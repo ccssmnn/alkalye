@@ -73,6 +73,11 @@ import {
 } from "@/app/components/ui/tooltip"
 import { useIsOnline } from "@/app/hooks/use-online"
 import { testIds } from "@/app/lib/test-ids"
+import {
+	clearReloadDiagnostics,
+	readReloadDiagnostics,
+	reloadDiagnosticsReport,
+} from "@/app/lib/reload-diagnostics"
 import { useIntl, T } from "@/shared/intl/setup"
 
 export { SettingsScreen, settingsQuery }
@@ -168,6 +173,7 @@ function SettingsScreen({ loaderData, search }: SettingsScreenProps) {
 						<EditorSection settings={me?.root?.settings ?? null} />
 						<InstallationSection />
 						<AppSection />
+						<ReloadDiagnosticsSection />
 					</div>
 					<Footer />
 				</div>
@@ -1324,6 +1330,53 @@ function AppSection() {
 						</Button>
 					</>
 				)}
+			</div>
+		</section>
+	)
+}
+
+function ReloadDiagnosticsSection() {
+	let [entries, setEntries] = useState(readReloadDiagnostics)
+	let latest = entries.at(-1)
+
+	async function handleCopy() {
+		await navigator.clipboard.writeText(reloadDiagnosticsReport())
+	}
+
+	function handleClear() {
+		clearReloadDiagnostics()
+		setEntries([])
+	}
+
+	return (
+		<section>
+			<h2 className="text-muted-foreground mb-3 text-sm font-medium">
+				<T k="settings.reloadDiagnostics" />
+			</h2>
+			<div className="bg-muted/30 rounded-lg p-4">
+				<p className="text-muted-foreground mb-4 text-sm">
+					<T k="settings.reloadDiagnostics.description" />
+				</p>
+				<div className="bg-background border-border mb-4 rounded-md border p-3 font-mono text-xs">
+					{latest ? (
+						<>
+							<div>{latest.event}</div>
+							<div className="text-muted-foreground mt-1">{latest.at}</div>
+						</>
+					) : (
+						<T k="settings.reloadDiagnostics.empty" />
+					)}
+				</div>
+				<div className="flex gap-2">
+					<Button onClick={handleCopy} variant="outline" size="sm">
+						<Copy className="mr-1.5 size-3.5" />
+						<T k="settings.reloadDiagnostics.copy" />
+					</Button>
+					<Button onClick={handleClear} variant="ghost" size="sm">
+						<Trash2 className="mr-1.5 size-3.5" />
+						<T k="settings.reloadDiagnostics.clear" />
+					</Button>
+				</div>
 			</div>
 		</section>
 	)
