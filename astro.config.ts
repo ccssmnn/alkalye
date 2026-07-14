@@ -15,6 +15,18 @@ export default defineConfig({
 		routing: { prefixDefaultLocale: false },
 	},
 	vite: {
+		build: {
+			rollupOptions: {
+				output: {
+					onlyExplicitManualChunks: true,
+					manualChunks(id) {
+						let match = id.match(/node_modules\/@tldraw\/([^/]+)/)
+						if (match?.[1]) return `tldraw-${match[1]}`
+						if (id.includes("/node_modules/tldraw/")) return "tldraw"
+					},
+				},
+			},
+		},
 		plugins: [
 			tanstackRouter({
 				target: "react",
@@ -72,10 +84,10 @@ export default defineConfig({
 				],
 			},
 			workbox: {
-				globPatterns: ["**/*.{js,json,css,html,ico,png,svg,woff2,woff,ttf}"],
+				globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2,woff,ttf}"],
 				navigateFallback: "app",
 				navigateFallbackAllowlist: [/^\/app(?:\/.*)?(?:\?.*)?$/],
-				maximumFileSizeToCacheInBytes: 6 * 1024 * 1024,
+				maximumFileSizeToCacheInBytes: 5.5 * 1024 * 1024,
 			},
 		}),
 	],

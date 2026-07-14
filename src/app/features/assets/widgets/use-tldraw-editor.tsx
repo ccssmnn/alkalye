@@ -2,7 +2,6 @@ import { useState, type ReactNode } from "react"
 import { toast } from "sonner"
 import { TldrawRevision } from "../lib/schema"
 import { tldrawNameFromFile, type TldrawSave } from "../lib/tldraw"
-import { TldrawFileError, validateTldrawFile } from "../lib/tldraw-file"
 import { useIntl } from "@/shared/intl/setup"
 import type { SidebarAsset } from "./sidebar-assets"
 import { TldrawEditorDialog } from "./tldraw-editor-dialog"
@@ -60,9 +59,10 @@ function useTldrawEditor({
 	}
 
 	async function openFile(file: File) {
+		let tldrawFile = await import("../lib/tldraw-file")
 		try {
 			let json = await file.text()
-			validateTldrawFile(json)
+			tldrawFile.validateTldrawFile(json)
 			setEditor({
 				name: tldrawNameFromFile(file),
 				initialJson: json,
@@ -71,9 +71,11 @@ function useTldrawEditor({
 		} catch (error) {
 			console.error("Failed to open tldraw file:", error)
 			let message =
-				error instanceof TldrawFileError && error.code === "multiple-pages"
+				error instanceof tldrawFile.TldrawFileError &&
+				error.code === "multiple-pages"
 					? t("assets.multiplePagesUnsupported")
-					: error instanceof TldrawFileError && error.code === "embedded-media"
+					: error instanceof tldrawFile.TldrawFileError &&
+							error.code === "embedded-media"
 						? t("assets.embeddedMediaUnsupported")
 						: t("assets.invalidTldraw")
 			toast.error(message)
