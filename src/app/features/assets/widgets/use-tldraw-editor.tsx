@@ -75,7 +75,7 @@ function useTldrawEditor({
 				error.code === "multiple-pages"
 					? t("assets.multiplePagesUnsupported")
 					: error instanceof tldrawFile.TldrawFileError &&
-							error.code === "embedded-media"
+						  error.code === "embedded-media"
 						? t("assets.embeddedMediaUnsupported")
 						: t("assets.invalidTldraw")
 			toast.error(message)
