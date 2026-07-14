@@ -4,6 +4,8 @@ import { Asset, ImageAsset, VideoAsset } from "./schema"
 import {
 	TLDRAW_BACKUP_EXTENSION,
 	TLDRAW_BACKUP_MIME_TYPE,
+	TldrawBackupContentError,
+	TldrawBackupSizeError,
 	createTldrawAssetFromRevision,
 	createTldrawBackupBundle,
 	createTldrawRevisionFromBackup,
@@ -12,6 +14,7 @@ import {
 export {
 	TLDRAW_BACKUP_EXTENSION,
 	TLDRAW_BACKUP_MIME_TYPE,
+	AssetSerializationError,
 	classifyAssetFile,
 	isAssetFileName,
 	assetMimeTypeFromFileName,
@@ -23,6 +26,8 @@ export {
 export type { AssetFileKind }
 
 type AssetFileKind = "image" | "video" | "tldraw"
+
+class AssetSerializationError extends Error {}
 
 interface AssetFileInput {
 	blob: Blob
@@ -78,7 +83,18 @@ async function serializeAsset(
 			let loaded = await asset.$jazz.ensureLoaded({
 				resolve: { revision: true },
 			})
-			return createTldrawBackupBundle(loaded.revision)
+			try {
+				return await createTldrawBackupBundle(loaded.revision)
+			} catch (error) {
+				if (
+					!(error instanceof TldrawBackupSizeError) &&
+					!(error instanceof TldrawBackupContentError)
+				)
+					throw error
+				throw new AssetSerializationError(
+					`Could not export asset "${asset.name}": ${error.message}`,
+				)
+			}
 		}
 		default:
 			return unsupportedAsset(asset)

@@ -173,7 +173,6 @@ async function createSpaceInvite(page: Page, args: CreateSpaceInviteArgs) {
 	await expect(input).toBeVisible({ timeout: 10_000 })
 	let link = await input.inputValue()
 	let inviteGroupId = parseInviteGroupId(link)
-	await page.waitForTimeout(3_000)
 
 	return {
 		ok: true,
@@ -266,8 +265,9 @@ async function acceptSpaceInvite(page: Page, args: AcceptSpaceInviteArgs) {
 
 	if (spaceId) {
 		await expect
-			.poll(() => invitePage.url())
-			.toContain(`/app/spaces/${spaceId}`)
+			.poll(() => invitePage.url(), { timeout: 30_000 })
+			.toMatch(new RegExp(`/app/spaces/${spaceId}/doc/`))
+		await expect(invitePage.getByText("Space not found")).toBeHidden()
 	}
 
 	let url = invitePage.url()

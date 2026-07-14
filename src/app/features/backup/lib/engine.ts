@@ -1,6 +1,7 @@
 import { co, Group, Account } from "jazz-tools"
 import { Document, Asset } from "@/schema"
 import {
+	AssetSerializationError,
 	assetContentResolve,
 	classifyAssetFile,
 	createAssetFromFile,
@@ -78,6 +79,11 @@ interface SyncFromBackupResult {
 interface ScannedAssetHash {
 	name: string
 	hash: string
+}
+
+interface PreparedBackupDocs {
+	documents: BackupDoc[]
+	errors: string[]
 }
 
 type BackupSyncSelection = {
@@ -327,7 +333,7 @@ async function syncFromBackup(
 
 async function prepareBackupDocs(
 	selection: BackupDocumentSelection<BackupDocumentRef>,
-): Promise<BackupDoc[]> {
+): Promise<PreparedBackupDocs> {
 	return prepareBackupSelection(selection, async docs => {
 		let activeDocs: LoadedDocument[] = []
 		for (let doc of docs) {
@@ -339,7 +345,20 @@ async function prepareBackupDocs(
 			}
 			activeDocs.push(loaded)
 		}
-		return Promise.all(activeDocs.map(prepareBackupDoc))
+
+		let documents: BackupDoc[] = []
+		let errors: string[] = []
+		for (let doc of activeDocs) {
+			try {
+				documents.push(await prepareBackupDoc(doc))
+			} catch (error) {
+				if (!(error instanceof AssetSerializationError)) throw error
+				errors.push(
+					`Could not back up "${getDocumentTitle(doc)}": ${error.message}`,
+				)
+			}
+		}
+		return { documents, errors }
 	})
 }
 

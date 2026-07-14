@@ -24,6 +24,7 @@ export { assetPreviewResolve, assetContentResolve } from "./lib/asset-resolve"
 export {
 	TLDRAW_BACKUP_EXTENSION,
 	TLDRAW_BACKUP_MIME_TYPE,
+	AssetSerializationError,
 	classifyAssetFile,
 	isAssetFileName,
 	assetMimeTypeFromFileName,
