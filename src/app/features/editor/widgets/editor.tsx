@@ -963,7 +963,13 @@ function MarkdownEditor(
 				return { from, to }
 			},
 			getSelectedText,
-			restoreSelection: () => {},
+			restoreSelection: selection => {
+				if (!view) return
+				view.focus()
+				view.dispatch({
+					selection: { anchor: selection.from, head: selection.to },
+				})
+			},
 			getScrollPosition: () => ({ top: 0, left: 0 }),
 			setScrollPosition: () => {},
 			undo: () => {},

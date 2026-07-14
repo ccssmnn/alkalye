@@ -8,6 +8,7 @@ import {
 } from "tldraw"
 import "tldraw/tldraw.css"
 import { PUBLIC_TLDRAW_LICENSE_KEY } from "astro:env/client"
+import { useResolvedTheme } from "@/app/components/appearance"
 import { useLocale } from "@/shared/intl/setup"
 import type { TldrawSave } from "../lib/tldraw"
 import { localTldrawAssetUrls } from "../lib/tldraw-static-assets"
@@ -55,6 +56,7 @@ let overrides: TLUiOverrides = {
 	actions(_editor, actions) {
 		let drawingActions = { ...actions }
 		delete drawingActions["insert-media"]
+		delete drawingActions["toggle-dark-mode"]
 		return drawingActions
 	},
 }
@@ -62,12 +64,19 @@ let overrides: TLUiOverrides = {
 function TldrawCanvas({ initialJson, onReady, onDirty }: TldrawCanvasProps) {
 	let [store] = useState(() => createTldrawStore(initialJson))
 	let locale = useLocale()
+	let colorScheme = useResolvedTheme()
+	let editorRef = useRef<Editor | null>(null)
 	let onDirtyRef = useRef(onDirty)
 	useEffect(() => {
 		onDirtyRef.current = onDirty
 	}, [onDirty])
+	useEffect(() => {
+		editorRef.current?.setColorMode(colorScheme)
+	}, [colorScheme])
 
 	function handleMount(editor: Editor) {
+		editorRef.current = editor
+		editor.setColorMode(colorScheme)
 		editor.registerExternalAssetHandler("file", null)
 		editor.registerExternalAssetHandler("url", null)
 		editor.registerExternalContentHandler("files", null)
@@ -82,12 +91,16 @@ function TldrawCanvas({ initialJson, onReady, onDirty }: TldrawCanvasProps) {
 			save: () => saveEditor(editor),
 			hasShapes: () => editor.getCurrentPageShapeIds().size > 0,
 		})
-		return stopListening
+		return () => {
+			if (editorRef.current === editor) editorRef.current = null
+			stopListening()
+		}
 	}
 
 	return (
 		<Tldraw
 			store={store}
+			colorScheme={colorScheme}
 			licenseKey={PUBLIC_TLDRAW_LICENSE_KEY}
 			locale={locale}
 			assetUrls={localTldrawAssetUrls}
