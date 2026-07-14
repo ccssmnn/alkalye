@@ -492,9 +492,9 @@ function TopBar({
 				variant="ghost"
 				size="sm"
 				nativeButton={false}
-				render={<Link to="/" />}
+				render={<Link to="/doc/$id" params={{ id }} />}
 			>
-				Alkalye
+				Editor
 			</Button>
 			<span className="text-muted-foreground absolute left-1/2 -translate-x-1/2 truncate text-sm font-medium">
 				{docTitle}
