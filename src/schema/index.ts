@@ -5,7 +5,13 @@ import { Document } from "@/app/features/documents/lib/schema"
 import { Space } from "@/app/features/spaces/lib/schema"
 import { runAccountMigration } from "@/schema/migrations"
 
-export { ImageAsset, VideoAsset, Asset } from "@/app/features/assets/lib/schema"
+export {
+	ImageAsset,
+	VideoAsset,
+	TldrawAsset,
+	TldrawRevision,
+	Asset,
+} from "@/app/features/assets/lib/schema"
 
 export { Space } from "@/app/features/spaces/lib/schema"
 export { createSpace } from "@/app/features/spaces/lib/create-space"

@@ -1,5 +1,14 @@
 import { describe, it, expect } from "vitest"
-import { hashContent, prepareBackupSelection, syncFromBackup } from "./engine"
+import { co } from "jazz-tools"
+import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
+import { Asset, TldrawAsset, TldrawRevision, UserAccount } from "@/schema"
+import { createPersonalDocument } from "@/app/features/documents/lib/documents"
+import {
+	hashContent,
+	prepareBackupDocs,
+	prepareBackupSelection,
+	syncFromBackup,
+} from "./engine"
 import { selectActiveBackupDocuments } from "./subscriber-state"
 
 describe("hashContent", () => {
@@ -79,6 +88,55 @@ describe("backup snapshot preparation", () => {
 			}),
 		).rejects.toThrow("selection changed")
 	})
+
+	it("backs up healthy documents when stored assets cannot export", async () => {
+		await setupJazzTestSync()
+		let account = await createJazzTestAccount({
+			isCurrentActiveAccount: true,
+			AccountSchema: UserAccount,
+		})
+		let oversized = await createPersonalDocument(account, "# Oversized")
+		let corrupt = await createPersonalDocument(account, "# Corrupt")
+		let healthy = await createPersonalDocument(account, "# Healthy")
+		let oversizedRevision = await createTestRevision(
+			account,
+			"x".repeat(8 * 1024 * 1024 + 1),
+		)
+		let oversizedAsset = TldrawAsset.create(
+			{
+				type: "tldraw",
+				name: "Huge diagram",
+				revision: oversizedRevision,
+				createdAt: new Date(),
+			},
+			account,
+		)
+		oversized.$jazz.set(
+			"assets",
+			co.list(Asset).create([oversizedAsset], account),
+		)
+		let corruptRevision = await createTestRevision(account, "invalid")
+		let corruptAsset = TldrawAsset.create(
+			{
+				type: "tldraw",
+				name: "Old diagram",
+				revision: corruptRevision,
+				createdAt: new Date(),
+			},
+			account,
+		)
+		corrupt.$jazz.set("assets", co.list(Asset).create([corruptAsset], account))
+
+		let prepared = await prepareBackupDocs(
+			selectActiveBackupDocuments([oversized, corrupt, healthy]),
+		)
+
+		expect(prepared.documents.map(doc => doc.id)).toEqual([healthy.$jazz.id])
+		expect(prepared.errors).toEqual([
+			'Could not back up "Oversized": Could not export asset "Huge diagram": Whiteboard snapshot is too large',
+			'Could not back up "Corrupt": Could not export asset "Old diagram": Whiteboard data is invalid or unsupported',
+		])
+	})
 })
 
 function backupDocument(
@@ -94,5 +152,50 @@ function backupDocument(
 		$isLoaded: true,
 		$jazz: { id },
 		updatedAt: new Date(updatedAt),
+	}
+}
+
+async function createTestRevision(
+	owner: co.loaded<typeof UserAccount>,
+	content: string,
+) {
+	let snapshot = await co
+		.fileStream()
+		.createFromBlob(new ReadableBlob(content), { owner })
+	let original = await co
+		.fileStream()
+		.createFromBlob(new ReadableBlob("preview", "image/png"), { owner })
+	let preview = co.image().create(
+		{
+			original,
+			originalSize: [1, 1],
+			progressive: false,
+		},
+		owner,
+	)
+	return TldrawRevision.create(
+		{
+			snapshot,
+			lightPreview: preview,
+			darkPreview: preview,
+			createdAt: new Date(),
+		},
+		owner,
+	)
+}
+
+class ReadableBlob extends Blob {
+	readonly content: string
+
+	constructor(content: string, type = "application/octet-stream") {
+		super([content], { type })
+		this.content = content
+	}
+
+	async arrayBuffer() {
+		let bytes = new TextEncoder().encode(this.content)
+		let buffer = new ArrayBuffer(bytes.byteLength)
+		new Uint8Array(buffer).set(bytes)
+		return buffer
 	}
 }

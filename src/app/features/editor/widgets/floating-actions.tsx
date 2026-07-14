@@ -23,14 +23,15 @@ import { Kbd } from "@/app/components/ui/kbd"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "@/app/components/ui/dropdown-menu"
 import {
 	Check,
 	ExternalLink,
-	ImagePlus,
-	Upload,
 	Image as ImageIcon,
 	Film,
 	Command,
@@ -40,6 +41,7 @@ import {
 	Plus,
 	FileSymlinkIcon,
 	MessageSquarePlus,
+	PenTool,
 } from "lucide-react"
 import { parseWikiLinks } from "../lib/wikilink-parser"
 import { useNavigate } from "@tanstack/react-router"
@@ -59,7 +61,7 @@ export {
 	FloatingActions,
 	TaskAction,
 	LinkAction,
-	ImageAction,
+	MediaAction,
 	WikiLinkAction,
 	CommentAction,
 	WikiLinkDialog,
@@ -91,8 +93,12 @@ interface FloatingActionsContext {
 	image: {
 		isImage: boolean
 		imageRange: Range | null
+		assetMenuOpen: boolean
+		setAssetMenuOpen: (open: boolean) => void
+		markAssetMenuAction: () => void
 		imageDialogOpen: boolean
 		setImageDialogOpen: (open: boolean) => void
+		closeImageDialog: () => void
 		imageRangeRef: React.RefObject<Range | null>
 	}
 	wikiLink: {
@@ -125,6 +131,7 @@ interface EditorContext {
 	linkRange: Range | null
 	isImage: boolean
 	imageRange: Range | null
+	imageSelection: Range | null
 	wikiLinkId: string | null
 	wikiLinkRange: Range | null
 	selectionRange: Range | null
@@ -151,12 +158,14 @@ function FloatingActions({
 		linkRange: null,
 		isImage: false,
 		imageRange: null,
+		imageSelection: null,
 		wikiLinkId: null,
 		wikiLinkRange: null,
 		selectionRange: null,
 		selectedText: "",
 	})
 	let [imageDialogOpen, setImageDialogOpen] = useState(false)
+	let [assetMenuOpen, setAssetMenuOpen] = useState(false)
 	let [wikiLinkMenuOpen, setWikiLinkMenuOpen] = useState(false)
 	let [wikiLinkDialogOpen, setWikiLinkDialogOpen] = useState(false)
 	let [commentDialogOpen, setCommentDialogOpen] = useState(false)
@@ -166,6 +175,11 @@ function FloatingActions({
 	let [wikilinkPrefill, setWikilinkPrefill] = useState("")
 
 	let imageRangeRef = useRef<Range | null>(null)
+	let imageSelectionRef = useRef<Range | null>(null)
+	let assetMenuActionPendingRef = useRef(false)
+	let imageDialogDismissPendingRef = useRef(false)
+	let assetMenuCloseTimerRef = useRef<number | null>(null)
+	let imageDialogCloseTimerRef = useRef<number | null>(null)
 	let wikiLinkRangeRef = useRef<Range | null>(null)
 
 	let rightOffset =
@@ -181,6 +195,7 @@ function FloatingActions({
 	let shouldResetContext =
 		!focused &&
 		!isInteracting &&
+		!assetMenuOpen &&
 		!imageDialogOpen &&
 		!wikiLinkMenuOpen &&
 		!wikiLinkDialogOpen &&
@@ -195,6 +210,7 @@ function FloatingActions({
 		linkRange: null,
 		isImage: false,
 		imageRange: null,
+		imageSelection: null,
 		wikiLinkId: null,
 		wikiLinkRange: null,
 		selectionRange: null,
@@ -232,6 +248,7 @@ function FloatingActions({
 				linkRange: null,
 				isImage: false,
 				imageRange: null,
+				imageSelection: null,
 				wikiLinkId: null,
 				wikiLinkRange: null,
 				selectionRange:
@@ -286,6 +303,7 @@ function FloatingActions({
 				if (current.name === "Image") {
 					result.isImage = true
 					result.imageRange = { from: current.from, to: current.to }
+					result.imageSelection = { from: selection.from, to: selection.to }
 				}
 
 				current = current.parent
@@ -421,6 +439,10 @@ function FloatingActions({
 			while (current) {
 				if (current.name === "Image") {
 					imageRangeRef.current = { from: current.from, to: current.to }
+					imageSelectionRef.current = {
+						from: state.selection.main.from,
+						to: state.selection.main.to,
+					}
 					setImageDialogOpen(true)
 					return
 				}
@@ -430,13 +452,85 @@ function FloatingActions({
 	}))
 
 	function handleImageDialogOpenChange(open: boolean) {
-		if (open && context.imageRange) {
-			imageRangeRef.current = context.imageRange
+		if (open) {
+			rememberImageTarget()
+			clearImageDialogCloseTimer()
+			imageDialogDismissPendingRef.current = false
+		} else {
+			imageDialogDismissPendingRef.current = true
+			scheduleImageDialogSelectionRestore()
 		}
 		setImageDialogOpen(open)
 	}
 
+	function closeImageDialog() {
+		imageDialogDismissPendingRef.current = false
+		setImageDialogOpen(false)
+	}
+
+	function handleAssetMenuOpenChange(open: boolean) {
+		if (open) {
+			rememberImageTarget()
+			clearAssetMenuCloseTimer()
+			assetMenuActionPendingRef.current = false
+		} else {
+			scheduleAssetMenuSelectionRestore()
+		}
+		setAssetMenuOpen(open)
+	}
+
+	function scheduleImageDialogSelectionRestore() {
+		clearImageDialogCloseTimer()
+		imageDialogCloseTimerRef.current = window.setTimeout(() => {
+			imageDialogCloseTimerRef.current = null
+			if (!imageDialogDismissPendingRef.current) return
+
+			imageDialogDismissPendingRef.current = false
+			restoreImageSelection()
+		}, 150)
+	}
+
+	function scheduleAssetMenuSelectionRestore() {
+		clearAssetMenuCloseTimer()
+		assetMenuCloseTimerRef.current = window.setTimeout(() => {
+			assetMenuCloseTimerRef.current = null
+			if (!assetMenuActionPendingRef.current) restoreImageSelection()
+
+			assetMenuActionPendingRef.current = false
+		}, 150)
+	}
+
+	function clearImageDialogCloseTimer() {
+		if (imageDialogCloseTimerRef.current === null) return
+
+		clearTimeout(imageDialogCloseTimerRef.current)
+		imageDialogCloseTimerRef.current = null
+	}
+
+	function clearAssetMenuCloseTimer() {
+		if (assetMenuCloseTimerRef.current === null) return
+
+		clearTimeout(assetMenuCloseTimerRef.current)
+		assetMenuCloseTimerRef.current = null
+	}
+
+	function restoreImageSelection() {
+		let selection = imageSelectionRef.current
+		if (selection) editor.current?.restoreSelection(selection)
+	}
+
+	function markAssetMenuAction() {
+		assetMenuActionPendingRef.current = true
+	}
+
+	function rememberImageTarget() {
+		if (context.imageRange) imageRangeRef.current = context.imageRange
+		if (context.imageSelection)
+			imageSelectionRef.current = context.imageSelection
+	}
+
 	function handlePointerDown() {
+		rememberImageTarget()
 		setIsInteracting(true)
 	}
 
@@ -448,6 +542,7 @@ function FloatingActions({
 
 	let shouldShow =
 		focused ||
+		assetMenuOpen ||
 		imageDialogOpen ||
 		wikiLinkMenuOpen ||
 		wikiLinkDialogOpen ||
@@ -469,8 +564,12 @@ function FloatingActions({
 		image: {
 			isImage: context.isImage,
 			imageRange: context.imageRange,
+			assetMenuOpen,
+			setAssetMenuOpen: handleAssetMenuOpenChange,
+			markAssetMenuAction,
 			imageDialogOpen,
 			setImageDialogOpen: handleImageDialogOpenChange,
+			closeImageDialog,
 			imageRangeRef,
 		},
 		wikiLink: {
@@ -895,41 +994,61 @@ function WikiLinkDialog({
 	)
 }
 
-interface ImageActionProps {
+interface MediaActionProps {
 	editor: React.RefObject<MarkdownEditorRef | null>
 	isImage: boolean
 	imageRange: Range | null
+	assetMenuOpen: boolean
+	setAssetMenuOpen: (open: boolean) => void
+	markAssetMenuAction: () => void
 	imageDialogOpen: boolean
 	setImageDialogOpen: (open: boolean) => void
+	closeImageDialog: () => void
 	imageRangeRef: React.RefObject<Range | null>
-	assets: { id: string; name: string; type: "image" | "video" }[]
+	assets: {
+		id: string
+		name: string
+		type: "image" | "video" | "tldraw"
+	}[]
 	onUploadAndInsert?: (file: File, replaceRange: Range) => Promise<void>
+	onCreateTldraw?: (
+		onCreated: (asset: { id: string; name: string }) => void,
+	) => void
 }
 
-function ImageAction({
+type AssetPickerStep = "media" | "whiteboard"
+
+function MediaAction({
 	editor,
 	isImage,
+	assetMenuOpen,
+	setAssetMenuOpen,
+	markAssetMenuAction,
 	imageDialogOpen,
 	setImageDialogOpen,
+	closeImageDialog,
 	imageRangeRef,
 	assets,
 	onUploadAndInsert,
-}: ImageActionProps) {
+	onCreateTldraw,
+}: MediaActionProps) {
 	let t = useIntl()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [inputValue, setInputValue] = useState("")
+	let [step, setStep] = useState<AssetPickerStep>("media")
 
-	if (!isImage) return null
+	if (!isImage && !assetMenuOpen && !imageDialogOpen) return null
 
-	let filteredAssets = assets.filter(asset =>
+	let selectableAssets = assets.filter(asset =>
+		step === "whiteboard"
+			? asset.type === "tldraw"
+			: asset.type === "image" || asset.type === "video",
+	)
+	let filteredAssets = selectableAssets.filter(asset =>
 		asset.name.toLowerCase().includes(inputValue.toLowerCase()),
 	)
 
-	function handleSelectAsset(assetId: string | null) {
-		if (!assetId) return
-		let asset = assets.find(a => a.id === assetId)
-		if (!asset) return
-
+	function insertAsset(asset: { id: string; name: string }) {
 		let view = editor.current?.getEditor()
 		let range = imageRangeRef.current
 		if (!view || !range) return
@@ -938,16 +1057,43 @@ function ImageAction({
 			changes: {
 				from: range.from,
 				to: range.to,
-				insert: `![${asset.name}](asset:${assetId})`,
+				insert: `![${asset.name}](asset:${asset.id})`,
 			},
 		})
-		setImageDialogOpen(false)
-		setInputValue("")
 		view.focus()
 	}
 
-	function handleUploadClick() {
+	function handleSelectAsset(assetId: string | null) {
+		if (!assetId) return
+		let asset = assets.find(a => a.id === assetId)
+		if (!asset) return
+
+		insertAsset(asset)
+		closeImageDialog()
+	}
+
+	function handleDialogOpenChange(open: boolean) {
+		setImageDialogOpen(open)
+		if (!open) {
+			setStep("media")
+			setInputValue("")
+		}
+	}
+
+	function createWhiteboard() {
+		markAssetMenuAction()
+		requestAnimationFrame(() => onCreateTldraw?.(insertAsset))
+	}
+
+	function createMedia() {
+		markAssetMenuAction()
 		fileInputRef.current?.click()
+	}
+
+	function selectAsset(assetType: AssetPickerStep) {
+		markAssetMenuAction()
+		setStep(assetType)
+		setImageDialogOpen(true)
 	}
 
 	async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -956,48 +1102,86 @@ function ImageAction({
 		if (!file || !range || !onUploadAndInsert) return
 
 		e.target.value = ""
-		setImageDialogOpen(false)
-		setInputValue("")
+		closeImageDialog()
 		await onUploadAndInsert(file, range)
 		editor.current?.focus()
 	}
 
 	return (
 		<>
-			<Tooltip>
-				<TooltipTrigger
-					render={
-						<Button
-							size="icon"
-							variant="brand"
-							className="shadow-md"
-							nativeButton={false}
-							onClick={() => {
-								if (editor.current?.getEditor()) {
-									imageRangeRef.current =
-										editor.current.getSelection() as Range | null
+			<DropdownMenu open={assetMenuOpen} onOpenChange={setAssetMenuOpen}>
+				<Tooltip>
+					<DropdownMenuTrigger
+						render={
+							<TooltipTrigger
+								render={
+									<Button
+										size="icon"
+										variant="brand"
+										className="shadow-md"
+										nativeButton={false}
+										aria-label={t("editor.floating.addAsset")}
+									>
+										<Plus />
+									</Button>
 								}
-								setImageDialogOpen(true)
-							}}
+							/>
+						}
+					/>
+					<TooltipContent side="top" className="flex items-center gap-2">
+						<T k="editor.floating.addAsset" />
+						<Kbd>Ctrl Space</Kbd>
+					</TooltipContent>
+				</Tooltip>
+				<DropdownMenuContent align="end" side="top">
+					<DropdownMenuGroup>
+						<DropdownMenuLabel>
+							<T k="editor.dialog.media" />
+						</DropdownMenuLabel>
+						<DropdownMenuItem
+							disabled={!onUploadAndInsert}
+							onClick={createMedia}
 						>
-							<ImagePlus />
-						</Button>
-					}
-				/>
-				<TooltipContent side="top" className="flex items-center gap-2">
-					<T k="editor.floating.selectMedia" />
-					<Kbd>Ctrl Space</Kbd>
-				</TooltipContent>
-			</Tooltip>
+							<Plus />
+							<T k="editor.floating.new" />
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => selectAsset("media")}>
+							<ImageIcon />
+							<T k="editor.floating.select" />
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+					<DropdownMenuSeparator />
+					<DropdownMenuGroup>
+						<DropdownMenuLabel>
+							<T k="assets.whiteboard" />
+						</DropdownMenuLabel>
+						<DropdownMenuItem
+							disabled={!onCreateTldraw}
+							onClick={createWhiteboard}
+						>
+							<Plus />
+							<T k="editor.floating.new" />
+						</DropdownMenuItem>
+						<DropdownMenuItem onClick={() => selectAsset("whiteboard")}>
+							<PenTool />
+							<T k="editor.floating.select" />
+						</DropdownMenuItem>
+					</DropdownMenuGroup>
+				</DropdownMenuContent>
+			</DropdownMenu>
 
-			<Dialog open={imageDialogOpen} onOpenChange={setImageDialogOpen}>
+			<Dialog open={imageDialogOpen} onOpenChange={handleDialogOpenChange}>
 				<DialogContent className="max-w-sm">
 					<DialogHeader>
 						<DialogTitle>
-							<T k="editor.dialog.selectMedia" />
+							{step === "media"
+								? t("editor.dialog.selectMedia")
+								: t("editor.dialog.selectWhiteboard")}
 						</DialogTitle>
 						<DialogDescription>
-							<T k="editor.dialog.searchMedia" />
+							{step === "media"
+								? t("editor.dialog.searchMedia")
+								: t("editor.dialog.searchWhiteboards")}
 						</DialogDescription>
 					</DialogHeader>
 
@@ -1009,8 +1193,12 @@ function ImageAction({
 					>
 						<div className="relative">
 							<Combobox.Input
-								placeholder={t("editor.dialog.searchMediaPlaceholder")}
-								className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-9 w-full rounded-none border px-3 py-1 text-sm focus-visible:ring-1 focus-visible:outline-none"
+								placeholder={
+									step === "media"
+										? t("editor.dialog.searchMediaPlaceholder")
+										: t("editor.dialog.searchWhiteboardsPlaceholder")
+								}
+								className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring h-11 w-full rounded-none border px-3 py-1 text-base focus-visible:ring-1 focus-visible:outline-none sm:h-9 sm:text-sm"
 							/>
 						</div>
 
@@ -1019,7 +1207,9 @@ function ImageAction({
 								<Combobox.Popup className="bg-popover text-popover-foreground ring-foreground/10 max-h-60 w-(--anchor-width) overflow-auto rounded-none shadow-md ring-1">
 									{filteredAssets.length === 0 && (
 										<div className="text-muted-foreground px-3 py-2 text-sm">
-											<T k="editor.dialog.noMediaFound" />
+											{step === "media"
+												? t("editor.dialog.noMediaFound")
+												: t("editor.dialog.noWhiteboardsFound")}
 										</div>
 									)}
 
@@ -1027,10 +1217,12 @@ function ImageAction({
 										<Combobox.Item
 											key={asset.id}
 											value={asset.id}
-											className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none"
+											className="data-highlighted:bg-accent data-highlighted:text-accent-foreground flex min-h-11 cursor-pointer items-center gap-2 px-3 py-2 text-sm outline-none sm:min-h-9"
 										>
 											{asset.type === "video" ? (
 												<Film className="text-muted-foreground size-4" />
+											) : asset.type === "tldraw" ? (
+												<PenTool className="text-muted-foreground size-4" />
 											) : (
 												<ImageIcon className="text-muted-foreground size-4" />
 											)}
@@ -1042,23 +1234,12 @@ function ImageAction({
 						</Combobox.Portal>
 					</Combobox.Root>
 
-					<div className="flex justify-between gap-2 pt-2">
-						{onUploadAndInsert && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={handleUploadClick}
-								className="gap-2"
-							>
-								<Upload className="size-4" />
-								<T k="editor.dialog.upload" />
-							</Button>
-						)}
-						<div className="flex-1" />
+					<div className="flex justify-end pt-2">
 						<Button
 							variant="ghost"
 							size="sm"
-							onClick={() => setImageDialogOpen(false)}
+							className="min-h-11 sm:min-h-9"
+							onClick={() => handleDialogOpenChange(false)}
 						>
 							<T k="editor.dialog.cancel" />
 						</Button>

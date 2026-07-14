@@ -16,13 +16,16 @@ import { canEdit } from "@/app/features/sharing"
 import { Slideshow, type Slide } from "../widgets/slideshow"
 import { parsePresentation, type PresentationItem } from "../lib/presentation"
 import { useScreenWakeLock } from "../lib/screen-wake-lock"
+import { assetPreviewResolve } from "@/app/features/assets"
 
 export { SlideshowScreen, resolve, loadWikilinkCache }
 export type { LoaderData }
 
 let resolve = {
 	content: true,
-	assets: { $each: { image: true, video: true } },
+	assets: {
+		$each: assetPreviewResolve,
+	},
 } as const satisfies ResolveQuery<typeof Document>
 
 type LoadedDoc = co.loaded<typeof Document, typeof resolve>

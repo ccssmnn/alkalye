@@ -12,7 +12,7 @@ import { syntaxTree } from "@codemirror/language"
 export { createImageDecorations }
 export type { ImageResolver }
 
-type ResolvedAsset = { url: string; type: "image" | "video" }
+type ResolvedAsset = { url: string; type: "image" | "video" | "tldraw" }
 type ImageResolver = (assetId: string) => ResolvedAsset | undefined
 
 function createImageDecorations(
@@ -99,13 +99,13 @@ function createImageDecorations(
 class ImageWidget extends WidgetType {
 	text: string
 	url: string
-	assetType: "image" | "video"
+	assetType: "image" | "video" | "tldraw"
 	onPreview: (url: string, alt: string) => void
 
 	constructor(
 		text: string,
 		url: string,
-		assetType: "image" | "video",
+		assetType: "image" | "video" | "tldraw",
 		onPreview: (url: string, alt: string) => void,
 	) {
 		super()
@@ -133,6 +133,8 @@ class ImageWidget extends WidgetType {
 		if (this.assetType === "video") {
 			// Film icon from lucide
 			icon.innerHTML = `<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>`
+		} else if (this.assetType === "tldraw") {
+			icon.innerHTML = `<path d="M12 19h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/>`
 		} else {
 			// Image icon from lucide
 			icon.innerHTML = `<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>`
@@ -173,7 +175,7 @@ interface ImageMatch {
 	to: number
 	alt: string
 	url: string
-	assetType: "image" | "video"
+	assetType: "image" | "video" | "tldraw"
 }
 
 function parseImages(view: EditorView, resolver: ImageResolver): ImageMatch[] {
@@ -196,7 +198,7 @@ function parseImages(view: EditorView, resolver: ImageResolver): ImageMatch[] {
 
 				// Resolve asset: URLs
 				let url = rawUrl
-				let assetType: "image" | "video" = "image"
+				let assetType: "image" | "video" | "tldraw" = "image"
 				if (rawUrl.startsWith("asset:")) {
 					let assetId = rawUrl.slice(6)
 					let resolved = resolver(assetId)

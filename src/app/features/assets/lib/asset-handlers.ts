@@ -209,6 +209,11 @@ function makeDownloadAsset(doc: LoadedDocument) {
 			}
 		} else if (asset.type === "video" && asset.video?.$isLoaded) {
 			blob = asset.video.toBlob()
+		} else if (asset.type === "tldraw" && asset.revision?.$isLoaded) {
+			let revision = await asset.revision.$jazz.ensureLoaded({
+				resolve: { snapshot: true },
+			})
+			blob = revision.snapshot.toBlob()
 		}
 
 		if (!blob) return
@@ -216,7 +221,10 @@ function makeDownloadAsset(doc: LoadedDocument) {
 		let url = URL.createObjectURL(blob)
 		let a = document.createElement("a")
 		a.href = url
-		a.download = `${name}.${blob.type.split("/")[1] || "png"}`
+		a.download =
+			asset.type === "tldraw"
+				? `${name}.tldr`
+				: `${name}.${blob.type.split("/")[1] || "png"}`
 		document.body.appendChild(a)
 		a.click()
 		document.body.removeChild(a)

@@ -29,10 +29,14 @@ export { Preview }
 type Asset = {
 	$jazz: { id: string }
 	$isLoaded?: boolean
-	type?: "image" | "video"
+	type?: "image" | "video" | "tldraw"
 	image?: { $jazz: { id: string } }
 	video?: { $isLoaded?: boolean; toBlob?: () => Blob | undefined }
 	muteAudio?: boolean
+	revision?: {
+		lightPreview?: { $jazz: { id: string } }
+		darkPreview?: { $jazz: { id: string } }
+	}
 }
 
 interface PreviewProps {
@@ -91,6 +95,7 @@ function Preview({
 			content={content}
 			assets={assets}
 			marked={marked}
+			colorScheme={resolvedTheme}
 			cacheVersion={wikilinks.size}
 			onExit={onExit}
 			documentTheme={documentTheme}
@@ -110,6 +115,7 @@ function PreviewContent({
 	content,
 	assets,
 	marked,
+	colorScheme,
 	cacheVersion,
 	onExit,
 	documentTheme,
@@ -120,6 +126,7 @@ function PreviewContent({
 	content: string
 	assets?: Asset[]
 	marked: Marked
+	colorScheme: "light" | "dark"
 	cacheVersion: number
 	onExit?: () => void
 	documentTheme: ResolvedTheme
@@ -147,14 +154,14 @@ function PreviewContent({
 		let { body } = parseFrontmatter(content)
 		let cancelled = false
 
-		parseSegments(body, assets, marked).then(result => {
+		parseSegments(body, assets, marked, colorScheme).then(result => {
 			if (!cancelled) setSegments(result)
 		})
 
 		return () => {
 			cancelled = true
 		}
-	}, [content, assets, marked, cacheVersion])
+	}, [content, assets, marked, cacheVersion, colorScheme])
 
 	useEffect(() => {
 		document.title = getDocumentTitle(content)
@@ -710,6 +717,7 @@ async function parseSegments(
 	content: string,
 	assets: Asset[] | undefined,
 	marked: Marked,
+	colorScheme: "light" | "dark",
 ): Promise<Segment[]> {
 	let rawSegments: RawSegment[] = []
 	let lastIndex = 0
@@ -734,6 +742,20 @@ async function parseSegments(
 				imageId: asset.image.$jazz.id,
 				alt,
 			})
+		} else if (asset?.$isLoaded && asset.type === "tldraw") {
+			let preview =
+				colorScheme === "dark"
+					? asset.revision?.darkPreview
+					: asset.revision?.lightPreview
+			if (preview) {
+				rawSegments.push({
+					type: "image",
+					imageId: preview.$jazz.id,
+					alt,
+				})
+			} else {
+				rawSegments.push({ type: "text", content: match[0] })
+			}
 		} else if (asset?.$isLoaded && asset.type === "video" && asset.video) {
 			rawSegments.push({
 				type: "video",

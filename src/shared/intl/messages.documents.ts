@@ -189,6 +189,7 @@ let baseDocumentsMessages = messages({
 	"timeMachine.clampedDescription":
 		"Edit {$edit} doesn't exist. Showing closest available version.",
 	"timeMachine.failedToCopyAsset": "Failed to copy asset: {$name}",
+	"timeMachine.restoreFailed": "Could not restore this version",
 })
 
 let deDocumentsMessages = translate(baseDocumentsMessages, {
@@ -383,4 +384,6 @@ let deDocumentsMessages = translate(baseDocumentsMessages, {
 	"timeMachine.clampedDescription":
 		"Bearbeitung {$edit} existiert nicht. Zeige die nächste verfügbare Version.",
 	"timeMachine.failedToCopyAsset": "Fehler beim Kopieren des Assets: {$name}",
+	"timeMachine.restoreFailed":
+		"Diese Version konnte nicht wiederhergestellt werden",
 })

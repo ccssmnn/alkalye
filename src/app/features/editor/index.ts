@@ -15,7 +15,7 @@ export {
 	WikiLinkDialog,
 	TaskAction,
 	LinkAction,
-	ImageAction,
+	MediaAction,
 	WikiLinkAction,
 	type FloatingActionsProps,
 	type FloatingActionsRef,

@@ -67,12 +67,15 @@ import {
 } from "../lib/comment-text-match"
 import { printToPdf } from "@/app/features/import-export"
 import { useIntl } from "@/shared/intl/setup"
+import { assetPreviewResolve } from "@/app/features/assets"
 
 export { DocPreviewScreen, previewResolve, resolveDocTitles }
 
 let previewResolve = {
 	content: true,
-	assets: { $each: { image: true } },
+	assets: {
+		$each: assetPreviewResolve,
+	},
 	comments: { $each: { replies: true } },
 } as const satisfies ResolveQuery<typeof Document>
 

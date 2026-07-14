@@ -1,8 +1,14 @@
 import { useRef, useState } from "react"
 import { Group, co } from "jazz-tools"
-import { createImage } from "jazz-tools/media"
-import { Document, Asset, ImageAsset, VideoAsset } from "@/schema"
-import { compressVideo, canEncodeVideo } from "@/app/features/assets"
+import { Document, Asset } from "@/schema"
+import {
+	assetContentResolve,
+	classifyAssetFile,
+	compressVideo,
+	canEncodeVideo,
+	createAssetFromFile,
+	serializeAsset,
+} from "@/app/features/assets"
 import { getPath } from "@/app/features/editor"
 import { Button } from "@/app/components/ui/button"
 import {
@@ -229,12 +235,12 @@ async function handleImportFiles(
 			if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
 
 			let importedAsset = importedAssets[assetIndex]
-			let isVideo = importedAsset.file.type.startsWith("video/")
-			let asset: co.loaded<typeof Asset>
-
-			if (isVideo) {
+			let kind = classifyAssetFile(importedAsset.file)
+			if (!kind)
+				throw new Error(`Unsupported asset: ${importedAsset.file.name}`)
+			let blob: Blob = importedAsset.file
+			if (kind === "video") {
 				// Compress video if supported, otherwise use original
-				let videoBlob: Blob = importedAsset.file
 				if (await canEncodeVideo()) {
 					onProgress?.({
 						phase: "compressing",
@@ -246,7 +252,7 @@ async function handleImportFiles(
 						compressionProgress: 0,
 					})
 					try {
-						videoBlob = await compressVideo(importedAsset.file, {
+						blob = await compressVideo(importedAsset.file, {
 							onProgress: p =>
 								onProgress?.({
 									phase: "compressing",
@@ -264,29 +270,16 @@ async function handleImportFiles(
 						if (signal?.aborted) throw new DOMException("Aborted", "AbortError")
 					}
 				}
-				let video = await co.fileStream().createFromBlob(videoBlob, {
-					owner: docGroup,
-				})
-				asset = VideoAsset.create(
-					{
-						type: "video",
-						name: importedAsset.name,
-						video,
-						mimeType: "video/mp4",
-						createdAt: now,
-					},
-					docGroup,
-				)
-			} else {
-				let image = await createImage(importedAsset.file, {
-					owner: docGroup,
-					maxSize: 2048,
-				})
-				asset = ImageAsset.create(
-					{ type: "image", name: importedAsset.name, image, createdAt: now },
-					docGroup,
-				)
 			}
+			let asset = await createAssetFromFile(
+				{
+					blob,
+					fileName: importedAsset.file.name,
+					name: importedAsset.name,
+					createdAt: now,
+				},
+				docGroup,
+			)
 			docAssets.push(asset)
 
 			if (importedAsset.refName) {
@@ -408,7 +401,11 @@ async function loadDocumentAssets(
 	doc: co.loaded<typeof Document>,
 ): Promise<ExportAsset[]> {
 	let loaded = await doc.$jazz.ensureLoaded({
-		resolve: { assets: { $each: { image: true, video: true } } },
+		resolve: {
+			assets: {
+				$each: assetContentResolve,
+			},
+		},
 	})
 	let docAssets: ExportAsset[] = []
 
@@ -416,19 +413,8 @@ async function loadDocumentAssets(
 		for (let asset of Array.from(loaded.assets)) {
 			if (!asset?.$isLoaded) continue
 
-			if (asset.type === "image" && asset.image?.$isLoaded) {
-				let original = asset.image.original
-				if (!original?.$isLoaded) continue
-				let blob = original.toBlob()
-				if (blob) {
-					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
-				}
-			} else if (asset.type === "video" && asset.video?.$isLoaded) {
-				let blob = asset.video.toBlob()
-				if (blob) {
-					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
-				}
-			}
+			let blob = await serializeAsset(asset)
+			if (blob) docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
 		}
 	}
 

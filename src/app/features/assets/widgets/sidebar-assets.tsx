@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from "react"
 import { useForm } from "@tanstack/react-form"
 import { z } from "zod"
 import { Image as JazzImage } from "jazz-tools/react"
+import { toast } from "sonner"
 import {
 	SidebarGroupLabel,
 	SidebarGroupContent,
@@ -46,20 +47,14 @@ import {
 	Film,
 	VolumeX,
 	Volume2,
+	PenTool,
 } from "lucide-react"
 import { useIntl, T } from "@/shared/intl/setup"
+import { useResolvedTheme } from "@/app/components/appearance"
+import type { SidebarAsset } from "../lib/asset-view-models"
 
 export { SidebarAssets }
 export type { SidebarAsset }
-
-interface SidebarAsset {
-	id: string
-	name: string
-	type: "image" | "video"
-	imageId?: string
-	getVideoBlob?: () => Blob | undefined
-	muteAudio?: boolean
-}
 
 interface VideoUploadState {
 	fileName: string
@@ -84,6 +79,9 @@ interface SidebarAssetsProps {
 	onDownload?: (assetId: string, name: string) => void
 	onInsert?: (assetId: string, name: string) => void
 	onToggleMute?: (assetId: string) => void
+	onImportTldraw?: (file: File) => void
+	onCreateTldraw?: () => void
+	onEditTldraw?: (assetId: string) => void
 	isAssetUsed?: (assetId: string) => boolean
 	canUploadVideo?: boolean
 }
@@ -98,10 +96,14 @@ function SidebarAssets({
 	onDownload,
 	onInsert,
 	onToggleMute,
+	onCreateTldraw,
+	onImportTldraw,
+	onEditTldraw,
 	isAssetUsed,
 	canUploadVideo,
 }: SidebarAssetsProps) {
 	let t = useIntl()
+	let colorScheme = useResolvedTheme()
 	let { isMobile } = useSidebar()
 	let fileInputRef = useRef<HTMLInputElement>(null)
 	let [renameOpen, setRenameOpen] = useState(false)
@@ -121,8 +123,16 @@ function SidebarAssets({
 	}
 
 	async function handleFiles(files: File[]) {
+		let tldrawFiles = files.filter(file =>
+			file.name.toLowerCase().endsWith(".tldr"),
+		)
 		let imageFiles = files.filter(f => f.type.startsWith("image/"))
 		let videoFiles = files.filter(f => f.type.startsWith("video/"))
+
+		if (tldrawFiles[0]) onImportTldraw?.(tldrawFiles[0])
+		if (tldrawFiles.length > 1) {
+			toast.info(t("assets.importOneWhiteboard"))
+		}
 
 		if (imageFiles.length > 0 && onUploadImages) {
 			let dt = new DataTransfer()
@@ -217,33 +227,53 @@ function SidebarAssets({
 				<span>
 					<T k="assets.title" />
 				</span>
-				<Tooltip>
-					<TooltipTrigger
-						render={
-							<button
-								onClick={() => fileInputRef.current?.click()}
-								disabled={readOnly}
-								className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent flex size-5 items-center justify-center rounded disabled:pointer-events-none disabled:opacity-50"
-							>
-								<Plus className="size-4" />
-							</button>
-						}
-					/>
-					<TooltipContent>
-						<T k="assets.addAsset" />
-					</TooltipContent>
-				</Tooltip>
+				<DropdownMenu>
+					<Tooltip>
+						<DropdownMenuTrigger
+							disabled={readOnly}
+							render={
+								<TooltipTrigger
+									render={
+										<button
+											disabled={readOnly}
+											aria-label={t("assets.addAsset")}
+											className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent flex size-8 touch-manipulation items-center justify-center rounded disabled:pointer-events-none disabled:opacity-50"
+										>
+											<Plus className="size-4" />
+										</button>
+									}
+								/>
+							}
+						/>
+						<TooltipContent>
+							<T k="assets.addAsset" />
+						</TooltipContent>
+					</Tooltip>
+					<DropdownMenuContent align="end">
+						{onCreateTldraw && (
+							<DropdownMenuItem onClick={onCreateTldraw}>
+								<PenTool className="size-4" />
+								{t("assets.newWhiteboard")}
+							</DropdownMenuItem>
+						)}
+						<DropdownMenuItem onClick={() => fileInputRef.current?.click()}>
+							<Upload className="size-4" />
+							{t("assets.uploadOrImport")}
+						</DropdownMenuItem>
+					</DropdownMenuContent>
+				</DropdownMenu>
 			</SidebarGroupLabel>
 			<input
 				ref={fileInputRef}
 				type="file"
-				accept={canUploadVideo ? "image/*,video/*" : "image/*"}
+				accept={canUploadVideo ? "image/*,video/*,.tldr" : "image/*,.tldr"}
 				multiple
 				className="hidden"
 				onChange={e => {
 					if (e.target.files) {
 						handleFiles(Array.from(e.target.files))
 					}
+					e.target.value = ""
 				}}
 			/>
 			<SidebarGroupContent className="flex flex-1 flex-col">
@@ -269,6 +299,18 @@ function SidebarAssets({
 															imageId={asset.imageId}
 															className="size-full object-cover"
 														/>
+													) : asset.type === "tldraw" &&
+													  (colorScheme === "dark"
+															? asset.darkPreviewId
+															: asset.lightPreviewId) ? (
+														<JazzImage
+															imageId={
+																colorScheme === "dark"
+																	? asset.darkPreviewId!
+																	: asset.lightPreviewId!
+															}
+															className="size-full object-cover"
+														/>
 													) : asset.type === "video" && asset.getVideoBlob ? (
 														<VideoThumbnail
 															assetId={asset.id}
@@ -278,6 +320,8 @@ function SidebarAssets({
 														<div className="flex size-full items-center justify-center">
 															{asset.type === "video" ? (
 																<Film className="text-muted-foreground size-4" />
+															) : asset.type === "tldraw" ? (
+																<PenTool className="text-muted-foreground size-4" />
 															) : (
 																<ImageIcon className="text-muted-foreground size-4" />
 															)}
@@ -292,6 +336,12 @@ function SidebarAssets({
 										side={isMobile ? "bottom" : "left"}
 										align={isMobile ? "center" : "start"}
 									>
+										{asset.type === "tldraw" && onEditTldraw && (
+											<DropdownMenuItem onClick={() => onEditTldraw(asset.id)}>
+												<PenTool className="size-4" />
+												{t("assets.editWhiteboard")}
+											</DropdownMenuItem>
+										)}
 										{onInsert && (
 											<DropdownMenuItem
 												onClick={() => onInsert(asset.id, asset.name)}

@@ -23,7 +23,12 @@ import {
 	makeDownloadAsset,
 	canEncodeVideo,
 	imageExtensions,
+	createTldrawAsset,
+	updateTldrawAsset,
 	SidebarAssets,
+	useTldrawEditor,
+	toEditorAsset,
+	toSidebarAsset,
 	type SidebarAsset,
 } from "@/app/features/assets"
 import {
@@ -104,7 +109,11 @@ import { SidebarFileMenu } from "../widgets/sidebar-file-menu"
 import { SidebarEditMenu } from "@/app/features/editor"
 import { SidebarFormatMenu } from "@/app/features/editor"
 import { SidebarCollaboration } from "@/app/features/sharing"
-import { ThemeToggle, useTheme } from "@/app/components/appearance"
+import {
+	ThemeToggle,
+	useTheme,
+	useResolvedTheme,
+} from "@/app/components/appearance"
 import {
 	Tooltip,
 	TooltipContent,
@@ -249,6 +258,7 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	}, [])
 
 	let { theme, setTheme } = useTheme()
+	let resolvedTheme = useResolvedTheme()
 	let {
 		toggleLeft,
 		toggleRight,
@@ -280,19 +290,9 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 		editorRef: editor,
 	})
 	let assets =
-		doc.assets?.flatMap(a => {
-			if (!a?.$isLoaded) return []
-			return [
-				{
-					id: a.$jazz.id,
-					name: a.name,
-					type: a.type,
-					imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
-					video: a.type === "video" ? a.video : undefined,
-					muteAudio: a.type === "video" ? a.muteAudio : undefined,
-				},
-			]
-		}) ?? []
+		doc.assets?.flatMap(a =>
+			a?.$isLoaded ? [toEditorAsset(a, resolvedTheme)] : [],
+		) ?? []
 	let assetsRef = useRef(assets)
 	useEffect(() => {
 		assetsRef.current = assets
@@ -362,20 +362,18 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 	})
 
 	let sidebarAssets: SidebarAsset[] =
-		doc.assets?.flatMap(a => {
-			if (!a?.$isLoaded) return []
-			let video = a.type === "video" && a.video?.$isLoaded ? a.video : null
-			return [
-				{
-					id: a.$jazz.id,
-					name: a.name,
-					type: a.type,
-					imageId: a.type === "image" ? a.image?.$jazz.id : undefined,
-					getVideoBlob: video ? () => video.toBlob() : undefined,
-					muteAudio: a.type === "video" ? a.muteAudio : undefined,
-				},
-			]
-		}) ?? []
+		doc.assets?.flatMap(a => (a?.$isLoaded ? [toSidebarAsset(a)] : [])) ?? []
+	let tldrawEditor = useTldrawEditor({
+		assets: sidebarAssets,
+		readOnly,
+		createAsset: async (name, save) => {
+			let asset = await createTldrawAsset(doc, name, save)
+			return { id: asset.$jazz.id, name: asset.name }
+		},
+		updateAsset: async (assetId, save) => {
+			await updateTldrawAsset(doc, assetId, save)
+		},
+	})
 
 	// Get documents for wikilink insertion menu - personal docs only
 	let wikiLinkDocs: { id: string; title: string }[] = []
@@ -669,6 +667,9 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 					onCreateDocument={makeCreateDocument(me)}
 					onUploadImage={makeUploadImage(doc)}
 					onUploadVideo={canUploadVideo ? makeUploadVideo(doc) : undefined}
+					onImportTldraw={readOnly ? undefined : tldrawEditor.importFile}
+					onCreateTldraw={readOnly ? undefined : tldrawEditor.create}
+					onEditTldraw={readOnly ? undefined : tldrawEditor.edit}
 					onAddComment={
 						commentsEnabled ? handleCreateCommentFromSelection : undefined
 					}
@@ -842,11 +843,15 @@ function EditorContent({ doc, docId }: EditorContentProps) {
 								}}
 								isAssetUsed={makeIsAssetUsed(docWithContent)}
 								canUploadVideo={canUploadVideo}
+								onImportTldraw={tldrawEditor.importFile}
+								onCreateTldraw={tldrawEditor.create}
+								onEditTldraw={tldrawEditor.edit}
 							/>
 						</SidebarGroup>
 					</>
 				)}
 			</DocumentSidebar>
+			{tldrawEditor.dialog}
 		</>
 	)
 }

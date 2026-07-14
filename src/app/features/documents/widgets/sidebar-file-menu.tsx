@@ -48,6 +48,7 @@ import {
 	getExportComments,
 } from "@/app/features/comments"
 import type { MarkdownEditorRef } from "@/app/features/editor"
+import { serializeAsset } from "@/app/features/assets"
 
 import { loadThemesForPdf } from "@/app/features/themes"
 import { createDocumentMetadata, syncDocumentMetadata } from "../lib/metadata"
@@ -487,18 +488,9 @@ function makeDownload(doc: LoadedDocument, content: string) {
 		let docAssets: ExportAsset[] = []
 		if (doc.assets?.$isLoaded) {
 			for (let asset of Array.from(doc.assets)) {
-				if (
-					!asset?.$isLoaded ||
-					asset.type !== "image" ||
-					!asset.image?.$isLoaded
-				)
-					continue
-				let original = asset.image.original
-				if (!original?.$isLoaded) continue
-				let blob = original.toBlob()
-				if (blob) {
-					docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
-				}
+				if (!asset?.$isLoaded) continue
+				let blob = await serializeAsset(asset)
+				if (blob) docAssets.push({ id: asset.$jazz.id, name: asset.name, blob })
 			}
 		}
 		let title = getDocumentTitle(content)

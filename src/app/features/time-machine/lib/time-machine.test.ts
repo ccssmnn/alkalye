@@ -1,14 +1,21 @@
 import { beforeEach, describe, expect, test } from "vitest"
 import { createJazzTestAccount, setupJazzTestSync } from "jazz-tools/testing"
-import { Document, UserAccount } from "@/schema"
+import { co } from "jazz-tools"
+import {
+	Document,
+	Asset,
+	TldrawAsset,
+	TldrawRevision,
+	UserAccount,
+} from "@/schema"
 import { createPersonalDocument } from "@/app/features/documents/lib/documents"
 import {
 	getEditHistory,
 	getContentAtEdit,
 	accountIdFromSessionId,
 	formatEditDate,
+	restoreAssetsAtTime,
 } from "./time-machine"
-import type { co } from "jazz-tools"
 
 describe("Time Machine - Edit History", () => {
 	let adminAccount: co.loaded<typeof UserAccount>
@@ -184,6 +191,73 @@ describe("Time Machine - Edit History", () => {
 		expect(middleContent.length).toBeGreaterThan(0)
 	})
 
+	test("restores the tldraw revision active at the selected time", async () => {
+		let doc = await createPersonalDocument(adminAccount, "Whiteboard")
+		let firstRevision = await createTldrawTestRevision(adminAccount, "first")
+		let asset = TldrawAsset.create(
+			{
+				version: 1,
+				type: "tldraw",
+				name: "Diagram",
+				revision: firstRevision,
+				createdAt: new Date(),
+			},
+			adminAccount,
+		)
+		doc.$jazz.set("assets", co.list(Asset).create([], adminAccount))
+		doc.assets!.$jazz.push(asset)
+
+		await new Promise(resolve => setTimeout(resolve, 20))
+		let firstRevisionTime = Date.now()
+		await new Promise(resolve => setTimeout(resolve, 20))
+		let secondRevision = await createTldrawTestRevision(adminAccount, "second")
+		asset.$jazz.set("revision", secondRevision)
+
+		let loaded = await Document.load(doc.$jazz.id, {
+			resolve: { content: true, assets: true },
+		})
+		if (!loaded.$isLoaded) throw new Error("Doc not loaded")
+
+		await restoreAssetsAtTime(loaded, firstRevisionTime)
+
+		let restored = loaded.assets?.[0]
+		expect(restored?.$isLoaded && restored.type).toBe("tldraw")
+		if (!restored?.$isLoaded || restored.type !== "tldraw") return
+		expect(restored.revision?.$jazz.id).toBe(firstRevision.$jazz.id)
+	})
+
+	test("does not partially restore when a historical asset is unavailable", async () => {
+		let doc = await createPersonalDocument(adminAccount, "Whiteboard")
+		let revision = await createTldrawTestRevision(adminAccount, "deleted")
+		let asset = TldrawAsset.create(
+			{
+				version: 1,
+				type: "tldraw",
+				name: "Deleted diagram",
+				revision,
+				createdAt: new Date(),
+			},
+			adminAccount,
+		)
+		doc.$jazz.set("assets", co.list(Asset).create([asset], adminAccount))
+
+		await new Promise(resolve => setTimeout(resolve, 20))
+		let historicalTimestamp = Date.now()
+		await new Promise(resolve => setTimeout(resolve, 20))
+		doc.assets!.$jazz.splice(0, 1)
+		asset.$jazz.raw.core.deleteCoValue()
+
+		let loaded = await Document.load(doc.$jazz.id, {
+			resolve: { content: true, assets: true },
+		})
+		if (!loaded.$isLoaded) throw new Error("Doc not loaded")
+
+		await expect(
+			restoreAssetsAtTime(loaded, historicalTimestamp),
+		).rejects.toThrow("Historical asset is unavailable")
+		expect(loaded.assets).toHaveLength(0)
+	})
+
 	test("getEditHistory maintains O(n) complexity", async () => {
 		let doc = await createPersonalDocument(adminAccount, "Initial")
 
@@ -216,6 +290,53 @@ describe("Time Machine - Edit History", () => {
 		expect(duration100).toBeLessThan(duration50 * 5 + 10)
 	})
 })
+
+async function createTldrawTestRevision(
+	owner: co.loaded<typeof UserAccount>,
+	content: string,
+) {
+	let snapshot = await co
+		.fileStream()
+		.createFromBlob(new ReadableBlob(content, "application/vnd.tldraw+json"), {
+			owner,
+		})
+	let original = await co.fileStream().createFromBlob(new ReadableBlob(""), {
+		owner,
+	})
+	let preview = co.image().create(
+		{
+			original,
+			originalSize: [1, 1],
+			progressive: false,
+		},
+		owner,
+	)
+	return TldrawRevision.create(
+		{
+			snapshot,
+			lightPreview: preview,
+			darkPreview: preview,
+			createdAt: new Date(),
+		},
+		owner,
+	)
+}
+
+class ReadableBlob extends Blob {
+	readonly content: string
+
+	constructor(content: string, type = "application/octet-stream") {
+		super([content], { type })
+		this.content = content
+	}
+
+	async arrayBuffer() {
+		let bytes = new TextEncoder().encode(this.content)
+		let buffer = new ArrayBuffer(bytes.byteLength)
+		new Uint8Array(buffer).set(bytes)
+		return buffer
+	}
+}
 
 describe("Time Machine - Offline Support", () => {
 	let adminAccount: co.loaded<typeof UserAccount>

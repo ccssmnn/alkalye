@@ -1,6 +1,6 @@
 import { useImperativeHandle, useEffect, useRef, useState } from "react"
 import { diff } from "fast-myers-diff"
-import { ImageOff } from "lucide-react"
+import { ImageOff, Maximize2, Minimize2, PenTool } from "lucide-react"
 import { toast } from "sonner"
 import {
 	EditorState,
@@ -66,14 +66,17 @@ import { useScreenKeyboardBottomInset } from "../hooks/use-screen-keyboard-botto
 import {
 	Dialog,
 	DialogContent,
+	DialogFooter,
 	DialogHeader,
 	DialogTitle,
 } from "@/app/components/ui/dialog"
+import { Button } from "@/app/components/ui/button"
+import { cn } from "@/app/lib/cn"
 import {
 	FloatingActions,
 	TaskAction,
 	LinkAction,
-	ImageAction,
+	MediaAction,
 	WikiLinkAction,
 	CommentAction,
 	type FloatingActionsRef,
@@ -83,6 +86,7 @@ import {
 	type UploadPhase,
 } from "@/app/features/import-export"
 import { useIntl } from "@/shared/intl/setup"
+import type { EditorAsset } from "@/app/features/assets"
 
 export { MarkdownEditor, useMarkdownEditorRef }
 export { parseFrontmatter } from "../lib/frontmatter"
@@ -104,15 +108,6 @@ type WikilinkDoc = {
 
 type DropTarget = { pos: number }
 
-type Asset = {
-	id: string
-	name: string
-	type: "image" | "video"
-	imageId?: string
-	video?: { $isLoaded?: boolean; toBlob?: () => Blob | undefined }
-	muteAudio?: boolean
-}
-
 interface MarkdownEditorProps {
 	// Core
 	value: string
@@ -124,7 +119,7 @@ interface MarkdownEditorProps {
 	onBlur?: () => void
 
 	// Data for decorations (optional = feature detection)
-	assets?: Asset[]
+	assets?: EditorAsset[]
 	documents?: WikilinkDoc[]
 
 	// Wikilink integration: caller resolves ids and handles clicks.
@@ -142,6 +137,11 @@ interface MarkdownEditorProps {
 			signal: AbortSignal
 		},
 	) => Promise<{ id: string; name: string }>
+	onImportTldraw?: (file: File) => void
+	onCreateTldraw?: (
+		onCreated: (asset: { id: string; name: string }) => void,
+	) => void
+	onEditTldraw?: (assetId: string) => void
 	onAddComment?: (
 		selection: { from: number; to: number },
 		body: string,
@@ -235,6 +235,9 @@ function MarkdownEditor(
 		onCreateDocument,
 		onUploadImage,
 		onUploadVideo,
+		onImportTldraw,
+		onCreateTldraw,
+		onEditTldraw,
 		onAddComment,
 		extensions: externalExtensions,
 		placeholder,
@@ -261,11 +264,13 @@ function MarkdownEditor(
 	let [isFocused, setIsFocused] = useState(false)
 	let [findPanelHeight, setFindPanelHeight] = useState(0)
 	let [mediaPreviewOpen, setMediaPreviewOpen] = useState(false)
+	let [mediaPreviewExpanded, setMediaPreviewExpanded] = useState(false)
 	let [mediaPreview, setMediaPreview] = useState<{
 		url: string
 		alt: string
 		assetId: string | null
 	} | null>(null)
+	let pendingTldrawEdit = useRef<string | null>(null)
 	let [videoUpload, setVideoUpload] = useState<VideoUploadState | null>(null)
 
 	let callbacksRef = useRef({ onChange, onCursorChange, onFocus, onBlur })
@@ -274,6 +279,7 @@ function MarkdownEditor(
 	let autoSortRef = useRef(autoSortTasks ?? false)
 	let uploadImageRef = useRef(onUploadImage)
 	let uploadVideoRef = useRef(onUploadVideo)
+	let importTldrawRef = useRef(onImportTldraw)
 	let addCommentEnabledRef = useRef(Boolean(onAddComment))
 	let activeDropsRef = useRef<Set<DropTarget>>(new Set())
 
@@ -287,6 +293,10 @@ function MarkdownEditor(
 
 	useEffect(() => {
 		uploadVideoRef.current = onUploadVideo
+	})
+
+	useEffect(() => {
+		importTldrawRef.current = onImportTldraw
 	})
 
 	useEffect(() => {
@@ -321,7 +331,20 @@ function MarkdownEditor(
 			assetId = url.slice(6)
 		}
 		setMediaPreview({ url, alt, assetId })
+		setMediaPreviewExpanded(false)
 		setMediaPreviewOpen(true)
+	}
+
+	let editableTldrawAssetId =
+		!readOnly && mediaPreview?.assetId && onEditTldraw
+			? assets?.find(
+					asset => asset.id === mediaPreview.assetId && asset.type === "tldraw",
+				)?.id
+			: undefined
+
+	function handleEditTldrawPreview(assetId: string) {
+		pendingTldrawEdit.current = assetId
+		setMediaPreviewOpen(false)
 	}
 
 	let wikilinkResolver = (id: string) => resolveWikilink?.(id)
@@ -569,6 +592,14 @@ function MarkdownEditor(
 			if (activeView.state.readOnly) return
 			let uploadImage = uploadImageRef.current
 			let uploadVideo = uploadVideoRef.current
+			let importTldraw = importTldrawRef.current
+			let tldrawFile = Array.from(files).find(file =>
+				file.name.toLowerCase().endsWith(".tldr"),
+			)
+			if (tldrawFile && importTldraw) {
+				importTldraw(tldrawFile)
+				return
+			}
 
 			let images = uploadImage
 				? Array.from(files).filter(f => f.type.startsWith("image/"))
@@ -932,7 +963,13 @@ function MarkdownEditor(
 				return { from, to }
 			},
 			getSelectedText,
-			restoreSelection: () => {},
+			restoreSelection: selection => {
+				if (!view) return
+				view.focus()
+				view.dispatch({
+					selection: { anchor: selection.from, head: selection.to },
+				})
+			},
 			getScrollPosition: () => ({ top: 0, left: 0 }),
 			setScrollPosition: () => {},
 			undo: () => {},
@@ -1009,10 +1046,11 @@ function MarkdownEditor(
 							docs={documents ?? []}
 							onCreateDoc={onCreateDocument}
 						/>
-						<ImageAction
+						<MediaAction
 							editor={internalRef}
 							{...ctx.image}
 							assets={assets ?? []}
+							onCreateTldraw={onCreateTldraw}
 							onUploadAndInsert={
 								onUploadImage ? handleUploadAndInsert : undefined
 							}
@@ -1038,18 +1076,80 @@ function MarkdownEditor(
 				open={mediaPreviewOpen}
 				onOpenChange={setMediaPreviewOpen}
 				onOpenChangeComplete={open => {
-					if (!open) setMediaPreview(null)
+					if (open) return
+					setMediaPreviewExpanded(false)
+					setMediaPreview(null)
+					let assetId = pendingTldrawEdit.current
+					pendingTldrawEdit.current = null
+					if (assetId) onEditTldraw?.(assetId)
 				}}
 			>
-				<DialogContent className="max-w-5xl">
-					<DialogHeader>
+				<DialogContent
+					animated={false}
+					showCloseButton={false}
+					className={cn(
+						"max-w-5xl",
+						mediaPreviewExpanded &&
+							"inset-0 top-0 left-0 !flex h-[100dvh] max-w-none translate-x-0 flex-col pt-[max(1rem,env(safe-area-inset-top))] sm:top-0 sm:max-w-none sm:translate-y-0",
+					)}
+				>
+					<DialogHeader className="pr-12">
 						<DialogTitle>
 							{mediaPreview?.alt ?? t("editor.dialog.selectMedia")}
 						</DialogTitle>
 					</DialogHeader>
-					{mediaPreview && (
-						<MediaPreviewContent preview={mediaPreview} assets={assets} />
-					)}
+					<Button
+						variant="ghost"
+						size="icon"
+						className={cn(
+							"absolute top-2 right-2 min-h-11 min-w-11 touch-manipulation transition-none active:scale-100 sm:min-h-9 sm:min-w-9",
+							mediaPreviewExpanded &&
+								"top-[max(0.5rem,env(safe-area-inset-top))]",
+						)}
+						aria-label={
+							mediaPreviewExpanded
+								? t("editor.media.collapsePreview")
+								: t("editor.media.expandPreview")
+						}
+						onClick={() => setMediaPreviewExpanded(expanded => !expanded)}
+					>
+						{mediaPreviewExpanded ? (
+							<Minimize2 className="size-4" />
+						) : (
+							<Maximize2 className="size-4" />
+						)}
+					</Button>
+					<div
+						className={cn(
+							mediaPreviewExpanded && "min-h-0 flex-1 overflow-hidden",
+						)}
+					>
+						{mediaPreview && (
+							<MediaPreviewContent
+								preview={mediaPreview}
+								assets={assets}
+								expanded={mediaPreviewExpanded}
+							/>
+						)}
+					</div>
+					<DialogFooter className={cn(mediaPreviewExpanded && "shrink-0")}>
+						<Button
+							variant="outline"
+							className="min-h-11 touch-manipulation sm:min-h-9"
+							onClick={() => setMediaPreviewOpen(false)}
+						>
+							{t("editor.dialog.close")}
+						</Button>
+						{editableTldrawAssetId && (
+							<Button
+								className="min-h-11 touch-manipulation sm:min-h-9"
+								onClick={() => handleEditTldrawPreview(editableTldrawAssetId)}
+							>
+								<PenTool className="size-4" />
+								{t("assets.editWhiteboard")}
+							</Button>
+						)}
+					</DialogFooter>
 				</DialogContent>
 			</Dialog>
 		</>
@@ -1059,9 +1159,11 @@ function MarkdownEditor(
 function MediaPreviewContent({
 	preview,
 	assets,
+	expanded,
 }: {
 	preview: { url: string; alt: string; assetId: string | null }
-	assets?: Asset[]
+	assets?: EditorAsset[]
+	expanded: boolean
 }) {
 	let t = useIntl()
 	let asset = preview.assetId
@@ -1074,7 +1176,10 @@ function MediaPreviewContent({
 			<img
 				src={preview.url}
 				alt={preview.alt}
-				className="max-h-[70vh] w-full object-contain"
+				className={cn(
+					"w-full object-contain",
+					expanded ? "h-full" : "max-h-[70vh]",
+				)}
 			/>
 		)
 	}
@@ -1090,18 +1195,21 @@ function MediaPreviewContent({
 	}
 
 	// Image asset
-	if (asset.type === "image" && asset.imageId) {
+	if ((asset.type === "image" || asset.type === "tldraw") && asset.previewId) {
 		return (
 			<JazzImage
-				imageId={asset.imageId}
-				className="max-h-[70vh] w-full object-contain"
+				imageId={asset.previewId}
+				className={cn(
+					"w-full object-contain",
+					expanded ? "h-full" : "max-h-[70vh]",
+				)}
 			/>
 		)
 	}
 
 	// Video asset
 	if (asset.type === "video" && asset.video) {
-		return <VideoPreview asset={asset} />
+		return <VideoPreview asset={asset} expanded={expanded} />
 	}
 
 	return (
@@ -1112,7 +1220,13 @@ function MediaPreviewContent({
 	)
 }
 
-function VideoPreview({ asset }: { asset: Asset }) {
+function VideoPreview({
+	asset,
+	expanded,
+}: {
+	asset: EditorAsset
+	expanded: boolean
+}) {
 	let t = useIntl()
 	let [url, setUrl] = useState<string | null>(null)
 	let [trackedVideo, setTrackedVideo] = useState(asset.video)
@@ -1169,7 +1283,10 @@ function VideoPreview({ asset }: { asset: Asset }) {
 			controls
 			autoPlay
 			muted={asset.muteAudio}
-			className="max-h-[70vh] w-full object-contain"
+			className={cn(
+				"w-full object-contain",
+				expanded ? "h-full" : "max-h-[70vh]",
+			)}
 		/>
 	)
 }

@@ -153,6 +153,7 @@ function ActiveBackupSubscriber() {
 		)
 		let previousHash = lastContentHashRef.current ?? lastBackupHash
 		let directoryGeneration = directoryGenerationRef.current
+		let preparationErrors: string[] = []
 		let request = {
 			key: `${directoryGeneration}:${contentHash}`,
 			async run() {
@@ -166,10 +167,11 @@ function ActiveBackupSubscriber() {
 					return false
 				}
 
-				let backupDocs = await prepareBackupDocs(selection)
+				let prepared = await prepareBackupDocs(selection)
+				preparationErrors = prepared.errors
 				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
-				await syncBackup(handle, backupDocs, scopeId, {
-					isComplete: selection.isComplete,
+				await syncBackup(handle, prepared.documents, scopeId, {
+					isComplete: selection.isComplete && preparationErrors.length === 0,
 					deletedDocumentIds: selection.deletedDocumentIds,
 				})
 				return true
@@ -179,7 +181,9 @@ function ActiveBackupSubscriber() {
 				lastContentHashRef.current = contentHash
 				setLastBackupAt(new Date().toISOString())
 				setLastBackupHash(contentHash)
-				setLastError(null)
+				setLastError(
+					preparationErrors.length > 0 ? preparationErrors.join("\n") : null,
+				)
 			},
 			fail(error: unknown) {
 				if (directoryGeneration !== directoryGenerationRef.current) return
@@ -332,6 +336,7 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 		let { contentHash } = selection
 		let previousHash = lastContentHashRef.current ?? getSpaceBackupHash(spaceId)
 		let directoryGeneration = directoryGenerationRef.current
+		let preparationErrors: string[] = []
 		let request = {
 			key: `${directoryGeneration}:${contentHash}`,
 			async run() {
@@ -343,10 +348,11 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 					return false
 				}
 
-				let backupDocs = await prepareBackupDocs(selection)
+				let prepared = await prepareBackupDocs(selection)
+				preparationErrors = prepared.errors
 				let scopeId = docs.$jazz.id ? `docs:${docs.$jazz.id}` : "docs:unknown"
-				await syncBackup(handle, backupDocs, scopeId, {
-					isComplete: selection.isComplete,
+				await syncBackup(handle, prepared.documents, scopeId, {
+					isComplete: selection.isComplete && preparationErrors.length === 0,
 					deletedDocumentIds: selection.deletedDocumentIds,
 				})
 				return true
@@ -355,6 +361,12 @@ function SpaceBackupSubscriber({ spaceId }: SpaceBackupSubscriberProps) {
 				if (directoryGeneration !== directoryGenerationRef.current) return
 				lastContentHashRef.current = contentHash
 				setSpaceBackupHash(spaceId, contentHash)
+				if (preparationErrors.length > 0) {
+					console.error(
+						`Space backup skipped documents for ${spaceId}:`,
+						preparationErrors,
+					)
+				}
 			},
 			fail(error: unknown) {
 				if (directoryGeneration !== directoryGenerationRef.current) return
